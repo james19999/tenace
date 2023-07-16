@@ -30,7 +30,7 @@
                     <form    method="POST" action="{{ route('login') }}" class="p-3" >
                          @csrf
                         <div class="form-group">
-                            <input  type="email" class="form-control @error('email') is-invalid @enderror" name="email" value="{{ old('email') }}" required autocomplete="email" autofocus>
+                            <input  type="email" class="form-control @error('email') is-invalid @enderror" name="email" value="{{ old('email') }}" placeholder="Email"required autocomplete="email" autofocus>
                             @error('email')
                             <span class="invalid-feedback" role="alert">
                                 <strong>{{ $message }}</strong>
@@ -38,7 +38,7 @@
                             @enderror
                         </div>
                         <div class="form-group">
-                            <input type="password" class="form-control @error('password') is-invalid @enderror" name="password" required >
+                            <input type="password" placeholder="Mot de passe" class="form-control @error('password') is-invalid @enderror" name="password" required >
                             @error('password')
                             <span class="invalid-feedback" role="alert">
                                 <strong>{{ $message }}</strong>
