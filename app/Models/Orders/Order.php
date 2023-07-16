@@ -1,0 +1,39 @@
+<?php
+
+namespace App\Models\Orders;
+
+use App\Models\User;
+use App\Models\Costumer;
+use App\Models\Orders\OrderItem;
+use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Factories\HasFactory;
+
+class Order extends Model
+{
+    use HasFactory;
+
+    protected $fillable=[
+        'user_id',
+        'costumer_id',
+        'subtotal',
+        'tax',
+        'total',
+        'code',
+    ];
+
+
+    public function costumer(){
+
+        return $this->belongsTo(Costumer::class,'costumer_id');
+    }
+
+    public function user () {
+
+        return $this->belongsTo(User::class,'user_id');
+    }
+
+
+    public function orderItems(){
+        return $this->hasMany(OrderItem::class);
+    }
+}
