@@ -39,12 +39,19 @@
                                   wire:click.prevent="AddToCart({{$product->id }},'{{  $product->name }}',{{  $product->price }})"
                                   >
                                       <i class="material-icons">shopping_cart</i>Ajouter</button>
-                                  <button style="color: white" type="button" class="btn btn-warning">
+
+                                  <a href="{{ route('editproduct',$product) }}" style="color: white" type="button" class="btn btn-warning">
                                       <i class="material-icons">edit</i>
-                                      Modifier</button>
-                                  <button type="button" class="btn btn-danger">
-                                      <i class="material-icons">delete</i>
-                                    Supprimer</button>
+                                      Modifier</a>
+
+                                      <form   method="POST" action="{{ route('delteproduct',$product) }}"
+                                      onclick="return confirm('supprimer') "
+                                     >
+                                          @csrf
+                                           @method("DELETE")
+                                         <button  style="padding-bottom: 12%" class="btn btn-sm btn-danger"
+                                          ><i class="material-icons">delete</i>Supprimer</button>
+                                     </form>
                               </div>
                           </td>
                        </tr>

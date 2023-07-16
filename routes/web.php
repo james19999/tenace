@@ -62,4 +62,10 @@ Route::get('livrable/list',[LivreurController::class,'livrable'])->name('livrabl
 Route::get('livrable/show/{id}',[LivreurController::class,'livrable_show'])->name('livrableshow');
 Route::put('change/order/status/user/{id}',[LivreurController::class,'change_order_status_user'])->name('changestatususer');
 
+Route::get('edit/product/{id}',[DashboarController::class,'edit'])->name('editproduct');
+
+Route::put('update/product/{id}',[DashboarController::class,'updates'])->name('updateproduct');
+
+Route::delete('edit/product/{id}',[DashboarController::class,'delete'])->name('delteproduct');
+
 });

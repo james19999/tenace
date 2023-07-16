@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Admins;
 
+use App\Models\Product;
 use App\Models\Orders\Order;
 use Illuminate\Http\Request;
 use App\Http\Controllers\Controller;
@@ -93,5 +94,32 @@ class DashboarController extends Controller
         $OrderdeAmount = Order::where('status', 'delivered')->sum('total');
 
         return view('dashboard.dashboard',compact('chart1','chart2', 'chart3','chart4', 'orders','Ordered', 'Orderdelivered','Orderall', 'OrderdeAmount'));
+     }
+
+
+
+
+     public function edit($id){
+         $product=Product::findOrfail($id);
+         return view('dashboard.edit',compact('product'));
+     }
+
+
+
+     public function updates (Request $request,$id){
+
+        $product=Product::findOrfail($id);
+
+        $product->update(['name'=>$request->name,'price'=>$request->price]);
+
+        return redirect()->route('product')->with('messages','produit modifié');
+
+     }
+
+
+     public function delete($id){
+        Product::destroy($id);
+
+        return redirect()->back()->with('messages','produit supprimé');
      }
 }
