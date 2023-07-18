@@ -5,7 +5,7 @@
     @csrf
      <div class="col-12 ">
          <div class="row">
-             <div class="col-md-4">
+             <div class="col-md-3">
 
                  <div  style="padding-top: 10px">
                     <select class="form-control" name="costumer_id">
@@ -16,10 +16,13 @@
                       </select>
                  </div>
              </div>
-             <div class="col-md-4" style="padding-top: 1%">
+             <div class="col-md-3" style="padding-top: 1%">
+                 <input type="time" name="time" id="" value="{{old('time')}}"  placeholder="Heure" class="form-control" >
+             </div>
+             <div class="col-md-3" style="padding-top: 1%">
                  <input type="number" name="tax" id="" value="{{old('tax')}}"  placeholder="Frais de livraison" class="form-control" >
              </div>
-             <div class="col-md-4" style="padding-top: 1%">
+             <div class="col-md-3" style="padding-top: 1%">
                 <button type="submit" style="color: white" class="btn btn-success btn-block">Valider
                  ({{ Cart::instance('cart')->subtotal()  }}) F</button>
              </div>

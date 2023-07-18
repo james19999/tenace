@@ -6,18 +6,13 @@
 
 <div class="col-12 ">
     <div  style="padding-top: 10px">
-        <h3>Liste des livraisons</h4>
+        <h3>Mes  livraisons</h4>
     </div>
    <div class="card shadow">
        <div class="card-body ">
             @if (Session::has('messages'))
              <div class="alert alert-success">
                 <strong>{{ session('messages') }}</strong>
-             </div>
-            @endif
-            @if (Session::has('error'))
-             <div class="alert alert-danger">
-                <strong>{{ session('error') }}</strong>
              </div>
             @endif
 
@@ -70,13 +65,9 @@
                          <td style="color: black " class=" pull-right">
 
                              <div class="btn-group btn-group-justified">
-
-                                    <form   method="POST" action="{{ route('checklivraison',$order->id) }}">
-                                         @csrf
-                                        <button  style="padding-bottom: 12%" class="btn btn-sm btn-success"
-                                         ><i class="material-icons">shopping_cart</i></button>
-                                    </form>
-
+                                 <a href="{{ route('livrableshow',$order) }}" style="color: white" type="button" class="btn btn-success"
+                                 >
+                                 <i class="material-icons f-16">visibility</i>Details</a>
                              </div>
                          </td>
                       </tr>

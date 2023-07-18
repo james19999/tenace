@@ -62,7 +62,7 @@ class OrderController extends Controller
 
         if($orders){
 
-             if($orders->status_order==1){
+             if($orders->status_order==0){
                $orders->status_order=false;
                $orders->user_id=null;
                $orders->status="ordered";

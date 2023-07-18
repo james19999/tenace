@@ -64,13 +64,22 @@
                  </a>
              </li>
              @else
+            <li>
+                <a href="{{ route('authlivrable',Auth::user()->id) }}" class="">
+                    <span class="icon material-icons">shopping_cart
+                    </span>
+                    <span class="text">Mes livraisons</span>
+                </a>
+            </li>
+
              <li>
                 <a href="{{ route('livrable') }}" class="">
                     <span class="icon material-icons"  >bike_scooter
                     </span>
                     <span class="text">Livraisons</span>
                 </a>
-            </li>
+             </li>
+
              @endif
 
 

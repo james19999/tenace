@@ -20,6 +20,7 @@ return new class extends Migration
             $table->string('total');
             $table->string('motif')->nullable();
             $table->string('code');
+            $table->string('time');
             $table->boolean('status_order')->default(false);
             $table->enum('status',['ordered','delivered','canceled'])->default('ordered');
             $table->timestamps();

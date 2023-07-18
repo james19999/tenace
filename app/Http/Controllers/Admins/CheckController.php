@@ -16,6 +16,7 @@ class CheckController extends Controller
             'costumer_id'=>$request->costumer_id,
             'subtotal'=>round($request->subtotal) ,
             'tax'=>$request->tax,
+            'time'=>$request->time,
             'total'=>intval($request->subtotal)+ intval($request->tax),
             'code' => $code,
 

@@ -19,6 +19,7 @@ class Order extends Model
         'tax',
         'total',
         'code',
+        'time',
     ];
 
 

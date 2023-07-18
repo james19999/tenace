@@ -49,7 +49,7 @@ Route::get('order/show/{id}',[OrderController::class,'show'])->name('ordershow')
 
 Route::put('change/order/status/{id}',[OrderController::class,'change_order_status'])->name('changestatus');
 
-Route::get('refresh/order{id}',[OrderController::class,'refresh_order'])->name('refreshorder');
+Route::get('refresh/order/{id}',[OrderController::class,'refresh_order'])->name('refreshorder');
 
 Route::delete('delete/{id}',[OrderController::class,'delete'])->name('deleteorder');
 
@@ -60,6 +60,12 @@ Route::get('user/admin/list',[LivreurController::class,'user_admin_list'])->name
 Route::get('livrable/list',[LivreurController::class,'livrable'])->name('livrable');
 
 Route::get('livrable/show/{id}',[LivreurController::class,'livrable_show'])->name('livrableshow');
+
+Route::get('auth/livrable/{id}',[LivreurController::class,'auth_user_livrable'])->name('authlivrable');
+
+Route::post('check/livraison/{id}',[LivreurController::class,'check_livraison'])->name('checklivraison');
+
+
 Route::put('change/order/status/user/{id}',[LivreurController::class,'change_order_status_user'])->name('changestatususer');
 
 Route::get('edit/product/{id}',[DashboarController::class,'edit'])->name('editproduct');

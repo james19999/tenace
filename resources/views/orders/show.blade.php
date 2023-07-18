@@ -41,6 +41,7 @@
                             <h2>Commande</h2>
                             <p>Numéro : {{ $Orders->code }}  </p>
                             <p>Date  : {{ $Orders->created_at }}  </p>
+                            <p>Heure de livraison  : {{ $Orders->time }}  </p>
                             <p>Etat  :
                               @if ($Orders->status=="ordered")
                               <span class="badge badge-warning"   > En cours</span>

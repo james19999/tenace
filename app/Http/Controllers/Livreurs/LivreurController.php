@@ -134,8 +134,9 @@ class LivreurController extends Controller
 
     public function livrable() {
 
-        $orders=Order::where('status_order',0)->latest()->get();
-
+        $orders=Order::where('status_order',0)
+              ->where('status','ordered')
+              ->latest()->get();
         return view('livreurs.livrable',compact('orders'));
     }
 
@@ -162,14 +163,14 @@ class LivreurController extends Controller
                $orders->status=$request->status;
                $orders->motif=$request->motif;
                $orders->user_id=Auth::user()->id;
-               $orders->status_order=true;
+               $orders->status_order=false;
                $orders->save();
               return redirect()->back()->with('success','commande annuler');
 
              }else if($request->status=="delivered"){
                $orders->status=$request->status;
                $orders->user_id=Auth::user()->id;
-               $orders->status_order=true;
+               $orders->status_order=false;
                $orders->save();
               return redirect()->back()->with('success','commande valider');
              }
@@ -178,5 +179,34 @@ class LivreurController extends Controller
           return redirect()->back()->with('success','error');
 
          }
+  }
+
+
+  public function auth_user_livrable($id){
+       
+    $orders =Order::where('user_id',Auth::user()->id)
+    ->where('status_order',true)
+    ->get();
+     return view('livreurs.aut_livre_list',compact('orders'));
+  }
+
+
+  public function check_livraison($id){
+    $orders=Order::findOrfail($id);
+
+    $order =Order::where('user_id',Auth::user()->id)
+           ->where('status_order',true)
+            ->get();
+     
+        if($order->count()==0){
+            $orders->user_id=Auth::user()->id;
+            $orders->status_order=true;
+            $orders->save();
+            return back();
+        }else{
+            return redirect()->route('livrable')
+            ->with('error','Vous avez des commandes non livrées');
+        }
+
   }
 }
