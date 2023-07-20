@@ -183,7 +183,7 @@ class LivreurController extends Controller
 
 
   public function auth_user_livrable($id){
-       
+
     $orders =Order::where('user_id',Auth::user()->id)
     ->where('status_order',true)
     ->get();
@@ -194,19 +194,26 @@ class LivreurController extends Controller
   public function check_livraison($id){
     $orders=Order::findOrfail($id);
 
-    $order =Order::where('user_id',Auth::user()->id)
-           ->where('status_order',true)
-            ->get();
-     
-        if($order->count()==0){
-            $orders->user_id=Auth::user()->id;
-            $orders->status_order=true;
-            $orders->save();
-            return back();
-        }else{
-            return redirect()->route('livrable')
-            ->with('error','Vous avez des commandes non livrées');
-        }
+      if($orders->take==false){
+
+          $order =Order::where('user_id',Auth::user()->id)
+                 ->where('status_order',true)
+                  ->get();
+
+              if($order->count()==0){
+                  $orders->user_id=Auth::user()->id;
+                  $orders->status_order=true;
+                  $orders->take=true;
+                  $orders->save();
+                  return back();
+              }else{
+                  return redirect()->route('livrable')
+                  ->with('error','Vous avez des commandes non livrées');
+              }
+      }else{
+        return redirect()->route('livrable')
+        ->with('waring','La commande déjà pris par un livreur');
+      }
 
   }
 }

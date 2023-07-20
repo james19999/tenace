@@ -20,6 +20,11 @@
                 <strong>{{ session('error') }}</strong>
              </div>
             @endif
+            @if (Session::has('waring'))
+             <div class="alert alert-warning">
+                <strong>{{ session('waring') }}</strong>
+             </div>
+            @endif
 
 
            <div class="table-responsive">

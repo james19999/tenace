@@ -22,6 +22,7 @@
                    <thead class="thead-light">
                        <tr>
                            <th style="width: 20%">N°</th>
+                           <th style="width: 20%">Code</th>
                            <th style="width: 20%">Nom/Téléphone (Client)</th>
                            <th style="width: 20%">Nom/Téléphone (Livreur)</th>
                            <th style="width: 20%">Sous total</th>
@@ -39,6 +40,7 @@
                       <tr>
 
                          <td style="color: black ">{{ $i++ }}</td>
+                         <td style="color: black ">{{ $order->code }}</td>
                          <td style="color: black ">{{ $order->costumer->name ?? '-' }}| {{ $order->costumer->phone ?? '-' }}</td>
                          <td style="color: black ">{{ $order->user->name ?? 'Non' }}| {{ $order->user->phone ?? '' }}</td>
 
@@ -86,6 +88,7 @@
                    <tfoot class="thead-light">
                        <tr>
                         <th style="width: 20%">N°</th>
+                        <th style="width: 20%">Code</th>
                         <th style="width: 20%">Nom/Téléphone (Client)</th>
                         <th style="width: 20%">Nom/Téléphone (Livreur)</th>
                         <th style="width: 20%">Sous total</th>
