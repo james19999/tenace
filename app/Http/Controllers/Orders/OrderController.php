@@ -66,6 +66,7 @@ class OrderController extends Controller
                $orders->status_order=false;
                $orders->user_id=null;
                $orders->status="ordered";
+               $orders->take=false;
                $orders->save();
 
                return redirect()->back()->with('success','commande relancé');
