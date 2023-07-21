@@ -28,7 +28,6 @@
                            <th style="width: 20%">Sous total</th>
                            <th style="width: 20%">Frais</th>
                            <th style="width: 20%">Total</th>
-                           <th style="width: 20%">Heure</th>
                            <th style="width: 20%">Etat</th>
                            <th style="width: 20%">Actions</th>
                        </tr>
