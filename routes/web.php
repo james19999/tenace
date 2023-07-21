@@ -49,7 +49,7 @@ Route::get('order/show/{id}',[OrderController::class,'show'])->name('ordershow')
 
 Route::put('change/order/status/{id}',[OrderController::class,'change_order_status'])->name('changestatus');
 
-Route::get('refresh/order/{id}',[OrderController::class,'refresh_order'])->name('refreshorder');
+Route::put('refresh/order/{id}',[OrderController::class,'refresh_order'])->name('refreshorder');
 
 Route::delete('delete/{id}',[OrderController::class,'delete'])->name('deleteorder');
 

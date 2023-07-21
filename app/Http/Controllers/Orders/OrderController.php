@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Orders;
 
+use App\Models\Costumer;
 use App\Models\Orders\Order;
 use Illuminate\Http\Request;
 use App\Http\Controllers\Controller;
@@ -57,7 +58,7 @@ class OrderController extends Controller
     }
 
 
-     public function refresh_order($id){
+     public function refresh_order(Request $request, $id){
         $orders=Order::findOrfail($id);
 
         if($orders){
@@ -66,7 +67,13 @@ class OrderController extends Controller
                $orders->status_order=false;
                $orders->user_id=null;
                $orders->status="ordered";
+               $orders->time=$request->time;
                $orders->take=false;
+
+              $constumer=Costumer::findOrfail($orders->costumer_id);
+
+              $constumer->update(['adresse'=>$request->adresse]);
+
                $orders->save();
 
                return redirect()->back()->with('success','commande relancé');

@@ -8,7 +8,7 @@
              <div class="col-md-3">
 
                  <div  style="padding-top: 10px">
-                    <select class="form-control" name="costumer_id">
+                    <select class="js-example-basic-single  form-control" name="costumer_id">
                          @foreach ($Costumers as $Costumer )
                          <option value="{{ $Costumer->id }}">{{ $Costumer->name }} | {{ $Costumer->phone }} </option>
 

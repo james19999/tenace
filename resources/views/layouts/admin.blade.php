@@ -3,8 +3,7 @@
 <html lang="{{ str_replace('_', '-', app()->getLocale()) }}">
 
 
-<!-- Mirrored from htmlthemes.gitlab.io/admin/ by HTTrack Website Copier/3.x [XR&CO'2014], Thu, 18 May 2023 20:57:06 GMT -->
-<!-- Added by HTTrack --><meta http-equiv="content-type" content="text/html;charset=utf-8" /><!-- /Added by HTTrack -->
+
 <head>
     <meta charset="UTF-8">
     <title>TENACE COSMETIQUE</title>
@@ -27,7 +26,7 @@
     <link rel="stylesheet" href="https://cdn.datatables.net/buttons/2.3.6/css/buttons.dataTables.min.css
     ">
 
-
+    <link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" rel="stylesheet" />
 
     @livewireStyles
 
@@ -93,6 +92,8 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/2.5.0/Chart.min.js"></script>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/2.5.0/Chart.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
+
   <script>
     $(document).ready(function() {
     $('#example').DataTable( {
@@ -114,6 +115,12 @@
 
     document.body.innerHTML = originalContents;
     }
+
+
+    // In your Javascript (external .js resource or <script> tag)
+    $(document).ready(function() {
+        $('.js-example-basic-single').select2();
+    });
   </script>
 
 
@@ -122,5 +129,4 @@
 </body>
 
 
-<!-- Mirrored from htmlthemes.gitlab.io/admin/ by HTTrack Website Copier/3.x [XR&CO'2014], Thu, 18 May 2023 21:03:03 GMT -->
 </html>
