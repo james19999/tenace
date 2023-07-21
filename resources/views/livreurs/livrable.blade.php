@@ -37,6 +37,7 @@
                            <th style="width: 20%">Sous total</th>
                            <th style="width: 20%">Frais</th>
                            <th style="width: 20%">Total</th>
+                           <th style="width: 20%">Heure</th>
                            <th style="width: 20%">Etat</th>
                            <th style="width: 20%">Actions</th>
                        </tr>
@@ -55,6 +56,7 @@
                          <td style="color: black ">{{ $order->subtotal }} F</td>
                          <td style="color: black ">{{ $order->tax }} F </td>
                          <td style="color: black ">{{ $order->total }} F </td>
+                         <td style="color: black ">{{ $order->time }}  </td>
                          <td style="color: black ">
                                 @if ($order->status=="ordered")
                                 <span class="badge badge-warning"> En cours</span>
@@ -96,6 +98,7 @@
                         <th style="width: 20%">Sous total</th>
                         <th style="width: 20%">Frais</th>
                         <th style="width: 20%">Total</th>
+                        <th style="width: 20%">Heure</th>
                         <th style="width: 20%">Etat</th>
                         <th style="width: 20%">Actions</th>
                        </tr>
