@@ -34,7 +34,7 @@ class ProductCart extends Component
 
     public function render()
     {
-        return view('livewire.products.product-cart',['Costumers'=>Costumer::latest()->get()])
+        return view('livewire.products.product-cart',['Costumers'=>Costumer::all()->sortBy('name')])
         ->extends('layouts.admin')
         ->section('content');
         $this->total();

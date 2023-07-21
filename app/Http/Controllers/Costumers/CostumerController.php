@@ -15,7 +15,7 @@ class CostumerController extends Controller
     {
         //
 
-        $costumers=Costumer::latest()->get();
+        $costumers=Costumer::all()->sortBy('name');
 
         return view('costumer.index',compact('costumers'));
     }
@@ -46,7 +46,7 @@ class CostumerController extends Controller
                  'email'=>$request->email,
                  'adresse'=>$request->adresse,
             ]);
-            
+
             return  redirect()->route('costumer.index');
     }
 
@@ -55,7 +55,7 @@ class CostumerController extends Controller
      */
     public function show(string $id)
     {
- 
+
     }
 
     /**
@@ -73,7 +73,7 @@ class CostumerController extends Controller
      */
     public function update(Request $request, string $id)
     {
-        
+
         $costumers=Costumer::findOrfail($id);
 
         $costumers->update([
@@ -92,7 +92,7 @@ class CostumerController extends Controller
      */
     public function destroy(string $id)
     {
-        
+
         Costumer::destroy($id);
 
         return back();

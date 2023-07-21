@@ -18,7 +18,7 @@ class ProductList extends Component
 
     public function render()
     {
-        return view('livewire.products.product-list',['Products'=>Product::latest()->get()])
+        return view('livewire.products.product-list',['Products'=>Product::all()->sortBy('name')])
            ->extends('layouts.admin')
            ->section('content');
     }
