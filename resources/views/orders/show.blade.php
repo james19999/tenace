@@ -103,7 +103,7 @@
                                  <div class="row">
 
                                      <div class="col-md-4">
-                                         <input type="text"  class="form-control @error('adresse') is-invalid @enderror" name="adresse" value="{{ $Orders->costumer->adresse }}" placeholder="adresse">
+                                         <input type="text"  class="form-control @error('adresse') is-invalid @enderror" name="adresse" value="{{ $Orders->costumer->adresse ?? '' }}" placeholder="adresse">
                                           @error('adresse')
                                            <div class="alert alert-danger">{{ $message }}</div>
                                            @enderror
