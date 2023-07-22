@@ -34,8 +34,8 @@
                         <div class="col-md-3">
                            <h2>Client</h2>
                            <p>Nom : {{ $Orders->costumer->name ?? '' }}</p>
-                           <p>Téléphone : {{ $Orders->costumer->phone }}</p>
-                           <p>Adresse   : {{ $Orders->costumer->adresse }}</p>
+                           <p>Téléphone : {{ $Orders->costumer->phone ?? '' }}</p>
+                           <p>Adresse   : {{ $Orders->costumer->adresse ?? ''}}</p>
                         </div>
                         <div class="col-md-3">
                             <h2>Commande</h2>
