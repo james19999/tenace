@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Orders;
 
+use Carbon\Carbon;
 use App\Models\Costumer;
 use App\Models\Orders\Order;
 use Illuminate\Http\Request;
@@ -12,7 +13,9 @@ class OrderController extends Controller
 
     public function index(){
 
-        $orders=Order::latest()->get();
+        $orders=Order::latest()
+        ->whereDate('created_at',Carbon::today())
+        ->get();
 
         return view('orders.index',compact('orders'));
     }

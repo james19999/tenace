@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Admins;
 
+use Carbon\Carbon;
 use App\Models\Product;
 use App\Models\Orders\Order;
 use Illuminate\Http\Request;
@@ -12,7 +13,9 @@ class DashboarController extends Controller
 {
      public function dashboard () {
 
-        $orders = Order::orderby('created_at', 'DESC')->get();
+        $orders = Order::orderby('created_at', 'DESC')
+        ->whereDate('created_at',Carbon::today())
+        ->get();
 
         $chart_options = [
             'chart_title' => 'Rapport mensuels',
@@ -88,10 +91,18 @@ class DashboarController extends Controller
 
         $chart4 = new LaravelChart($chart_options_annuel);
 
-        $Ordered = Order::where('status', 'ordered')->count();
-        $Orderdelivered = Order::where('status', 'delivered')->count();
-        $Orderall = Order::count();
-        $OrderdeAmount = Order::where('status', 'delivered')->sum('total');
+        $Ordered = Order::where('status', 'ordered')
+        ->whereDate('created_at',Carbon::today())
+        ->count();
+        $Orderdelivered = Order::where('status', 'delivered')
+        ->whereDate('created_at',Carbon::today())
+        ->count();
+        $Orderall = Order::
+        whereDate('created_at',Carbon::today())->
+        count();
+        $OrderdeAmount = Order::where('status', 'delivered')
+        ->whereDate('created_at',Carbon::today())
+        ->sum('total');
 
         return view('dashboard.dashboard',compact('chart1','chart2', 'chart3','chart4', 'orders','Ordered', 'Orderdelivered','Orderall', 'OrderdeAmount'));
      }
@@ -122,4 +133,15 @@ class DashboarController extends Controller
 
         return redirect()->back()->with('messages','produit supprimé');
      }
+
+
+
+     public function history(){
+
+        $orders=Order::latest()
+        ->whereDate('created_at',Carbon::today())
+        ->get();
+
+        return view('dashboard.history',compact('orders'));
+    }
 }

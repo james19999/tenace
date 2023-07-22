@@ -36,6 +36,12 @@
                  </a>
              </li>
              <li>
+                 <a href="{{ route('history') }}" class="">
+                     <span class="icon material-icons"  >history</span>
+                     <span class="text">Historiques</span>
+                 </a>
+             </li>
+             <li>
                  <a href="{{ route('costumer.index') }}" class="">
                      <span class="icon material-icons"  >contact_phone</span>
                      <span class="text">Clients</span>

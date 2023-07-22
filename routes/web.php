@@ -34,6 +34,9 @@ Route::middleware(['auth'])->group(function () {
 
 
 Route::get('/Admin',[DashboarController::class,'dashboard'])->name('Admin');
+
+Route::get('/history',[DashboarController::class,'history'])->name('history');
+
 Route::get('product/list',ProductList::class)->name('product');
 Route::get('product/form',ProductForm::class)->name('productform');
 

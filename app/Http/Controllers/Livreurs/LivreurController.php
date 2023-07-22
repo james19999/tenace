@@ -136,7 +136,9 @@ class LivreurController extends Controller
 
         $orders=Order::where('status_order',0)
               ->where('status','ordered')
-              ->latest()->get();
+              ->latest()
+              ->whereDate('created_at',Carbon::today())
+              ->get();
         return view('livreurs.livrable',compact('orders'));
     }
 
@@ -186,6 +188,7 @@ class LivreurController extends Controller
 
     $orders =Order::where('user_id',Auth::user()->id)
     ->where('status_order',true)
+    ->whereDate('created_at',Carbon::today())
     ->get();
      return view('livreurs.aut_livre_list',compact('orders'));
   }
