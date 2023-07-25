@@ -63,15 +63,17 @@ class LivreurController extends Controller
      */
     public function show(string $id)
     {
-      $user=User::where('id',$id)
-      ->whereDate('created_at',Carbon::today())
-      ->first();
+      $user=User::findOrfail($id);
 
-       $sum=Order::where('user_id',$id)->where('status','delivered')
+    //    $sum=Order::where('user_id',$id)->where('status','delivered')
+    //     ->whereDate('created_at',Carbon::today())
+    //     ->sum('total');
+
+       $orde=Order::where('user_id',$id)->where('status','delivered')
         ->whereDate('created_at',Carbon::today())
-        ->sum('total');
+        ->get();
 
-      return view('livreurs.show',compact('user','sum'));
+      return view('livreurs.show',compact('user','orde'));
     }
 
     /**

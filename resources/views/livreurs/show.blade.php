@@ -10,7 +10,7 @@
         <div class="col-md-3">
 
             <div  style="padding-top: 10px">
-                <h3>{{ $user->name ?? '' }}</h3>
+                <h3>{{ $user->name }}</h3>
             </div>
         </div>
 
@@ -24,7 +24,7 @@
 
         <div class="col-md-3" style="padding-top: 1%">
            <button type="button" style="color: white" class="btn btn-success btn-block">
-           {{ $sum }}  F </button>
+           {{ $orde->sum('total') }}  F </button>
         </div>
 
     </div>
@@ -54,7 +54,7 @@
                         @php
                             $i=1;
                         @endphp
-                         @foreach ($user->orders as $order )
+                         @foreach ($orde as $order )
                       <tr>
 
                          <td style="color: black ">{{ $i++ }}</td>
