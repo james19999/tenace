@@ -10,7 +10,7 @@
         <div class="col-md-3">
 
             <div  style="padding-top: 10px">
-                <h3>{{ $user->name }}</h3>
+                <h3>{{ $user->name ?? '' }}</h3>
             </div>
         </div>
 
