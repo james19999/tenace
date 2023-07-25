@@ -65,8 +65,7 @@ class LivreurController extends Controller
     {
       $user=User::where('id',$id)
       ->whereDate('created_at',Carbon::today())
-      ->first()
-      ;
+      ->first();
 
        $sum=Order::where('user_id',$id)->where('status','delivered')
         ->whereDate('created_at',Carbon::today())
