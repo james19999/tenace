@@ -2,15 +2,22 @@
 
 namespace App\Http\Controllers\Admins;
 
+use App\Models\User;
+use App\Mail\TenaCos;
+use App\Mail\TenanCos;
 use App\Models\Orders\Order;
 use Illuminate\Http\Request;
 use App\Models\Orders\OrderItem;
 use App\Http\Controllers\Controller;
+use Illuminate\Support\Facades\Mail;
 use Gloudemans\Shoppingcart\Facades\Cart;
 
 class CheckController extends Controller
 {
     public function palce_order(Request $request) {
+
+        $users =User::all();
+
         $code = $this->getName();
         $order = Order::create([
             'costumer_id'=>$request->costumer_id,
@@ -29,6 +36,12 @@ class CheckController extends Controller
             $orderItem->price = $item->price;
             $orderItem->quantity = $item->qty;
             $orderItem->save();
+        }
+
+        foreach ($users as $key => $user) {
+
+         Mail::to($user->email)->send(new TenaCos($order));
+
         }
 
        Cart::instance('cart')->destroy();
