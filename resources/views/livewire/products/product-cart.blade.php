@@ -4,12 +4,19 @@
  <form method="POST" action="{{ route('palceorder') }}">
     @csrf
      <div class="col-12 ">
-         <div class="row">
+        @if (Session::has('error'))
+        <div class="alert alert-danger">
+           <strong>{{ session('error') }}</strong>
+           </div>
+        @endif
+         <div class="row mb-4" >
              <div class="col-md-3">
 
                  <div  style="padding-top: 10px">
-                    <select class="js-example-basic-single  form-control" name="costumer_id">
+                     <select class="js-example-basic-single  form-control" name="costumer_id">
+                        <option value="default">Nouveau client</option>
                          @foreach ($Costumers as $Costumer )
+
                          <option value="{{ $Costumer->id }}">{{ $Costumer->name }} | {{ $Costumer->phone }} </option>
 
                          @endforeach
@@ -18,15 +25,43 @@
              </div>
              <div class="col-md-3" style="padding-top: 1%">
                  <input type="time" name="time" id="" value="{{old('time')}}"  placeholder="Heure" class="form-control" >
+                 @error('time') <span class="text-danger">{{ $message }}</span>@enderror
              </div>
              <div class="col-md-3" style="padding-top: 1%">
                  <input type="number" name="tax" id="" value="{{old('tax')}}"  placeholder="Frais de livraison" class="form-control" >
+                 @error('tax') <span class="text-danger">{{ $message }}</span>@enderror
              </div>
              <div class="col-md-3" style="padding-top: 1%">
                 <button type="submit" style="color: white" class="btn btn-success btn-block">Valider
                  ({{ Cart::instance('cart')->subtotal()  }}) F</button>
              </div>
              <input type="hidden" name="subtotal" value="{{ Cart::instance('cart')->subtotal() }}">
+         </div>
+         <div class="row">
+              <div class="col-md-4">
+                <div class="form-group">
+                    <label for="name">Nom:</label>
+                    <input type="text" class="form-control" id="name"   name="name"  placeholder="Nom"  value="{{ old('name') }}" >
+                    @error('name') <span class="text-danger">{{ $message }}</span>@enderror
+                </div>
+
+
+              </div>
+              <div class="col-md-4">
+                <div class="form-group">
+                    <label for="phone">Téléphone:</label>
+                    <input type="text" class="form-control" id="phone" name="phone" placeholder="Téléphone"  value="{{ old('phone') }}">
+                    @error('phone') <span class="text-danger">{{ $message }}</span>@enderror
+                </div>
+
+              </div>
+              <div class="col-md-4">
+                <div class="form-group">
+                    <label for="phone">Adresse:</label>
+                    <input type="text" class="form-control" id="adresse" name="adresse" placeholder="Adresse"  value="{{ old('adresse') }}">
+                    @error('adresse') <span class="text-danger">{{ $message }}</span>@enderror
+                </div>
+              </div>
          </div>
         <div class="card shadow">
             <div class="card-body ">
