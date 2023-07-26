@@ -106,7 +106,6 @@ class LivreurController extends Controller
         $users->update([
            'name' => $request->name,
            'email' =>$request->email ,
-           'password' =>Hash::make($request->password),
            'adresse' => $request->adresse,
            'phone' => $request->phone,
            'user_type' => $request->user_type,
