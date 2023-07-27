@@ -90,12 +90,18 @@
                         <th style="width: 20%">N°</th>
                         <th style="width: 20%">Code</th>
                         <th style="width: 20%">Nom/Téléphone (Client)</th>
-                        <th style="width: 20%">Sous total</th>
-                        <th style="width: 20%">Frais</th>
-                        <th style="width: 20%">Total</th>
+                        <th style="width: 20% ;color: black" >Sous total</th>
+                        <th style="width: 20% ;color: black">Total des frais</th>
+                        <th style="width: 20%;color: black">Total</th>
                         <th style="width: 20%">Etat</th>
-                       </tr>
-                   </tfoot>
+                    </tr>
+                    <th style="width: 20%"></th>
+                    <th style="width: 20%"></th>
+                    <th style="width: 20%"></th>
+                    <th style="width: 20% ; color:red ;font-weight: 900">{{$orde->sum('subtotal')}} F</th>
+                    <th style="width: 20% ; color:red ;font-weight: 900">{{$orde->sum('tax')}} F</th>
+                    <th style="width: 20% ; color:red ;font-weight: 900">{{$orde->sum('total')}} F</th>
+                </tfoot>
                </table>
            </div>
        </div>
