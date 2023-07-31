@@ -169,6 +169,7 @@ class LivreurController extends Controller
                $orders->motif=$request->motif;
                $orders->user_id=Auth::user()->id;
                $orders->status_order=false;
+               $orders->take=false;
                $orders->save();
               return redirect()->back()->with('success','commande annuler');
 
@@ -176,6 +177,8 @@ class LivreurController extends Controller
                $orders->status=$request->status;
                $orders->user_id=Auth::user()->id;
                $orders->status_order=false;
+               $orders->take=false;
+
                $orders->save();
               return redirect()->back()->with('success','commande valider');
              }
