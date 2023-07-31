@@ -69,6 +69,13 @@
                      <span class="text">Livraisons</span>
                  </a>
              </li>
+             <li>
+                 <a href="{{route('archivelist')}}" class="">
+                     <span class="icon material-icons"  >archive
+                     </span>
+                     <span class="text">Archive</span>
+                 </a>
+             </li>
              @else
             <li>
                 <a href="{{ route('authlivrable',Auth::user()->id) }}" class="">

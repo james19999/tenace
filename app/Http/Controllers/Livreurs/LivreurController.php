@@ -222,4 +222,25 @@ class LivreurController extends Controller
       }
 
   }
+
+
+  public function archive_list(){
+    $orders=Order::where('take',true)->get();
+    return view('livreurs.archive',compact('orders'));
+  }
+
+  public function unlock ($id){
+
+    $order=Order::findOrfail($id);
+    if ($order) {
+       
+        if($order->take==true){
+         $order->take=false;
+         $order->save();
+         return back();
+
+        }
+    }
+
+  }
 }

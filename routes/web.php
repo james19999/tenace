@@ -66,6 +66,10 @@ Route::get('livrable/show/{id}',[LivreurController::class,'livrable_show'])->nam
 
 Route::get('auth/livrable/{id}',[LivreurController::class,'auth_user_livrable'])->name('authlivrable');
 
+Route::get('unlock/{id}',[LivreurController::class,'unlock'])->name('unlock');
+
+Route::get('archive/list',[LivreurController::class,'archive_list'])->name('archivelist');
+
 Route::post('check/livraison/{id}',[LivreurController::class,'check_livraison'])->name('checklivraison');
 
 
