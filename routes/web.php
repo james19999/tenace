@@ -1,15 +1,16 @@
 <?php
 
-use App\Http\Controllers\Admins\CheckController;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Route;
-use App\Http\Controllers\Admins\DashboarController;
-use App\Http\Controllers\Costumers\CostumerController;
-use App\Http\Controllers\Livreurs\LivreurController;
-use App\Http\Controllers\Orders\OrderController;
 use App\Http\Livewire\Products\ProductCart;
 use App\Http\Livewire\Products\ProductForm;
 use App\Http\Livewire\Products\ProductList;
+use App\Http\Controllers\Admins\CheckController;
+use App\Http\Controllers\Orders\OrderController;
+use App\Http\Controllers\Admins\DashboarController;
+use App\Http\Controllers\Livreurs\LivreurController;
+use App\Http\Controllers\Costumers\CostumerController;
+use App\Http\Controllers\Brouillons\BrouillonController;
 
 /*
 |--------------------------------------------------------------------------
@@ -34,6 +35,13 @@ Route::middleware(['auth'])->group(function () {
 
 
 Route::get('/Admin',[DashboarController::class,'dashboard'])->name('Admin');
+
+Route::get('/brouillon/brouillons',[BrouillonController::class,'index'])->name('brouillons');
+Route::get('/brouillon/show/{id}',[BrouillonController::class,'show'])->name('brouillonshow');
+
+Route::get('/parthners',[BrouillonController::class,'parthners'])->name('parthners');
+
+Route::get('unlock/brouillon/{id}',[BrouillonController::class,'unlock_brouillon'])->name('unlockbrouillon');
 
 Route::get('/history',[DashboarController::class,'history'])->name('history');
 

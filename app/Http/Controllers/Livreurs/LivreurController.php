@@ -141,6 +141,7 @@ class LivreurController extends Controller
               ->where('status','ordered')
               ->latest()
               ->whereDate('created_at',Carbon::today())
+              ->where('brouillon',1)
               ->get();
         return view('livreurs.livrable',compact('orders'));
     }

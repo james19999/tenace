@@ -12,7 +12,7 @@
                 <div class="card-header" style="background-color: #7e1615">
                     <h4 style="text-align: center;font-weight: 900 ;color: white">
 
-                    modifier un membre
+                    Modifier un membre
                     </h4>
                 </div>
                 <div class="card-body">
@@ -68,6 +68,7 @@
                          <select name="user_type" id="" class="form-control">
 
                              <option value="LVS">livreur</option>
+                             <option value="PT">Partenaire</option>
                              <option value="ADMINUSER">Administrateur</option>
                          </select>
                         </div>

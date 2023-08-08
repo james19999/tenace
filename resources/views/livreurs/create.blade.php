@@ -66,6 +66,7 @@
                          <select name="user_type" id="" class="form-control">
 
                              <option value="LVS">livreur</option>
+                             <option value="PT">Partenaire</option>
                              <option value="ADMINUSER">Administrateur</option>
                          </select>
                         </div>

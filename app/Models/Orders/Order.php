@@ -20,6 +20,8 @@ class Order extends Model
         'total',
         'code',
         'time',
+        'brouillon',
+        'created_user',
     ];
 
 
@@ -31,6 +33,10 @@ class Order extends Model
     public function user () {
 
         return $this->belongsTo(User::class,'user_id');
+    }
+    public function createduser () {
+
+        return $this->belongsTo(User::class,'created_user');
     }
 
 

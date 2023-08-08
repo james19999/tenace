@@ -9,7 +9,10 @@
             <i class="material-icons">chevron_left</i>
         </div>
         <ul>
+
+
              @if (Auth::user()->user_type=="ADMINUSER")
+
              <li>
                  <a href="{{ route('Admin') }}" class="active">
                      <span class="icon material-icons"  >dashboard</span>
@@ -48,6 +51,13 @@
                  </a>
              </li>
              <li>
+                 <a href="{{ route('parthners') }}" class="">
+                     <span class="icon material-icons"  >person
+                     </span>
+                     <span class="text">Partenaires</span>
+                 </a>
+             </li>
+             <li>
                  <a href="{{ route('livreurs.index') }}" class="">
                      <span class="icon material-icons"  >directions_bike
                      </span>
@@ -70,13 +80,36 @@
                  </a>
              </li>
              <li>
+                 <a href="{{route('brouillons')}}" class="">
+                     <span class="icon material-icons"  >delete_sweep
+                     </span>
+                     <span class="text">Brouillons</span>
+                 </a>
+             </li>
+             <li>
                  <a href="{{route('archivelist')}}" class="">
                      <span class="icon material-icons"  >archive
                      </span>
                      <span class="text">Archive</span>
                  </a>
              </li>
+             @elseif (Auth::user()->user_type=="PT")
+             <li>
+                <a href="{{ route('product') }}" class="">
+                    <span class="icon material-icons"  >store
+                    </span>
+                    <span class="text">Produits</span>
+                </a>
+            </li>
+            <li wire:poll.2s>
+                <a href="{{ route('productcart') }}" class="">
+                    <span class="icon material-icons"  >add_shopping_cart</span>
+                    <span class="text">Panier ({{ Cart::instance('cart')->count() }})</span>
+                </a>
+            </li>
+
              @else
+
             <li>
                 <a href="{{ route('authlivrable',Auth::user()->id) }}" class="">
                     <span class="icon material-icons">shopping_cart

@@ -15,6 +15,7 @@ class DashboarController extends Controller
 
         $orders = Order::orderby('created_at', 'DESC')
         ->whereDate('created_at',Carbon::today())
+        ->where('brouillon',1)
         ->get();
 
         $chart_options = [
@@ -140,6 +141,7 @@ class DashboarController extends Controller
 
         $orders=Order::latest()
         ->whereDate('created_at',Carbon::today())
+        ->where('brouillon',1)
         ->get();
 
         return view('dashboard.history',compact('orders'));

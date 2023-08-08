@@ -6,16 +6,37 @@ use App\Models\User;
 use App\Mail\TenaCos;
 use App\Mail\TenanCos;
 use App\Models\Costumer;
+use App\Mail\ParthnerMail;
 use App\Models\Orders\Order;
 use Illuminate\Http\Request;
 use App\Models\Orders\OrderItem;
+use Illuminate\Support\Facades\URL;
 use App\Http\Controllers\Controller;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Mail;
 use Gloudemans\Shoppingcart\Facades\Cart;
 
 class CheckController extends Controller
 {
+
+    public function brouillons () {
+        $auth =Auth::user();
+
+         $brouillon ="";
+         if ($auth->user_type=="ADMINUSER") {
+             $brouillon=1;
+         } else {
+            # code...
+            $brouillon=0;
+         }
+          
+         return $brouillon;
+
+    }
+
     public function palce_order(Request $request) {
+
+     
          if ($request->costumer_id=="default") {
             # code...
                 $request->validate([
@@ -60,9 +81,12 @@ class CheckController extends Controller
                           'time'=>$request->time,
                           'total'=>intval($request->subtotal)+ intval($request->tax),
                           'code' => $code,
+                          'brouillon' =>$this->brouillons() ,
+                          'created_user' =>Auth::user()->id,
+                          
 
                       ]);
-
+                    
                       foreach (Cart::instance('cart')->content() as $item) {
                           $orderItem = new OrderItem();
                           $orderItem->product_id = $item->id;
@@ -71,12 +95,19 @@ class CheckController extends Controller
                           $orderItem->quantity = $item->qty;
                           $orderItem->save();
                       }
-
-                      foreach ($users as $key => $user) {
-
-                       Mail::to($user->email)->send(new TenaCos($order));
-
-                      }
+                       
+                        if (Auth::user()->user_type=="ADMINUSER") {
+                            foreach ($users as $key => $user) {
+      
+                             Mail::to($user->email)->send(new TenaCos($order));
+      
+                            }
+                            # code...
+                        } else {
+                            Mail::to('komlanahiakpor23@gmail.com')->send(new ParthnerMail(URL::signedRoute('brouillons')));
+                        }
+                        
+                       
 
                      Cart::instance('cart')->destroy();
                      return redirect()->route('order')->with('messages','Commande effectuée');
@@ -96,7 +127,7 @@ class CheckController extends Controller
 
             ]);
             $users =User::all();
-
+             
             $code = $this->getName();
             $order = Order::create([
                 'costumer_id'=>$request->costumer_id,
@@ -105,7 +136,8 @@ class CheckController extends Controller
                 'time'=>$request->time,
                 'total'=>intval($request->subtotal)+ intval($request->tax),
                 'code' => $code,
-
+                'brouillon' =>$this->brouillons() ,
+                'created_user' =>Auth::user()->id,
             ]);
 
             foreach (Cart::instance('cart')->content() as $item) {
@@ -117,10 +149,16 @@ class CheckController extends Controller
                 $orderItem->save();
             }
 
-            foreach ($users as $key => $user) {
+                                     
+            if (Auth::user()->user_type=="ADMINUSER") {
+                foreach ($users as $key => $user) {
 
-             Mail::to($user->email)->send(new TenaCos($order));
+                 Mail::to($user->email)->send(new TenaCos($order));
 
+                }
+                # code...
+            } else {
+                Mail::to('komlanahiakpor23@gmail.com')->send(new ParthnerMail(URL::signedRoute('brouillons')));
             }
 
            Cart::instance('cart')->destroy();
