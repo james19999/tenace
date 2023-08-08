@@ -104,7 +104,7 @@ class CheckController extends Controller
                             }
                             # code...
                         } else {
-                            Mail::to('komlanahiakpor23@gmail.com')->send(new ParthnerMail(URL::signedRoute('brouillons')));
+                            Mail::to('crepinawity@gmail.com')->send(new ParthnerMail(URL::signedRoute('brouillons')));
                         }
                         
                        
@@ -158,7 +158,7 @@ class CheckController extends Controller
                 }
                 # code...
             } else {
-                Mail::to('komlanahiakpor23@gmail.com')->send(new ParthnerMail(URL::signedRoute('brouillons')));
+                Mail::to('crepinawity@gmail.com')->send(new ParthnerMail(URL::signedRoute('brouillons')));
             }
 
            Cart::instance('cart')->destroy();
