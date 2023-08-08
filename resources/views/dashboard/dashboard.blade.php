@@ -201,10 +201,12 @@
                               <td style="color: black " class=" pull-right">
 
                                   <div class="btn-group btn-group-justified">
+                                      @if (Auth::user()->user_type=="ADMINUSER")
+                                          
                                       <a href="{{ route('ordershow',$order) }}" style="color: white" type="button" class="btn btn-success"
                                       >
                                       <i class="material-icons f-16">visibility</i>Details</a>
-
+                                      @endif
 
                                   </div>
                               </td>

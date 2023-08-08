@@ -1,7 +1,10 @@
 
 <div class="col-12 ">
      <div  style="padding-top: 10px">
+        @if (Auth::user()->user_type=="ADMINUSER")
+            
         <a href="{{ route('productform') }}" class="btn btn-primary  pull-right">Ajouter un produit</a>
+        @endif
      </div>
     <div class="card shadow">
         <div class="card-body ">

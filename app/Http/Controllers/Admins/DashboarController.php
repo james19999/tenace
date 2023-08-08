@@ -3,10 +3,12 @@
 namespace App\Http\Controllers\Admins;
 
 use Carbon\Carbon;
+use App\Models\User;
 use App\Models\Product;
 use App\Models\Orders\Order;
 use Illuminate\Http\Request;
 use App\Http\Controllers\Controller;
+use Illuminate\Support\Facades\Hash;
 use LaravelDaily\LaravelCharts\Classes\LaravelChart;
 
 class DashboarController extends Controller
@@ -15,8 +17,8 @@ class DashboarController extends Controller
 
         $orders = Order::orderby('created_at', 'DESC')
         ->whereDate('created_at',Carbon::today())
+        ->where('brouillon',1)
         ->get();
-        // ->where('brouillon',1)
 
         $chart_options = [
             'chart_title' => 'Rapport mensuels',
@@ -141,9 +143,44 @@ class DashboarController extends Controller
 
         $orders=Order::latest()
         ->whereDate('created_at',Carbon::today())
+        ->where('brouillon',1)
         ->get();
-        // ->where('brouillon',1)
 
         return view('dashboard.history',compact('orders'));
+    }
+
+    public function register() {
+
+        return view('dashboard.register');
+    }
+
+
+    public function store_pathner(Request $request)
+    {
+         $request->validate([
+                 'name' => ['required', 'string', 'max:255'],
+                 'email' => ['required', 'string', 'email', 'max:255', 'unique:users'],
+                 'password' => ['required', 'string', 'min:8', 'confirmed'],
+                 'adresse' => ['required', 'string'],
+                 'phone' => ['required', 'integer' ,'min:8','unique:users'],
+         ],
+          [
+            'phone.required'=>'Le numéro de téléphone ne doit pas dépasser huit chiffres.'
+          ]
+            
+        );
+
+
+
+               User::create([
+                'name' => $request->name,
+                'email' =>$request->email ,
+                'password' =>Hash::make($request->password),
+                'adresse' => $request->adresse,
+                'phone' => $request->phone,
+                'user_type' => "PT",
+               ]);
+
+         return redirect()->route('login')->with('messages','Votre compte a bien été créé.');
     }
 }

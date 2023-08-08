@@ -67,6 +67,8 @@
                          <td style="color: black " class=" pull-right">
 
                              <div class="btn-group btn-group-justified">
+                                 @if (Auth::user()->user_type=="ADMINUSER")
+                                     
                                  <a href="{{ route('ordershow',$order) }}" style="color: white" type="button" class="btn btn-success"
                                  >
                                  <i class="material-icons f-16">visibility</i>Details</a>
@@ -79,6 +81,7 @@
                                     <button  style="padding-bottom: 12%" class="btn btn-sm btn-danger"
                                      ><i class="material-icons">delete</i>Supprimer</button>
                                 </form>
+                                 @endif
                              </div>
                          </td>
                       </tr>

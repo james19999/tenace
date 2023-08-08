@@ -15,8 +15,8 @@ class OrderController extends Controller
 
         $orders=Order::latest()
         ->whereDate('created_at',Carbon::today())
+        ->where('brouillon',1)
         ->get();
-        // ->where('brouillon',1)
 
         return view('orders.index',compact('orders'));
     }

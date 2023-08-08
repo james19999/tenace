@@ -31,6 +31,10 @@ Auth::routes();
 
 Route::get('/home', [App\Http\Controllers\HomeController::class, 'index'])->name('home');
 
+Route::get('/tenacos/parthner',[DashboarController::class,'register']);
+Route::post('/store/pathner',[DashboarController::class,'store_pathner'])->name('storepathner');
+
+
 Route::middleware(['auth'])->group(function () {
 
 
