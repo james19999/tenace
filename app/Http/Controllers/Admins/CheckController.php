@@ -72,6 +72,8 @@ class CheckController extends Controller
                             'phone'=>$request->phone,
                             'email'=>$request->email,
                             'adresse'=>$request->adresse,
+                            'user_id'=>Auth::user()->id,
+
                       ]);
                       $code = $this->getName();
                       $order = Order::create([

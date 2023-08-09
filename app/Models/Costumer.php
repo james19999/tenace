@@ -15,6 +15,7 @@ class Costumer extends Model
           'phone',
           'email',
           'adresse',
+          'user_id',
 
     ];
 

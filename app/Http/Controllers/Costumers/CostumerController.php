@@ -5,6 +5,8 @@ namespace App\Http\Controllers\Costumers;
 use App\Http\Controllers\Controller;
 use App\Models\Costumer;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Auth;
+
 
 class CostumerController extends Controller
 {
@@ -45,6 +47,7 @@ class CostumerController extends Controller
                  'phone'=>$request->phone,
                  'email'=>$request->email,
                  'adresse'=>$request->adresse,
+                 'user_id'=>Auth::user()->id,
             ]);
 
             return  redirect()->route('costumer.index');
