@@ -107,6 +107,12 @@
                     <span class="text">Panier ({{ Cart::instance('cart')->count() }})</span>
                 </a>
             </li>
+            <li>
+                <a href="{{ route('parthnersorder') }}" class="">
+                    <span class="icon material-icons"  >history</span>
+                    <span class="text">Mes commandes</span>
+                </a>
+            </li>
 
              @else
 

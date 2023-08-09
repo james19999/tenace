@@ -43,6 +43,8 @@ Route::get('/Admin',[DashboarController::class,'dashboard'])->name('Admin');
 Route::get('/brouillon/brouillons',[BrouillonController::class,'index'])->name('brouillons');
 Route::get('/brouillon/show/{id}',[BrouillonController::class,'show'])->name('brouillonshow');
 
+Route::get('/parthners/order',[BrouillonController::class,'parthners_order'])->name('parthnersorder');
+
 Route::get('/parthners',[BrouillonController::class,'parthners'])->name('parthners');
 
 Route::get('unlock/brouillon/{id}',[BrouillonController::class,'unlock_brouillon'])->name('unlockbrouillon');

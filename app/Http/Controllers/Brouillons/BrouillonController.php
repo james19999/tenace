@@ -7,6 +7,8 @@ use App\Models\Orders\Order;
 use Illuminate\Http\Request;
 use Illuminate\Support\Carbon;
 use App\Http\Controllers\Controller;
+use Illuminate\Support\Facades\Auth;
+
 
 class BrouillonController extends Controller
 {
@@ -49,5 +51,14 @@ class BrouillonController extends Controller
           $users=User::where('user_type','PT')->latest()->get();
   
           return view('parthners.index',compact('users'));
-      }  
+      }
+      
+      
+      public function parthners_order () {
+        $orders=Order::where('created_user',Auth::user()->id)
+        ->whereDate('created_at',Carbon::today())
+        ->get();
+
+        return view('parthners.parthners_order',compact('orders'));
+      }
 }
