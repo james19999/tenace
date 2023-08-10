@@ -79,11 +79,11 @@
                      <span class="text">Livraisons</span>
                  </a>
              </li>
-             <li>
+             <li wire:poll.2s>
                  <a href="{{route('brouillons')}}" class="">
                      <span class="icon material-icons"  >delete_sweep
                      </span>
-                     <span class="text">Brouillons</span>
+                     <span class="text">Brouillons ({{$counts}})</span>
                  </a>
              </li>
              <li>
