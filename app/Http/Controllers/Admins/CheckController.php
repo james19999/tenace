@@ -65,7 +65,8 @@ class CheckController extends Controller
                     # code...
 
 
-                    $users =User::where('user_type','LVS')->get();
+                    $users =User::where('user_type','
+                    ')->get();
 
                     $constumer= Costumer::create([
                             'name'=>$request->name,
