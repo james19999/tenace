@@ -63,10 +63,9 @@ class CheckController extends Controller
 
                   } else {
                     # code...
+                     
 
-
-                    $users =User::where('user_type','
-                    ')->get();
+                    $users =User::where('user_type','LVS')->get();
 
                     $constumer= Costumer::create([
                             'name'=>$request->name,
@@ -131,7 +130,6 @@ class CheckController extends Controller
             ]);
             $users =User::where('user_type','LVS')->get();
             
-             
             $code = $this->getName();
             $order = Order::create([
                 'costumer_id'=>$request->costumer_id,
