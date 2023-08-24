@@ -149,6 +149,20 @@ class DashboarController extends Controller
         return view('dashboard.history',compact('orders'));
     }
 
+     public function consultation(Request $request){
+
+        $orders=Order::latest()
+        ->whereMonth('created_at',8)
+        ->where('brouillon',1)
+        ->where('status', 'delivered')
+        ->where('user_id',$request->user)
+        ->get();
+        $users =User::all(); 
+        
+
+        return view('dashboard.consutation',compact('orders','users'));
+    }
+
     public function register() {
 
         return view('dashboard.register');

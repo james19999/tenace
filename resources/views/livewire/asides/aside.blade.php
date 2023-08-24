@@ -79,6 +79,13 @@
                      <span class="text">Livraisons</span>
                  </a>
              </li>
+             <li>
+                 <a href="{{ route('consultation') }}" class="">
+                     <span class="icon material-icons"  >calendar_today
+                     </span>
+                     <span class="text">Consultations</span>
+                 </a>
+             </li>
              <li wire:poll.2s>
                  <a href="{{route('brouillons')}}" class="">
                      <span class="icon material-icons"  >delete_sweep
