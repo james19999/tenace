@@ -88,30 +88,34 @@
 
                         <a href="{{ route('order') }}" class="btn btn-warning">Retour</a>
                     </div>
-                    <button class="btn btn-primary no-print" onclick="printDiv('printableArea')">Print</button>
-                    <form action="{{ route('changestatususer', $Orders->id) }}" method="POST" style="padding-left: 10px">
-                        @csrf
-                        @method('PUT')
-                        <div class="row">
-                            <div class="col-md-8">
-                                <select name="status" id="" class="form-control">
-                                    <option value="delivered">Valider</option>
-                                    {{--  <option value="canceled">Annuler</option>  --}}
-                                </select>
+                        @if ($Orders->status =='delivered')
+                           <button class="btn btn-primary no-print" onclick="printDiv('printableArea')">Print</button>
+                         @else
 
-                            </div>
-                            {{--  <div class="col-md-5">
-                              <input type="text"  class="form-control @error('motif') is-invalid @enderror" name="motif" value="{{ old('motif') }}" placeholder="motif d' annulation">
-                               @error('motif')
-                                <div class="alert alert-danger">{{ $message }}</div>
-                                @enderror
-                           </div>  --}}
-                            <div class="col-md-3">
-                                <button type="submit" class="btn btn-success">Enregister</button>
-                            </div>
-                        </div>
+                         <form action="{{ route('changestatususer', $Orders->id) }}" method="POST" style="padding-left: 10px">
+                             @csrf
+                             @method('PUT')
+                             <div class="row">
+                                 <div class="col-md-4">
+                                     <select name="status" id="" class="form-control">
+                                         <option value="delivered">Valider</option>
+                                         <option value="canceled">Annuler</option>
+                                     </select>
 
-                    </form>
+                                 </div>
+                                 <div class="col-md-5">
+                                   <input type="text"  class="form-control @error('motif') is-invalid @enderror" name="motif" value="{{ old('motif') }}" placeholder="motif d' annulation">
+                                    @error('motif')
+                                     <div class="alert alert-danger">{{ $message }}</div>
+                                     @enderror
+                                </div>
+                                 <div class="col-md-3">
+                                     <button type="submit" class="btn btn-success">Enregister</button>
+                                 </div>
+                             </div>
+
+                         </form>
+                         @endif
                 </div>
             </div>
 
