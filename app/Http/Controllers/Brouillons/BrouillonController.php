@@ -12,7 +12,7 @@ use Illuminate\Support\Facades\Auth;
 
 class BrouillonController extends Controller
 {
-    
+
     public function index(){
 
         $orders=Order::latest()
@@ -35,28 +35,29 @@ class BrouillonController extends Controller
 
         $order=Order::findOrfail($id);
         if ($order) {
-           
+
             if($order->brouillon==0){
              $order->brouillon=1;
              $order->save();
              return back();
-    
+
             }
         }
-    
+
       }
 
       public function parthners()
       {
           $users=User::where('user_type','PT')->latest()->get();
-  
+
           return view('parthners.index',compact('users'));
       }
-      
-      
+
+
       public function parthners_order () {
         $orders=Order::where('created_user',Auth::user()->id)
-        ->whereDate('created_at',Carbon::today())
+        // ->whereDate('created_at',Carbon::today())
+        ->where('created_at','>', Carbon::now()->subDays(2))
         ->get();
 
         return view('parthners.parthners_order',compact('orders'));

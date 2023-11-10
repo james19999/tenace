@@ -95,4 +95,22 @@ class OrderController extends Controller
 
            return  redirect()->back()->with('success','Commande supprimer');
     }
+
+    public function edit_hours_order (Request $request, $id){
+       $order =Order::findOrfail($id);
+
+        if($order){
+            $order->time=$request->time;
+
+           $constumer=Costumer::findOrfail($order->costumer_id);
+
+           $constumer->update(['adresse'=>$request->adresse]);
+
+            $order->save();
+
+           return redirect()->back()->with('success','heure de livraison mise à jour');
+
+
+        }
+    }
 }

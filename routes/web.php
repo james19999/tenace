@@ -69,6 +69,8 @@ Route::put('change/order/status/{id}',[OrderController::class,'change_order_stat
 
 Route::put('refresh/order/{id}',[OrderController::class,'refresh_order'])->name('refreshorder');
 
+Route::put('edit/hours/{id}',[OrderController::class,'edit_hours_order'])->name('edit-hours');
+
 Route::delete('delete/{id}',[OrderController::class,'delete'])->name('deleteorder');
 
 Route::resource('livreurs',LivreurController::class);
