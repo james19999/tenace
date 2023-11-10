@@ -18,6 +18,11 @@
                     <strong>{{ session('success') }}</strong>
                 </div>
             @endif
+            @if (Session::has('succes'))
+                <div class="alert alert-success">
+                    <strong>{{ session('succes') }}</strong>
+                </div>
+            @endif
             <div class="container table-responsive">
                 <div class="row">
                     <div class="col-12" id="printableArea">
@@ -84,16 +89,13 @@
                         <p>Frais de livraison: {{ $Orders->tax }} F</p>
                         <p>Total: {{ $Orders->total }} F</p>
                     </div>
-                    <div style="padding-right:5px">
 
-                        <a href="{{ route('order') }}" class="btn btn-warning">Retour</a>
-                    </div>
-                    <button class="btn btn-primary no-print" onclick="printDiv('printableArea')">Print</button>
 
                     <div class="row" style="padding-left:5px">
                         <div class="col-md-6">
 
-                            <form action="{{ route('edit-hours', $Orders->id) }}" method="POST">
+
+                            <form action="{{ route('refreshorder', $Orders->id) }}" method="POST">
                                 @csrf
                                 @method('PUT')
                                 <div class="row">
@@ -114,37 +116,11 @@
                                         @enderror
                                     </div>
                                     <div class="col-md-4">
-                                        <button type="submit" class="btn btn-info">heure</button>
+                                        <button type="submit" class="btn btn-info">Relancer</button>
                                     </div>
                                 </div>
 
                             </form>
-                            {{--  <form action="{{ route('refreshorder', $Orders->id) }}" method="POST">
-                                @csrf
-                                @method('PUT')
-                                <div class="row">
-
-                                    <div class="col-md-4">
-                                        <input type="text" class="form-control @error('adresse') is-invalid @enderror"
-                                            name="adresse" value="{{ $Orders->costumer->adresse ?? '' }}"
-                                            placeholder="adresse">
-                                        @error('adresse')
-                                            <div class="alert alert-danger">{{ $message }}</div>
-                                        @enderror
-                                    </div>
-                                    <div class="col-md-4">
-                                        <input type="time" class="form-control @error('time') is-invalid @enderror"
-                                            name="time" value="{{ $Orders->time }}" placeholder="adresse">
-                                        @error('time')
-                                            <div class="alert alert-danger">{{ $message }}</div>
-                                        @enderror
-                                    </div>
-                                    <div class="col-md-4">
-                                        <button type="submit" class="btn btn-info">Changer</button>
-                                    </div>
-                                </div>
-
-                            </form>  --}}
 
 
                         </div>
@@ -156,21 +132,21 @@
                                 @csrf
                                 @method('PUT')
                                 <div class="row">
-                                    <div class="col-md-6">
+                                    <div class="col-md-4">
                                         <select name="status" id="" class="form-control">
-                                            {{--  <option value="ordered">En cours</option>  --}}
+                                            <option value="ordered">En cours</option>
                                             <option value="delivered">Valider</option>
-                                            {{--  <option value="canceled">Annuler</option>  --}}
+                                            <option value="canceled">Annuler</option>
                                         </select>
 
                                     </div>
-                                    {{--  <div class="col-md-4">
+                                    <div class="col-md-4">
                                         <input type="text" class="form-control @error('motif') is-invalid @enderror"
                                             name="motif" value="{{ old('motif') }}" placeholder="motif d' annulation">
                                         @error('motif')
                                             <div class="alert alert-danger">{{ $message }}</div>
                                         @enderror
-                                    </div>  --}}
+                                    </div>
 
                                     <div class="col-md-4">
                                         <button type="submit" class="btn btn-success">Enregister</button>
@@ -180,11 +156,58 @@
 
 
                         </div>
+                        <div class="col-md-4" style="padding-top: 6px">
+                            <hr style="height:2px;border-width:0;color:gray;background-color:gray">
+
+                            <form action="{{ route('edit-hours', $Orders->id) }}" method="POST">
+                            @csrf
+                            @method('PUT')
+                            <div class="row">
+
+                                 {{--  <div class="col-md-4">
+                                    <input type="text" class="form-control @error('adresse') is-invalid @enderror"
+                                        name="adresse" value="{{ $Orders->costumer->adresse ?? '' }}"
+                                        placeholder="adresse">
+                                    @error('adresse')
+                                        <div class="alert alert-danger">{{ $message }}</div>
+                                    @enderror
+                                </div>  --}}
+
+                                <div class="col-md-6">
+                                    <input type="time" class="form-control @error('time') is-invalid @enderror"
+                                        name="time" value="{{ $Orders->time }}" placeholder="adresse">
+                                    @error('time')
+                                        <div class="alert alert-danger">{{ $message }}</div>
+                                    @enderror
+                                </div>
+                                <div class="col-md-6">
+                                    <button type="submit" class="btn btn-info">heure</button>
+                                </div>
+                            </div>
+
+                             </form>
+                        </div>
                     </div>
 
 
 
                 </div>
+
+                  <div class="row">
+
+                      <div class="col-md-6">
+                        <div style="padding-right:0px;padding-top: 5px">
+
+                            <a href="{{ route('order') }}" class="btn btn-warning">Retour</a>
+                            <button class="btn btn-primary no-print" onclick="printDiv('printableArea')">Print</button>
+                        </div>
+
+
+                    </div>
+
+
+
+                  </div>
             </div>
 
             <div>

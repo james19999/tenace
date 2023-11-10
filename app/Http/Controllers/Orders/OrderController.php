@@ -67,7 +67,7 @@ class OrderController extends Controller
 
         if($orders){
 
-             if($orders->status_order==0){
+             if($orders->status_order==0 || $orders->status_order==1){
                $orders->status_order=false;
                $orders->user_id=null;
                $orders->status="ordered";
@@ -102,13 +102,13 @@ class OrderController extends Controller
         if($order){
             $order->time=$request->time;
 
-           $constumer=Costumer::findOrfail($order->costumer_id);
+        //    $constumer=Costumer::findOrfail($order->costumer_id);
 
-           $constumer->update(['adresse'=>$request->adresse]);
+        //    $constumer->update(['adresse'=>$request->adresse]);
 
             $order->save();
 
-           return redirect()->back()->with('success','heure de livraison mise à jour');
+           return redirect()->back()->with('succes','heure de livraison mise à jour');
 
 
         }

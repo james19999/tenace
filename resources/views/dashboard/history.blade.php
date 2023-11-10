@@ -67,7 +67,7 @@
                          <td style="color: black " class=" pull-right">
 
                             @foreach ($order->orderItems as $items )
-                                 <h5>{{ $items->product->name }} ,</h5>
+                                 <h5>({{ $items->quantity }})  {{ $items->product->name }} ,</h5>
                             @endforeach
                          </td>
                       </tr>
