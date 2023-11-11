@@ -90,7 +90,7 @@
                                  <div class="col-md-4">
                                     <p>Sous total: {{ $Orders->subtotal }} F</p>
                                     <p>Frais de livraison: {{ $Orders->tax }} F</p>
-                                    <p>Total {{ $Orders->montant }} F</p>
+                                    <p>Total :{{ $Orders->montant }} F</p>
                                     <p>Remise: {{ $Orders->remis }} %</p>
                                     <p>Montant à payer:  {{ $Orders->total }} F</p>
                                  </div>
