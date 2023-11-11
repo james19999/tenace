@@ -85,9 +85,9 @@
                                <div class="col-md-4">
                                   <p>Sous total: {{ $Orders->subtotal }} F</p>
                                   <p>Frais de livraison: {{ $Orders->tax }} F</p>
-                                  <p>Total: {{ $Orders->total }} F</p>
+                                  <p>Total: {{ $Orders->montant }} F</p>
                                   <p>Remise: {{ $Orders->remis }} %</p>
-                                  <p>Montant à payer: {{ $Orders->montant }} F</p>
+                                  <p>Montant à payer: {{ $Orders->total }} F</p>
                                </div>
                                <div class="col-md-4">
                                   <div class="text-right" style="word-wrap: break-word; text-align: right">
