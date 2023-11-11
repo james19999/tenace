@@ -83,8 +83,9 @@ class CheckController extends Controller
                           'tax'=>$request->tax,
                           'time'=>$request->time,
                           'remis'=>$request->remis,
-                          'total'=>(intval(($request->subtotal)+intval($request->tax))*intval($request->remis))/100,
-
+                          'total'=>intval($request->remis)==0?($request->subtotal)+intval($request->tax):
+                          intval(($request->subtotal)+intval($request->tax))-
+                          (intval(($request->subtotal)+intval($request->tax))*intval($request->remis))/100,
                            'montant'=>intval($request->subtotal)+intval($request->tax),
                           'code' => $code,
                           'brouillon' =>$this->brouillons() ,
@@ -143,6 +144,7 @@ class CheckController extends Controller
                 'time'=>$request->time,
                 'remis'=>$request->remis,
                 'total'=>intval($request->remis)==0?($request->subtotal)+intval($request->tax):
+                intval(($request->subtotal)+intval($request->tax))-
                 (intval(($request->subtotal)+intval($request->tax))*intval($request->remis))/100,
                  'montant'=>intval($request->subtotal)+intval($request->tax),
                 'code' => $code,
