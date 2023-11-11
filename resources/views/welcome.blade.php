@@ -12,8 +12,8 @@
 
     <link rel="stylesheet" href="{{ asset('assets/css/style.css') }}">
 
-    <link rel="shortcut icon" href="{{ asset('assets/images/tena.jpg') }}" type="image/png">
-    <link rel="icon" href="{{ asset('assets/images/tena.jpg') }}" type="image/png">
+    <link rel="shortcut icon" href="{{ asset('assets/images/tena.png') }}" type="image/png">
+    <link rel="icon" href="{{ asset('assets/images/tena.png') }}" type="image/png">
 
     <link rel="stylesheet" href="{{ asset('cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.1/css/all.min.css') }}">
 
@@ -26,7 +26,7 @@
         <div class="main-content container-fluid h-100 bg-primary">
             <div  style="background-color: #7e1615" class="row h-100">
                 <div class="col-10 col-sm-8 col-md-6 col-lg-4 col-xl-3 m-auto px-3 pt-5 pb-4 card shadow m-3">
-                    <img src="{{ asset('assets/images/tena.jpg') }}" height="50" alt="Moss Logo" class="logo justify-content-center d-flex mx-auto mb-3">
+                    <img src="{{ asset('assets/images/tena.png') }}" height="50" alt="Moss Logo" class="logo justify-content-center d-flex mx-auto mb-3">
                     <form    method="POST" action="{{ route('login') }}" class="p-3" >
                          @csrf
                         <div class="form-group">

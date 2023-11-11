@@ -12,8 +12,8 @@
 
     <link rel="stylesheet" href="{{ asset('assets/css/style.css') }}">
 
-    <link rel="shortcut icon" href="{{ asset('assets/images/tena.jpg') }}" type="image/png">
-    <link rel="icon" href="{{ asset('assets/images/tena.jpg') }}" type="image/png">
+    <link rel="shortcut icon" href="{{ asset('assets/images/tena.png') }}" type="image/png">
+    <link rel="icon" href="{{ asset('assets/images/tena.png') }}" type="image/png">
 
     <link rel="stylesheet" href="{{ asset('cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.1/css/all.min.css') }}">
 

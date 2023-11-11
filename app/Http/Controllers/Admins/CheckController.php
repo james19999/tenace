@@ -29,14 +29,14 @@ class CheckController extends Controller
             # code...
             $brouillon=0;
          }
-          
+
          return $brouillon;
 
     }
 
     public function palce_order(Request $request) {
 
-     
+
          if ($request->costumer_id=="default") {
             # code...
                 $request->validate([
@@ -45,6 +45,7 @@ class CheckController extends Controller
                     'adresse'=>'required',
                     'tax'=>'required',
                     'time'=>'required',
+                    'remis'=>'required',
                 ],
                 [
                     'name.required'=>'Le nom du client',
@@ -63,7 +64,7 @@ class CheckController extends Controller
 
                   } else {
                     # code...
-                     
+
 
                     $users =User::where('user_type','LVS')->get();
 
@@ -81,14 +82,18 @@ class CheckController extends Controller
                           'subtotal'=>round($request->subtotal) ,
                           'tax'=>$request->tax,
                           'time'=>$request->time,
-                          'total'=>intval($request->subtotal)+ intval($request->tax),
+                          'remis'=>$request->remis,
+                          'total'=>
+                           intval($request->subtotal)+intval($request->tax),
+                           'montant'=>intval($request->subtotal)+intval($request->tax)*intval($request->remis)/100,
                           'code' => $code,
                           'brouillon' =>$this->brouillons() ,
                           'created_user' =>Auth::user()->id,
-                          
+                          'avis'=>$request->avis
+
 
                       ]);
-                    
+
                       foreach (Cart::instance('cart')->content() as $item) {
                           $orderItem = new OrderItem();
                           $orderItem->product_id = $item->id;
@@ -97,19 +102,19 @@ class CheckController extends Controller
                           $orderItem->quantity = $item->qty;
                           $orderItem->save();
                       }
-                       
+
                         if (Auth::user()->user_type=="ADMINUSER") {
                             foreach ($users as $key => $user) {
-      
+
                              Mail::to($user->email)->send(new TenaCos($order));
-      
+
                             }
                             # code...
                         } else {
                             Mail::to('crepinawity@gmail.com')->send(new ParthnerMail(URL::signedRoute('brouillons')));
                         }
-                        
-                       
+
+
 
                      Cart::instance('cart')->destroy();
                      return redirect()->route('order')->with('messages','Commande effectuée');
@@ -129,17 +134,21 @@ class CheckController extends Controller
 
             ]);
             $users =User::where('user_type','LVS')->get();
-            
+
             $code = $this->getName();
             $order = Order::create([
                 'costumer_id'=>$request->costumer_id,
                 'subtotal'=>round($request->subtotal) ,
                 'tax'=>$request->tax,
                 'time'=>$request->time,
-                'total'=>intval($request->subtotal)+ intval($request->tax),
+                'remis'=>$request->remis,
+                'total'=>
+                 intval($request->subtotal)+intval($request->tax),
+                 'montant'=>(intval(($request->subtotal)+intval($request->tax))*intval($request->remis))/100,
                 'code' => $code,
                 'brouillon' =>$this->brouillons() ,
                 'created_user' =>Auth::user()->id,
+                'avis'=>$request->avis
             ]);
 
             foreach (Cart::instance('cart')->content() as $item) {
@@ -151,7 +160,7 @@ class CheckController extends Controller
                 $orderItem->save();
             }
 
-                                     
+
             if (Auth::user()->user_type=="ADMINUSER") {
                 foreach ($users as $key => $user) {
 

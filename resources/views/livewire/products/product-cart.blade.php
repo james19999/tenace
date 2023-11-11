@@ -38,7 +38,7 @@
              <input type="hidden" name="subtotal" value="{{ Cart::instance('cart')->subtotal() }}">
          </div>
          <div class="row">
-              <div class="col-md-4">
+              <div class="col-md-3">
                 <div class="form-group">
                     <label for="name">Nom:</label>
                     <input type="text" class="form-control" id="name"   name="name"  placeholder="Nom"  value="{{ old('name') }}" >
@@ -47,7 +47,7 @@
 
 
               </div>
-              <div class="col-md-4">
+              <div class="col-md-3">
                 <div class="form-group">
                     <label for="phone">Téléphone:</label>
                     <input type="text" class="form-control" id="phone" name="phone" placeholder="Téléphone"  value="{{ old('phone') }}">
@@ -55,14 +55,32 @@
                 </div>
 
               </div>
-              <div class="col-md-4">
+              <div class="col-md-3">
                 <div class="form-group">
                     <label for="phone">Adresse:</label>
                     <input type="text" class="form-control" id="adresse" name="adresse" placeholder="Adresse"  value="{{ old('adresse') }}">
                     @error('adresse') <span class="text-danger">{{ $message }}</span>@enderror
                 </div>
               </div>
+              <div class="col-md-3">
+                <div class="form-group">
+                    <label for="phone">Remise (optionnel):</label>
+                    <input type="number" class="form-control" id="remise" name="remis" placeholder="Remise"  value="{{ old('remis') }}">
+                    @error('remis') <span class="text-danger">{{ $message }}</span>@enderror
+                </div>
+              </div>
          </div>
+          <div class="row">
+             <div class="col-md-12">
+                    <div class="form-group">
+                        <label for="phone">Commentaire (optionnel):</label>
+                          <textarea name="avis" placeholder="commentaire" class="form-control"  cols="30" rows="3">
+                            {{ old('avis') }}
+                          </textarea>
+                        @error('avis') <span class="text-danger">{{ $message }}</span>@enderror
+                    </div>
+             </div>
+          </div>
         <div class="card shadow">
             <div class="card-body ">
                  @if (Session::has('messages'))

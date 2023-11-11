@@ -22,6 +22,9 @@ class Order extends Model
         'time',
         'brouillon',
         'created_user',
+        'avis',
+        'remis',
+        'montant'
     ];
 
 

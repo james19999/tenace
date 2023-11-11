@@ -23,7 +23,7 @@
                     <div class="col-12" id="printableArea">
                         <div class="row">
                             <div class="col-md-3">
-                                <img src="{{ asset('assets/images/tena.jpg') }}" class="img-thumbnail" height="100"
+                                <img src="{{ asset('assets/images/tena.png') }}" class="img-thumbnail" height="100"
                                     width="100" alt="" srcset="">
                             </div>
                             <div class="col-md-3">
@@ -80,9 +80,31 @@
 
                             </tbody>
                         </table>
-                        <p>Sous total: {{ $Orders->subtotal }} F</p>
-                        <p>Frais de livraison: {{ $Orders->tax }} F</p>
-                        <p>Total: {{ $Orders->total }} F</p>
+                        <div class="container">
+                            <div class="row">
+                               <div class="col-md-4">
+                                  <p>Sous total: {{ $Orders->subtotal }} F</p>
+                                  <p>Frais de livraison: {{ $Orders->tax }} F</p>
+                                  <p>Total: {{ $Orders->total }} F</p>
+                                  <p>Remise: {{ $Orders->remis }} %</p>
+                                  <p>Montant à payer: {{ $Orders->montant }} F</p>
+                               </div>
+                               <div class="col-md-4">
+                                  <div class="text-right" style="word-wrap: break-word; text-align: right">
+                                    </div>
+                               </div>
+                               <div class="col-md-4">
+                                  <div class="text-right" style="word-wrap: break-word; text-align: center">
+                                      @if ($Orders->avis==null)
+                                        <p>Merci pour votre achat chez tenace cosmétique</p>
+                                      @else
+                                         <p>{{ $Orders->avis }}</p>
+                                      @endif
+
+                                    </div>
+                               </div>
+                            </div>
+                       </div>
                     </div>
                     <div style="padding-right:5px">
 
