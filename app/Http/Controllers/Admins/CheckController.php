@@ -83,7 +83,7 @@ class CheckController extends Controller
                           'tax'=>$request->tax,
                           'time'=>$request->time,
                           'remis'=>$request->remis,
-                          'total'=>intval($request->remis)==0?($request->subtotal)+intval($request->tax):
+                          'total'=>intval($request->remis)==0?($request->subtotal):
                           intval(($request->subtotal))-
                           (intval(($request->subtotal))*intval($request->remis))/100,
                            'montant'=>intval($request->subtotal)+intval($request->tax),
@@ -143,7 +143,7 @@ class CheckController extends Controller
                 'tax'=>$request->tax,
                 'time'=>$request->time,
                 'remis'=>$request->remis,
-                'total'=>intval($request->remis)==0?($request->subtotal)+intval($request->tax):
+                'total'=>intval($request->remis)==0?($request->subtotal):
                 intval(($request->subtotal))-
                 (intval(($request->subtotal))*intval($request->remis))/100,
                  'montant'=>intval($request->subtotal)+intval($request->tax),

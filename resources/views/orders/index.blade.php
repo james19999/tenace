@@ -26,7 +26,7 @@
                            <th style="width: 20%">Nom/Téléphone (Client)</th>
                            <th style="width: 20%">Nom/Téléphone (Livreur)</th>
                            <th style="width: 20%">Sous total</th>
-                           <th style="width: 20%">Frais</th>
+                           <th style="width: 20%">Remise</th>
                            <th style="width: 20%">Total</th>
                            <th style="width: 20%">Etat</th>
                            <th style="width: 20%">Actions</th>
@@ -45,7 +45,7 @@
                          <td style="color: black ">{{ $order->user->name ?? 'Non' }}| {{ $order->user->phone ?? '' }}</td>
 
                          <td style="color: black ">{{ $order->subtotal }} F</td>
-                         <td style="color: black ">{{ $order->tax }} F </td>
+                         <td style="color: black ">{{ $order->remis }} % </td>
                          <td style="color: black ">{{ $order->total }} F </td>
                          <td style="color: black ">
                                 @if ($order->status=="ordered")
@@ -68,7 +68,7 @@
 
                              <div class="btn-group btn-group-justified">
                                  @if (Auth::user()->user_type=="ADMINUSER")
-                                     
+
                                  <a href="{{ route('ordershow',$order) }}" style="color: white" type="button" class="btn btn-success"
                                  >
                                  <i class="material-icons f-16">visibility</i>Details</a>
@@ -95,7 +95,7 @@
                         <th style="width: 20%">Nom/Téléphone (Client)</th>
                         <th style="width: 20%">Nom/Téléphone (Livreur)</th>
                         <th style="width: 20%">Sous total</th>
-                        <th style="width: 20%">Frais</th>
+                        <th style="width: 20%">Remise</th>
                         <th style="width: 20%">Total</th>
                         <th style="width: 20%">Etat</th>
                         <th style="width: 20%">Actions</th>
