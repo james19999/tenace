@@ -2,9 +2,10 @@
 
 namespace App\Http\Controllers\Costumers;
 
-use App\Http\Controllers\Controller;
+use Carbon\Carbon;
 use App\Models\Costumer;
 use Illuminate\Http\Request;
+use App\Http\Controllers\Controller;
 use Illuminate\Support\Facades\Auth;
 
 
@@ -19,7 +20,20 @@ class CostumerController extends Controller
 
         $costumers=Costumer::all()->sortBy('name');
 
+
         return view('costumer.index',compact('costumers'));
+    }
+
+    public function topcostumer()
+    {
+        //
+        $costumers= Costumer::withCount('orders')
+        ->withSum('orders','total')
+        ->orderByDesc('orders_sum_total')->
+        whereMonth('created_at', Carbon::now()->month)
+        ->get();
+
+        return view('costumer.top_costumer',compact('costumers'));
     }
 
     /**

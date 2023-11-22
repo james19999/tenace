@@ -4,8 +4,9 @@
 
 <div class="col-12 ">
     <div  style="padding-top: 10px">
-       <a href="{{ route('costumer.create') }}" class="btn btn-primary  pull-right">Ajouter un client</a>
-       <a href="{{ route('top-costumers') }}" class="btn btn-success  pull-right" style="color: white">top client</a>
+         <strong>
+            Classement des meilleurs clients du mois
+         </strong>
     </div>
    <div class="card shadow">
        <div class="card-body ">
@@ -23,6 +24,7 @@
                            <th style="width: 20%">Téléphone</th>
                            <th style="width: 20%">Email</th>
                            <th style="width: 20%">Adresse</th>
+                           <th style="width: 20%">Nombre /montant</th>
                            <th style="width: 20%">Actions</th>
                        </tr>
                    </thead>
@@ -31,6 +33,8 @@
                             $i=1;
                         @endphp
                          @foreach ($costumers as $costumer )
+                         @if ($loop->first)
+                         @endif
                       <tr>
 
                          <td style="color: black ">{{ $i++ }}</td>
@@ -38,23 +42,34 @@
                          <td style="color: black ">{{ $costumer->phone }} </td>
                          <td style="color: black ">{{ $costumer->email ?? '@' }} </td>
                          <td style="color: black ">{{ $costumer->adresse ?? '-' }} </td>
+                         <td style="color: black ">
+                            @if ($loop->first)
+                            <span @style([
+                                'color: #7e1615',
+                                'font-weight: bold',
+                            ])>
+                            {{ $costumer->orders_count }} Produits /  Montant total : {{ $costumer->orders_sum_total }} </td>
+
+                        </span>
+                        @else
+                        {{ $costumer->orders_count }} Produits / Montant total : {{ $costumer->orders_sum_total }} </td>
+
+                        @endif
+
+
+
                          <td style="color: black " class=" pull-right">
 
                              <div class="btn-group btn-group-justified">
-                                 <a  href="{{ route('costumer.edit',$costumer) }}" style="color: white" type="button" class="btn btn-warning">
-                                     <i class="material-icons">edit</i>
-                                     Modifier</a>
-                                     <form   method="POST" action="{{ route('costumer.destroy',$costumer) }}"
-                                     onclick="return confirm('supprimer') "
-                                    >
-                                         @csrf
-                                          @method("DELETE")
-                                        <button  style="padding-bottom: 12%" class="btn btn-sm btn-danger"
-                                         ><i class="material-icons">delete</i>Supprimer</button>
-                                    </form>
+                                 <a  href="" style="color: white" type="button" class="btn btn-success">
+                                     <i class="material-icons">visibility</i>
+                                     Voir</a>
+
                              </div>
                          </td>
                       </tr>
+
+
                          @endforeach
 
                    </tbody>
@@ -65,6 +80,7 @@
                         <th style="width: 20%">Téléphone</th>
                         <th style="width: 20%">Email</th>
                         <th style="width: 20%">Adresse</th>
+                        <th style="width: 20%">Nombre /montant</th>
                         <th style="width: 20%">Actions</th>
                     </tr>
                    </tfoot>

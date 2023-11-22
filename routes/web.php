@@ -56,6 +56,7 @@ Route::get('product/list',ProductList::class)->name('product');
 Route::get('product/form',ProductForm::class)->name('productform');
 
 Route::get('product/cart',ProductCart::class)->name('productcart');
+Route::get('costumer/top',[CostumerController::class,'topcostumer'])->name('top-costumers');
 
 Route::resource('costumer',CostumerController::class);
 
