@@ -48,11 +48,11 @@
                                 'color: #7e1615',
                                 'font-weight: bold',
                             ])>
-                            {{ $costumer->orders_count }} Produits /  Montant total : {{ $costumer->orders_sum_total }} </td>
+                            {{ $costumer->orders_count }} Commandes /  Montant total : {{ $costumer->orders_sum_total }} </td>
 
                         </span>
                         @else
-                        {{ $costumer->orders_count }} Produits / Montant total : {{ $costumer->orders_sum_total }} </td>
+                        {{ $costumer->orders_count }} Commandes / Montant total : {{ $costumer->orders_sum_total }} </td>
 
                         @endif
 
