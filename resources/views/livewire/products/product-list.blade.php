@@ -1,11 +1,17 @@
 
 <div class="col-12 ">
+     @php
+       $mois=   date("F");
+        @endphp
      <div  style="padding-top: 10px">
         @if (Auth::user()->user_type=="ADMINUSER")
-            
         <a href="{{ route('productform') }}" class="btn btn-primary  pull-right">Ajouter un produit</a>
+        <a href="{{ route('getProductOrders') }}" class="btn btn-success  pull-right" style="color: white">Rapport sur les produits les plus vendus du mois
+           de  {{ $mois }}
+        </a>
         @endif
      </div>
+
     <div class="card shadow">
         <div class="card-body ">
              @if (Session::has('messages'))
@@ -46,7 +52,7 @@
                                      <a href="{{ route('editproduct',$product) }}" style="color: white" type="button" class="btn btn-warning">
                                          <i class="material-icons">edit</i>
                                          Modifier</a>
-   
+
                                          <form   method="POST" action="{{ route('delteproduct',$product) }}"
                                          onclick="return confirm('supprimer') "
                                         >

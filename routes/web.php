@@ -51,6 +51,9 @@ Route::get('/parthners',[BrouillonController::class,'parthners'])->name('parthne
 Route::get('unlock/brouillon/{id}',[BrouillonController::class,'unlock_brouillon'])->name('unlockbrouillon');
 
 Route::get('/history',[DashboarController::class,'history'])->name('history');
+Route::get('/getProductOrders',[DashboarController::class,'getProductOrders'])->name('getProductOrders');
+
+
 
 Route::get('product/list',ProductList::class)->name('product');
 Route::get('product/form',ProductForm::class)->name('productform');

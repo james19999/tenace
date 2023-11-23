@@ -19,6 +19,7 @@
                                 <i class="material-icons">monetization_on</i>
                             </button>
 
+
                         </div>
                     </div>
                 </div>

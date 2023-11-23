@@ -7,6 +7,7 @@ use App\Models\User;
 use App\Models\Product;
 use App\Models\Orders\Order;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 use App\Http\Controllers\Controller;
 use Illuminate\Support\Facades\Hash;
 use LaravelDaily\LaravelCharts\Classes\LaravelChart;
@@ -157,8 +158,8 @@ class DashboarController extends Controller
         ->where('status', 'delivered')
         ->where('user_id',$request->user)
         ->get();
-        $users =User::all(); 
-        
+        $users =User::all();
+
 
         return view('dashboard.consutation',compact('orders','users'));
     }
@@ -181,7 +182,7 @@ class DashboarController extends Controller
           [
             'phone.required'=>'Le numéro de téléphone ne doit pas dépasser huit chiffres.'
           ]
-            
+
         );
 
 
@@ -197,4 +198,19 @@ class DashboarController extends Controller
 
          return redirect()->route('login')->with('messages','Votre compte a bien été créé.');
     }
+
+
+    public function getProductOrders()
+{
+    $currentMonth = Carbon::now()->month;
+
+    $productOrders = DB::table('order_items')
+        ->join('products', 'order_items.product_id', '=', 'products.id')
+        ->select('products.name', 'order_items.product_id', DB::raw('count(*) as order_count'))
+        ->whereMonth('order_items.created_at', $currentMonth)
+        ->groupBy('products.name', 'order_items.product_id')
+        ->get();
+
+    return view('dashboard.product_orders', compact('productOrders'));
+}
 }
