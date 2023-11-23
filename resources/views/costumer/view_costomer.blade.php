@@ -84,7 +84,7 @@
                 @forelse ($costumers->orders as $orde)
 
                 <div class="col-md-6 card">
-                    <p class="mt-2"> N° : {{ $orde->code }} </p>
+                    <p class="mt-2"> N° : {{ $orde->code }}  | {{ $orde->created_at }} </p>
 
 
                           <table class="table table-hover w-100 ">

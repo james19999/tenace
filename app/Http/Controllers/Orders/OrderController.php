@@ -50,7 +50,9 @@ class OrderController extends Controller
                 return redirect()->back()->with('success','commande remise en cours');
 
                }else if($request->status=="delivered"){
+
                  $orders->status=$request->status;
+
                  $orders->save();
                 return redirect()->back()->with('success','commande valider');
                }
