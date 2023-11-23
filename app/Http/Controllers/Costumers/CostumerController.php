@@ -35,6 +35,16 @@ class CostumerController extends Controller
 
         return view('costumer.top_costumer',compact('costumers'));
     }
+    public function viewcostumer($id)
+    {
+        //
+                //
+                $costumers= Costumer::where('id',$id)->withCount('orders')
+                ->withSum('orders','total')
+                ->first();
+
+        return view('costumer.view_costomer',compact('costumers'));
+    }
 
     /**
      * Show the form for creating a new resource.

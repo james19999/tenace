@@ -61,7 +61,7 @@
                          <td style="color: black " class=" pull-right">
 
                              <div class="btn-group btn-group-justified">
-                                 <a  href="" style="color: white" type="button" class="btn btn-success">
+                                 <a  href="{{ route('view-costumers',$costumer) }}" style="color: white" type="button" class="btn btn-success">
                                      <i class="material-icons">visibility</i>
                                      Voir</a>
 

@@ -234,4 +234,4 @@
 
             <div>
                 <div>
-                @endsection
+         @endsection
