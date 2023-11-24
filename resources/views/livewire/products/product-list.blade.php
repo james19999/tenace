@@ -2,7 +2,7 @@
 <div class="col-12 ">
      @php
        $mois=   date("F");
-        @endphp
+    @endphp
      <div  style="padding-top: 10px">
         @if (Auth::user()->user_type=="ADMINUSER")
         <a href="{{ route('productform') }}" class="btn btn-primary  pull-right">Ajouter un produit</a>

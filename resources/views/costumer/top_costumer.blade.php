@@ -3,9 +3,12 @@
 @section('content')
 
 <div class="col-12 ">
+    @php
+    $mois=   date("F");
+   @endphp
     <div  style="padding-top: 10px">
          <strong>
-            Classement des meilleurs clients du mois
+            Classement des meilleurs clients du mois de  {{ $mois }}
          </strong>
       <div class="col-md-4 mt-4">
              <form action="{{ route('top-costumers') }}">
