@@ -7,6 +7,21 @@
          <strong>
             Classement des meilleurs clients du mois
          </strong>
+      <div class="col-md-4 mt-4">
+             <form action="{{ route('top-costumers') }}">
+                 <div class="row">
+                    <div class="col-md-7">
+                        <input type="number" name="limit" value="{{ old('limit',10) }}" id="" class="form-control" placeholder="Entrer">
+
+                    </div>
+                    <div class="col-md-3">
+
+                        <input type="submit" style="color: white" class="btn btn-success" >
+                    </div>
+                 </div>
+             </form>
+
+      </div>
     </div>
    <div class="card shadow">
        <div class="card-body ">

@@ -24,14 +24,26 @@ class CostumerController extends Controller
         return view('costumer.index',compact('costumers'));
     }
 
-    public function topcostumer()
+    public function topcostumer(Request $request)
     {
         //
-        $costumers= Costumer::withCount('orders')
-        ->withSum('orders','total')
-        ->orderByDesc('orders_sum_total')->
-        whereMonth('created_at', Carbon::now()->month)
-        ->get();
+            if ($request->limit) {
+                # code...
+                $costumers= Costumer::withCount('orders')
+                ->withSum('orders','total')
+                ->orderByDesc('orders_sum_total')->
+                whereMonth('created_at', Carbon::now()->month)
+                ->limit($request->limit)
+                ->get();
+            } else {
+                # code...
+                $costumers= Costumer::withCount('orders')
+                ->withSum('orders','total')
+                ->orderByDesc('orders_sum_total')->
+                whereMonth('created_at', Carbon::now()->month)
+                ->get();
+            }
+
 
         return view('costumer.top_costumer',compact('costumers'));
     }
