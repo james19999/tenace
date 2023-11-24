@@ -35,16 +35,7 @@ class CostumerController extends Controller
                 whereMonth('created_at', Carbon::now()->month)
                 ->limit($request->limit)
                 ->get();
-            } else {
-                # code...
-                $costumers= Costumer::withCount('orders')
-                ->withSum('orders','total')
-                ->orderByDesc('orders_sum_total')->
-                whereMonth('created_at', Carbon::now()->month)
-                ->get();
             }
-
-
         return view('costumer.top_costumer',compact('costumers'));
     }
     public function viewcostumer($id)
