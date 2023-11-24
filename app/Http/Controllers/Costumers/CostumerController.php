@@ -27,7 +27,7 @@ class CostumerController extends Controller
     public function topcostumer(Request $request)
     {
         //
-            if ($request->limit) {
+
                 # code...
                 $costumers= Costumer::withCount('orders')
                 ->withSum('orders','total')
@@ -35,8 +35,8 @@ class CostumerController extends Controller
                 whereMonth('created_at', Carbon::now()->month)
                 ->limit($request->limit)
                 ->get();
-            }
-        return view('costumer.top_costumer',compact('costumers'));
+                return view('costumer.top_costumer',compact('costumers'));
+        
     }
     public function viewcostumer($id)
     {
