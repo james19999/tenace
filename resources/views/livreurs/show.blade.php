@@ -48,6 +48,7 @@
                            <th style="width: 20%">Frais</th>
                            <th style="width: 20%">Total</th>
                            <th style="width: 20%">Etat</th>
+                           <th style="width: 20%">Produits</th>
                        </tr>
                    </thead>
                    <tbody>
@@ -81,6 +82,12 @@
 
                                 @endif
                           </td>
+                          <td style="color: black " class=" pull-right">
+
+                            @foreach ($order->orderItems as $items )
+                                 <h5>({{ $items->quantity }})  {{ $items->product->name }} ,</h5>
+                            @endforeach
+                         </td>
                       </tr>
                          @endforeach
 
@@ -94,9 +101,11 @@
                         <th style="width: 20% ;color: black">Total des frais</th>
                         <th style="width: 20%;color: black">Total</th>
                         <th style="width: 20%">Etat</th>
+                        <th style="width: 20%">Produit</th>
                     </tr>
                     <th style="width: 20%"></th>
                     <th style="width: 20%"></th>
+
                     <th style="width: 20%"></th>
                     <th style="width: 20% ; color:red ;font-weight: 900">{{$orde->sum('subtotal')}} F</th>
                     <th style="width: 20% ; color:red ;font-weight: 900">{{$orde->sum('tax')}} F</th>
