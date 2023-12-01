@@ -3,19 +3,25 @@
 @section('content')
 
 <div class="col-12 ">
-    @php
-    $mois=   date("F");
-   @endphp
+
     <div  style="padding-top: 10px">
          <strong>
-            Classement des meilleurs clients du mois de  {{ $mois }}
+            Classement des meilleurs clients du mois.
          </strong>
       <div class="col-md-4 mt-4">
              <form action="{{ route('top-costumers') }}">
                  <div class="row">
-                    <div class="col-md-7">
+                    <div class="col-md-4">
                         <input type="number" name="limit" value="{{ old('limit',10) }}" id="" class="form-control" placeholder="Entrer">
 
+                    </div>
+                    <div class="col-md-5">
+                          <select name="month" id="" class="form-control">
+                               @foreach($montharray as $key => $value)
+
+                               <option value="{{ $key }}" class="form-control">{{ $value }}</option>
+                               @endforeach
+                          </select>
                     </div>
                     <div class="col-md-3">
 

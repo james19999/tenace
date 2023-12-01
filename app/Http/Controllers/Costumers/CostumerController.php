@@ -26,17 +26,35 @@ class CostumerController extends Controller
 
     public function topcostumer(Request $request)
     {
-        //
+
+        $montharray = [
+            1 => "Janvier",
+            2 => "Février",
+            3 => "Mars",
+            4 => "Avril",
+            5 => "Mai",
+            6 => "Juin",
+            7 => "Juillet",
+            8 => "Août",
+            9 => "Septembre",
+            10 => "Octobre",
+            11 => "Novembre",
+            12 => "Décembre"
+         ];
+
+
 
                 # code...
                 $costumers= Costumer::withCount('orders')
                 ->withSum('orders','total')
                 ->orderByDesc('orders_sum_total')->
-                whereMonth('created_at', Carbon::now()->month)
+                // whereMonth('created_at', Carbon::now()->month)
+                // ->
+                whereMonth('created_at', $request->month)
                 ->limit($request->limit)
                 ->get();
-                return view('costumer.top_costumer',compact('costumers'));
-        
+                return view('costumer.top_costumer',compact('costumers','montharray'));
+
     }
     public function viewcostumer($id)
     {

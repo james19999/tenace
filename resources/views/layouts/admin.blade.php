@@ -125,6 +125,20 @@
     });
 
 
+
+    function extraireNumeroMois() {
+        // Obtenez la valeur de la date depuis l'élément d'entrée
+        var dateInput = document.getElementById("dateInput").value;
+
+        // Créez un objet de date à partir de la valeur de l'entrée
+        var date = new Date(dateInput);
+
+        // Obtenez le numéro du mois (de 0 à 11, où 0 représente janvier et 11 représente décembre)
+        var numeroMois = date.getMonth() + 1;
+
+        // Affichez le numéro du mois dans la console (vous pouvez le traiter comme vous le souhaitez)
+        console.log("Numéro du mois : " + numeroMois);
+    }
   </script>
 
 
