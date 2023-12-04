@@ -131,7 +131,7 @@
                     @endif
 
                 <div class="table-responsive">
-                    <table id="example" class="table table-hover w-100">
+                    <table id="examples" class="table table-hover w-100">
                         <thead class="thead-light">
                             <tr>
                                 <th style="width: 20%">N°</th>
