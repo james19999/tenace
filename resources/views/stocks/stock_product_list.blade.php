@@ -1,4 +1,4 @@
-@extends('layouts.admin')
+{{--  @extends('layouts.admin')
 
 @section('content')
 <div class="container mt-5">
@@ -231,4 +231,4 @@
 
 
 
-@endsection
+@endsection  --}}
