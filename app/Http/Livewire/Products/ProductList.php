@@ -16,9 +16,32 @@ class ProductList extends Component
 
      }
 
+     public function calcPrice(){
+        $products = Product::all();
+        $total = 0;
+        foreach($products as $product){
+            $total += $product->price_market * $product->qts_sell;
+        }
+        return $total;
+    }
+    public function calcPrices(){
+        $products = Product::all();
+        $total = 0;
+        foreach($products as $product){
+            $total += $product->price * $product->qts_sell;
+        }
+        return $total;
+    }
+
     public function render()
-    {
-        return view('livewire.products.product-list',['Products'=>Product::all()->sortBy('name')])
+    {    $totale=$this->calcPrice();
+        $totales=$this->calcPrices();
+        return view('livewire.products.product-list',
+        ['Products'=>Product::all()->sortBy('name'),
+         'totale'=>$totale,
+         'totales'=>$totales
+
+        ])
            ->extends('layouts.admin')
            ->section('content');
     }
