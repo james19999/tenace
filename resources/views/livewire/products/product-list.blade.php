@@ -3,14 +3,17 @@
      @php
        $mois=   date("F");
     @endphp
+
      <div  style="padding-top: 10px">
         @if (Auth::user()->user_type=="ADMINUSER")
         <a href="{{ route('productform') }}" class="btn btn-primary  pull-right">Ajouter un produit</a>
         <a href="{{ route('getProductOrders') }}" class="btn btn-success  pull-right" style="color: white">Rapport sur les produits les plus vendus du mois
            de  {{ $mois }}
         </a>
+         <a href="{{ route('stock-list-product') }}" class="btn btn-dark  pull-right">Stock</a>
         @endif
      </div>
+
 
     <div class="card shadow">
         <div class="card-body ">

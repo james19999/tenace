@@ -11,6 +11,7 @@ use App\Http\Controllers\Admins\DashboarController;
 use App\Http\Controllers\Livreurs\LivreurController;
 use App\Http\Controllers\Costumers\CostumerController;
 use App\Http\Controllers\Brouillons\BrouillonController;
+use App\Http\Controllers\Stock\StockController;
 
 /*
 |--------------------------------------------------------------------------
@@ -37,6 +38,7 @@ Route::post('/store/pathner',[DashboarController::class,'store_pathner'])->name(
 
 Route::middleware(['auth'])->group(function () {
 
+Route::get('stock/list-product',[StockController::class,'index'])->name('stock-list-product');
 
 Route::get('/Admin',[DashboarController::class,'dashboard'])->name('Admin');
 

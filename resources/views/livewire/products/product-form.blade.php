@@ -1,7 +1,7 @@
 
 
 <div  class="row d-flex justify-content-center">
-      
+
      <div class="col-12 col-sm-7 " >
         <div class="card shadow">
             <div class="card-header" style="background-color: #7e1615">
@@ -15,10 +15,22 @@
                     @foreach($products as $index => $product)
                         <div class="form-row mb-3">
                             <div class="col-md-5">
-                                <input type="text" class="form-control" wire:model="products.{{ $index }}.name" placeholder="Nom">
+                                <input type="text" class="form-control" wire:model="products.{{ $index }}.name" placeholder="Nom" required>
                             </div>
                             <div class="col-md-5">
-                                <input type="number" class="form-control" wire:model="products.{{ $index }}.price" placeholder="Prix">
+                                <input type="number" class="form-control" wire:model="products.{{ $index }}.price_by" placeholder="Prix d'achat" required>
+                            </div>
+                            <div class="col-md-5 mt-3">
+                                <input type="number" class="form-control" wire:model="products.{{ $index }}.price_market" placeholder="Prix d'achat unitaire" required>
+                            </div>
+                            <div class="col-md-5 mt-3">
+                                <input type="number" class="form-control" wire:model="products.{{ $index }}.price" placeholder="Prix de vente unitaire" required>
+                            </div>
+                            <div class="col-md-5 mt-3">
+                                <input type="number" class="form-control" wire:model="products.{{ $index }}.qt_initial" placeholder="Quantité initial"required >
+                            </div>
+                            <div class="col-md-5 mt-3">
+                                <input type="number" class="form-control" wire:model="products.{{ $index }}.qts_seuil" placeholder="Quantité d'alèrte" required>
                             </div>
                             <div class="col">
                                 @if ($index > 0)

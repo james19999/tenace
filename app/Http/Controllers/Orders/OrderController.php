@@ -7,6 +7,7 @@ use App\Models\Costumer;
 use App\Models\Orders\Order;
 use Illuminate\Http\Request;
 use App\Http\Controllers\Controller;
+use App\Models\Product;
 
 class OrderController extends Controller
 {
@@ -50,7 +51,11 @@ class OrderController extends Controller
                 return redirect()->back()->with('success','commande remise en cours');
 
                }else if($request->status=="delivered"){
-
+                   $order=Order::where('id',$orders->id)->first();
+                      foreach ($order->orderItems as $key => $value) {
+                        # code...
+                        $this->updateProdSale($value->product_id,$value->quantity);
+                      }
                  $orders->status=$request->status;
 
                  $orders->save();
@@ -113,6 +118,31 @@ class OrderController extends Controller
            return redirect()->back()->with('succes','heure de livraison mise à jour');
 
 
+        }
+    }
+
+
+
+
+    public function updateProdSale($prod_id,$newQty)
+    {
+        $prod = Product::where('id',$prod_id)->first();
+        if ($prod) {
+            $qty_init = $prod->qt_initial;
+            $qts_sell = $prod->qts_sell;
+
+            $qty_init -=$newQty;
+            //dd($qty_init);
+            $prod->qt_initial = $qty_init;
+            $qts_sell +=intval($newQty);
+            $prod->qts_sell = $qts_sell;
+            $bnvendu=($prod->price - $prod->price_market) *$qts_sell;
+            $prod->benefice =$bnvendu;
+            //dd($prod->qts_sell);
+            $prod->update();
+            return true;//$prod->qt_initial;
+        }else{
+            return false;
         }
     }
 }

@@ -26,7 +26,17 @@
                             @error('name') <span class="text-danger">{{ $message }}</span>@enderror
                         </div>
                         <div class="form-group">
-                            <label for="price">Prix:</label>
+                            <label for="name">Prix d'achat :</label>
+                            <input type="number" class="form-control" id="name"   name="price_by"  placeholder="Prix d'acaht"  value="{{$product->price_by }}" >
+                            @error('price_by') <span class="text-danger">{{ $message }}</span>@enderror
+                        </div>
+                        <div class="form-group">
+                            <label for="name">Prix d'achat unitaire :</label>
+                            <input type="number" class="form-control" id="name"   name="price_market"  placeholder="Prix d'achat unitaire"  value="{{$product->price_by }}" >
+                            @error('price_market') <span class="text-danger">{{ $message }}</span>@enderror
+                        </div>
+                        <div class="form-group">
+                            <label for="price">Prix de vente unitaire:</label>
                             <input id="price" type="number" class="form-control @error('price') is-invalid @enderror" name="price" value="{{$product->price }}" required autocomplete="price">
 
                             @error('price')
@@ -35,6 +45,14 @@
                                 </span>
                             @enderror
                         </div>
+
+                        <div class="form-group">
+                            <label for="name">Quantité d'alèrte :</label>
+                            <input type="number" class="form-control" id="name"   name="qts_seuil"  placeholder="Quantité d 'alèrte"  value="{{$product->qts_seuil }}" >
+                            @error('qts_seuil') <span class="text-danger">{{ $message }}</span>@enderror
+                        </div>
+
+
                         <a  href="{{ route('useradminlist') }}" class="btn btn-danger">Annuler</a>
                         <button type="submit" class="btn btn-primary">Enregistrer</button>
                     </form>

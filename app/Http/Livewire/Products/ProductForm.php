@@ -15,6 +15,10 @@ class ProductForm extends Component
         $this->products[] = [
             'name' => '',
             'price' => '',
+            'price_by'=>'',
+            'qts_seuil'=>'',
+            'qt_initial'=>'',
+            'price_market'=>'',
 
         ];
     }
@@ -32,6 +36,10 @@ class ProductForm extends Component
             $product = new Product;
             $product->name = $productData['name'];
             $product->price = $productData['price'];
+            $product->price_by = $productData['price_by'];
+            $product->qts_seuil = $productData['qts_seuil'];
+            $product->qt_initial = $productData['qt_initial'];
+            $product->price_market = $productData['price_market'];
 
             $product->save();
 
