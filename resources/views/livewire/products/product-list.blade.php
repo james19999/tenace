@@ -36,7 +36,7 @@
                         <th style="width: 20%">Prix de vente</th>
                         <th style="width: 20%">Prix d'achat unitaire</th>
                         <th style="width: 20%">Quantité restant</th>
-                        <th style="width: 20%">Quantité vendue </th>
+                        {{--  <th style="width: 20%">Quantité vendue </th>  --}}
                         <th style="width: 20%">Status</th>
                         <th style="width: 20%">Actions</th>
                     </tr>
@@ -58,7 +58,7 @@
 
                             <td style="color: red">{{$product->qt_initial }} </td>
                             @endif
-                        <td  style="color: black ; ">{{ $product->qts_sell }} </td>
+                        {{--  <td  style="color: black ; ">{{ $product->qts_sell }} </td>  --}}
                         <td style="color: black ">
                             @if ($product->qts_seuil>=$product->qt_initial)
                             <span class="badge rounded-pill bg-danger" style="color: white">En cours de rupture  </span>
@@ -102,7 +102,7 @@
                         <th style="width: 20%">Prix de vente</th>
                         <th style="width: 20%">Prix d'achat unitaire</th>
                         <th style="width: 20%">Quantité restant</th>
-                        <th style="width: 20%">Quantité vendue </th>
+                        {{--  <th style="width: 20%">Quantité vendue </th>  --}}
                         <th style="width: 20%">Status</th>
                         <th style="width: 20%">Actions</th>
                     </tr>
