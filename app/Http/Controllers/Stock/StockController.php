@@ -2,39 +2,57 @@
 
 namespace App\Http\Controllers\Stock;
 
-use App\Http\Controllers\Controller;
 use App\Models\Product;
+use App\Models\EnterStock;
 use Illuminate\Http\Request;
+use App\Http\Controllers\Controller;
+use App\Models\OutStock;
 
 class StockController extends Controller
 {
+   public function show_product($id){
 
-    // public function index()
-    // {
-
-    //      $Products=Product::orderBy('created_at','DESC')->get();
-
-    //       $totale=$this->calcPrice();
-    //       $totales=$this->calcPrices();
-    //     return  view('stocks.stock_product_list',compact('Products','totale','totales'));
-    // }
+    $product= Product::find($id);
+    return view ('stocks.show_product',compact('product'));
+   }
 
 
+public  function enter_stocks(Request $request ,$id){
+    $request->validate(['qt_stock'=>'required|min:0']);
+    $Products=Product::findOrfail($id);
+    $Products->qt_initial+=$request->qt_stock;
+   EnterStock::create([
+        'qt_stock'=>$request->qt_stock,
+        'product_id'=>$request->product_id,
+   ]);
+   $Products->save();
+   session()->flash('message', "vous avez fait une entrée de stock de $request->qt_stock quantité Actuel  $Products->qt_initial");
+   return  back();
+}
 
-    // public function calcPrice(){
-    //     $products = Product::all();
-    //     $total = 0;
-    //     foreach($products as $product){
-    //         $total += $product->price_market * $product->qts_sell;
-    //     }
-    //     return $total;
-    // }
-    // public function calcPrices(){
-    //     $products = Product::all();
-    //     $total = 0;
-    //     foreach($products as $product){
-    //         $total += $product->price * $product->qts_sell;
-    //     }
-    //     return $total;
-    // }
+
+public  function out_stock(Request $request,$id){
+
+    $request->validate([
+        'qt_stock' =>'required|integer|min:0' ,
+        'raison'=>'required' ,
+      ]);
+
+    $Products=Product::findOrfail($id);
+    $output=OutStock::create([
+          'qt_stock'=>$request->qt_stock,
+          'raison'=>$request->raison,
+          'product_id'=>$Products->id,
+      ]);
+      if($output->qt_stock<=$Products->qt_initial){
+
+          $Products->qt_initial-=$output->qt_stock;
+          $Products->save();
+      }
+     session()->flash('message', "vous avez fait une  sortie de stock de $output->qt_stock quantité Actuel  $Products->qt_initial");
+
+     return  back();
+
+
+  }
 }

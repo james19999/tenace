@@ -77,8 +77,11 @@
                                 >
                                     <i class="material-icons">shopping_cart</i>Ajouter</button>
                                     @if (Auth::user()->user_type=="ADMINUSER")
-                                    <a href="{{ route('editproduct',$product) }}" style="color: white" type="button" class="btn btn-warning">
+                                    <a href="{{ route('show-product',$product) }}" style="color: white" type="button" class="btn btn-info">
                                         <i class="material-icons">visibility</i>
+                                        voir</a>
+                                    <a href="{{ route('editproduct',$product) }}" style="color: white" type="button" class="btn btn-warning">
+                                        <i class="material-icons">edit</i>
                                         Modifier</a>
 
                                         <form   method="POST" action="{{ route('delteproduct',$product) }}"

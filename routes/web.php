@@ -38,7 +38,9 @@ Route::post('/store/pathner',[DashboarController::class,'store_pathner'])->name(
 
 Route::middleware(['auth'])->group(function () {
 
-Route::get('stock/list-product',[StockController::class,'index'])->name('stock-list-product');
+Route::get('show/{id}/product',[StockController::class,'show_product'])->name('show-product');
+Route::post('entrer/stock/{id}',[StockController::class,'enter_stocks'])->name('enter_stock');
+Route::post('out/stock/{id}',[StockController::class,'out_stock'])->name('out_stock');
 
 Route::get('/Admin',[DashboarController::class,'dashboard'])->name('Admin');
 
