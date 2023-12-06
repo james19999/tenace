@@ -53,6 +53,7 @@
                         </div>
 
 
+
                         <a  href="{{ route('product') }}" class="btn btn-danger">Annuler</a>
                         <button type="submit" class="btn btn-primary">Enregistrer</button>
                     </form>

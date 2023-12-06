@@ -74,8 +74,14 @@
                                 <button style="color: white" type="button" class="btn btn-success"
 
                                 wire:click.prevent="AddToCart({{$product->id }},'{{  $product->name }}',{{  $product->price }})"
+                                 @if ($product->qt_initial==0 || $product->qt_initial==null)
+                                disabled
+
+                                 @endif
                                 >
                                     <i class="material-icons">shopping_cart</i>Ajouter</button>
+
+
                                     @if (Auth::user()->user_type=="ADMINUSER")
                                     <a href="{{ route('show-product',$product) }}" style="color: white" type="button" class="btn btn-info">
                                         <i class="material-icons">visibility</i>
