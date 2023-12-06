@@ -1,8 +1,102 @@
 @extends('layouts.admin')
 
 @section('content')
-<div class="container mt-5">
-    <ul class="nav nav-tabs" id="myTabs">
+  <div class="container">
+
+      <div class="row">
+        <div class="col-12 col-sm-6 col-md-6 col-lg-3">
+            <div class="card shadow">
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col">
+                            <h5 class="text-uppercase text-muted mb-0 card-title">Total des commandes </h5><span class="h1 font-weight-bold mb-0"> </span>
+                        </div>
+                        <div class="col-auto col">
+                            <div>
+                                <button class="btn btn-transparent-primary btn-lg btn-circle">
+
+                                    <i class="material-icons">monetization_on</i>
+                                </button>
+
+
+                            </div>
+                        </div>
+                    </div>
+
+                </div>
+            </div>
+        </div>
+        <div class="col-12 col-sm-6 col-md-6 col-lg-3">
+            <div class="card shadow">
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col">
+                            <h5 class="text-uppercase text-muted mb-0 card-title">Total des commandes </h5><span class="h1 font-weight-bold mb-0"> </span>
+                        </div>
+                        <div class="col-auto col">
+                            <div>
+                                <button class="btn btn-transparent-primary btn-lg btn-circle">
+
+                                    <i class="material-icons">monetization_on</i>
+                                </button>
+
+
+                            </div>
+                        </div>
+                    </div>
+
+                </div>
+            </div>
+        </div>
+        <div class="col-12 col-sm-6 col-md-6 col-lg-3">
+            <div class="card shadow">
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col">
+                            <h5 class="text-uppercase text-muted mb-0 card-title">Total des commandes </h5><span class="h1 font-weight-bold mb-0"> </span>
+                        </div>
+                        <div class="col-auto col">
+                            <div>
+                                <button class="btn btn-transparent-primary btn-lg btn-circle">
+
+                                    <i class="material-icons">monetization_on</i>
+                                </button>
+
+
+                            </div>
+                        </div>
+                    </div>
+
+                </div>
+            </div>
+        </div>
+        <div class="col-12 col-sm-6 col-md-6 col-lg-3">
+            <div class="card shadow">
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col">
+                            <h5 class="text-uppercase text-muted mb-0 card-title">Total des commandes </h5><span class="h1 font-weight-bold mb-0"> </span>
+                        </div>
+                        <div class="col-auto col">
+                            <div>
+                                <button class="btn btn-transparent-primary btn-lg btn-circle">
+
+                                    <i class="material-icons">monetization_on</i>
+                                </button>
+
+
+                            </div>
+                        </div>
+                    </div>
+
+                </div>
+            </div>
+        </div>
+     </div>
+      </div>
+  </div>
+  <div class="container mt-1">
+    <ul class="nav nav-tabs" id="myTabs" style="padding-left: 20px">
       <li class="nav-item">
         <a class="nav-link active" id="tab1-tab" data-toggle="tab" href="#tab1">Entrer de stock</a>
       </li>
@@ -23,7 +117,7 @@
                              @csrf
                              <div class="row mt-3">
                                  <div class="col-md-4">
-                                     <div class="form-group">
+                                     <div class="form-group" style="padding-left: 9px">
 
                                          <input type="number" name="qt_stock"
                                          value="{{ old('qt_stock',0)}}" class="form-control" id="" required>
@@ -99,7 +193,7 @@
                         @csrf
                         <div class="row mt-3">
                             <div class="col-md-4">
-                                <div class="form-group">
+                                <div class="form-group" >
 
                                     <input type="number" name="qt_stock"
                                     value="{{ old('qt_stock',0)}}" class="form-control" id="" required>
