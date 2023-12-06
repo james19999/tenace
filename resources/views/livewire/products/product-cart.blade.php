@@ -117,19 +117,27 @@
                                  <td style="color: black " class=" pull-right">
 
                                      <div class="btn-group btn-group-justified">
+
                                          <button style="color: white" type="button" class="btn btn-success"
                                          wire:click.prevent="decrement('{{ $items->rowId }}')"
                                          >
 
                                              <i class="material-icons"></i>-</button>
                                          <button style="color: white" type="button" class="btn btn-warning"
+                                          @if ($items->model->qt_initial > $items->qty)
                                          wire:click.prevent="increment('{{ $items->rowId }}')"
+
+                                          @else
+                                           disabled
+                                          @endif
                                          >
-                                             <i class="material-icons">+</i>
+
+                                        <i class="material-icons">+</i>
                                               </button>
                                          <button type="button" class="btn btn-danger"
                                          wire:click.prevent="destroy('{{ $items->rowId }}')"
                                           >
+
                                              <i class="material-icons">delete</i>
                                            </button>
                                      </div>
