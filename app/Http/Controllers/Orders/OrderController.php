@@ -56,7 +56,7 @@ class OrderController extends Controller
                         # code...
                         $this->updateProdSale($value->product_id,$value->quantity);
                       }
-                 $orders->status=$request->status;
+                    $orders->status=$request->status;
 
                  $orders->save();
                 return redirect()->back()->with('success','commande valider');

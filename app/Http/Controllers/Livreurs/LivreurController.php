@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Livreurs;
 
 use Carbon\Carbon;
 use App\Models\User;
+use App\Models\Product;
 use App\Models\Orders\Order;
 use Illuminate\Http\Request;
 use App\Http\Controllers\Controller;
@@ -175,6 +176,12 @@ class LivreurController extends Controller
               return redirect()->back()->with('success','commande annuler');
 
              }else if($request->status=="delivered"){
+                $order=Order::where('id',$orders->id)->first();
+                foreach ($order->orderItems as $key => $value) {
+                  # code...
+                  $this->updateProdSale($value->product_id,$value->quantity);
+                }
+              $orders->status=$request->status;
                $orders->status=$request->status;
                $orders->user_id=Auth::user()->id;
                $orders->status_order=false;
@@ -237,7 +244,7 @@ class LivreurController extends Controller
 
     $order=Order::findOrfail($id);
     if ($order) {
-       
+
         if($order->take==true){
          $order->take=false;
          $order->save();
@@ -246,5 +253,26 @@ class LivreurController extends Controller
         }
     }
 
+  }
+
+  public function updateProdSale($prod_id,$newQty)
+  {
+      $prod = Product::where('id',$prod_id)->first();
+      if ($prod) {
+          $qty_init = $prod->qt_initial;
+          $qts_sell = $prod->qts_sell;
+          $qty_init -=$newQty;
+          //dd($qty_init);
+          $prod->qt_initial = $qty_init;
+          $qts_sell +=intval($newQty);
+          $prod->qts_sell = $qts_sell;
+          $bnvendu=($prod->price - $prod->price_market) *$qts_sell;
+          $prod->benefice =$bnvendu;
+          //dd($prod->qts_sell);
+          $prod->update();
+          return true;//$prod->qt_initial;
+      }else{
+          return false;
+      }
   }
 }
