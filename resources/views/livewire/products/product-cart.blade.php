@@ -75,8 +75,8 @@
                     <div class="form-group">
                         <label for="">Type de commande</label>
                          <select name="type" id="" class="form-control">
-                             <option value="PR">Privé</option>
                              <option value="PU">Public</option>
+                             <option value="PR">Privé</option>
                          </select>
                     </div>
              </div>
