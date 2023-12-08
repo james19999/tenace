@@ -90,9 +90,8 @@ class CheckController extends Controller
                           'code' => $code,
                           'brouillon' =>$this->brouillons() ,
                           'created_user' =>Auth::user()->id,
-                          'avis'=>$request->avis
-
-
+                          'avis'=>$request->avis,
+                          'type'=>$request->type
                       ]);
 
                       foreach (Cart::instance('cart')->content() as $item) {
@@ -105,12 +104,16 @@ class CheckController extends Controller
                       }
 
                         if (Auth::user()->user_type=="ADMINUSER") {
-                            foreach ($users as $key => $user) {
+                              if ($request->type=="PU") {
+                                # code...
 
-                             Mail::to($user->email)->send(new TenaCos($order));
+                                foreach ($users as $key => $user) {
 
-                            }
-                            # code...
+                                 Mail::to($user->email)->send(new TenaCos($order));
+
+                                }
+                                # code...
+                              }
                         } else {
                             Mail::to('crepinawity@gmail.com')->send(new ParthnerMail(URL::signedRoute('brouillons')));
                         }
@@ -120,9 +123,6 @@ class CheckController extends Controller
                      Cart::instance('cart')->destroy();
                      return redirect()->route('order')->with('messages','Commande effectuée');
                   }
-
-
-
 
          } else {
             $request->validate([
@@ -150,7 +150,8 @@ class CheckController extends Controller
                 'code' => $code,
                 'brouillon' =>$this->brouillons() ,
                 'created_user' =>Auth::user()->id,
-                'avis'=>$request->avis
+                'avis'=>$request->avis,
+                'type'=>$request->type
             ]);
 
             foreach (Cart::instance('cart')->content() as $item) {
@@ -164,11 +165,14 @@ class CheckController extends Controller
 
 
             if (Auth::user()->user_type=="ADMINUSER") {
-                foreach ($users as $key => $user) {
+                 if($request->type=="PU"){
 
-                 Mail::to($user->email)->send(new TenaCos($order));
+                     foreach ($users as $key => $user) {
 
-                }
+                      Mail::to($user->email)->send(new TenaCos($order));
+
+                     }
+                 }
                 # code...
             } else {
                 Mail::to('crepinawity@gmail.com')->send(new ParthnerMail(URL::signedRoute('brouillons')));

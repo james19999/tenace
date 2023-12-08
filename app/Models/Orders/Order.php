@@ -24,7 +24,8 @@ class Order extends Model
         'created_user',
         'avis',
         'remis',
-        'montant'
+        'montant',
+        'type'
     ];
 
 

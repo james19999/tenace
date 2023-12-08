@@ -145,4 +145,18 @@ class OrderController extends Controller
             return false;
         }
     }
+
+
+    public  function check_type ($id){
+
+      $order=Order::where('id',$id)->first();
+
+       if($order->type=="PR"){
+         $order->type="PU";
+       }else if($order->type="PU"){
+        $order->type="PR";
+       }
+      $order->save();
+      return back();
+    }
 }

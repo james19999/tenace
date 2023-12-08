@@ -72,6 +72,8 @@ Route::post('palce/order',[CheckController::class,'palce_order'])->name('palceor
 
 Route::get('order/list',[OrderController::class,'index'])->name('order');
 
+Route::get('order/check/type/{id}',[OrderController::class,'check_type'])->name('check-type');
+
 Route::get('order/show/{id}',[OrderController::class,'show'])->name('ordershow');
 
 Route::put('change/order/status/{id}',[OrderController::class,'change_order_status'])->name('changestatus');
