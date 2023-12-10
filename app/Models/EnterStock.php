@@ -12,6 +12,7 @@ class EnterStock extends Model
     protected $fillable= [
          'product_id',
          'qt_stock',
+         'amount',
     ];
 
     public function product () {

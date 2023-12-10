@@ -13,18 +13,25 @@ class StockController extends Controller
    public function show_product($id){
 
     $product= Product::find($id);
-    return view ('stocks.show_product',compact('product'));
+    $totalEnterStock=$product->enterstocks()->sum('qt_stock');
+    $totalOuttock=$product->outstocks()->sum('qt_stock');
+    return view ('stocks.show_product',compact('product','totalEnterStock','totalOuttock'));
    }
 
 
 public  function enter_stocks(Request $request ,$id){
-    $request->validate(['qt_stock'=>'required|min:0']);
+    $request->validate([
+        'qt_stock'=>'required|min:0',
+        'amount'=>'required|min:0',
+    ]);
     $Products=Product::findOrfail($id);
     $Products->qt_initial+=$request->qt_stock;
-   EnterStock::create([
-        'qt_stock'=>$request->qt_stock,
-        'product_id'=>$request->product_id,
-   ]);
+    EnterStock::create([
+            'qt_stock'=>$request->qt_stock,
+            'amount'=>$request->amount,
+            'product_id'=>$request->product_id,
+    ]);
+    $Products->price_by+=$request->amount;
    $Products->save();
    session()->flash('message', "vous avez fait une entrée de stock de $request->qt_stock quantité Actuel  $Products->qt_initial");
    return  back();

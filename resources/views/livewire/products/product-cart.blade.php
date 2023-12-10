@@ -1,6 +1,3 @@
-
-
-
  <form method="POST" action="{{ route('palceorder') }}">
     @csrf
      <div class="col-12 ">
@@ -32,7 +29,15 @@
                  @error('tax') <span class="text-danger">{{ $message }}</span>@enderror
              </div>
              <div class="col-md-3" style="padding-top: 1%">
-                <button type="submit" style="color: white" class="btn btn-success btn-block">Valider
+                <button type="submit" style="color: white"
+                       @if (Cart::instance('cart')->count()>0)
+
+                       @else
+
+                       disabled
+                       @endif
+
+                class="btn btn-success btn-block">Valider
                  ({{ Cart::instance('cart')->subtotal()  }}) F</button>
              </div>
              <input type="hidden" name="subtotal" value="{{ Cart::instance('cart')->subtotal() }}">

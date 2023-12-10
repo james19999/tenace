@@ -14,7 +14,7 @@ class Product extends Model
     protected $fillable=['name','price','price_by','qts_seuil','qt_initial','price_market'];
 
     public function enterstocks() {
-        return $this->hasMany(EnterStock::class);
+        return $this->hasMany(EnterStock::class,'product_id');
     }
     public function outstocks() {
         return $this->hasMany(OutStock::class);

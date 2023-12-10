@@ -4,6 +4,7 @@ namespace App\Http\Livewire\Products;
 
 use App\Models\Product;
 use Livewire\Component;
+use App\Models\EnterStock;
 
 class ProductForm extends Component
 {
@@ -13,6 +14,7 @@ class ProductForm extends Component
     public function addProduct()
     {
         $this->products[] = [
+            'product_id' => '',
             'name' => '',
             'price' => '',
             'price_by'=>'',
@@ -42,6 +44,16 @@ class ProductForm extends Component
             $product->price_market = $productData['price_market'];
 
             $product->save();
+            if ($product!==null) {
+                # code...
+                $product->enterstocks()->create(
+                    [
+                        'qt_stock'=>$productData['qt_initial'],
+                        'amount'=>$productData['price_by'],
+
+                    ]
+                    );
+             }
 
             redirect()->with('messages','Produit ajouter')->route('product');
         }

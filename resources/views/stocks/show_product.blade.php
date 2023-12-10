@@ -9,13 +9,16 @@
                 <div class="card-body">
                     <div class="row">
                         <div class="col">
-                            <h5 class="text-uppercase text-muted mb-0 card-title">Total des commandes </h5><span class="h1 font-weight-bold mb-0"> </span>
+                            <h5 class="text-uppercase text-muted mb-0 card-title">Prix d'achat </h5><span style="font-size: 100%" class="h1 font-weight-bold mb-0">
+                             {{ $product->price_by }} FCFA
+                            </span>
                         </div>
                         <div class="col-auto col">
                             <div>
                                 <button class="btn btn-transparent-primary btn-lg btn-circle">
 
-                                    <i class="material-icons">monetization_on</i>
+                                    <img style="background-color: white" src="{{ asset('assets/images/mos.png') }}" width="40" height="40" alt="" srcset="">
+
                                 </button>
 
 
@@ -31,13 +34,15 @@
                 <div class="card-body">
                     <div class="row">
                         <div class="col">
-                            <h5 class="text-uppercase text-muted mb-0 card-title">Total des commandes </h5><span class="h1 font-weight-bold mb-0"> </span>
+                            <h5 class="text-uppercase text-muted mb-0 card-title">Bénéfice</h5><span style="font-size: 100%" class="h1 font-weight-bold mb-0">
+                               {{ $product->benefice }} FCFA
+                            </span>
                         </div>
                         <div class="col-auto col">
                             <div>
                                 <button class="btn btn-transparent-primary btn-lg btn-circle">
 
-                                    <i class="material-icons">monetization_on</i>
+                                    <img src="{{ asset('assets/images/money.png') }}" width="40" height="40" alt="" srcset="">
                                 </button>
 
 
@@ -53,13 +58,16 @@
                 <div class="card-body">
                     <div class="row">
                         <div class="col">
-                            <h5 class="text-uppercase text-muted mb-0 card-title">Total des commandes </h5><span class="h1 font-weight-bold mb-0"> </span>
+                            <h5 class="text-uppercase text-muted mb-0 card-title">Quantité vendue</h5><span style="font-size: 100%" class="h1 font-weight-bold mb-0">
+                              {{ $product->qts_sell }}
+                            </span>
                         </div>
                         <div class="col-auto col">
                             <div>
                                 <button class="btn btn-transparent-primary btn-lg btn-circle">
 
-                                    <i class="material-icons">monetization_on</i>
+                                    <img src="{{ asset('assets/images/qt.png') }}" width="40" height="40" alt="" srcset="">
+
                                 </button>
 
 
@@ -75,13 +83,16 @@
                 <div class="card-body">
                     <div class="row">
                         <div class="col">
-                            <h5 class="text-uppercase text-muted mb-0 card-title">Total des commandes </h5><span class="h1 font-weight-bold mb-0"> </span>
+                            <h5 class="text-uppercase text-muted mb-0 card-title">Prix de vente </h5><span  style="font-size: 100%" class="h1 font-weight-bold mb-0">
+                              {{ $product->price }} FCFA
+                            </span>
                         </div>
                         <div class="col-auto col">
                             <div>
                                 <button class="btn btn-transparent-primary btn-lg btn-circle">
 
-                                    <i class="material-icons">monetization_on</i>
+                                    <img src="{{ asset('assets/images/P.png') }}" width="40" height="40" alt="" srcset="">
+
                                 </button>
 
 
@@ -93,7 +104,113 @@
             </div>
         </div>
      </div>
-      </div>
+
+
+      <div class="row">
+        <div class="col-12 col-sm-6 col-md-6 col-lg-3">
+            <div class="card shadow">
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col">
+                            <h5 class="text-uppercase text-muted mb-0 card-title"> Sortie de stock </h5><span style="font-size: 100%" class="h1 font-weight-bold mb-0">
+                             {{ $totalOuttock }}
+                            </span>
+                        </div>
+                        <div class="col-auto col">
+                            <div>
+                                <button class="btn btn-transparent-primary btn-lg btn-circle">
+
+                                    <img style="background-color: white" src="{{ asset('assets/images/out.png') }}" width="40" height="40" alt="" srcset="">
+
+                                </button>
+
+
+                            </div>
+                        </div>
+                    </div>
+
+                </div>
+            </div>
+        </div>
+        <div class="col-12 col-sm-6 col-md-6 col-lg-3">
+            <div class="card shadow">
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col">
+                            <h5 class="text-uppercase text-muted mb-0 card-title">Quantité total</h5><span style="font-size: 100%" class="h1 font-weight-bold mb-0">
+                               {{ $totalEnterStock }}
+                            </span>
+                        </div>
+                        <div class="col-auto col">
+                            <div>
+                                <button class="btn btn-transparent-primary btn-lg btn-circle">
+
+                                    <img src="{{ asset('assets/images/sto.png') }}" width="40" height="40" alt="" srcset="">
+                                </button>
+
+
+                            </div>
+                        </div>
+                    </div>
+
+                </div>
+            </div>
+        </div>
+        <div class="col-12 col-sm-6 col-md-6 col-lg-3">
+            <div class="card shadow">
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col">
+                            <h5 class="text-uppercase text-muted mb-0 card-title">Quantité restant</h5><span style="font-size: 100%" class="h1 font-weight-bold mb-0">
+                              {{ $product->qt_initial }}
+                            </span>
+                        </div>
+                        <div class="col-auto col">
+                            <div>
+                                <button class="btn btn-transparent-primary btn-lg btn-circle">
+
+                                    <img src="{{ asset('assets/images/re.png') }}" width="40" height="40" alt="" srcset="">
+
+                                </button>
+
+
+                            </div>
+                        </div>
+                    </div>
+
+                </div>
+            </div>
+        </div>
+        <div class="col-12 col-sm-6 col-md-6 col-lg-3">
+            <div class="card shadow">
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col">
+                            <h5 class="text-uppercase text-muted mb-0 card-title">Prix d'achat unitaire </h5><span  style="font-size: 100%" class="h1 font-weight-bold mb-0">
+                              {{ $product->price_market }} FCFA
+                            </span>
+                        </div>
+                        <div class="col-auto col">
+                            <div>
+                                <button class="btn btn-transparent-primary btn-lg btn-circle">
+
+                                    <img src="{{ asset('assets/images/P.png') }}" width="40" height="40" alt="" srcset="">
+
+                                </button>
+
+
+                            </div>
+                        </div>
+                    </div>
+
+                </div>
+            </div>
+        </div>
+     </div>
+
+
+
+  </div>
   </div>
   <div class="container mt-1">
     <ul class="nav nav-tabs" id="myTabs" style="padding-left: 20px">
@@ -125,8 +242,16 @@
                                          <small>Entrer la quantité</small>
                                      </div>
                                  </div>
+                                 <div class="col-md-4">
+                                     <div class="form-group" style="padding-left: 9px">
 
-                                 <div class="col-md-6 ">
+                                         <input type="number" name="amount"
+                                         value="{{ old('amount',0)}}" class="form-control" id="" required>
+                                         <small>Montant</small>
+                                     </div>
+                                 </div>
+
+                                 <div class="col-md-4 ">
                                           <div class="form-group">
 
                                           <button type="submit" class="btn btn-outline-success" >Valider</button>
@@ -150,6 +275,7 @@
                                 <tr>
                                     <th style="width: 20%">N°</th>
                                     <th style="width: 20%">Quantité</th>
+                                    <th style="width: 20%">Montant</th>
                                     <th style="width: 20%">Date de création</th>
                                     {{--  <th style="width: 20%">Actions</th>  --}}
                                 </tr>
@@ -163,6 +289,7 @@
 
                                     <td style="color: black ">{{ $i++}}</td>
                                     <td style="color: black ">{{ $items->qt_stock}}</td>
+                                    <td style="color: black ">{{ $items->amount}}</td>
                                     <td  style="color: black ; ">{{ $items->created_at }}</td>
 
 
@@ -174,6 +301,7 @@
                                 <tr>
                                     <th style="width: 20%">N°</th>
                                     <th style="width: 20%">Quantité</th>
+                                    <th style="width: 20%">Montant</th>
                                     <th style="width: 20%">Date de création</th>
                                     {{--  <th style="width: 20%">Actions</th>  --}}
                                 </tr>
@@ -272,8 +400,7 @@
         </div>
       </div>
       <div class="tab-pane fade" id="tab3">
-        <h3>Content for Tab 3</h3>
-        <p>This is the content for the third tab.</p>
+        <h1 class="mt-5" style="text-align: center">{{ $product->name }}</h1>
       </div>
     </div>
   </div>

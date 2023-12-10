@@ -10,13 +10,14 @@
             <div class="card-body">
                 <div class="row">
                     <div class="col">
-                        <h5 class="text-uppercase text-muted mb-0 card-title">Total des commandes </h5><span class="h1 font-weight-bold mb-0">{{ $OrderdeAmount }} XOF</span>
+                        <h5 class="text-uppercase text-muted mb-0 card-title">Total des commandes </h5><span style="font-size: 130%" class="h1 font-weight-bold mb-0">{{ $OrderdeAmount }} XOF</span>
                     </div>
                     <div class="col-auto col">
                         <div>
                             <button class="btn btn-transparent-primary btn-lg btn-circle">
 
-                                <i class="material-icons">monetization_on</i>
+                                <img src="{{ asset('assets/images/money.png') }}" width="40" height="40" alt="" srcset="">
+
                             </button>
 
 
@@ -37,13 +38,14 @@
             <div class="card-body">
                 <div class="row">
                     <div class="col">
-                        <h5 class="text-uppercase text-muted mb-0 card-title">Total des commandes</h5><span class="h1 font-weight-bold mb-0">{{ $Orderall }}</span>
+                        <h5 class="text-uppercase text-muted mb-0 card-title">Total des commandes</h5><span style="font-size: 130%" class="h1 font-weight-bold mb-0">{{ $Orderall }}</span>
                     </div>
                     <div class="col-auto col">
                         <div>
                             <button class="btn btn-transparent-primary btn-lg btn-circle">
 
-                                <i class="material-icons">trending_up</i>
+                                <img src="{{ asset('assets/images/ord.png') }}" width="40" height="40" alt="" srcset="">
+
                             </button>
                         </div>
                     </div>
@@ -63,12 +65,13 @@
             <div class="card-body">
                 <div class="row">
                     <div class="col">
-                        <h5 class="text-uppercase text-muted mb-0 card-title">Commades en cours</h5><span class="h1 font-weight-bold mb-0">{{ $Ordered }}</span>
+                        <h5 class="text-uppercase text-muted mb-0 card-title">Commades en cours</h5><span style="font-size: 130%" class="h1 font-weight-bold mb-0">{{ $Ordered }}</span>
                     </div>
                     <div class="col-auto col">
                         <div>
                             <button class="btn btn-transparent-primary btn-lg btn-circle">
-                                <i class="material-icons">language</i>
+                                <img src="{{ asset('assets/images/ords.png') }}" width="40" height="40" alt="" srcset="">
+
                             </button>
                         </div>
                     </div>
@@ -86,13 +89,12 @@
             <div class="card-body">
                 <div class="row">
                     <div class="col">
-                        <h5 class="text-uppercase text-muted mb-0 card-title">Commades livrées</h5><span class="h1 font-weight-bold mb-0">{{ $Orderdelivered }}</span>
+                        <h5 class="text-uppercase text-muted mb-0 card-title">Commades livrées</h5><span  style="font-size: 130%" class="h1 font-weight-bold mb-0">{{ $Orderdelivered }}</span>
                     </div>
                     <div class="col-auto col">
                         <div>
                             <button class="btn btn-transparent-primary btn-lg btn-circle">
-                                <i class="material-icons">receipt</i>
-
+                                <img src="{{ asset('assets/images/reciv.png') }}" width="40" height="40" alt="" srcset="">
                             </button>
                         </div>
                     </div>
@@ -155,7 +157,7 @@
             <div class="card-body">
                 <h4 class="card-title mb-4">Commandes</h4>
                 <div class="table-responsive">
-                    <table id="example" class="table table-hover w-100">
+                    <table id="example" class="table table-hover w-130">
                         <thead class="thead-light">
                             <tr>
                                 <th style="width: 20%">N°</th>
