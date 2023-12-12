@@ -13,13 +13,36 @@
 
              @if (Auth::user()->user_type=="ADMINUSER")
 
+
              <li>
                  <a href="{{ route('Admin') }}" class="active">
                      <span class="icon material-icons"  >dashboard</span>
                      <span class="text">Dashboard</span>
                  </a>
              </li>
+             <li>
+                <a href="#authenticationPage" class="" data-toggle="collapse">
+                    <span class="caret material-icons">arrow_right</span>
+                    <span class="icon material-icons">money</span>
+                    <span class="text">Comptabilité</span>
+                </a>
 
+                <ul class="collapse" id="authenticationPage">
+                    <li>
+                        <a href="{{route('type-expensives')}}" class="">
+                            <span class="icon material-icons">remove</span>
+                            <span class="text">Type de dépense</span>
+                        </a>
+                    </li>
+                    <li>
+                        <a href="login.html" class="">
+                            <span class="icon material-icons">remove</span>
+                            <span class="text">Dépense</span>
+                        </a>
+                    </li>
+
+                </ul>
+            </li>
              <li>
                  <a href="{{ route('product') }}" class="">
                      <span class="icon material-icons"  >store
@@ -27,7 +50,7 @@
                      <span class="text">Produits</span>
                  </a>
              </li>
-             <li wire:poll.2s>
+             <li wire:poll.5s>
                  <a href="{{ route('productcart') }}" class="">
                      <span class="icon material-icons"  >add_shopping_cart</span>
                      <span class="text">Panier ({{ Cart::instance('cart')->count() }})</span>
@@ -67,6 +90,7 @@
                  </a>
              </li>
 
+
              <li>
                  <a href="{{ route('useradminlist') }}" class="">
                      <span class="icon material-icons" >groups</span>
@@ -88,7 +112,7 @@
                      <span class="text">Consultations</span>
                  </a>
              </li>
-             <li wire:poll.2s>
+             <li wire:poll.5s>
                  <a href="{{route('brouillons')}}" class="">
                      <span class="icon material-icons"  >delete_sweep
                      </span>
@@ -102,6 +126,7 @@
                      <span class="text">Archive</span>
                  </a>
              </li>
+
              @elseif (Auth::user()->user_type=="PT")
              <li>
                 <a href="{{ route('product') }}" class="">

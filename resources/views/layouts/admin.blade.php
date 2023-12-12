@@ -147,6 +147,11 @@
         // Affichez le numéro du mois dans la console (vous pouvez le traiter comme vous le souhaitez)
         console.log("Numéro du mois : " + numeroMois);
     }
+
+
+
+
+
   </script>
 
 

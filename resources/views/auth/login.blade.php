@@ -41,13 +41,16 @@
                             @enderror
                         </div>
                         <div class="form-group">
-                            <input type="password" placeholder="Mot de passe" class="form-control @error('password') is-invalid @enderror" name="password" required >
+                            <input type="password" id="password" placeholder="Mot de passe" class="form-control @error('password') is-invalid @enderror" name="password" required >
                             @error('password')
                             <span class="invalid-feedback" role="alert">
                                 <strong>{{ $message }}</strong>
                             </span>
                            @enderror
                         </div>
+
+                        <input type="checkbox" id="showPassword"> Voir le mot de passe
+
                         <button class="btn btn-primary btn-block my-4">
                             Connectez-vous
                         </button>
@@ -63,6 +66,18 @@
 
     <script src="{{ asset('assets/js/vendor.bundle.js') }}"></script>
     <script src="{{ asset('assets/js/app.bundle.js') }}"></script>
+
+    <script>
+
+        const passwordInput = document.getElementById('password');
+        const showPasswordCheckbox = document.getElementById('showPassword');
+
+        // Add an event listener to the checkbox to toggle password visibility
+        showPasswordCheckbox.addEventListener('change', function() {
+            // If the checkbox is checked, show the password; otherwise, hide it
+            passwordInput.type = this.checked ? 'text' : 'password';
+        });
+    </script>
 
 
 </body>
