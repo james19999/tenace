@@ -3,8 +3,29 @@
 @section('content')
 
 <div class="col-12 ">
-    <div  style="padding-top: 10px">
-       <a href="{{ route('livreurs.create') }}" class="btn btn-primary" > Ajouter un membre</a>
+    <div class="row"  style="padding-top: 10px">
+         <div class="col-md-4">
+
+             <a href="{{ route('livreurs.create') }}" class="btn btn-primary" > Ajouter un membre</a>
+         </div>
+
+        <div class="col-md-4">
+            <form action="{{ route('useradminlist') }}"  method="GET" >
+                <select name="user_type" id="" class="form-control">
+
+                    <option value="LVS">livreur</option>
+                    <option value="PT">Partenaire</option>
+                    <option value="VDS">Vendeur</option>
+                    <option value="CSA">Caissier</option>
+                    <option value="MNG">Manageur</option>
+                    <option value="ADMINUSER">Administrateur</option>
+                </select>
+
+            </div>
+            <div class="col-md-4">
+                <button type="submit"  class="btn btn-success" >Valider</button>
+            </div>
+        </form>
     </div>
    <div class="card shadow">
        <div class="card-body ">

@@ -129,8 +129,8 @@ class LivreurController extends Controller
     }
 
 
-    public function user_admin_list(){
-        $users=User::where('user_type','ADMINUSER')->latest()->get();
+    public function user_admin_list(Request $request){
+        $users=User::where('user_type',$request->user_type)->latest()->get();
         return view('users.index',compact('users'));
     }
 
