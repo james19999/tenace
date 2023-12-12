@@ -182,7 +182,6 @@ class LivreurController extends Controller
                   # code...
                   $this->updateProdSale($value->product_id,$value->quantity);
                 }
-              $orders->status=$request->status;
                $orders->status=$request->status;
                $orders->user_id=Auth::user()->id;
                $orders->status_order=false;

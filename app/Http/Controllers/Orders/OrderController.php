@@ -3,11 +3,12 @@
 namespace App\Http\Controllers\Orders;
 
 use Carbon\Carbon;
+use App\Models\Product;
 use App\Models\Costumer;
 use App\Models\Orders\Order;
 use Illuminate\Http\Request;
 use App\Http\Controllers\Controller;
-use App\Models\Product;
+use Illuminate\Support\Facades\Auth;
 
 class OrderController extends Controller
 {
@@ -42,6 +43,9 @@ class OrderController extends Controller
 
                  $orders->status=$request->status;
                  $orders->motif=$request->motif;
+                 $orders->user_id=Auth::user()->id;
+                 $orders->status_order=false;
+                 $orders->take=false;
                  $orders->save();
                 return redirect()->back()->with('success','commande annuler');
 
@@ -56,9 +60,12 @@ class OrderController extends Controller
                         # code...
                         $this->updateProdSale($value->product_id,$value->quantity);
                       }
-                    $orders->status=$request->status;
+                      $orders->status=$request->status;
+                      $orders->user_id=Auth::user()->id;
+                      $orders->status_order=false;
+                      $orders->take=false;
 
-                 $orders->save();
+                     $orders->save();
                 return redirect()->back()->with('success','commande valider');
                }
 

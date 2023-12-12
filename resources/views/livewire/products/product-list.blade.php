@@ -98,6 +98,7 @@
                                         <button  style="padding-bottom: 12%" class="btn btn-sm btn-danger"
                                             ><i class="material-icons">delete</i>Supprimer</button>
                                 </form>
+
                                     @endif
                             </div>
                         </td>

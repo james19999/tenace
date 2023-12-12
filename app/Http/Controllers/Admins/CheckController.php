@@ -23,7 +23,7 @@ class CheckController extends Controller
         $auth =Auth::user();
 
          $brouillon ="";
-         if ($auth->user_type=="ADMINUSER") {
+         if ($auth->user_type=="ADMINUSER" || Auth::user()->user_type=="VDS" || Auth::user()->user_type=="MNG") {
              $brouillon=1;
          } else {
             # code...
@@ -117,8 +117,6 @@ class CheckController extends Controller
                         } else {
                             Mail::to('crepinawity@gmail.com')->send(new ParthnerMail(URL::signedRoute('brouillons')));
                         }
-
-
 
                      Cart::instance('cart')->destroy();
                      return redirect()->route('order')->with('messages','Commande effectuée');

@@ -64,9 +64,11 @@
                         <label for="password-confirm">Type:</label>
 
                          <select name="user_type" id="" class="form-control">
-
                              <option value="LVS">livreur</option>
                              <option value="PT">Partenaire</option>
+                             <option value="VDS">Vendeur</option>
+                             <option value="CSA">Caissier</option>
+                             <option value="MNG">Manageur</option>
                              <option value="ADMINUSER">Administrateur</option>
                          </select>
                         </div>

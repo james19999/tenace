@@ -19,6 +19,7 @@
                      <span class="text">Dashboard</span>
                  </a>
              </li>
+
              <li>
                  <a href="{{ route('product') }}" class="">
                      <span class="icon material-icons"  >store
@@ -32,6 +33,7 @@
                      <span class="text">Panier ({{ Cart::instance('cart')->count() }})</span>
                  </a>
              </li>
+
              <li>
                  <a href="{{ route('order') }}" class="">
                      <span class="icon material-icons"  >shopping_cart</span>
@@ -121,8 +123,49 @@
                 </a>
             </li>
 
-             @else
+             @elseif(Auth::user()->user_type=="VDS")
+             <li>
+                <a href="{{ route('product') }}" class="">
+                    <span class="icon material-icons"  >store
+                    </span>
+                    <span class="text">Produits</span>
+                </a>
+            </li>
+            <li wire:poll.2s>
+                <a href="{{ route('productcart') }}" class="">
+                    <span class="icon material-icons">add_shopping_cart</span>
+                    <span class="text">Panier ({{ Cart::instance('cart')->count() }})</span>
+                </a>
+            </li>
+             @elseif (Auth::user()->user_type=="CSA")
+             <li>
+                <a href="{{ route('order') }}" class="">
+                    <span class="icon material-icons"  >shopping_cart</span>
+                    <span class="text">Commandes</span>
+                </a>
+            </li>
+             @elseif (Auth::user()->user_type=="MNG")
+             <li>
+                <a href="{{ route('product') }}" class="">
+                    <span class="icon material-icons"  >store
+                    </span>
+                    <span class="text">Produits</span>
+                </a>
+            </li>
+            <li wire:poll.2s>
+                <a href="{{ route('productcart') }}" class="">
+                    <span class="icon material-icons"  >add_shopping_cart</span>
+                    <span class="text">Panier ({{ Cart::instance('cart')->count() }})</span>
+                </a>
+            </li>
 
+            <li>
+                <a href="{{ route('order') }}" class="">
+                    <span class="icon material-icons"  >shopping_cart</span>
+                    <span class="text">Commandes</span>
+                </a>
+            </li>
+              @else
             <li>
                 <a href="{{ route('authlivrable',Auth::user()->id) }}" class="">
                     <span class="icon material-icons">shopping_cart
