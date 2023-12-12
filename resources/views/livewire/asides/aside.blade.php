@@ -165,6 +165,27 @@
                     <span class="text">Commandes</span>
                 </a>
             </li>
+            <li>
+                <a href="{{ route('history') }}" class="">
+                    <span class="icon material-icons"  >history</span>
+                    <span class="text">Historiques</span>
+                </a>
+            </li>
+
+            <li>
+                <a href="{{ route('livreurs.index') }}" class="">
+                    <span class="icon material-icons"  >directions_bike
+                    </span>
+                    <span class="text">Livreurs</span>
+                </a>
+            </li>
+            <li wire:poll.2s>
+                <a href="{{route('brouillons')}}" class="">
+                    <span class="icon material-icons"  >delete_sweep
+                    </span>
+                    <span class="text">Brouillons ({{$counts}})</span>
+                </a>
+            </li>
               @else
             <li>
                 <a href="{{ route('authlivrable',Auth::user()->id) }}" class="">

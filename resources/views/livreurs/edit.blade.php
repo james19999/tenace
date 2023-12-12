@@ -71,7 +71,7 @@
                              <option value="PT">Partenaire</option>
                              <option value="VDS">Vendeur</option>
                              <option value="CSA">Caissier</option>
-                             <option value="MNG">Manageur</option>
+                             <option value="MNG">Manageur & Secrétaire</option>
                              <option value="ADMINUSER">Administrateur</option>
                          </select>
                         </div>

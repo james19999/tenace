@@ -40,20 +40,27 @@
                          <td style="color: black " class=" pull-right">
 
                              <div class="btn-group btn-group-justified">
-                                <a href="{{ route('livreurs.show',$user) }}" style="color: white" type="button" class="btn btn-success"
-                                >
-                                <i class="material-icons f-16">visibility</i>Details</a>
-                                 <a  href="{{ route('livreurs.edit',$user) }}" style="color: white" type="button" class="btn btn-warning">
-                                     <i class="material-icons">edit</i>
-                                     Modifier</a>
-                                     <form   method="POST" action="{{ route('livreurs.destroy',$user) }}"
-                                     onclick="return confirm('supprimer') "
-                                    >
-                                         @csrf
-                                          @method("DELETE")
-                                        <button  style="padding-bottom: 12%" class="btn btn-sm btn-danger"
-                                         ><i class="material-icons">delete</i>Supprimer</button>
-                                    </form>
+                                  @if (Auth::user()->user_type=="ADMINUSER")
+                                  <a href="{{ route('livreurs.show',$user) }}" style="color: white" type="button" class="btn btn-success"
+                                  >
+                                  <i class="material-icons f-16">visibility</i>Details</a>
+                                   <a  href="{{ route('livreurs.edit',$user) }}" style="color: white" type="button" class="btn btn-warning">
+                                       <i class="material-icons">edit</i>
+                                       Modifier</a>
+                                       <form   method="POST" action="{{ route('livreurs.destroy',$user) }}"
+                                       onclick="return confirm('supprimer') "
+                                      >
+                                           @csrf
+                                            @method("DELETE")
+                                          <button  style="padding-bottom: 12%" class="btn btn-sm btn-danger"
+                                           ><i class="material-icons">delete</i>Supprimer</button>
+                                      </form>
+
+                                  @else
+                                  <a href="{{ route('livreurs.show',$user) }}" style="color: white" type="button" class="btn btn-success"
+                                  >
+                                  <i class="material-icons f-16">visibility</i>Details</a>
+                                  @endif
                              </div>
                          </td>
                       </tr>
