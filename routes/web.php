@@ -41,6 +41,9 @@ Route::middleware(['auth'])->group(function () {
 Route::get('type/expensives',[TypeExpensiveController::class,'index'])->name('type-expensives');
 Route::delete('destroy/expensives/{id}',[TypeExpensiveController::class,'destroy'])->name('destroy-expensives');
 Route::post('type/expensives/create',[TypeExpensiveController::class,'create'])->name('type-expensives-create');
+Route::put('/expensives/{id}', [TypeExpensiveController::class,'update'])->name('type-expensives-update');
+
+
 
 Route::get('show/{id}/product',[StockController::class,'show_product'])->name('show-product');
 Route::post('entrer/stock/{id}',[StockController::class,'enter_stocks'])->name('enter_stock');

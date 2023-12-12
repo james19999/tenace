@@ -35,6 +35,10 @@
             </div>
         </div>
     </div>
+
+
+
+
    <div class="card shadow">
        <div class="card-body ">
             @if (Session::has('messages'))
@@ -64,7 +68,13 @@
                          <td style="color: black " class=" pull-right">
 
                              <div class="btn-group btn-group-justified">
-                                 <a  href="" style="color: white" type="button" class="btn btn-warning">
+
+                                 <a  href="{{ route('type-expensives-update',$type) }}" style="color: white" type="button" class="btn btn-warning"
+
+                                 data-hover="tooltip" data-placement="top"
+                                 data-target="#modal-edit-customers{{$type->id }}" data-toggle="modal"
+                                  id="modal-edit"
+                                 >
                                      <i class="material-icons">edit</i>
                                      Modifier</a>
 
@@ -80,6 +90,29 @@
                              </div>
                          </td>
                       </tr>
+                      <div class="modal fade" id="modal-edit-customers{{$type->id}}" tabindex="-1" aria-labelledby="defaultModalLabel" aria-hidden="true">
+                        <div class="modal-dialog">
+                            <div class="modal-content">
+                                <div class="modal-header">
+                                    <h4 class="modal-title" id="defaultModalLabel">Modifier le  type de dépense</h4>
+                                    <button type="button" class="btn btn-light btn-circle dismiss" data-dismiss="modal" aria-label="Close">
+                                        <span aria-hidden="true" class="material-icons">close</span>
+                                    </button>
+                                </div>
+                                <div class="modal-body">
+                                    <form action="{{ route('type-expensives-update',$type) }}" method="POST">
+                                        @method('PUT')
+                                        @csrf
+                                         <input type="text" name="name" value="{{ $type->name }}" class="form-control col-12" id="" placeholder="libelle" required>
+                                </div>
+                                <div class="modal-footer">
+                                    <button type="button" class="btn btn-secondary" data-dismiss="modal">Fermer</button>
+                                    <button type="submit" class="btn btn-primary">Modifier</button>
+                                </div>
+                            </form>
+                            </div>
+                        </div>
+                     </div>
                          @endforeach
 
                    </tbody>

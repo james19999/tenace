@@ -11,7 +11,7 @@ class TypeExpensiveController extends Controller
      public function index()
      {
      # code...
-     $typeexpensives=TypeExpensive::all();
+     $typeexpensives=TypeExpensive::latest()->get();
      return view('typeexpensive.index',compact('typeexpensives'));
      }
 
@@ -33,6 +33,18 @@ class TypeExpensiveController extends Controller
             } else {
                 return back()->with('messages','error');;
             }
-}
+      }
+
+
+
+      public function update(Request $request, $id)
+      {
+          $item = TypeExpensive::find($id);
+          $item->update($request->all());
+
+          return back()->with('messages','Type dépense  modifier');
+
+      }
+
 
 }
