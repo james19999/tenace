@@ -211,6 +211,29 @@
                     <span class="text">Brouillons ({{$counts}})</span>
                 </a>
             </li>
+            <li>
+                <a href="#authenticationPage" class="" data-toggle="collapse">
+                    <span class="caret material-icons">arrow_right</span>
+                    <span class="icon material-icons">money</span>
+                    <span class="text">Comptabilité</span>
+                </a>
+
+                <ul class="collapse" id="authenticationPage">
+                    <li>
+                        <a href="{{route('type-expensives')}}" class="">
+                            <span class="icon material-icons">remove</span>
+                            <span class="text">Type de dépense</span>
+                        </a>
+                    </li>
+                    <li>
+                        <a href="{{ route('expensives') }}" class="">
+                            <span class="icon material-icons">remove</span>
+                            <span class="text">Dépense</span>
+                        </a>
+                    </li>
+
+                </ul>
+            </li>
               @else
             <li>
                 <a href="{{ route('authlivrable',Auth::user()->id) }}" class="">

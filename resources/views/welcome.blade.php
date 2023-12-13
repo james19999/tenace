@@ -37,7 +37,7 @@
                             </span>
                             @enderror
                         </div>
-                        <div class="form-group">
+                        <div class="form-group mt-2">
                             <input type="password" id="password" class="form-control @error('password') is-invalid   @enderror"  placeholder="Mot de passe" name="password" required >
                             @error('password')
                             <span class="invalid-feedback" role="alert">
@@ -45,7 +45,11 @@
                             </span>
                            @enderror
                         </div>
-                        <input type="checkbox" id="showPassword"> Voir le mot de passe
+                        <div class="form-group form-check">
+                            <input type="checkbox" class="form-check-input" id="showPassword">
+                            <label class="form-check-label" for="exampleCheck1">Voir le mot de passe</label>
+                        </div>
+
                         <button class="btn btn-primary btn-block my-4">
                             Connectez-vous
                         </button>
