@@ -45,7 +45,7 @@ Route::post('type/expensives/create',[TypeExpensiveController::class,'create'])-
 Route::put('type/expensives/expensives/{id}', [TypeExpensiveController::class,'update'])->name('typeexpensives');
 
 
-Route::get('repport/expensives',[ExpensiveController::class,'repport'])->name('repport-expensives');
+Route::get('erport/expensive/repport/expensives',[ExpensiveController::class,'repport'])->name('repport-expensives');
 
 Route::get('/expensives',[ExpensiveController::class,'index'])->name('expensives');
 Route::delete('destroy/expensives/{id}',[ExpensiveController::class,'destroy'])->name('destroy-expensives');
