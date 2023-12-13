@@ -46,7 +46,7 @@
                                      </select>
                                  </div>
                                  <div class="form-group">
-                                      <label for="">Montant/ex: 100.1</label>
+                                      <label for="">Montant</label>
                                      <input type="number" name="amount" class="form-control col-12" value="{{ old('amount',0) }}" id="">
                                  </div>
                         </div>
@@ -162,7 +162,7 @@
                                             </select>
                                         </div>
                                         <div class="form-group">
-                                             <label for="">Montant/ex: 100.1</label>
+                                             <label for="">Montant</label>
                                             <input type="number" name="amount" class="form-control col-12" value="{{ old('amount',$expensive->amount) }}" id="">
                                         </div>
                                 </div>
