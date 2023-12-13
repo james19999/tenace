@@ -5,15 +5,15 @@ use Illuminate\Support\Facades\Route;
 use App\Http\Livewire\Products\ProductCart;
 use App\Http\Livewire\Products\ProductForm;
 use App\Http\Livewire\Products\ProductList;
+use App\Http\Controllers\Stock\StockController;
 use App\Http\Controllers\Admins\CheckController;
 use App\Http\Controllers\Orders\OrderController;
 use App\Http\Controllers\Admins\DashboarController;
 use App\Http\Controllers\Livreurs\LivreurController;
 use App\Http\Controllers\Costumers\CostumerController;
-use App\Http\Controllers\Brouillons\BrouillonController;
-use App\Http\Controllers\Stock\StockController;
-use App\Http\Controllers\TypeExpensive\TypeExpensiveController;
 use App\Http\Controllers\Expensive\ExpensiveController;
+use App\Http\Controllers\Brouillons\BrouillonController;
+use App\Http\Controllers\TypeExpensive\TypeExpensiveController;
 
 /*
 |--------------------------------------------------------------------------
@@ -42,13 +42,14 @@ Route::middleware(['auth'])->group(function () {
 Route::get('type/expensives',[TypeExpensiveController::class,'index'])->name('type-expensives');
 Route::delete('destroy/expensives/{id}',[TypeExpensiveController::class,'destroy'])->name('destroy-expensives');
 Route::post('type/expensives/create',[TypeExpensiveController::class,'create'])->name('type-expensives-create');
-Route::put('/expensives/{id}', [TypeExpensiveController::class,'update'])->name('type-expensives-update');
+Route::put('type/expensives/expensives/{id}', [TypeExpensiveController::class,'update'])->name('typeexpensives');
+
+
 
 Route::get('/expensives',[ExpensiveController::class,'index'])->name('expensives');
 Route::delete('destroy/expensives/{id}',[ExpensiveController::class,'destroy'])->name('destroy-expensives');
 Route::post('/expensives/create',[ExpensiveController::class,'create'])->name('expensives-create');
 Route::put('/expensives/{id}', [ExpensiveController::class,'update'])->name('expensives-update');
-
 
 
 Route::get('show/{id}/product',[StockController::class,'show_product'])->name('show-product');

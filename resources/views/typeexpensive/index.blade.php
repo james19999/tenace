@@ -69,7 +69,7 @@
 
                              <div class="btn-group btn-group-justified">
 
-                                 <a  href="{{ route('type-expensives-update',$type) }}" style="color: white" type="button" class="btn btn-warning"
+                                 <a  href="{{ route('typeexpensives',$type) }}" style="color: white" type="button" class="btn btn-warning"
 
                                  data-hover="tooltip" data-placement="top"
                                  data-target="#modal-edit-customers{{$type->id }}" data-toggle="modal"
@@ -100,7 +100,7 @@
                                     </button>
                                 </div>
                                 <div class="modal-body">
-                                    <form action="{{ route('type-expensives-update',$type) }}" method="POST">
+                                    <form action="{{ route('typeexpensives',$type) }}" method="POST">
                                         @method('PUT')
                                         @csrf
                                          <input type="text" name="name" value="{{ $type->name }}" class="form-control col-12" id="" placeholder="libelle" required>
