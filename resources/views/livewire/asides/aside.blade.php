@@ -35,7 +35,7 @@
                         </a>
                     </li>
                     <li>
-                        <a href="login.html" class="">
+                        <a href="{{ route('expensives') }}" class="">
                             <span class="icon material-icons">remove</span>
                             <span class="text">Dépense</span>
                         </a>

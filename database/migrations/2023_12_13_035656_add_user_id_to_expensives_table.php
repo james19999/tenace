@@ -11,12 +11,8 @@ return new class extends Migration
      */
     public function up(): void
     {
-        Schema::create('expensives', function (Blueprint $table) {
-            $table->id();
-            $table->longText('description');
-            $table->date('date_create');
-            $table->string('type_expensive_id');
-            $table->timestamps();
+        Schema::table('expensives', function (Blueprint $table) {
+            $table->string('user_id')->nullable();
         });
     }
 
@@ -25,6 +21,9 @@ return new class extends Migration
      */
     public function down(): void
     {
-        Schema::dropIfExists('expensives');
+        Schema::table('expensives', function (Blueprint $table) {
+            //
+            $table->dropColumn('user_id');
+        });
     }
 };

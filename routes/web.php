@@ -13,6 +13,7 @@ use App\Http\Controllers\Costumers\CostumerController;
 use App\Http\Controllers\Brouillons\BrouillonController;
 use App\Http\Controllers\Stock\StockController;
 use App\Http\Controllers\TypeExpensive\TypeExpensiveController;
+use App\Http\Controllers\Expensive\ExpensiveController;
 
 /*
 |--------------------------------------------------------------------------
@@ -42,6 +43,11 @@ Route::get('type/expensives',[TypeExpensiveController::class,'index'])->name('ty
 Route::delete('destroy/expensives/{id}',[TypeExpensiveController::class,'destroy'])->name('destroy-expensives');
 Route::post('type/expensives/create',[TypeExpensiveController::class,'create'])->name('type-expensives-create');
 Route::put('/expensives/{id}', [TypeExpensiveController::class,'update'])->name('type-expensives-update');
+
+Route::get('/expensives',[ExpensiveController::class,'index'])->name('expensives');
+Route::delete('destroy/expensives/{id}',[ExpensiveController::class,'destroy'])->name('destroy-expensives');
+Route::post('/expensives/create',[ExpensiveController::class,'create'])->name('expensives-create');
+Route::put('/expensives/{id}', [ExpensiveController::class,'update'])->name('expensives-update');
 
 
 
