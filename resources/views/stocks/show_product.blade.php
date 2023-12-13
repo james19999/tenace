@@ -277,7 +277,7 @@
                                     <th style="width: 20%">Quantité</th>
                                     <th style="width: 20%">Montant</th>
                                     <th style="width: 20%">Date de création</th>
-                                    {{--  <th style="width: 20%">Actions</th>  --}}
+                                    <th style="width: 20%">Créer par</th>
                                 </tr>
                             </thead>
                             <tbody>
@@ -291,6 +291,7 @@
                                     <td style="color: black ">{{ $items->qt_stock}}</td>
                                     <td style="color: black ">{{ $items->amount}}</td>
                                     <td  style="color: black ; ">{{ $items->created_at }}</td>
+                                    <td  style="color: black ; ">{{ $items->user->name ?? '' }}</td>
 
 
                                 </tr>
@@ -303,7 +304,7 @@
                                     <th style="width: 20%">Quantité</th>
                                     <th style="width: 20%">Montant</th>
                                     <th style="width: 20%">Date de création</th>
-                                    {{--  <th style="width: 20%">Actions</th>  --}}
+                                    <th style="width: 20%">Créer par</th>
                                 </tr>
 
                             </tfoot>
@@ -363,7 +364,7 @@
                                <th style="width: 20%">Raison</th>
                                <th style="width: 20%">Quantité</th>
                                <th style="width: 20%">Date de création</th>
-                               {{--  <th style="width: 20%">Actions</th>  --}}
+                               <th style="width: 20%">Créer par</th>
                            </tr>
                        </thead>
                        <tbody>
@@ -377,6 +378,7 @@
                                <td style="color: black ">{{ $item->raison}}</td>
                                <td style="color: black ">{{ $item->qt_stock}}</td>
                                <td  style="color: black ; ">{{ $item->created_at }}</td>
+                               <td  style="color: black ; ">{{ $item->user->name ?? '' }}</td>
 
 
                            </tr>
@@ -389,7 +391,7 @@
                                <th style="width: 20%">Raison</th>
                                <th style="width: 20%">Quantité</th>
                                <th style="width: 20%">Date de création</th>
-                               {{--  <th style="width: 20%">Actions</th>  --}}
+                               <th style="width: 20%">Créer</th>
                            </tr>
 
                        </tfoot>

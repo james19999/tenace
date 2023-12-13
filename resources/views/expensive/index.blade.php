@@ -9,6 +9,15 @@
             <button type="button" class="btn btn-primary" data-toggle="modal" data-target="#defaultModal">
                 Créer une dépense
             </button>
+            <a href="{{ route('repport-expensives') }}" type="button" class="btn btn-primary">
+                Rapport sur les dépenses
+            </a>
+            <button type="button" class="btn btn-dark" data-toggle="modal" data-target="#defaultModal">
+                Total dépense : {{ $expensives->sum('amount') }} XOF
+            </button>
+            {{--  <button type="button" class="btn btn-primary" data-toggle="modal" data-target="#defaultModal">
+                Créer une dépense
+            </button>  --}}
 
             <!-- Modal -->
             <div class="modal fade" id="defaultModal" tabindex="-1" aria-labelledby="defaultModalLabel" aria-hidden="true">

@@ -5,6 +5,7 @@ namespace App\Http\Livewire\Products;
 use App\Models\Product;
 use Livewire\Component;
 use App\Models\EnterStock;
+use Illuminate\Support\Facades\Auth;
 
 class ProductForm extends Component
 {
@@ -50,6 +51,8 @@ class ProductForm extends Component
                     [
                         'qt_stock'=>$productData['qt_initial'],
                         'amount'=>$productData['price_by'],
+                        'user_id'=>Auth::user()->id,
+
 
                     ]
                     );

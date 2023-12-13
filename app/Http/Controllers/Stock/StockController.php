@@ -3,10 +3,11 @@
 namespace App\Http\Controllers\Stock;
 
 use App\Models\Product;
+use App\Models\OutStock;
 use App\Models\EnterStock;
 use Illuminate\Http\Request;
 use App\Http\Controllers\Controller;
-use App\Models\OutStock;
+use Illuminate\Support\Facades\Auth;
 
 class StockController extends Controller
 {
@@ -30,6 +31,7 @@ public  function enter_stocks(Request $request ,$id){
             'qt_stock'=>$request->qt_stock,
             'amount'=>$request->amount,
             'product_id'=>$request->product_id,
+            'user_id'=>Auth::user()->id,
     ]);
     $Products->price_by+=$request->amount;
    $Products->save();
@@ -50,6 +52,8 @@ public  function out_stock(Request $request,$id){
           'qt_stock'=>$request->qt_stock,
           'raison'=>$request->raison,
           'product_id'=>$Products->id,
+          'user_id'=>Auth::user()->id,
+
       ]);
       if($output->qt_stock<=$Products->qt_initial){
 
