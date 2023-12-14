@@ -10,9 +10,10 @@
         <div class="col-12 col-sm-7 ">
             <div class="card shadow">
                 <div class="card-header" style="background-color: #7e1615">
+                    <a style="color: white" href="{{ route('product') }}">Retour</a>
                     <h4 style="text-align: center;font-weight: 900 ;color: white">
 
-                    modifier le produit
+                    Modifier le produit
                     </h4>
                 </div>
                 <div class="card-body">

@@ -1,6 +1,7 @@
 @extends('layouts.admin')
 
 @section('content')
+<a href="{{ route('product') }}">Retour</a>
   <div class="container">
 
       <div class="row">

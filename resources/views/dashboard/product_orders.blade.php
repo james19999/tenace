@@ -1,6 +1,7 @@
 @extends('layouts.admin')
 
 @section('content')
+<a href="{{ route('product') }}">Retour</a>
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 
 <canvas id="productOrdersChart" width="400" height="200"></canvas>

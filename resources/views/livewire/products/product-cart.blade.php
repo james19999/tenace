@@ -1,6 +1,7 @@
  <form method="POST" action="{{ route('palceorder') }}">
     @csrf
      <div class="col-12 ">
+
         @if (Session::has('error'))
         <div class="alert alert-danger">
            <strong>{{ session('error') }}</strong>
@@ -25,7 +26,7 @@
                  @error('time') <span class="text-danger">{{ $message }}</span>@enderror
              </div>
              <div class="col-md-3" style="padding-top: 1%">
-                 <input type="number" name="tax" id="" value="{{old('tax')}}"  placeholder="Frais de livraison" class="form-control" >
+                 <input type="number" name="tax" id="" value="{{old('tax',0)}}"  placeholder="Frais de livraison" class="form-control" >
                  @error('tax') <span class="text-danger">{{ $message }}</span>@enderror
              </div>
              <div class="col-md-3" style="padding-top: 1%">
@@ -181,7 +182,7 @@
             </div>
         </div>
     </form>
-     </div>
+ </div>
 
 
 

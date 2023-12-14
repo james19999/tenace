@@ -1,7 +1,7 @@
 @extends('layouts.admin')
 
 @section('content')
-
+<a href="{{ route('costumer.index') }}">Retour</a>
 <div class="col-12 ">
 
     <div  style="padding-top: 10px">
