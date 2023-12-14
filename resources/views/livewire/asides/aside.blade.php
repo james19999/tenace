@@ -1,7 +1,7 @@
 <aside class="sidebar">
     <nav class="navbar">
         <a class="navbar-brand brand-title" href="#">
-            <img src="{{ asset('assets/images/tena.png') }}" style="background-color: white "  alt="" class="logo img-thumbnail ">TENACE COS
+            <img src="{{ asset('assets/images/tena.png') }}" style="background-color: white ; "  alt="" class="logo img-thumbnail ">TENACE COS
         </a>
     </nav>
     <nav class="navigation shadow-sm">

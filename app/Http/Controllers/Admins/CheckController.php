@@ -103,7 +103,7 @@ class CheckController extends Controller
                           $orderItem->save();
                       }
 
-                        if (Auth::user()->user_type=="ADMINUSER") {
+                        if (Auth::user()->user_type=="ADMINUSER" || Auth::user()->user_type=="MNG") {
                               if ($request->type=="PU") {
                                 # code...
 
@@ -162,7 +162,7 @@ class CheckController extends Controller
             }
 
 
-            if (Auth::user()->user_type=="ADMINUSER") {
+            if (Auth::user()->user_type=="ADMINUSER" || Auth::user()->user_type=="MNG") {
                  if($request->type=="PU"){
 
                      foreach ($users as $key => $user) {
