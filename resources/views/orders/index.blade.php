@@ -72,6 +72,7 @@
                                  <a href="{{ route('ordershow',$order) }}" style="color: white" type="button" class="btn btn-success"
                                  >
                                  <i class="material-icons f-16">visibility</i>Details</a>
+
                                  <a href="{{ route('check-type',$order) }}" style="color: white" type="button" class="btn b
                                    @if ($order->type=="PR")
                                       btn-dark
@@ -85,6 +86,7 @@
                                  >
                                  <i class="material-icons f-16">edit</i>{{ $order->type }}</a>
 
+
                                  <form   method="POST" action="{{ route('deleteorder',$order) }}"
                                  onclick="return confirm('supprimer') "
                                 >
@@ -97,6 +99,19 @@
                                   <a href="{{ route('ordershow',$order) }}" style="color: white" type="button" class="btn btn-success"
                                   >
                                   <i class="material-icons f-16">visibility</i>Details</a>
+
+                                  <a href="{{ route('check-type',$order) }}" style="color: white" type="button" class="btn b
+                                  @if ($order->type=="PR")
+                                     btn-dark
+                                  @else
+
+                                  btn-warning
+                                  @endif
+
+                                "
+
+                                >
+                                <i class="material-icons f-16">edit</i>{{ $order->type }}</a>
                                  @endif
                              </div>
                          </td>
