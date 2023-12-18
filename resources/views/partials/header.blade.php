@@ -48,7 +48,8 @@
                  <form id="logout-form" action="{{ route('logout') }}" method="POST" class="d-none">
                      @csrf
                  </form>
-
+                 <a href="http://tenace-ghana.digital-services-home.com/">Tenac-cos GHANA</a>
+                 <a href="https://tenace.digital-services-home.com/">Tenac-cos TOGO</a>
                 </div>
             </li>
         </ul>
