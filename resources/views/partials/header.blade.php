@@ -39,17 +39,17 @@
                     <span class="dropdown-item">
                         {{ Auth::user()->name }}
                     </span>
-                 <a class="dropdown-item" href="{{ route('logout') }}"
-                    onclick="event.preventDefault();
-                                  document.getElementById('logout-form').submit();">
-                     {{ __('Déconnexion') }}
-                 </a>
+                    <a href="http://tenace-ghana.digital-services-home.com/">Tenac-cos GHANA</a> <br>
+                    <a href="https://tenace.digital-services-home.com/">Tenac-cos TOGO</a>
+                    <a class="dropdown-item" href="{{ route('logout') }}"
+                       onclick="event.preventDefault();
+                                     document.getElementById('logout-form').submit();">
+                        {{ __('Déconnexion') }}
+                    </a>
 
-                 <form id="logout-form" action="{{ route('logout') }}" method="POST" class="d-none">
-                     @csrf
-                 </form>
-                 <a href="http://tenace-ghana.digital-services-home.com/">Tenac-cos GHANA</a>
-                 <a href="https://tenace.digital-services-home.com/">Tenac-cos TOGO</a>
+                    <form id="logout-form" action="{{ route('logout') }}" method="POST" class="d-none">
+                        @csrf
+                    </form>
                 </div>
             </li>
         </ul>
