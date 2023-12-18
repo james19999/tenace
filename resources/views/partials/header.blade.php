@@ -39,8 +39,8 @@
                     <span class="dropdown-item">
                         {{ Auth::user()->name }}
                     </span>
-                    <a href="http://tenace-ghana.digital-services-home.com/">Tenac-cos GHANA</a> <br>
-                    <a href="https://tenace.digital-services-home.com/">Tenac-cos TOGO</a>
+                    <a  class="dropdown-item" href="http://tenace-ghana.digital-services-home.com/">Tenac-cos GHANA</a>
+                    <a class="dropdown-item" href="https://tenace.digital-services-home.com/">Tenac-cos TOGO</a>
                     <a class="dropdown-item" href="{{ route('logout') }}"
                        onclick="event.preventDefault();
                                      document.getElementById('logout-form').submit();">
