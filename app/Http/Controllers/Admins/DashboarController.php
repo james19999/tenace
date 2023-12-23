@@ -145,7 +145,7 @@ class DashboarController extends Controller
 
         $product=Product::findOrfail($id);
 
-        $product->update(['name'=>$request->name,'price'=>$request->price]);
+        $product->update(['name'=>$request->name,'price'=>$request->price,'qts_seuil'=>$request->qts_seuil]);
 
         return redirect()->route('product')->with('messages','produit modifié');
 
@@ -238,7 +238,7 @@ class DashboarController extends Controller
         $Products = Product::where('qts_seuil', '>=', DB::raw('qt_initial'))
         ->orWhere(function ($query) {
             $query->where('qt_initial', 0);
-        });
+        })->get();
 
         return view('dashboard.rupture',compact('Products'));
     }
