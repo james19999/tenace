@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Admins;
 use Carbon\Carbon;
 use App\Models\User;
 use App\Models\Product;
+use App\Models\Expensive;
 use App\Models\Orders\Order;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -108,7 +109,26 @@ class DashboarController extends Controller
         ->whereDate('created_at',Carbon::today())
         ->sum('total');
 
-        return view('dashboard.dashboard',compact('chart1','chart2', 'chart3','chart4', 'orders','Ordered', 'Orderdelivered','Orderall', 'OrderdeAmount'));
+        $startOfWeek = Carbon::now()->startOfWeek();
+
+        $totalOrdersThisWeek = Order::where('created_at', '>=', $startOfWeek)
+         ->
+         where('status', 'delivered')
+        ->sum('total');
+        $expensive=Expensive::sum('amount');
+
+        $anneeEnCours = now()->year;
+
+        $totalCommandes = Order::whereYear('created_at', $anneeEnCours)
+            ->where('status', 'delivered')
+            ->sum('total');
+            $rupture = Product::where('qts_seuil', '>=', DB::raw('qt_initial'))
+            ->orWhere(function ($query) {
+                $query->where('qt_initial', 0);
+            })
+            ->count();
+
+        return view('dashboard.dashboard',compact('rupture','totalCommandes','expensive','totalOrdersThisWeek','chart1','chart2', 'chart3','chart4', 'orders','Ordered', 'Orderdelivered','Orderall', 'OrderdeAmount'));
      }
 
 
@@ -213,4 +233,13 @@ class DashboarController extends Controller
 
     return view('dashboard.product_orders', compact('productOrders'));
 }
+
+    public function rupture(){
+        $Products = Product::where('qts_seuil', '>=', DB::raw('qt_initial'))
+        ->orWhere(function ($query) {
+            $query->where('qt_initial', 0);
+        });
+
+        return view('dashboard.rupture',compact('Products'));
+    }
 }

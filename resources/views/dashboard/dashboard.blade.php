@@ -5,6 +5,7 @@
 
 <div class="row">
    @if (Auth::user()->user_type=="ADMINUSER")
+
     <div class="col-12 col-sm-6 col-md-6 col-lg-3">
         <div class="card shadow">
             <div class="card-body">
@@ -107,6 +108,116 @@
             </div>
         </div>
     </div>
+
+
+    <div class="col-12 col-sm-6 col-md-6 col-lg-3">
+        <div class="card shadow">
+            <div class="card-body">
+                <div class="row">
+                    <div class="col">
+                        <h5 class="text-uppercase text-muted mb-0 card-title">Chiffre d'affaire annuel</h5><span style="font-size: 130%" class="h1 font-weight-bold mb-0">{{ $totalCommandes }} XOF</span>
+                    </div>
+                    <div class="col-auto col">
+                        <div>
+                            <button class="btn btn-transparent-primary btn-lg btn-circle">
+
+                                <img src="{{ asset('assets/images/chi.png') }}" width="40" height="40" alt="" srcset="">
+
+                            </button>
+
+
+                        </div>
+                    </div>
+                </div>
+                {{-- <p class="mt-3 mb-0 text-sm">
+
+                    <span class="text-nowrap">this month</span>
+                    <span class="text-success float-right ml-2"> <i class="fa fa-arrow-up"></i>
+                        8%</span>
+                </p> --}}
+            </div>
+        </div>
+    </div>
+    <div class="col-12 col-sm-6 col-md-6 col-lg-3">
+        <div class="card shadow">
+            <div class="card-body">
+                <div class="row">
+                    <div class="col">
+                        <h5 class="text-uppercase text-muted mb-0 card-title">Total des dépenses</h5><span style="font-size: 130%" class="h1 font-weight-bold mb-0">{{ $expensive }} XOF</span>
+                    </div>
+                    <div class="col-auto col">
+                        <div>
+                            <button class="btn btn-transparent-primary btn-lg btn-circle">
+
+                                <img src="{{ asset('assets/images/dep.png') }}" width="40" height="40" alt="" srcset="">
+
+                            </button>
+                        </div>
+                    </div>
+                </div>
+                {{-- <p class="mt-3 mb-0 text-sm">
+
+                    <span class="text-nowrap ">since last month</span>
+                    <span class="text-success float-right ml-2">
+                        <i class="fa fa-arrow-up"></i>
+                        3.48%</span>
+                </p> --}}
+            </div>
+        </div>
+    </div>
+    <div class="col-12 col-sm-6 col-md-6 col-lg-3">
+        <div class="card shadow">
+            <div class="card-body">
+                <div class="row">
+                    <div class="col">
+                        <h5 class="text-uppercase text-muted mb-0 card-title">Chiffre d'affaire hebdomadaire</h5><span style="font-size: 130%" class="h1 font-weight-bold mb-0">{{ $totalOrdersThisWeek }} XOF</span>
+                    </div>
+                    <div class="col-auto col">
+                        <div>
+                            <button class="btn btn-transparent-primary btn-lg btn-circle">
+                                <img src="{{ asset('assets/images/hb.png') }}" width="40" height="40" alt="" srcset="">
+
+                            </button>
+                        </div>
+                    </div>
+                </div>
+                {{-- <p class="mt-3 mb-0 text-sm">
+                    <span class="text-nowrap">since last month</span>
+                    <span class="text-danger float-right ml-2"> <i class="fa fa-arrow-down"></i>
+                        3.48%</span>
+                </p> --}}
+            </div>
+        </div>
+    </div>
+
+    <div class="col-12 col-sm-6 col-md-6 col-lg-3">
+        <a href="{{ route('rupture') }}">
+
+            <div class="card shadow">
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col">
+                            <h5 class="text-uppercase text-muted mb-0 card-title">Produits en rupture</h5><span  style="font-size: 130%" class="h1 font-weight-bold mb-0">{{ $rupture }}</span>
+                        </div>
+                        <div class="col-auto col">
+                            <div>
+                                <button class="btn btn-transparent-primary btn-lg btn-circle">
+                                    <img src="{{ asset('assets/images/rup.png') }}" width="40" height="40" alt="" srcset="">
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                    {{-- <p class="mt-3 mb-0 text-sm">
+                        <span class="text-nowrap">since last month</span>
+                        <span class="text-danger float-right ml-2"> <i class="fa fa-arrow-down"></i>
+                            3.48%</span>
+                    </p> --}}
+                </div>
+            </div>
+        </a>
+    </div>
+
+
     <div class="col-12 col-sm-12 col-md-12 col-lg-8">
         <div class="card shadow">
             <div class="card-body">
