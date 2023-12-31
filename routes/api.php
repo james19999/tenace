@@ -24,6 +24,7 @@ Route::prefix('gest-plus')->group(function () {
 
  Route::middleware('auth:sanctum')->group(function () {
    Route::post('logout/user',[ApiController::class,'logout_user']);
+   Route::post('change/order:status/user/{id}',[ApiController::class,'change_order_status_user']);
    Route::get('get/order/livrable',[ApiController::class,'get_order_livrable']);
    Route::get('order/detail/{id}',[ApiController::class,'order_detail']);
    Route::get('check/livraison/take/{id}',[ApiController::class,'check_livraison_take']);

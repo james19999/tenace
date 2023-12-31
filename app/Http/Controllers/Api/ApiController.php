@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Api;
 
 use Carbon\Carbon;
 use App\Models\User;
+use App\Models\Product;
 use App\Models\Orders\Order;
 use Illuminate\Http\Request;
 use PhpParser\Node\Stmt\TryCatch;
@@ -94,7 +95,7 @@ class ApiController extends Controller
             ->whereDate('created_at',Carbon::today())
             ->where('brouillon',1)
             ->where('type','PU')
-            ->with(['costumer','user'])
+            ->with(['costumer','user' ,'orderItems.product'])
             ->get();
           return Response::json(['status'=>true,'order'=>$orders]);
         } catch (\Throwable $th) {
@@ -139,12 +140,12 @@ class ApiController extends Controller
                       $orders->status_order=true;
                       $orders->take=true;
                       $orders->save();
-                      return Response::json(['status'=>true ,'messages'=>"commande ajouter"]);
+                      return Response::json(['status'=>true ,'messages'=>"Commande ajouter"]);
                   }else{
-                      return  Response::json(['status'=>false,'messages'=>"Vous avez des commandés non livrés"]);
+                      return  Response::json(['status'=>false,'messages'=>"Vous avez des commandés non livrées"]);
                   }
           }else{
-            return  Response::json(['status'=>400,'messages'=>"commande déjà pris"]);
+            return  Response::json(['status'=>400,'messages'=>"Commande déjà prise"]);
 
           }
 
@@ -156,11 +157,91 @@ class ApiController extends Controller
             $orders =Order::where('user_id',Auth::user()->id)
             ->where('status_order',true)
             ->whereDate('created_at',Carbon::today())
+            ->with(['costumer','user' ,'orderItems.product'])
             ->get();
              return Response::json(['status'=>true,'orders'=>$orders]);
           } catch (\Throwable $th) {
             //throw $th;
           }
       }
+
+
+
+
+
+
+
+
+
+      public function change_order_status_user(Request $request,$id){
+          try {
+            //code...
+            $orders=Order::findOrfail($id);
+
+             if($orders){
+                 if($request->status=="canceled"){
+                    $validator=Validator::make($request->all(),['motif'=>'required'],
+                    ['motif.required' => 'Entrer le motif d\'annulation.']);
+
+
+
+                   $orders->status=$request->status;
+                   $orders->motif=$request->motif;
+                   $orders->user_id=Auth::user()->id;
+                   $orders->status_order=false;
+                   $orders->take=false;
+                   $orders->save();
+                  return Response::json(['status'=>true,'messages'=>'Commande annuler']);
+
+                 }else if($request->status=="delivered"){
+                    $order=Order::where('id',$orders->id)->first();
+                    foreach ($order->orderItems as $key => $value) {
+                      # code...
+                      $this->updateProdSale($value->product_id,$value->quantity);
+                    }
+                   $orders->status=$request->status;
+                   $orders->user_id=Auth::user()->id;
+                   $orders->status_order=false;
+                   $orders->take=false;
+
+                   $orders->save();
+                  return Response::json(['status'=>true,'messages'=>'Commande valider']);
+
+                 }
+
+             }else{
+                return Response::json(['status'=>false,'messages'=>'error']);
+
+
+             }
+          } catch (\Throwable $e) {
+            //throw $th;
+            return response()->json(['status' => false, 'error' => $e->getMessage()]);
+
+          }
+  }
+
+
+
+  public function updateProdSale($prod_id,$newQty)
+  {
+      $prod = Product::where('id',$prod_id)->first();
+      if ($prod) {
+          $qty_init = $prod->qt_initial;
+          $qts_sell = $prod->qts_sell;
+          $qty_init -=$newQty;
+          //dd($qty_init);
+          $prod->qt_initial = $qty_init;
+          $qts_sell +=intval($newQty);
+          $prod->qts_sell = $qts_sell;
+          $bnvendu=($prod->price - $prod->price_market) *$qts_sell;
+          $prod->benefice =$bnvendu;
+          //dd($prod->qts_sell);
+          $prod->update();
+          return true;//$prod->qt_initial;
+      }else{
+          return false;
+      }
+  }
     //end order
 }

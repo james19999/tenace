@@ -247,6 +247,8 @@ class LivreurController extends Controller
 
         if($order->take==true){
          $order->take=false;
+         $order->status_order=false;
+         $order->user_id=null;
          $order->save();
          return back();
 
