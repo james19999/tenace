@@ -115,9 +115,11 @@ class DashboarController extends Controller
          ->
          where('status', 'delivered')
         ->sum('total');
-        $expensive=Expensive::sum('amount');
+
 
         $anneeEnCours = now()->year;
+
+        $expensive=Expensive::whereYear('created_at', $anneeEnCours)->sum('amount');
 
         $totalCommandes = Order::whereYear('created_at', $anneeEnCours)
             ->where('status', 'delivered')
