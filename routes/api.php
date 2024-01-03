@@ -29,6 +29,7 @@ Route::prefix('gest-plus')->group(function () {
    Route::get('order/detail/{id}',[ApiController::class,'order_detail']);
    Route::get('check/livraison/take/{id}',[ApiController::class,'check_livraison_take']);
    Route::get('auth/user/livrable',[ApiController::class,'auth_user_livrable']);
+   Route::get('auth/user/livrable/list',[ApiController::class,'auth_user_livrable_list']);
  });
 
 });

@@ -166,6 +166,23 @@ class ApiController extends Controller
       }
 
 
+      public function auth_user_livrable_list(){
+        try {
+          //code...
+          $orders =Order::where('user_id',Auth::user()->id)
+          ->where('status','delivered')
+          ->where('type','PU')
+          ->where('brouillon',1)
+          ->whereDate('created_at',Carbon::today())
+          ->with(['costumer','user' ,'orderItems.product'])
+          ->get();
+           return Response::json(['status'=>true,'orders'=>$orders]);
+        } catch (\Throwable $th) {
+          //throw $th;
+        }
+    }
+
+
 
 
 
