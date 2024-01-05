@@ -36,7 +36,7 @@
                     <tr>
                         <th style="width: 20%">Nom</th>
                         <th style="width: 20%">Prix de vente</th>
-                        <th style="width: 20%">Prix d'achat unitaire</th>
+                        {{--  <th style="width: 20%">Prix d'achat unitaire</th>  --}}
                         <th style="width: 20%">Quantité restant</th>
                         {{--  <th style="width: 20%">Quantité vendue </th>  --}}
                         <th style="width: 20%">Status</th>
@@ -52,7 +52,7 @@
 
                         <td style="color: black ">{{ $product->name }}</td>
                         <td  style="color: black ; ">{{number_format($product->price , 2, '.', '') }} F</td>
-                        <td  style="color: black ; ">{{number_format($product->price_market, 2, '.', '') }} F</td>
+                        {{--  <td  style="color: black ; ">{{number_format($product->price_market, 2, '.', '') }} F</td>  --}}
                             @if ($product->qt_initial==null)
                             <td>0</td>
 
@@ -112,7 +112,7 @@
                     <tr>
                         <th style="width: 20%">Nom</th>
                         <th style="width: 20%">Prix de vente</th>
-                        <th style="width: 20%">Prix d'achat unitaire</th>
+                        {{--  <th style="width: 20%">Prix d'achat unitaire</th>  --}}
                         <th style="width: 20%">Quantité restant</th>
                         {{--  <th style="width: 20%">Quantité vendue </th>  --}}
                         <th style="width: 20%">Status</th>

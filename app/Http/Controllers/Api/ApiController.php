@@ -100,6 +100,8 @@ class ApiController extends Controller
           return Response::json(['status'=>true,'order'=>$orders]);
         } catch (\Throwable $th) {
             //throw $th;
+            return Response::json(['status'=>false, $th->getMessage()]);
+
         }
      }
 
