@@ -8,6 +8,26 @@ use Gloudemans\Shoppingcart\Facades\Cart;
 
 class ProductCart extends Component
 {
+    public $remis = 0;
+    public $totals = 0;
+
+    public function mount()
+    {
+        $this->calculateTotal();
+    }
+
+    public function updatedRemis()
+    {
+        $this->calculateTotal();
+    }
+
+    private function calculateTotal()
+    {
+        $this->totals = intval($this->remis) == 0
+            ? Cart::instance('cart')->subtotal()
+            : Cart::instance('cart')->subtotal() - (Cart::instance('cart')->subtotal() * intval($this->remis)) / 100;
+    }
+
 
     public function destroy ($rowId){
         Cart::instance('cart')->remove($rowId);
@@ -38,5 +58,6 @@ class ProductCart extends Component
         ->extends('layouts.admin')
         ->section('content');
         $this->total();
+
     }
 }
