@@ -66,7 +66,9 @@ class CheckController extends Controller
                     # code...
 
 
-                    $users =User::where('user_type','LVS')->get();
+                    $users =User::where('user_type','LVS')
+                                   ->where('active',1)
+                                  ->get();
 
                     $constumer= Costumer::create([
                             'name'=>$request->name,
@@ -132,7 +134,9 @@ class CheckController extends Controller
                 'time.required'=>'Entrer l \' heure de livraison',
 
             ]);
-            $users =User::where('user_type','LVS')->get();
+            $users =User::where('user_type','LVS')
+                ->where('active',1)
+               ->get();
 
             $code = $this->getName();
             $order = Order::create([

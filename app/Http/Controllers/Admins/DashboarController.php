@@ -244,4 +244,21 @@ class DashboarController extends Controller
 
         return view('dashboard.rupture',compact('Products'));
     }
+
+    public function active($id){
+     $user=User::findOrfail($id);
+
+       if ($user->active==true) {
+        # code...
+          $user->active=false;
+       } else if($user->active==false) {
+        # code...
+        $user->active=true;
+
+       }
+       $user->save();
+       return back();
+
+
+    }
 }

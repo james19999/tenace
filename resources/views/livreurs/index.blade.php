@@ -41,6 +41,12 @@
 
                              <div class="btn-group btn-group-justified">
                                   @if (Auth::user()->user_type=="ADMINUSER")
+
+                                  <a href="{{ route('active-user',$user) }}" style="color: white" type="button" class="btn  {{ $user->active==true ? 'btn-info' : 'btn-danger'}} "
+                                  >
+                                  <i class="material-icons f-16"></i>
+                                      {{ $user->active==true? "Actif": "Inactif" }}
+                                   </a>
                                   <a href="{{ route('livreurs.show',$user) }}" style="color: white" type="button" class="btn btn-success"
                                   >
                                   <i class="material-icons f-16">visibility</i>Details</a>

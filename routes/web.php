@@ -122,6 +122,7 @@ Route::post('check/livraison/{id}',[LivreurController::class,'check_livraison'])
 Route::put('change/order/status/user/{id}',[LivreurController::class,'change_order_status_user'])->name('changestatususer');
 
 Route::get('edit/product/{id}',[DashboarController::class,'edit'])->name('editproduct');
+Route::get('active/user/{id}',[DashboarController::class,'active'])->name('active-user');
 
 Route::put('update/product/{id}',[DashboarController::class,'updates'])->name('updateproduct');
 
