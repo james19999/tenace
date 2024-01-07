@@ -40,7 +40,7 @@
                          <td style="color: black " class=" pull-right">
 
                              <div class="btn-group btn-group-justified">
-                                  @if (Auth::user()->user_type=="ADMINUSER")
+                                  @if (Auth::user()->user_type=="ADMINUSER" || Auth::user()->user_type=="MNG")
 
                                   <a href="{{ route('active-user',$user) }}" style="color: white" type="button" class="btn  {{ $user->active==true ? 'btn-info' : 'btn-danger'}} "
                                   >

@@ -204,6 +204,12 @@
                     <span class="text">Livreurs</span>
                 </a>
             </li>
+            <li>
+                <a href="{{ route('costumer.index') }}" class="">
+                    <span class="icon material-icons"  >contact_phone</span>
+                    <span class="text">Clients</span>
+                </a>
+            </li>
             <li wire:poll.2s>
                 <a href="{{route('brouillons')}}" class="">
                     <span class="icon material-icons"  >delete_sweep
