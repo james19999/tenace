@@ -36,7 +36,10 @@ class ApiController extends Controller
           } else {
             # code...
 
-        $user = User::where('email', $request->email)->first();
+        $user = User::where('email', $request->email)
+                          ->
+                          where('active',true)
+                           ->first();
 
         if (! $user || ! Hash::check($request->password, $user->password)) {
             throw ValidationException::withMessages([
