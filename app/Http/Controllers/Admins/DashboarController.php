@@ -10,6 +10,7 @@ use App\Models\Orders\Order;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use App\Http\Controllers\Controller;
+use App\Models\Setting;
 use Illuminate\Support\Facades\Hash;
 use LaravelDaily\LaravelCharts\Classes\LaravelChart;
 
@@ -258,6 +259,56 @@ class DashboarController extends Controller
        }
        $user->save();
        return back();
+
+
+    }
+
+    public function settings(){
+        $settings=Setting::limit(1)->get();
+        return view('dashboard.settings',compact('settings'));
+    }
+
+    public function settinginfo(Request $request) {
+
+        if ($request->hasFile('img')) {
+
+            $image = $request->file('img');
+            $originalName = $image->getClientOriginalName();
+            $imageName = time() . '_' . $originalName;
+            $image->move(public_path('image'), $imageName);
+        } else {
+            $imageName = 'noimage.jpg';
+        }
+        $setting=Setting::count();
+          if($setting==0){
+            Setting::create(['name'=>$request->name,
+            'address'=>$request->address,'phone'=>$request->phone,
+            'email'=>$request->email,'img'=>$imageName]);
+           return back()->with('messages',"Paramètre de l'entreprise configuré");
+
+          }else{
+           return back()->with('messages','Veillez modifier les informations de l\'entreprise');
+          }
+
+    }
+    public function settinginfoupdate(Request $request ,$id) {
+
+        if ($request->hasFile('img')) {
+
+            $image = $request->file('img');
+            $originalName = $image->getClientOriginalName();
+            $imageName = time() . '_' . $originalName;
+            $image->move(public_path('image'), $imageName);
+        } else {
+            $imageName = 'noimage.jpg';
+        }
+         $setting=Setting::findOrfail($id);
+
+         $setting->update(['name'=>$request->name,
+            'address'=>$request->address,'phone'=>$request->phone,
+            'email'=>$request->email,'img'=>$imageName]);
+           return back()->with('messages',"Paramètre de l'entreprise configuré");
+
 
 
     }

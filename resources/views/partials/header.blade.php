@@ -32,7 +32,16 @@
             <li class="nav-item dropdown with-caret  ">
                 <a class="nav-link" data-toggle="dropdown" href="#">
                     <div class="avatar avatar-sm avatar-dnd bg-primary">
-                        <img src="{{ asset('assets/images/tena.png') }}" height="100" width="100" class="avatar-img align-top rounded-circle" alt="">
+                        @php
+                        $settings=App\Models\Setting::all();
+                        @endphp
+                      @forelse ($settings as $setting)
+                      <img src="{{ url('image/',$setting->img) }}" height="100" width="100" class="avatar-img align-top rounded-circle" alt="">
+
+                      @empty
+
+                      <img src="{{ asset('assets/images/tena.png') }}" height="100" width="100" class="avatar-img align-top rounded-circle" alt="">
+                      @endforelse
                     </div>
                 </a>
                 <div class="dropdown-menu p-1 dropdown-menu-right">
@@ -51,6 +60,8 @@
                     <form id="logout-form" action="{{ route('logout') }}" method="POST" class="d-none">
                         @csrf
                     </form>
+
+
                 </div>
             </li>
         </ul>

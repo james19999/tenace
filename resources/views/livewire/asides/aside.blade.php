@@ -1,7 +1,16 @@
 <aside class="sidebar">
     <nav class="navbar">
         <a class="navbar-brand brand-title" href="#">
-            <img src="{{ asset('assets/images/tena.png') }}" style="background-color: white ; "  alt="" class="logo img-thumbnail ">TENACE COS
+            @php
+                $settings=App\Models\Setting::all();
+            @endphp
+             @forelse ($settings as $setting )
+              <img src="{{ url('image/',$setting->img) }}" style="background-color: white ; "  alt="" class="logo img-thumbnail ">{{ $setting->name }}
+
+             @empty
+
+             <img src="{{ asset('assets/images/tena.png') }}" style="background-color: white ; "  alt="" class="logo img-thumbnail ">GEST +
+             @endforelse
         </a>
     </nav>
     <nav class="navigation shadow-sm">
@@ -124,6 +133,13 @@
                      <span class="icon material-icons"  >archive
                      </span>
                      <span class="text">Archive</span>
+                 </a>
+             </li>
+             <li>
+                 <a href="{{ route('setting') }}" >
+                     <span class="icon material-icons"   >settings
+                     </span>
+                     <span class="text">Paramètre</span>
                  </a>
              </li>
 
@@ -265,4 +281,6 @@
         </ul>
 
     </nav>
+
+
 </aside>

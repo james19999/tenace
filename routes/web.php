@@ -75,6 +75,9 @@ Route::get('unlock/brouillon/{id}',[BrouillonController::class,'unlock_brouillon
 Route::get('/history',[DashboarController::class,'history'])->name('history');
 Route::get('/getProductOrders',[DashboarController::class,'getProductOrders'])->name('getProductOrders');
 
+Route::get('settings/config',[DashboarController::class,'settings'])->name('setting');
+Route::post('settinginfo/config',[DashboarController::class,'settinginfo'])->name('setting-info');
+Route::put('settinginfo/update/config/{id}',[DashboarController::class,'settinginfoupdate'])->name('setting-update');
 
 
 Route::get('product/list',ProductList::class)->name('product');

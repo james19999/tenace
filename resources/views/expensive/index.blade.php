@@ -12,7 +12,7 @@
             <a href="{{ route('repport-expensives') }}" type="button" class="btn btn-primary">
                 Rapport sur les dépenses
             </a>
-            <button type="button" class="btn btn-dark" data-toggle="modal" data-target="#defaultModal">
+            <button type="button" class="btn btn-dark">
                 Total dépense : {{ $expensives->sum('amount') }} XOF
             </button>
             {{--  <button type="button" class="btn btn-primary" data-toggle="modal" data-target="#defaultModal">

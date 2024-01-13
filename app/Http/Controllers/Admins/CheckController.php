@@ -190,7 +190,7 @@ class CheckController extends Controller
     public  function getName($n = 3)
     {
         $characters = "0123456789";
-        $randomString = "TENACOS-" . '';
+        $randomString = env('APP_NAME')."-" . '';
 
         for ($i = 0; $i < $n; $i++) {
             $index = rand(0, strlen($characters) - 1);

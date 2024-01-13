@@ -23,8 +23,20 @@
                     <div class="col-12" id="printableArea">
                         <div class="row">
                             <div class="col-md-3">
-                                <img src="{{ asset('assets/images/tena.png') }}" class="img-thumbnail" height="100"
-                                    width="100" alt="" srcset="">
+                            @php
+                                $settings=App\Models\Setting::all();
+                            @endphp
+                             @forelse ($settings as $setting )
+                              <img src="{{ url('image/',$setting->img) }}"   height="100"  width="100" style="background-color: white ; "  alt="" class="logo img-thumbnail "> <br>
+                               <div  class="col-md-8">
+                                   <p>Nom : {{ $setting->name ?? '' }}</p>
+                                    <p>Téléphone: {{ $setting->phone ?? '' }}</p>
+                               </div>
+
+                             @empty
+
+                             <img src="{{ asset('assets/images/tena.png') }}" height="100"  width="100" style="background-color: white ; "  alt="" class="logo img-thumbnail ">TENACE COS
+                             @endforelse
                             </div>
                             <div class="col-md-3">
                                 <h2>Livreur</h2>
