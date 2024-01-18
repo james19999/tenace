@@ -76,7 +76,7 @@
                                 <button style="color: white" type="button" class="btn btn-success"
 
                                 wire:click.prevent="AddToCart({{$product->id }},'{{  $product->name }}',{{  $product->price }})"
-                                 @if ($product->qt_initial==0 || $product->qt_initial==null)
+                                 @if ($product->qt_initial==0 || $product->qt_initial==null || $product->qt_initial<0)
                                 disabled
 
                                  @endif
