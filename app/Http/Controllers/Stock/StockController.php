@@ -66,4 +66,14 @@ public  function out_stock(Request $request,$id){
 
 
   }
+
+  public function update_product_price(Request $request,  $id){
+
+    $product= Product::find($id);
+     $product->high_price= $request->high_price;
+     $product->save();
+     session()->flash('message', "Succès");
+
+    return  back();
+   }
 }

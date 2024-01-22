@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\Api\ApiController;
+use App\Http\Controllers\Api\EcomController;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 
@@ -21,6 +22,8 @@ Route::middleware('auth:sanctum')->get('/user', function (Request $request) {
 Route::prefix('gest-plus')->group(function () {
 
  Route::post('login/user',[ApiController::class,'login']);
+ Route::post('AddTo/Cart',[EcomController::class,'AddToCart']);
+ Route::get('Cart/List',[EcomController::class,'CartList']);
 
  Route::middleware('auth:sanctum')->group(function () {
    Route::post('logout/user',[ApiController::class,'logout_user']);

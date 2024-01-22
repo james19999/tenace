@@ -404,6 +404,20 @@
       </div>
       <div class="tab-pane fade" id="tab3">
         <h1 class="mt-5" style="text-align: center">{{ $product->name }}</h1>
+        <hr>
+          <form action="{{ route('update-product-price',$product) }}"  method="POST">
+            @csrf
+            @method("PUT")
+               <div class="col-md-12">
+                  <div class="col-md-5">
+                      <label for="">Prix grossiste</label>
+                      <input type="number"  class="form-control" required  name="high_price"  value="{{ old('high_price',0) }}" >
+                      <div>
+                         <button type="submit"  class="btn btn-success mt-3" >Valider</button>
+                      </div>
+                  </div>
+               </div>
+          </form>
       </div>
     </div>
   </div>

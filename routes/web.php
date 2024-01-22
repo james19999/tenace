@@ -56,6 +56,7 @@ Route::put('/expensives/{id}', [ExpensiveController::class,'update'])->name('exp
 Route::get('show/{id}/product',[StockController::class,'show_product'])->name('show-product');
 Route::post('entrer/stock/{id}',[StockController::class,'enter_stocks'])->name('enter_stock');
 Route::post('out/stock/{id}',[StockController::class,'out_stock'])->name('out_stock');
+Route::put('update/product/price/{id}',[StockController::class,'update_product_price'])->name('update-product-price');
 
 Route::get('/Admin',[DashboarController::class,'dashboard'])->name('Admin');
 

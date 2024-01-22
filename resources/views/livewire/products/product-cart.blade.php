@@ -86,6 +86,9 @@
                          </select>
                     </div>
              </div>
+             {{--  <div class="col-md-4">
+                   <a href="" class=" btn btn-info btn-block mt-4 " >Actualiser</a>
+             </div>  --}}
           </div>
           <div class="row">
              <div class="col-md-12">
@@ -128,7 +131,15 @@
 
                                  <td style="color: black ">{{ $i++ }}</td>
                                  <td style="color: black ">{{ $items->model->name ?? '' }}</td>
-                                 <td style="color: black ">{{ $items->model->price ?? '' }} F</td>
+                                 <td style="color: black ">
+                                       @if ($items->model->price== $items->price)
+
+                                       {{ $items->model->price ?? '' }} F (D)
+                                       @else
+                                       {{ $items->model->high_price ?? '' }} F (G)
+
+                                       @endif
+                                </td>
                                  <td style="color: black ">{{ $items->subtotal() ?? '' }} F</td>
                                  <td style="color: black ">{{ $items->qty ?? '' }} </td>
                                  <td style="color: black " class=" pull-right">

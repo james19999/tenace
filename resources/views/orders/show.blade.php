@@ -90,9 +90,28 @@
                                 @foreach ($Orders->orderItems as $items)
                                     <tr>
                                         <td>{{ $items->product->name ?? '' }}</td>
-                                        <td>{{ $items->price ?? '' }} F </td>
+                                        <td>
+                                             @if ($items->product->price == $items->price)
+
+                                             {{ $items->product->price }} F (D)
+                                             @else
+                                             {{ $items->product->high_price }} F (G)
+
+                                             @endif
+
+                                        </td>
                                         <td>{{ $items->quantity }}</td>
-                                        <td>{{ $items->quantity * $items->product->price }} F</td>
+                                        <td>
+                                            <td>
+                                                @if ($items->product->price == $items->price)
+                                            {{ $items->quantity * $items->product->price }} F
+
+                                                @else
+
+                                                {{ $items->quantity * $items->product->high_price }} F
+                                                @endif
+
+                                        </td>
                                     </tr>
                                 @endforeach
 

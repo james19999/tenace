@@ -11,7 +11,7 @@ class Product extends Model
 {
     use HasFactory;
 
-    protected $fillable=['name','price','price_by','qts_seuil','qt_initial','price_market'];
+    protected $fillable=['name','price','price_by','qts_seuil','qt_initial','price_market','high_price'];
 
     public function enterstocks() {
         return $this->hasMany(EnterStock::class,'product_id');

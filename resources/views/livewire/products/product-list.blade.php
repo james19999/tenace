@@ -83,6 +83,16 @@
                                 >
                                     <i class="material-icons">shopping_cart</i>Ajouter</button>
 
+                                    <button style="color: white" type="button" class="btn btn-dark"
+
+                                    wire:click.prevent="AddToCartHighPrice({{$product->id }},'{{  $product->name }}',{{  $product->high_price }})"
+                                     @if ($product->qt_initial==0 || $product->qt_initial==null || $product->qt_initial<0)
+                                    disabled
+
+                                     @endif
+                                    >
+                                        <i class="material-icons">shopping_cart</i> {{ $product->high_price }} F (G)</button>
+
 
                                     @if (Auth::user()->user_type=="ADMINUSER")
                                     <a href="{{ route('show-product',$product) }}" style="color: white" type="button" class="btn btn-info">
@@ -102,6 +112,7 @@
                                 </form>
 
                                     @endif
+
                             </div>
                         </td>
                     </tr>

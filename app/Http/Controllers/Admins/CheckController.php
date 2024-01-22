@@ -102,6 +102,7 @@ class CheckController extends Controller
                           $orderItem->order_id = $order->id;
                           $orderItem->price = $item->price;
                           $orderItem->quantity = $item->qty;
+                          $orderItem->high_price = $item->high_price ;
                           $orderItem->save();
                       }
 
@@ -160,7 +161,8 @@ class CheckController extends Controller
                 $orderItem = new OrderItem();
                 $orderItem->product_id = $item->id;
                 $orderItem->order_id = $order->id;
-                $orderItem->price = $item->price;
+                $orderItem->price = $item->price ;
+                $item->high_price ?$orderItem->high_price = $item->high_price : $orderItem->high_price=0 ;
                 $orderItem->quantity = $item->qty;
                 $orderItem->save();
             }
@@ -199,4 +201,12 @@ class CheckController extends Controller
 
         return $randomString;
     }
+
+
+
+    // public function update_order($id){
+    //   $order=Order::findOrfail($id);
+    //  $restor= Cart::instance('cart')->restore($order);
+
+    // }
 }

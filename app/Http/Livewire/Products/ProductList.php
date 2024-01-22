@@ -15,6 +15,12 @@ class ProductList extends Component
          return redirect()->back()->with('messages','Produit ajouter');
 
      }
+    public function AddToCartHighPrice($id,$name,$high_price) {
+        Cart::instance('cart')->add($id,$name,1,$high_price)->associate(Product::class);
+
+         return redirect()->back()->with('messages','Produit ajouter');
+
+     }
 
      public function calcPrice(){
         $products = Product::all();
