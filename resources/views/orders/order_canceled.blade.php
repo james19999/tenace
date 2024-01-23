@@ -6,7 +6,7 @@
 
 <div class="col-12 ">
     <div  style="padding-top: 10px">
-        <h3>Liste des commandes annulées </h4>
+        <h3>Liste des commandes annulées ({{ $orders->count() }}) </h4>
     </div>
    <div class="card shadow">
        <div class="card-body ">
