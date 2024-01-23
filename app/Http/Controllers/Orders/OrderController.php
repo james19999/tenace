@@ -196,7 +196,9 @@ class OrderController extends Controller
     }
 
     public function order_cancel_list(){
-        $orders=Order::where('status','canceled')->get();
+        $orders=Order::where('status','canceled')
+         ->whereNotNull('user_id')
+        ->get();
         $livreurs=User::where('user_type','LVS')->get();
         return  view('orders.order_canceled',compact('orders','livreurs'));
     }
