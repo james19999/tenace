@@ -215,6 +215,7 @@ class LivreurController extends Controller
 
           $order =Order::where('user_id',Auth::user()->id)
                  ->where('status_order',true)
+                 ->whereDate('created_at',Carbon::today())
                   ->get();
 
               if($order->count()==0){

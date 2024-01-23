@@ -8,6 +8,7 @@ use App\Models\Costumer;
 use App\Models\Orders\Order;
 use Illuminate\Http\Request;
 use App\Http\Controllers\Controller;
+use App\Models\User;
 use Illuminate\Support\Facades\Auth;
 
 class OrderController extends Controller
@@ -165,5 +166,81 @@ class OrderController extends Controller
        }
       $order->save();
       return back();
+    }
+
+    public function reporte_order (Request $request, $id) {
+        $orders=Order::findOrfail($id);
+
+
+           if ($orders) {
+            # code...
+            if($orders->status_order==0 || $orders->status_order==1){
+                $orders->status_order=true;
+                $orders->user_id=$request->user_report;
+                $orders->status="ordered";
+                $orders->time=$request->time;
+                $orders->created_at=$request->date_report;
+                $orders->take=true;
+                $orders->save();
+
+                return redirect()->back()->with('success',"Commande  programmée sur $request->date_report à $request->time ");
+
+
+           } else {
+            # code...
+            return redirect()->back()->with('success',"Erreur de la reprogrammation");
+
+           }
+        }
+
+    }
+
+    public function order_cancel_list(){
+        $orders=Order::where('status','canceled')->get();
+        $livreurs=User::where('user_type','LVS')->get();
+        return  view('orders.order_canceled',compact('orders','livreurs'));
+    }
+    public function order_report_list(){
+    $orders=Order::whereDate('created_at','>', Carbon::today())
+     ->where('status','ordered')->get();
+
+     return view('orders.order_report_list',compact('orders'));
+
+    }
+    public function ordered_list(){
+    $livreurs=User::where('user_type','LVS')->get();
+
+    $orders=Order::whereDate('created_at','<', Carbon::today())
+     ->where('status','ordered')->get();
+
+     return view('orders.ordered_list',compact('orders','livreurs'));
+
+    }
+
+     public function refresh_specific_order (Request $request ,$id) {
+
+        $orders=Order::findOrfail($id);
+
+
+        if ($orders) {
+         # code...
+         if($orders->status_order==0 || $orders->status_order==1){
+            $orders->status_order=false;
+            $orders->user_id=null;
+            $orders->status="ordered";
+            $orders->time=$request->time;
+            $orders->take=false;
+             $orders->created_at=Carbon::now();
+             $orders->save();
+
+             return redirect()->back()->with('success',"Succès");
+
+
+        } else {
+         # code...
+         return redirect()->back()->with('success',"Erreur de la reprogrammation");
+
+        }
+     }
     }
 }

@@ -93,6 +93,12 @@ Route::resource('costumer',CostumerController::class);
 Route::post('palce/order',[CheckController::class,'palce_order'])->name('palceorder');
 
 Route::get('order/list',[OrderController::class,'index'])->name('order');
+Route::get('order/cancel/list',[OrderController::class,'order_cancel_list'])->name('order-cancel-list');
+Route::get('order/report/list',[OrderController::class,'order_report_list'])->name('order-report-list');
+Route::get('ordered/list/ordered',[OrderController::class,'ordered_list'])->name('ordered-list-orderer');
+Route::put('reporte/order/{id}',[OrderController::class,'reporte_order'])->name('reporte-order');
+
+Route::put('refresh/specific/order/{id}',[OrderController::class,'refresh_specific_order'])->name('refresh-specific-order');
 
 Route::get('order/check/type/{id}',[OrderController::class,'check_type'])->name('check-type');
 
