@@ -8,8 +8,10 @@ use App\Models\Costumer;
 use App\Models\Orders\Order;
 use Illuminate\Http\Request;
 use App\Http\Controllers\Controller;
+use App\Mail\TenaCos;
 use App\Models\User;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Mail;
 
 class OrderController extends Controller
 {
@@ -28,7 +30,9 @@ class OrderController extends Controller
     public function show($id){
 
          $Orders=Order::findOrfail($id);
-        return  view('orders.show',compact('Orders'));
+        $livreurs=User::where('user_type','LVS')->get();
+
+        return  view('orders.show',compact('Orders' ,'livreurs'));
     }
 
     public function change_order_status(Request $request,$id){
@@ -79,19 +83,22 @@ class OrderController extends Controller
 
      public function refresh_order(Request $request, $id){
         $orders=Order::findOrfail($id);
+        $livreurs=User::where('id',$request->user_take)->first();
+
 
         if($orders){
 
              if($orders->status_order==0 || $orders->status_order==1){
-               $orders->status_order=false;
-               $orders->user_id=null;
+               $orders->status_order=true;
+               $orders->user_id=$request->user_take;
                $orders->status="ordered";
                $orders->time=$request->time;
-               $orders->take=false;
+               $orders->take=true;
 
               $constumer=Costumer::findOrfail($orders->costumer_id);
 
               $constumer->update(['adresse'=>$request->adresse]);
+              Mail::to($livreurs->email)->send(new TenaCos($orders));
 
                $orders->save();
 

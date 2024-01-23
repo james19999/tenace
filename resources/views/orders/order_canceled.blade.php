@@ -157,7 +157,7 @@
 
                                         <div class="form-group">
                                              <label>Livreurs</label>
-                                            <select class="form-control col-12 " name="user_report">
+                                            <select class="js-example-basic-single  form-control col-12 " name="user_report">
                                                @foreach ($livreurs as $livreur )
 
                                                <option value="{{ $livreur->id }}"

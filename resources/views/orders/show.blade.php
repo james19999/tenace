@@ -154,7 +154,9 @@
                                 @method('PUT')
                                 <div class="row">
 
-                                    <div class="col-md-4">
+                                    <div class="col-md-3">
+                                        <label>adresse</label>
+
                                         <input type="text" class="form-control @error('adresse') is-invalid @enderror"
                                             name="adresse" value="{{ $Orders->costumer->adresse ?? '' }}"
                                             placeholder="adresse">
@@ -162,14 +164,29 @@
                                             <div class="alert alert-danger">{{ $message }}</div>
                                         @enderror
                                     </div>
-                                    <div class="col-md-4">
+                                    <div class="col-md-3">
+                                        <label>Heure</label>
+
                                         <input type="time" class="form-control @error('time') is-invalid @enderror"
                                             name="time" value="{{ $Orders->time }}" placeholder="adresse">
                                         @error('time')
                                             <div class="alert alert-danger">{{ $message }}</div>
                                         @enderror
                                     </div>
-                                    <div class="col-md-4">
+                                    <div class="col-md-3">
+                                        <label>Livreurs</label>
+                                       <select class="js-example-basic-single  form-control" name="user_take">
+                                          @foreach ($livreurs as $livreur )
+
+                                          <option value="{{ $livreur->id }}"
+                                           {{ $livreur->id == $Orders->user_id ? 'selected' : '' }}
+
+                                            >{{ $livreur->name }} </option>
+
+                                          @endforeach
+                                       </select>
+                                   </div>
+                                    <div class="col-md-4 mt-2">
                                         <button type="submit" class="btn btn-info">Relancer</button>
                                     </div>
                                 </div>
