@@ -155,7 +155,7 @@
                                 <div class="row">
 
                                     <div class="col-md-3">
-                                        <label>adresse</label>
+                                        <label>adresse client</label>
 
                                         <input type="text" class="form-control @error('adresse') is-invalid @enderror"
                                             name="adresse" value="{{ $Orders->costumer->adresse ?? '' }}"
