@@ -65,11 +65,6 @@ class CheckController extends Controller
                   } else {
                     # code...
 
-
-                    $users =User::where('user_type','LVS')
-                                   ->where('active',1)
-                                  ->get();
-
                     $constumer= Costumer::create([
                             'name'=>$request->name,
                             'phone'=>$request->phone,
@@ -78,6 +73,10 @@ class CheckController extends Controller
                             'user_id'=>Auth::user()->id,
 
                       ]);
+                    $users =User::where('user_type','LVS')
+                                   ->where('active',1)
+                                  ->get();
+
                       $code = $this->getName();
                       $order = Order::create([
                           'costumer_id'=>$constumer->id,
@@ -192,7 +191,7 @@ class CheckController extends Controller
     public  function getName($n = 3)
     {
         $characters = "0123456789";
-        $randomString = env('APP_NAME')."-" . '';
+        $randomString = "TENACE"."-" . '';
 
         for ($i = 0; $i < $n; $i++) {
             $index = rand(0, strlen($characters) - 1);

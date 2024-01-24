@@ -27,10 +27,28 @@ class OrderController extends Controller
     }
 
 
+      public function addnewproduct (Request $request ,$id){
+
+        $Orders=Order::findOrfail($id);
+
+        $Orders->orderItems()->save([
+            'product_id',
+            'price',
+            'quantity',
+            'high_price',
+        ]);
+      }
     public function show($id){
 
          $Orders=Order::findOrfail($id);
         $livreurs=User::where('user_type','LVS')->get();
+
+        $Orders->orderItems()->save([
+            'product_id',
+            'price',
+            'quantity',
+            'high_price',
+        ]);
 
         return  view('orders.show',compact('Orders' ,'livreurs'));
     }
