@@ -32,6 +32,9 @@
                             <div class="col-md-5 mt-3">
                                 <input type="number" class="form-control" wire:model="products.{{ $index }}.qts_seuil" placeholder="Quantité d'alèrte" required>
                             </div>
+                            <div class="col-md-5 mt-3">
+                                <input type="number" class="form-control" wire:model="products.{{ $index }}.high_price" placeholder="Prix de vente d'en gros" required>
+                            </div>
                             <div class="col">
                                 @if ($index > 0)
                                     <button type="button" class="btn btn-danger" wire:click="removeProduct({{ $index }})">Supprimer</button>

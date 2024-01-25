@@ -52,6 +52,11 @@
                             <input type="number" class="form-control" id="name"   name="qts_seuil"  placeholder="Quantité d 'alèrte"  value="{{$product->qts_seuil }}" >
                             @error('qts_seuil') <span class="text-danger">{{ $message }}</span>@enderror
                         </div>
+                        <div class="form-group">
+                            <label for="name">Prix de vente d'en gros :</label>
+                            <input type="number" class="form-control" id="name"   name="high_price"  placeholder=""  value="{{$product->high_price }}" >
+                            @error('high_price') <span class="text-danger">{{ $message }}</span>@enderror
+                        </div>
 
 
 

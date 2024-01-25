@@ -148,7 +148,10 @@ class DashboarController extends Controller
 
         $product=Product::findOrfail($id);
 
-        $product->update(['name'=>$request->name,'price'=>$request->price,'qts_seuil'=>$request->qts_seuil]);
+        $product->update(['name'=>$request->name,'price'=>$request->price,
+        'qts_seuil'=>$request->qts_seuil,
+        'high_price'=>$request->high_price,
+    ]);
 
         return redirect()->route('product')->with('messages','produit modifié');
 

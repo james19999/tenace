@@ -5,11 +5,12 @@ namespace App\Models;
 use App\Models\Orders\Order;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
-
+use Laravel\Sanctum\HasApiTokens;
+use Illuminate\Notifications\Notifiable;
 class Costumer extends Model
 {
-    use HasFactory;
-
+    use HasApiTokens, HasFactory, Notifiable;
+    protected $guard = "companiecostumer";
     protected  $fillable=[
           'name',
           'phone',

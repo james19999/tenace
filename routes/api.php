@@ -23,7 +23,12 @@ Route::prefix('gest-plus')->group(function () {
 
  Route::post('login/user',[ApiController::class,'login']);
  Route::post('AddTo/Cart',[EcomController::class,'AddToCart']);
+ Route::post('register/costumer',[EcomController::class,'register_costumer']);
+ Route::post('login/costomer',[EcomController::class,'login_costomer']);
  Route::get('Cart/List',[EcomController::class,'CartList']);
+ Route::get('all/products',[EcomController::class,'all_products']);
+
+ Route::post('place/order',[EcomController::class,'place_order']);
 
  Route::middleware('auth:sanctum')->group(function () {
    Route::post('logout/user',[ApiController::class,'logout_user']);

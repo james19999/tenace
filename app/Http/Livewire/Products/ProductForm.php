@@ -22,6 +22,7 @@ class ProductForm extends Component
             'qts_seuil'=>'',
             'qt_initial'=>'',
             'price_market'=>'',
+            'high_price'=>'',
 
         ];
     }
@@ -43,6 +44,7 @@ class ProductForm extends Component
             $product->qts_seuil = $productData['qts_seuil'];
             $product->qt_initial = $productData['qt_initial'];
             $product->price_market = $productData['price_market'];
+            $product->high_price = $productData['high_price'];
 
             $product->save();
             if ($product!==null) {
