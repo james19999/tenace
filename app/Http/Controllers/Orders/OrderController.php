@@ -43,12 +43,12 @@ class OrderController extends Controller
          $Orders=Order::findOrfail($id);
         $livreurs=User::where('user_type','LVS')->get();
 
-        $Orders->orderItems()->save([
-            'product_id',
-            'price',
-            'quantity',
-            'high_price',
-        ]);
+        // $Orders->orderItems()->save([
+        //     'product_id',
+        //     'price',
+        //     'quantity',
+        //     'high_price',
+        // ]);
 
         return  view('orders.show',compact('Orders' ,'livreurs'));
     }
