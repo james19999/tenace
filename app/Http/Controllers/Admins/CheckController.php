@@ -102,6 +102,7 @@ class CheckController extends Controller
                           $orderItem->price = $item->price;
                           $orderItem->quantity = $item->qty;
                           $item->high_price ?$orderItem->high_price = $item->high_price : $orderItem->high_price=0 ;
+
                           $orderItem->save();
                       }
 
