@@ -63,6 +63,9 @@
                          <td style="color: black " class=" pull-right">
 
                              <div class="btn-group btn-group-justified">
+                                <a href="{{ route('user-show',$user) }}" style="color: white" type="button" class="btn btn-success"
+                                >
+                                <i class="material-icons f-16">visibility</i>Details</a>
                                  <a  href="{{ route('livreurs.edit', $user) }}" style="color: white" type="button" class="btn btn-warning">
                                      <i class="material-icons">edit</i>
                                      Modifier</a>

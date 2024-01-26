@@ -118,7 +118,7 @@ class CheckController extends Controller
                                 # code...
                               }
                         } else {
-                            Mail::to('kokou2808@gmail.com')->send(new ParthnerMail(URL::signedRoute('brouillons')));
+                            Mail::to('crepinawity@gmail.com')->send(new ParthnerMail(URL::signedRoute('brouillons')));
                         }
 
                      Cart::instance('cart')->destroy();

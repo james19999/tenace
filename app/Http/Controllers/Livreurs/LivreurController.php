@@ -134,6 +134,15 @@ class LivreurController extends Controller
         return view('users.index',compact('users'));
     }
 
+    public function user_show($id){
+         $user=User::findOrfail($id);
+         $startOfWeek = Carbon::now()->startOfWeek();
+
+
+         $commiss=  $user->commissions()->where('created_at', '>=', $startOfWeek)->get();
+         return view('users.user_show',compact('user' ,'commiss'));
+    }
+
 
 
     public function livrable() {

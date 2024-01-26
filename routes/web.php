@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\PercentController;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Route;
 use App\Http\Livewire\Products\ProductCart;
@@ -115,6 +116,7 @@ Route::delete('delete/{id}',[OrderController::class,'delete'])->name('deleteorde
 Route::resource('livreurs',LivreurController::class);
 
 Route::get('user/admin/list',[LivreurController::class,'user_admin_list'])->name('useradminlist');
+Route::get('user/show/{id}',[LivreurController::class,'user_show'])->name('user-show');
 
 Route::get('livrable/list',[LivreurController::class,'livrable'])->name('livrable');
 
@@ -138,4 +140,7 @@ Route::put('update/product/{id}',[DashboarController::class,'updates'])->name('u
 
 Route::delete('edit/product/{id}',[DashboarController::class,'delete'])->name('delteproduct');
 
+Route::get('list/percent',[PercentController::class,'index'])->name('list-percent');
+Route::post('post/percent',[PercentController::class,'create'])->name('create-post');
+Route::put('edit/percent/{id}',[PercentController::class,'edit'])->name('percen-edit');
 });

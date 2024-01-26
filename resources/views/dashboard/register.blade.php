@@ -2,8 +2,6 @@
 <html lang="en">
 
 
-<!-- Mirrored from htmlthemes.gitlab.io/admin/login.html by HTTrack Website Copier/3.x [XR&CO'2014], Thu, 18 May 2023 21:04:31 GMT -->
-<!-- Added by HTTrack --><meta http-equiv="content-type" content="text/html;charset=utf-8" /><!-- /Added by HTTrack -->
 <head>
     <meta charset="UTF-8">
     <title>TENACE COSMETIQUE</title>
@@ -40,14 +38,14 @@
                             <div class="form-group">
                                 <label for="name">Email:</label>
                                 <input id="email" type="email"  placeholder="E-mail" class="form-control @error('email') is-invalid @enderror" name="email" value="{{ old('email') }}" required autocomplete="email">
-    
+
                                 @error('email')
                                     <span class="invalid-feedback" role="alert">
                                         <strong>{{ $message }}</strong>
                                     </span>
                                 @enderror
                             </div>
-    
+
                             <div class="form-group">
                                 <label for="phone">Téléphone:</label>
                                 <input type="number" class="form-control" id="phone" name="phone" placeholder="Téléphone"  value="{{ old('phone') }}">
@@ -61,7 +59,7 @@
                             <div class="form-group">
                                 <label for="password">Mot de passe:</label>
                                 <input id="password"  placeholder="Mot de passe" type="password" class="form-control @error('password') is-invalid @enderror" name="password" required autocomplete="new-password">
-    
+
                                 @error('password')
                                     <span class="invalid-feedback" role="alert">
                                         <strong>{{ $message }}</strong>
@@ -71,9 +69,9 @@
                             <div class="form-group">
                                 <label for="password-confirm">Confirmez le mot de passe:</label>
                                 <input id="password-confirm"  placeholder="Confirmation du mot de passe" type="password" class="form-control" name="password_confirmation" required autocomplete="new-password">
-    
+
                             </div>
-    
+
                             <button type="reset" class="btn btn-danger">Annuler</button>
                             <button type="submit" class="btn btn-primary">S'inscrire</button>
 

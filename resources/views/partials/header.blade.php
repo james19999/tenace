@@ -48,9 +48,9 @@
                     <span class="dropdown-item">
                         {{ Auth::user()->name }}
                     </span>
-                    {{--  <a class="dropdown-item" href="https://tenace.digital-services-home.com/">Tenac-cos TOGO</a>
+                    <a class="dropdown-item" href="https://tenace.digital-services-home.com/">Tenac-cos TOGO</a>
                     <a  class="dropdown-item" href="https://tenace-ghana.digital-services-home.com/">Tenac-cos GHANA</a>
-                    <a  class="dropdown-item" href="https://tenace-benin.digital-services-home.com/">Tenac-cos BENIN</a>  --}}
+                    <a  class="dropdown-item" href="https://tenace-benin.digital-services-home.com/">Tenac-cos BENIN</a>
                     <a class="dropdown-item" href="{{ route('logout') }}"
                        onclick="event.preventDefault();
                                      document.getElementById('logout-form').submit();">

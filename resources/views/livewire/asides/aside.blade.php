@@ -49,6 +49,12 @@
                             <span class="text">Dépense</span>
                         </a>
                     </li>
+                    <li>
+                        <a href="{{ route('list-percent') }}" class="">
+                            <span class="icon material-icons">remove</span>
+                            <span class="text">Type de pourcentage</span>
+                        </a>
+                    </li>
 
                 </ul>
             </li>
