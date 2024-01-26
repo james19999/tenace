@@ -71,7 +71,8 @@
               <div class="col-md-3">
                 <div class="form-group">
                     <label for="phone">Remise (optionnel):</label>
-                    <input type="number" wire:model="remis" class="form-control" id="remise" name="remis" placeholder="Remise"  value="{{ old('remis',0) }}">
+                    {{--  wire:model="remis"  --}}
+                    <input type="number"  class="form-control" id="remise" name="remis" placeholder="Remise"  value="{{ old('remis',0) }}">
                     @error('remis') <span class="text-danger">{{ $message }}</span>@enderror
                 </div>
               </div>
