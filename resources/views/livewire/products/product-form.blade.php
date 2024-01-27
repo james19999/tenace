@@ -11,7 +11,7 @@
                 </h4>
             </div>
             <div class="card-body ">
-                <form wire:submit.prevent="saveProducts">
+                <form wire:submit.prevent="saveProducts" enctype="multipart/form-data">
                     @foreach($products as $index => $product)
                         <div class="form-row mb-3">
                             <div class="col-md-5">
@@ -32,9 +32,13 @@
                             <div class="col-md-5 mt-3">
                                 <input type="number" class="form-control" wire:model="products.{{ $index }}.qts_seuil" placeholder="Quantité d'alèrte" required>
                             </div>
-                            <div class="col-md-5 mt-3">
+                            <div class="col-md-5 mt-4">
                                 <input type="number" class="form-control" wire:model="products.{{ $index }}.high_price" placeholder="Prix de vente d'en gros" required>
                             </div>
+                                <div class="col-md-5 ">
+                                     <label for="">Optionnel</label>
+                                    <input type="file" class="form-control" wire:model="products.{{ $index }}.img" >
+                                </div>
                             <div class="col">
                                 @if ($index > 0)
                                     <button type="button" class="btn btn-danger" wire:click="removeProduct({{ $index }})">Supprimer</button>

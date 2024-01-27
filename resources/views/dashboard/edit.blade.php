@@ -17,7 +17,7 @@
                     </h4>
                 </div>
                 <div class="card-body">
-                <form  method="POST" action="{{ route('updateproduct',$product) }}" >
+                <form  method="POST" action="{{ route('updateproduct',$product) }}" enctype="multipart/form-data" >
                     @csrf
 
                     @method("PUT")
@@ -56,6 +56,11 @@
                             <label for="name">Prix de vente d'en gros :</label>
                             <input type="number" class="form-control" id="name"   name="high_price"  placeholder=""  value="{{$product->high_price }}" >
                             @error('high_price') <span class="text-danger">{{ $message }}</span>@enderror
+                        </div>
+                        <div class="form-group">
+                            <label for="name"> Image :</label>
+                            <input type="file" class="form-control"   name="img"  placeholder="" required  value="{{$product->img }}" >
+                            @error('img') <span class="text-danger">{{ $message }}</span>@enderror
                         </div>
 
 

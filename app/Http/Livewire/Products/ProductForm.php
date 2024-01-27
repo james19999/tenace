@@ -6,10 +6,11 @@ use App\Models\Product;
 use Livewire\Component;
 use App\Models\EnterStock;
 use Illuminate\Support\Facades\Auth;
+use Livewire\WithFileUploads;
 
 class ProductForm extends Component
 {
-
+    use WithFileUploads;
     public $products = [];
 
     public function addProduct()
@@ -23,6 +24,7 @@ class ProductForm extends Component
             'qt_initial'=>'',
             'price_market'=>'',
             'high_price'=>'',
+            'img' => null,
 
         ];
     }
@@ -46,6 +48,12 @@ class ProductForm extends Component
             $product->price_market = $productData['price_market'];
             $product->high_price = $productData['high_price'];
 
+            if ($productData['img']) {
+                // Handle image upload
+                $imageName = time() . '_' . $productData['img']->getClientOriginalName();
+                $productData['img']->storeAs('public/images', $imageName);
+                $product->img =$imageName;
+            }
             $product->save();
             if ($product!==null) {
                 # code...

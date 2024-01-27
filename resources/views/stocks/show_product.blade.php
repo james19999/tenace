@@ -409,15 +409,20 @@
             @csrf
             @method("PUT")
                <div class="col-md-12">
-                  <div class="col-md-5">
                       <label for="">Prix grossiste</label>
                       <input type="number"  class="form-control" required  name="high_price"  value="{{ old('high_price',0) }}" >
                       <div>
-                         <button type="submit"  class="btn btn-success mt-3" >Valider</button>
+                         <button type="submit"  class="btn btn-success mt-3 mb-2" >Valider</button>
                       </div>
-                  </div>
                </div>
           </form>
+          <div class="col-md-12">
+                  @if ($product->img==null)
+
+                  @else
+                  <img src="{{ url('storage/images/',$product->img) }}" alt="" class="img-thumbnail" srcset="">
+                  @endif
+         </div>
       </div>
     </div>
   </div>

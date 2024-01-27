@@ -147,10 +147,15 @@ class DashboarController extends Controller
      public function updates (Request $request,$id){
 
         $product=Product::findOrfail($id);
+        $image = $request->file('img');
+        $originalName = $image->getClientOriginalName();
+        $imageName = time() . '_' . $originalName;
+        $image->move(public_path('storage/images'), $imageName);
 
         $product->update(['name'=>$request->name,'price'=>$request->price,
         'qts_seuil'=>$request->qts_seuil,
         'high_price'=>$request->high_price,
+        'img'=>$imageName
     ]);
 
         return redirect()->route('product')->with('messages','produit modifié');
