@@ -56,7 +56,7 @@
                       <tr>
 
                          <td style="color: black ">{{ $i++ }}</td>
-                         <td style="color: black ">{{ \Carbon\Carbon::parse($commis->created_at)->translatedFormat('l j F Y') }}</td>
+                         <td style="color: black ">{{ \Carbon\Carbon::parse($commis->created_at)->translatedFormat('l j F Y \à H:i:s') }}</td>
                          <td style="color: black ">{{ $commis->total }} XOF</td>
                          <td style="color: black ">{{ $commis->fixed }} %</td>
                          <td style="color: black ">{{ $commis->amount }} XOF</td>
