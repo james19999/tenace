@@ -25,7 +25,7 @@ class SlideController extends Controller
                     $image = $request->file('img');
                     $originalName = $image->getClientOriginalName();
                     $imageName = time() . '_' . $originalName;
-                    $image->move(public_path('storage/images'), $imageName);
+                    $image->move(public_path('image'), $imageName);
 
 
                     Slide::create(['img'=>$imageName,'url'=>$request->url]);
@@ -55,7 +55,7 @@ class SlideController extends Controller
                     $image = $request->file('img');
                     $originalName = $image->getClientOriginalName();
                     $imageName = time() . '_' . $originalName;
-                    $image->move(public_path('storage/images'), $imageName);
+                    $image->move(public_path('image'), $imageName);
                     $slide=Slide::findOrFail($id);
 
                     $slide->update(['img'=>$imageName,'url'=>$request->url]);
