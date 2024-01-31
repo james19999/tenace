@@ -420,7 +420,7 @@
                   @if ($product->img==null)
 
                   @else
-                  <img src="{{ url('storage/images/',$product->img) }}" alt="" class="img-thumbnail" srcset="">
+                  <img src="{{ url('image/',$product->img) }}" alt="" class="img-thumbnail" srcset="">
                   @endif
          </div>
       </div>

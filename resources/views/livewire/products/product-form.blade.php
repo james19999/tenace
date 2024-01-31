@@ -35,10 +35,10 @@
                             <div class="col-md-5 mt-4">
                                 <input type="number" class="form-control" wire:model="products.{{ $index }}.high_price" placeholder="Prix de vente d'en gros" required>
                             </div>
-                                <div class="col-md-5 ">
+                                {{--  <div class="col-md-5 ">
                                      <label for="">Optionnel</label>
                                     <input type="file" class="form-control" wire:model="products.{{ $index }}.img" >
-                                </div>
+                                </div>  --}}
                                 <div class="col-md-10">
                                      <label for="">Optionnel</label>
 

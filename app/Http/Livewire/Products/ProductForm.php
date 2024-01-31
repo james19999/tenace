@@ -50,12 +50,12 @@ class ProductForm extends Component
             $product->high_price = $productData['high_price'];
             $product->description = $productData['description'];
 
-            if ($productData['img']) {
-                // Handle image upload
-                $imageName = time() . '_' . $productData['img']->getClientOriginalName();
-                $productData['img']->storeAs('public/images', $imageName);
-                $product->img =$imageName;
-            }
+            // if ($productData['img']) {
+            //     // Handle image upload
+            //     $imageName = time() . '_' . $productData['img']->getClientOriginalName();
+            //     $productData['img']->store('public/images', $imageName);
+            //     $product->img =$imageName;
+            // }
             $product->save();
             if ($product!==null) {
                 # code...

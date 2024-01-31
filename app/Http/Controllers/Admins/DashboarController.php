@@ -150,7 +150,7 @@ class DashboarController extends Controller
         $image = $request->file('img');
         $originalName = $image->getClientOriginalName();
         $imageName = time() . '_' . $originalName;
-        $image->move(public_path('storage/images'), $imageName);
+        $image->move(public_path('image'), $imageName);
 
         $product->update(['name'=>$request->name,'price'=>$request->price,
         'qts_seuil'=>$request->qts_seuil,
