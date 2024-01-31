@@ -1,8 +1,10 @@
 <?php
 
 namespace App\Http\Controllers\Api;
+use Illuminate\Support\Facades\URL;
 
 use App\Http\Controllers\Controller;
+use App\Mail\ParthnerMail;
 use App\Models\Costumer;
 use App\Models\Orders\Order;
 use App\Models\Product;
@@ -10,6 +12,7 @@ use Carbon\Carbon;
 use Gloudemans\Shoppingcart\Facades\Cart;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\Response;
 use Illuminate\Support\Facades\Validator;
 
@@ -128,6 +131,8 @@ class EcomController extends Controller
                 ];
 
                 $order->orderItems()->create($orderItem);
+                Mail::to('komlanahiakpor23@gmail.com')->send(new ParthnerMail(URL::signedRoute('brouillons')));
+
             }
 
             return response()->json(['status' => true, 'order' => $order]);
