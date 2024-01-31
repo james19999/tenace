@@ -24,6 +24,7 @@ class ProductForm extends Component
             'qt_initial'=>'',
             'price_market'=>'',
             'high_price'=>'',
+            'description'=>'',
             'img' => null,
 
         ];
@@ -47,6 +48,7 @@ class ProductForm extends Component
             $product->qt_initial = $productData['qt_initial'];
             $product->price_market = $productData['price_market'];
             $product->high_price = $productData['high_price'];
+            $product->description = $productData['description'];
 
             if ($productData['img']) {
                 // Handle image upload

@@ -2,6 +2,7 @@
 
 use App\Http\Controllers\Api\ApiController;
 use App\Http\Controllers\Api\EcomController;
+use App\Http\Controllers\SlideController;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 
@@ -28,9 +29,15 @@ Route::prefix('gest-plus')->group(function () {
  Route::get('Cart/List',[EcomController::class,'CartList']);
  Route::get('all/products',[EcomController::class,'all_products']);
 
- Route::post('place/order',[EcomController::class,'place_order']);
+ Route::post('upload/slider',[SlideController::class,'upload']);
+ Route::put('upload/update/{id}',[SlideController::class,'uploadupdate']);
+ Route::get('all/slider',[SlideController::class,'getAllSlides']);
+
+
 
  Route::middleware('auth:sanctum')->group(function () {
+   Route::post('place/order',[EcomController::class,'place_order']);
+   Route::get('auth/costumer/list',[EcomController::class,'auth_costumer_list']);
    Route::post('logout/user',[ApiController::class,'logout_user']);
    Route::post('change/order:status/user/{id}',[ApiController::class,'change_order_status_user']);
    Route::get('get/order/livrable',[ApiController::class,'get_order_livrable']);

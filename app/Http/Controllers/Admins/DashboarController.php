@@ -155,6 +155,7 @@ class DashboarController extends Controller
         $product->update(['name'=>$request->name,'price'=>$request->price,
         'qts_seuil'=>$request->qts_seuil,
         'high_price'=>$request->high_price,
+        'description'=>$request->description,
         'img'=>$imageName
     ]);
 

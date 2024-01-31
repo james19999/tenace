@@ -59,8 +59,13 @@
                         </div>
                         <div class="form-group">
                             <label for="name"> Image :</label>
-                            <input type="file" class="form-control"   name="img"  placeholder="" required  value="{{$product->img }}" >
+                            <input type="file" class="form-control"   name="img"  placeholder=""   value="{{$product->img }}" >
                             @error('img') <span class="text-danger">{{ $message }}</span>@enderror
+                        </div>
+                        <div class="form-group">
+                            <label for="name"> description :</label>
+                            <input type="text" class="form-control"   name="description"  placeholder=""   value="{{$product->description }}" >
+                            @error('description') <span class="text-danger">{{ $message }}</span>@enderror
                         </div>
 
 

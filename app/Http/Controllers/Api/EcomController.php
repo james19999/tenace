@@ -17,24 +17,32 @@ class EcomController extends Controller
 {
     //
   public function register_costumer(Request $request){
-      $validate=Validator::make($request->all(),[
-        'name'=>'required',
-        'phone'=>'required|unique:costumers,phone',
-        'adresse'=>'required',
-      ]);
-        if($validate->fails()){
-            return Response::json(['status'=>false, 'messages'=>$validate->getMessageBag()]);
-        }else{
-            Costumer::create([
-                 'name'=>$request->name,
-                 'phone'=>$request->phone,
-                 'email'=>$request->email,
-                 'adresse'=>$request->adresse,
-                 'user_id'=>0,
-            ]);
-            return Response::json(['status'=>true, 'messages'=>"Votre compte à été bien créer"]);
+     try {
+        //code...
+        $validate=Validator::make($request->all(),[
+          'name'=>'required',
+          'phone'=>'required|unique:costumers,phone',
+          'adresse'=>'required',
+        ],
+        ['phone.unique' => 'Ce numéro de téléphone est déjà utilisé.',]
+    );
+          if($validate->fails()){
+              return Response::json(['status'=>false, 'messages'=>$validate->getMessageBag()]);
+          }else{
+              Costumer::create([
+                   'name'=>$request->name,
+                   'phone'=>$request->phone,
+                   'email'=>$request->email,
+                   'adresse'=>$request->adresse,
+                   'user_id'=>0,
+              ]);
+              return Response::json(['status'=>true, 'messages'=>"Votre compte à été bien créer"]);
 
-        }
+          }
+     } catch (\Throwable $th) {
+        return Response::json(['status'=>false, 'messages'=>$th->getMessage()]);
+
+     }
 
   }
   public function login_costomer(Request $request){
@@ -53,9 +61,9 @@ class EcomController extends Controller
 
                 if ($costumercompany){
                     $token= $costumercompany->createToken("costumer",['companiecostumer'])->plainTextToken;
-                    return Response::json(['token'=>$token,'status'=>true]);
+                    return Response::json(['token'=>$token,'status'=>true ,'user'=>$costumercompany]);
                 }else{
-                    return Response::json(['messages'=>'error','status'=>false]);
+                    return Response::json(['messages'=>'Numéro de téléphone incorrect','status'=>false]);
 
                 }
              }
@@ -73,40 +81,61 @@ class EcomController extends Controller
         return Response::json(['status'=>true,'product'=>$product]);
     }
 
-    public function place_order (Request $request ) {
+
+    public function auth_costumer_list(){
+
         try {
-            //code...
-            $code = $this->getName();
-            $order = Order::create([
-                'costumer_id'=>1,
-                'subtotal'=>round($request->subtotal),
-                'tax'=>0,
-                'time'=>Carbon::now(),
-                'remis'=>0,
-                'total'=>intval($request->subtotal),
-                'montant'=>intval($request->subtotal),
-                'code' => $code,
-                'brouillon' =>0 ,
-                'created_user' =>1,
-                'avis'=>"hhdhd",
-                'type'=>"PR"
-            ]);
-                 $order->orderItems()->create([
-                    'product_id' => $request->product_id,
-                    'price' =>$request->price,
-                    'quantity' =>$request->quantity,
-                    'high_price' =>0,
-                ]);
-
-
-            return Response::json(['status'=>true,'order'=>$order]);
+            $startOfWeek = Carbon::now()->startOfWeek();
+          //code...
+          $orders =Order::where('costumer_id',Auth::user()->id)
+          ->where('created_at', '>=', $startOfWeek)
+          ->with(['costumer','user' ,'orderItems.product'])
+          ->latest()->get();
+           return Response::json(['status'=>true,'order'=>$orders]);
         } catch (\Throwable $th) {
-            //throw $th;
-            return Response::json(['status'=>false,'message'=>$th->getMessage()]);
-
+          //throw $th;
         }
-
     }
+
+    public function place_order(Request $request) {
+        try {
+            $code = $this->getName(); // Assurez-vous que getName() génère un code unique
+            $orderData = [
+                'costumer_id' => Auth::user()->id,
+                'subtotal' => round($request->subtotal),
+                'tax' => 0,
+                'time' => Carbon::now(),
+                'remis' => 0,
+                'total' => intval($request->total),
+                'montant' => intval($request->montant),
+                'code' => $code,
+                'brouillon' => 0,
+                'created_user' => Auth::user()->id,
+                'avis' => " ",
+                'type' => "PR"
+            ];
+
+            // Création de la commande
+            $order = Order::create($orderData);
+
+            // Associer les éléments de commande à la commande
+            foreach ($request->order_items as $item) {
+                $orderItem = [
+                    'product_id' => $item['product_id'],
+                    'price' => $item['price'],
+                    'quantity' => $item['quantity'],
+                    'high_price' => 0,
+                ];
+
+                $order->orderItems()->create($orderItem);
+            }
+
+            return response()->json(['status' => true, 'order' => $order]);
+        } catch (\Throwable $th) {
+            return response()->json(['status' => false, 'message' => $th->getMessage()]);
+        }
+    }
+
 
 
 

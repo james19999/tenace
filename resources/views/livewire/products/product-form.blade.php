@@ -39,6 +39,11 @@
                                      <label for="">Optionnel</label>
                                     <input type="file" class="form-control" wire:model="products.{{ $index }}.img" >
                                 </div>
+                                <div class="col-md-10">
+                                     <label for="">Optionnel</label>
+
+                                    <input type="text" class="form-control " placeholder="description" wire:model="products.{{ $index }}.description" >
+                                </div>
                             <div class="col">
                                 @if ($index > 0)
                                     <button type="button" class="btn btn-danger" wire:click="removeProduct({{ $index }})">Supprimer</button>
