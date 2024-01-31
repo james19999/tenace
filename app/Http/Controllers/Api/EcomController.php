@@ -157,4 +157,6 @@ class EcomController extends Controller
 
         return $randomString;
     }
+
+
 }

@@ -67,7 +67,7 @@ class CheckController extends Controller
 
                     $constumer= Costumer::create([
                             'name'=>$request->name,
-                            'phone'=>$request->phone,
+                            'phone'=>str_replace(' ', '',$request->phone),
                             'email'=>$request->email,
                             'adresse'=>$request->adresse,
                             'user_id'=>Auth::user()->id,

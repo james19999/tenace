@@ -89,7 +89,7 @@ class CostumerController extends Controller
 
             Costumer::create([
                  'name'=>$request->name,
-                 'phone'=>$request->phone,
+                 'phone'=>str_replace(' ', '',$request->phone)  ,
                  'email'=>$request->email,
                  'adresse'=>$request->adresse,
                  'user_id'=>Auth::user()->id,
@@ -126,7 +126,7 @@ class CostumerController extends Controller
 
         $costumers->update([
             'name'=>$request->name,
-            'phone'=>$request->phone,
+            'phone'=>str_replace(' ', '',$request->phone),
             'email'=>$request->email,
             'adresse'=>$request->adresse,
         ]);

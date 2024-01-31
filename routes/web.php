@@ -10,6 +10,7 @@ use App\Http\Controllers\Stock\StockController;
 use App\Http\Controllers\Admins\CheckController;
 use App\Http\Controllers\Orders\OrderController;
 use App\Http\Controllers\Admins\DashboarController;
+use App\Http\Controllers\Api\EcomController;
 use App\Http\Controllers\Livreurs\LivreurController;
 use App\Http\Controllers\Costumers\CostumerController;
 use App\Http\Controllers\Expensive\ExpensiveController;
@@ -36,6 +37,7 @@ Auth::routes();
 Route::get('/home', [App\Http\Controllers\HomeController::class, 'index'])->name('home');
 
 Route::get('/tenacos/parthner',[DashboarController::class,'register']);
+Route::get('/space',[EcomController::class,'space']);
 Route::post('/store/pathner',[DashboarController::class,'store_pathner'])->name('storepathner');
 
 
