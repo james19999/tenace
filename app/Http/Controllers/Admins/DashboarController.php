@@ -16,6 +16,17 @@ use LaravelDaily\LaravelCharts\Classes\LaravelChart;
 
 class DashboarController extends Controller
 {
+    public function setpassword(Request $request, $id){
+
+        $user= User::findOrfail($id);
+
+        $user->password=Hash::make($request->password);
+        $user->save();
+
+        return redirect()->back()->with('messages','Mot de passe  modifié avec succès');
+
+
+    }
      public function dashboard () {
 
         $orders = Order::orderby('created_at', 'DESC')

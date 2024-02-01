@@ -66,9 +66,24 @@
                                 <a href="{{ route('user-show',$user) }}" style="color: white" type="button" class="btn btn-success"
                                 >
                                 <i class="material-icons f-16">visibility</i>Details</a>
+
                                  <a  href="{{ route('livreurs.edit', $user) }}" style="color: white" type="button" class="btn btn-warning">
                                      <i class="material-icons">edit</i>
                                      Modifier</a>
+
+
+                                     <a  href="{{ route('set-password',$user) }}" style="color: white" type="button" class="btn btn-dark"
+
+                                     data-hover="tooltip" data-placement="top"
+                                     data-target="#modal-edit-customers{{$user->id }}" data-toggle="modal"
+                                      id="modal-edit"
+                                     >
+                                         <i class="material-icons">password</i>
+                                         Mot de passe</a>
+
+
+
+
                                      <form   method="POST" action="{{ route('livreurs.destroy', $user) }}"
                                      onclick="return confirm('supprimer') "
                                     >
@@ -80,6 +95,32 @@
                              </div>
                          </td>
                       </tr>
+                      <div class="modal fade" id="modal-edit-customers{{$user->id}}" tabindex="-1" aria-labelledby="defaultModalLabel" aria-hidden="true">
+                        <div class="modal-dialog">
+                            <div class="modal-content">
+                                <div class="modal-header">
+                                    <h4 class="modal-title" id="defaultModalLabel">Modifier le mot de passe</h4>
+                                    <button type="button" class="btn btn-light btn-circle dismiss" data-dismiss="modal" aria-label="Close">
+                                        <span aria-hidden="true" class="material-icons">close</span>
+                                    </button>
+                                </div>
+                                <div class="modal-body">
+                                    <form action="{{ route('set-password',$user) }}" method="POST">
+                                        @method('PUT')
+                                        @csrf
+                                        <div class="form-group">
+                                             <label for="">Nouveau mot de passe</label>
+                                            <input type="text" name="password" class="form-control col-12" value="{{ old('password') }}" id="">
+                                        </div>
+                                </div>
+                                <div class="modal-footer">
+                                    <button type="button" class="btn btn-secondary" data-dismiss="modal">Fermer</button>
+                                    <button type="submit" class="btn btn-primary">Modifier</button>
+                                </div>
+                            </form>
+                            </div>
+                        </div>
+                     </div>
                          @endforeach
 
                    </tbody>
