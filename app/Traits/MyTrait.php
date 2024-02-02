@@ -24,36 +24,54 @@ trait MyTrait
     }
 
     public function CalculImprevu(Order $order){
-        $percent =PourcentageCommission::where('percent','Im')->first();
+         try {
+            //code...
+            $percent =PourcentageCommission::where('percent','Im')->first();
 
 
-        $imprevu=  intval($order->total) * intval($percent->amount)/100;
-        Imprevu::create(['amount'=> $imprevu ,'total'=>$order->total,'fixed'=>$percent->amount]);
+            $imprevu=  intval($order->total) * intval($percent->amount)/100;
+            Imprevu::create(['amount'=> $imprevu ,'total'=>$order->total,'fixed'=>$percent->amount]);
+         } catch (\Throwable $th) {
+            //throw $th;
+         }
 
     }
     public function CalculTauxPub(Order $order){
-        $percent =PourcentageCommission::where('percent','Pub')->first();
+          try {
+            //code...
+            $percent =PourcentageCommission::where('percent','Pub')->first();
 
-        $tauxpub=  intval($order->total) * intval($percent->amount) / 100;
-        Pub::create(['amount'=> $tauxpub ,'total'=>$order->total,'fixed'=>$percent->amount]);
+            $tauxpub=  intval($order->total) * intval($percent->amount) / 100;
+            Pub::create(['amount'=> $tauxpub ,'total'=>$order->total,'fixed'=>$percent->amount]);
+          } catch (\Throwable $th) {
+            //throw $th;
+          }
 
 
     }
     public function CalculTauxFond(Order $order){
-        $percent =PourcentageCommission::where('percent','Fond')->first();
+          try {
+              //code...
+              $percent =PourcentageCommission::where('percent','Fond')->first();
 
-        $tauxfond=  intval($order->total) * intval($percent->amount)/ 100;
-        Fond::create(['amount'=>  $tauxfond ,'total'=>$order->total,'fixed'=>$percent->amount]);
+              $tauxfond=  intval($order->total) * intval($percent->amount)/ 100;
+              Fond::create(['amount'=>  $tauxfond ,'total'=>$order->total,'fixed'=>$percent->amount]);
+          } catch (\Throwable $th) {
+            //throw $th;
+          }
 
 
     }
     public function CalculTauxEpargne(Order $order){
-        $percent =PourcentageCommission::where('percent','Epr')->first();
+        try {
+            $percent =PourcentageCommission::where('percent','Epr')->first();
 
-        $tauxepr=  intval($order->total) * intval($percent->amount)/ 100;
+            $tauxepr=  intval($order->total) * intval($percent->amount)/ 100;
 
-        Epargne::create(['amount'=> $tauxepr ,'total'=>$order->total,'fixed'=>$percent->amount]);
-
+            Epargne::create(['amount'=> $tauxepr ,'total'=>$order->total,'fixed'=>$percent->amount]);
+        } catch (\Throwable $th) {
+            //throw $th;
+        }
 
     }
 
