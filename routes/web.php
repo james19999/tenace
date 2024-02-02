@@ -15,6 +15,9 @@ use App\Http\Controllers\Livreurs\LivreurController;
 use App\Http\Controllers\Costumers\CostumerController;
 use App\Http\Controllers\Expensive\ExpensiveController;
 use App\Http\Controllers\Brouillons\BrouillonController;
+use App\Http\Controllers\EpargneController;
+use App\Http\Controllers\FondController;
+use App\Http\Controllers\ImprevuController;
 use App\Http\Controllers\PubController;
 use App\Http\Controllers\TypeExpensive\TypeExpensiveController;
 
@@ -150,7 +153,7 @@ Route::post('post/percent',[PercentController::class,'create'])->name('create-po
 Route::put('edit/percent/{id}',[PercentController::class,'edit'])->name('percen-edit');
 
 Route::get("pub/list",[PubController::class,'index'])->name('pub-list');
-Route::get("imprevue/list",[PubController::class,'index'])->name('imprevu-list');
-Route::get("fond/list",[PubController::class,'index'])->name('fond-list');
-Route::get("epargne/list",[PubController::class,'index'])->name('epargne-list');
+Route::get("imprevue/list",[ImprevuController::class,'index'])->name('imprevu-list');
+Route::get("fond/list",[FondController::class,'index'])->name('fond-list');
+Route::get("epargne/list",[EpargneController::class,'index'])->name('epargne-list');
 });
