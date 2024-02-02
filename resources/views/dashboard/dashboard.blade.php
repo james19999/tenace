@@ -207,7 +207,7 @@
     </div>
 
     <div class="col-12 col-sm-6 col-md-6 col-lg-3">
-        <a href="{{ route('rupture') }}">
+        <a href="{{ route('pub-list') }}">
 
             <div class="card shadow">
                 <div class="card-body">
@@ -229,7 +229,7 @@
     </div>
 
     <div class="col-12 col-sm-6 col-md-6 col-lg-3">
-        <a href="">
+        <a href="{{ route('imprevu-list') }}">
 
             <div class="card shadow">
                 <div class="card-body">
@@ -251,7 +251,7 @@
     </div>
 
     <div class="col-12 col-sm-6 col-md-6 col-lg-3">
-        <a href="">
+        <a href="{{ route('fond-list') }}">
 
             <div class="card shadow">
                 <div class="card-body">
@@ -273,7 +273,7 @@
     </div>
 
     <div class="col-12 col-sm-6 col-md-6 col-lg-3">
-        <a href="">
+        <a href="{{ route('epargne-list') }}">
 
             <div class="card shadow">
                 <div class="card-body">

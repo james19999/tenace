@@ -15,6 +15,7 @@ use App\Http\Controllers\Livreurs\LivreurController;
 use App\Http\Controllers\Costumers\CostumerController;
 use App\Http\Controllers\Expensive\ExpensiveController;
 use App\Http\Controllers\Brouillons\BrouillonController;
+use App\Http\Controllers\PubController;
 use App\Http\Controllers\TypeExpensive\TypeExpensiveController;
 
 /*
@@ -147,4 +148,9 @@ Route::delete('edit/product/{id}',[DashboarController::class,'delete'])->name('d
 Route::get('list/percent',[PercentController::class,'index'])->name('list-percent');
 Route::post('post/percent',[PercentController::class,'create'])->name('create-post');
 Route::put('edit/percent/{id}',[PercentController::class,'edit'])->name('percen-edit');
+
+Route::get("pub/list",[PubController::class,'index'])->name('pub-list');
+Route::get("imprevue/list",[PubController::class,'index'])->name('imprevu-list');
+Route::get("fond/list",[PubController::class,'index'])->name('fond-list');
+Route::get("epargne/list",[PubController::class,'index'])->name('epargne-list');
 });
