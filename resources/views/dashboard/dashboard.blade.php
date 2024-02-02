@@ -129,12 +129,6 @@
                         </div>
                     </div>
                 </div>
-                {{-- <p class="mt-3 mb-0 text-sm">
-
-                    <span class="text-nowrap">this month</span>
-                    <span class="text-success float-right ml-2"> <i class="fa fa-arrow-up"></i>
-                        8%</span>
-                </p> --}}
             </div>
         </div>
     </div>
@@ -207,11 +201,94 @@
                             </div>
                         </div>
                     </div>
-                    {{-- <p class="mt-3 mb-0 text-sm">
-                        <span class="text-nowrap">since last month</span>
-                        <span class="text-danger float-right ml-2"> <i class="fa fa-arrow-down"></i>
-                            3.48%</span>
-                    </p> --}}
+                </div>
+            </div>
+        </a>
+    </div>
+
+    <div class="col-12 col-sm-6 col-md-6 col-lg-3">
+        <a href="{{ route('rupture') }}">
+
+            <div class="card shadow">
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col">
+                            <h5  class="text-uppercase text-muted mb-0 card-title">Fonds publicitaire</h5><span   style="font-size: 130%;color: black" class="h1 font-weight-bold mb-0">{{ $totalpubs }} XOF</span>
+                        </div>
+                        <div class="col-auto col">
+                            <div>
+                                <button class="btn btn-transparent-primary btn-lg btn-circle">
+                                    <img src="{{ asset('assets/images/money.png') }}" width="40" height="40" alt="" srcset="">
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </a>
+    </div>
+
+    <div class="col-12 col-sm-6 col-md-6 col-lg-3">
+        <a href="">
+
+            <div class="card shadow">
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col">
+                            <h5 class="text-uppercase text-muted mb-0 card-title">Fonds des imprévus</h5><span  style="font-size: 130% ;color: black" class="h1 font-weight-bold mb-0">{{ $totalimpre }} XOF</span>
+                        </div>
+                        <div class="col-auto col">
+                            <div>
+                                <button class="btn btn-transparent-primary btn-lg btn-circle">
+                                    <img src="{{ asset('assets/images/money.png') }}" width="40" height="40" alt="" srcset="">
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </a>
+    </div>
+
+    <div class="col-12 col-sm-6 col-md-6 col-lg-3">
+        <a href="">
+
+            <div class="card shadow">
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col">
+                            <h5 class="text-uppercase text-muted mb-0 card-title">Fonds de roulement</h5><span  style="font-size: 130% ;color: black" class="h1 font-weight-bold mb-0">{{ $totalfond }} XOF</span>
+                        </div>
+                        <div class="col-auto col">
+                            <div>
+                                <button class="btn btn-transparent-primary btn-lg btn-circle">
+                                    <img src="{{ asset('assets/images/money.png') }}" width="40" height="40" alt="" srcset="">
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </a>
+    </div>
+
+    <div class="col-12 col-sm-6 col-md-6 col-lg-3">
+        <a href="">
+
+            <div class="card shadow">
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col">
+                            <h5 class="text-uppercase text-muted mb-0 card-title">Epargne</h5><span  style="font-size: 130% ;color: black" class="h1 font-weight-bold mb-0">{{ $totalepargn }} XOF</span>
+                        </div>
+                        <div class="col-auto col">
+                            <div>
+                                <button class="btn btn-transparent-primary btn-lg btn-circle">
+                                    <img src="{{ asset('assets/images/money.png') }}" width="40" height="40" alt="" srcset="">
+                                </button>
+                            </div>
+                        </div>
+                    </div>
                 </div>
             </div>
         </a>

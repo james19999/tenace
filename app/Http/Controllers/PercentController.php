@@ -21,7 +21,7 @@ class PercentController extends Controller
             'percent' => 'required',
           ]);
 
-           if (PourcentageCommission::count()<5) {
+           if (PourcentageCommission::count()<6) {
             # code...
             PourcentageCommission::create($request->all());
             session()->flash('messages','Le pourcentage a été ajoutée avec succès');

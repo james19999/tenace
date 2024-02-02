@@ -31,6 +31,7 @@
                                     <option value="Resp">Responsable</option>
                                     <option value="Big">Manager</option>
                                     <option value="Im">Imprévu</option>
+                                    <option value="Epr">Epargne</option>
                                  </select>
                         </div>
                         <div class="modal-footer">
@@ -121,6 +122,8 @@
                                             <option value="Resp">Responsable</option>
                                             <option value="Big">Manager</option>
                                             <option value="Im">Imprévu</option>
+                                            <option value="Epr">Epargne</option>
+
                                          </select>
                                 </div>
                                 <div class="modal-footer">

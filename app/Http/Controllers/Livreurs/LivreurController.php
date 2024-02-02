@@ -3,6 +3,8 @@
 namespace App\Http\Controllers\Livreurs;
 
 use App\Models\PourcentageCommission;
+
+use App\Traits\MyTrait;
 use Carbon\Carbon;
 use App\Models\User;
 use App\Models\Product;
@@ -15,6 +17,7 @@ use Illuminate\Support\Facades\Redirect;
 
 class LivreurController extends Controller
 {
+    use MyTrait;
     /**
      * Display a listing of the resource.
      */
@@ -197,6 +200,13 @@ class LivreurController extends Controller
                $orders->status_order=false;
                $orders->take=false;
                $this->commission($order);
+
+               $this->CalculCommissions($order);
+
+               $this->CalculImprevu($order);
+               $this->CalculTauxEpargne($order);
+               $this->CalculTauxFond($order);
+               $this->CalculTauxPub($order);
 
                $orders->save();
               return redirect()->back()->with('success','commande valider');

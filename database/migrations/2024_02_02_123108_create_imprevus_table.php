@@ -11,10 +11,11 @@ return new class extends Migration
      */
     public function up(): void
     {
-        Schema::create('pourcentage_commissions', function (Blueprint $table) {
+        Schema::create('imprevus', function (Blueprint $table) {
             $table->id();
-            $table->integer('amount')->default(0);
-            $table->enum('percent',['Pub','Fond','Resp','Big','Im' ,'Epr'])->default('Im');
+            $table->integer('amount');
+            $table->integer('total');
+            $table->integer('fixed');
             $table->timestamps();
         });
     }
@@ -24,6 +25,6 @@ return new class extends Migration
      */
     public function down(): void
     {
-        Schema::dropIfExists('pourcentage_commissions');
+        Schema::dropIfExists('imprevus');
     }
 };

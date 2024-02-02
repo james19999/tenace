@@ -131,7 +131,7 @@ class EcomController extends Controller
                 ];
 
                 $order->orderItems()->create($orderItem);
-                Mail::to('crepinawity@gmail.com')->send(new ParthnerMail(URL::signedRoute('brouillons')));
+                Mail::to(env('Mail_User'))->send(new ParthnerMail(URL::signedRoute('brouillons')));
 
             }
 

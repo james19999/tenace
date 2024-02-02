@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Admins;
 
+use App\Traits\MyTrait;
 use Carbon\Carbon;
 use App\Models\User;
 use App\Models\Product;
@@ -16,6 +17,7 @@ use LaravelDaily\LaravelCharts\Classes\LaravelChart;
 
 class DashboarController extends Controller
 {
+    use MyTrait;
     public function setpassword(Request $request, $id){
 
         $user= User::findOrfail($id);
@@ -141,8 +143,12 @@ class DashboarController extends Controller
                 $query->where('qt_initial', 0);
             })
             ->count();
+            $totalpubs=$this->totalpub();
+            $totalimpre=$this->totalimprevu();
+            $totalfond=$this->totalfond();
+            $totalepargn=$this->totalepargne();
 
-        return view('dashboard.dashboard',compact('rupture','totalCommandes','expensive','totalOrdersThisWeek','chart1','chart2', 'chart3','chart4', 'orders','Ordered', 'Orderdelivered','Orderall', 'OrderdeAmount'));
+        return view('dashboard.dashboard',compact('rupture', 'totalepargn', 'totalpubs', 'totalimpre', 'totalfond', 'totalCommandes','expensive','totalOrdersThisWeek','chart1','chart2', 'chart3','chart4', 'orders','Ordered', 'Orderdelivered','Orderall', 'OrderdeAmount'));
      }
 
 
