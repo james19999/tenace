@@ -6,7 +6,6 @@ use Carbon\Carbon;
 use App\Models\Costumer;
 use Illuminate\Http\Request;
 use App\Http\Controllers\Controller;
-use App\Models\CostomerNew;
 use Illuminate\Support\Facades\Auth;
 
 
@@ -19,7 +18,7 @@ class CostumerController extends Controller
     {
         //
 
-        $costumers=CostomerNew::all()->sortBy('name');
+        $costumers=Costumer::all()->sortBy('name');
 
 
         return view('costumer.index',compact('costumers'));
