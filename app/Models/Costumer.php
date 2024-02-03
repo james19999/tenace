@@ -21,10 +21,10 @@ class Costumer extends Model
 
     ];
 
-    protected $casts = [
+    // protected $casts = [
 
-        'phone' => 'integer',
-    ];
+    //     'phone' => 'integer',
+    // ];
     public function orders(){
         return $this->hasMany(Order::class);
     }
