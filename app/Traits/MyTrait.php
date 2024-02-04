@@ -29,7 +29,7 @@ trait MyTrait
             $percent =PourcentageCommission::where('percent','Im')->first();
 
 
-            $imprevu=  intval($order->total) * intval($percent->amount)/100;
+            $imprevu=  intval($order->total) * (intval($percent->amount)/100);
             Imprevu::create(['amount'=> $imprevu ,'total'=>$order->total,'fixed'=>$percent->amount]);
          } catch (\Throwable $th) {
             //throw $th;
@@ -41,7 +41,7 @@ trait MyTrait
             //code...
             $percent =PourcentageCommission::where('percent','Pub')->first();
 
-            $tauxpub=  intval($order->total) * intval($percent->amount) / 100;
+            $tauxpub=  intval($order->total) * (intval($percent->amount) / 100);
             Pub::create(['amount'=> $tauxpub ,'total'=>$order->total,'fixed'=>$percent->amount]);
           } catch (\Throwable $th) {
             //throw $th;
@@ -54,7 +54,7 @@ trait MyTrait
               //code...
               $percent =PourcentageCommission::where('percent','Fond')->first();
 
-              $tauxfond=  intval($order->total) * intval($percent->amount)/ 100;
+              $tauxfond=  intval($order->total) * (intval($percent->amount)/ 100);
               Fond::create(['amount'=>  $tauxfond ,'total'=>$order->total,'fixed'=>$percent->amount]);
           } catch (\Throwable $th) {
             //throw $th;
@@ -66,7 +66,7 @@ trait MyTrait
         try {
             $percent =PourcentageCommission::where('percent','Epr')->first();
 
-            $tauxepr=  intval($order->total) * intval($percent->amount)/ 100;
+            $tauxepr=  intval($order->total) * (intval($percent->amount)/ 100);
 
             Epargne::create(['amount'=> $tauxepr ,'total'=>$order->total,'fixed'=>$percent->amount]);
         } catch (\Throwable $th) {
