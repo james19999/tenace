@@ -19,6 +19,7 @@ use App\Http\Controllers\EpargneController;
 use App\Http\Controllers\FondController;
 use App\Http\Controllers\ImprevuController;
 use App\Http\Controllers\PubController;
+use App\Http\Controllers\RetraitController;
 use App\Http\Controllers\TypeExpensive\TypeExpensiveController;
 
 /*
@@ -155,5 +156,7 @@ Route::put('edit/percent/{id}',[PercentController::class,'edit'])->name('percen-
 Route::get("pub/list",[PubController::class,'index'])->name('pub-list');
 Route::get("imprevue/list",[ImprevuController::class,'index'])->name('imprevu-list');
 Route::get("fond/list",[FondController::class,'index'])->name('fond-list');
+Route::post("fond/list",[FondController::class,'retrait'])->name('fond-retrait');
 Route::get("epargne/list",[EpargneController::class,'index'])->name('epargne-list');
+Route::get('retraits/list',[RetraitController::class,'index'])->name('retrait-list');
 });

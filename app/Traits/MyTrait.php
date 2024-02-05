@@ -9,6 +9,7 @@ use App\Models\Imprevu;
 use App\Models\Orders\Order;
 use App\Models\PourcentageCommission;
 use App\Models\Pub;
+use App\Models\TotalFond;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\Request;
 
@@ -53,9 +54,17 @@ trait MyTrait
           try {
               //code...
               $percent =PourcentageCommission::where('percent','Fond')->first();
-
+              $somme=Fond::sum('amount');
               $tauxfond=  intval($order->total) * (intval($percent->amount)/ 100);
+              $tote=$somme+$tauxfond;
               Fond::create(['amount'=>  $tauxfond ,'total'=>$order->total,'fixed'=>$percent->amount]);
+              $totalfonds=TotalFond::where('etat',0)->first();
+                 if ($totalfonds==null ) {
+                     TotalFond::create(['totals'=>$tote]);
+                 }else{
+                    $totalfonds->totals =intval($totalfonds->totals)+ $tauxfond;
+                    $totalfonds->save();
+                 }
           } catch (\Throwable $th) {
             //throw $th;
           }
@@ -88,6 +97,7 @@ trait MyTrait
 
         }
     }
+
 
    public function  totalpub(){
     $startOfWeek = Carbon::now()->startOfWeek();
