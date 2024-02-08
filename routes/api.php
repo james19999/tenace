@@ -36,6 +36,7 @@ Route::prefix('gest-plus')->group(function () {
 
 
  Route::middleware('auth:sanctum')->group(function () {
+   Route::put('set/costomer/info/{id}',[EcomController::class,'setcostomerinfo']);
    Route::post('place/order',[EcomController::class,'place_order']);
    Route::get('auth/costumer/list',[EcomController::class,'auth_costumer_list']);
    Route::post('logout/user',[ApiController::class,'logout_user']);

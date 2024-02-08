@@ -142,7 +142,28 @@ class EcomController extends Controller
     }
 
 
+   public function setcostomerinfo(Request $request, $id){
 
+    try {
+        //code...
+       $order=Order::where('id',$id)->first();
+      if ($order) {
+        # code...
+        // $costumer =Costumer::where('id',$order->id)->first();
+         $order->time=$request->time;
+
+         $order->costumer()->update([
+            'adresse'=>$request->adresse
+             ]) ;
+          $order->save();
+
+         return Response::json(['status'=>true,'order'=>$order]);
+
+      }
+    } catch (\Throwable $th) {
+        //throw $th;
+    }
+   }
 
 
     public  function getName($n = 3)
