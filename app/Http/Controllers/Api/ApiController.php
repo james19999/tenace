@@ -2,13 +2,12 @@
 
 namespace App\Http\Controllers\Api;
 
-use App\Models\PourcentageCommission;
+use App\Traits\MyTrait;
 use Carbon\Carbon;
 use App\Models\User;
 use App\Models\Product;
 use App\Models\Orders\Order;
 use Illuminate\Http\Request;
-use PhpParser\Node\Stmt\TryCatch;
 use App\Http\Controllers\Controller;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Hash;
@@ -18,6 +17,7 @@ use Illuminate\Validation\ValidationException;
 
 class ApiController extends Controller
 {
+    use MyTrait;
     //login système
 
     public function login (Request $request) {
@@ -227,7 +227,14 @@ class ApiController extends Controller
                    $orders->user_id=Auth::user()->id;
                    $orders->status_order=false;
                    $orders->take=false;
+
                    $this->commission($order);
+
+                   $this->CalculCommissions($order);
+
+                   $this->CalculImprevu($order);
+                   $this->CalculTauxEpargne($order);
+                   $this->CalculTauxFond($order);
 
                    $orders->save();
                   return Response::json(['status'=>true,'messages'=>'Commande valider']);
@@ -272,42 +279,5 @@ class ApiController extends Controller
 
 
 
- public function commission(Order $order){
-    $users=User::all();
-    foreach ($users as  $user) {
-      if ($user->user_type=="MNG") {
-          # code...
-       $manager=PourcentageCommission::where('percent','Big')->first();
-          if ($manager) {
-              # code...
-              $d=  intval($order->total) * intval($manager->amount) / 100;
-              $user->commissions()->create(['amount'=>$d ,'total'=>$order->total,'fixed'=>$manager->amount]);
 
-          } else {
-              # code...
-              $d=  intval($order->total) * 0;
-              $user->commissions()->create(['amount'=>$d ,'total'=>0,'fixed'=>0]);
-
-
-          }
-
-      }else if($user->user_type=="ADMINUSER"){
-      $manager=PourcentageCommission::where('percent','Resp')->first();
-        if ($manager) {
-          # code...
-          $s=  intval($order->total) * intval($manager->amount) / 100;
-          $user->commissions()->create(['amount'=>$s ,'total'=>$order->total,'fixed'=>$manager->amount]);
-
-        } else {
-          # code...
-          $s=  intval($order->total) * 0 ;
-          $user->commissions()->create(['amount'=>$s ,'total'=>0,'fixed'=>0]);
-
-        }
-
-
-
-      }
-    }
-}
 }
