@@ -112,6 +112,12 @@
                             <span class="text">Commandes  annulées</span>
                         </a>
                     </li>
+                    <li>
+                        <a href="{{ route('trie-order-parther') }}" class="">
+                            <span class="icon material-icons"  >remove</span>
+                            <span class="text">Partenaires</span>
+                        </a>
+                    </li>
 
                 </ul>
             </li>
