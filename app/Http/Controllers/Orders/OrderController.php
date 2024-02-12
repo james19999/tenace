@@ -287,13 +287,14 @@ class OrderController extends Controller
      public function trie_order_parther(Request $request){
         $startDate = $request->input('start_date');
         $endDate = $request->input('end_date');
-        $costumer_id= $request->input('costumer_id');
+        $created_user= $request->input('costumer_id');
 
         $orders = Order::whereBetween('created_at', [$startDate.' 00:00:00', $endDate.' 23:59:59'])
            ->where("status","delivered")
-           ->where('costumer_id',$costumer_id)
+           ->where('costumer_id',$created_user)
           ->get();
-          $users=Costumer::all();
+
+          $users=User::where('user_type','PT')->get();
 
          return view('orders.order_parthner_trie',compact( "orders","users"));
      }

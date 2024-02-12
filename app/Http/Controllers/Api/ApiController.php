@@ -231,7 +231,7 @@ class ApiController extends Controller
                    $this->commission($order);
 
                    $this->CalculCommissions($order);
-
+                   $this->CalculTauxPub($order);
                    $this->CalculImprevu($order);
                    $this->CalculTauxEpargne($order);
                    $this->CalculTauxFond($order);
