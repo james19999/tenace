@@ -35,6 +35,7 @@
                                 <form action="{{ route('fond-retrait') }}" method="POST">
                                     @csrf
                                      <input type="number" name="amount" class="form-control col-12" id="" placeholder="montant" required>
+                                     <input type="text" name="raison" class="form-control col-12 mt-3" id="" placeholder="Raison" required>
                             </div>
                             <div class="modal-footer">
                                 <button type="button" class="btn btn-secondary" data-dismiss="modal">Fermer</button>

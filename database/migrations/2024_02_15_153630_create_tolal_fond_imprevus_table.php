@@ -11,9 +11,10 @@ return new class extends Migration
      */
     public function up(): void
     {
-        Schema::create('retraits', function (Blueprint $table) {
+        Schema::create('tolal_fond_imprevus', function (Blueprint $table) {
             $table->id();
-            $table->integer('amount');
+            $table->integer('totals');
+            $table->boolean('etat')->default(0);
             $table->timestamps();
         });
     }
@@ -23,6 +24,6 @@ return new class extends Migration
      */
     public function down(): void
     {
-        Schema::dropIfExists('retraits');
+        Schema::dropIfExists('tolal_fond_imprevus');
     }
 };

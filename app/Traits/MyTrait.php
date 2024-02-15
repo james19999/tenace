@@ -9,6 +9,8 @@ use App\Models\Imprevu;
 use App\Models\Orders\Order;
 use App\Models\PourcentageCommission;
 use App\Models\Pub;
+use App\Models\TolalFondImprevu;
+use App\Models\TolalFondPub;
 use App\Models\TotalFond;
 use App\Models\User;
 use Carbon\Carbon;
@@ -68,10 +70,18 @@ trait MyTrait
          try {
             //code...
             $percent =PourcentageCommission::where('percent','Im')->first();
-
+            $somme=Imprevu::sum('amount');
 
             $imprevu=  intval($order->total) * (intval($percent->amount)/100);
+            $tote=$somme+$imprevu;
             Imprevu::create(['amount'=> $imprevu ,'total'=>$order->total,'fixed'=>$percent->amount]);
+            $totalfonds=TolalFondImprevu::where('etat',0)->first();
+            if ($totalfonds==null ) {
+                TolalFondImprevu::create(['totals'=>$tote]);
+            }else{
+               $totalfonds->totals =intval($totalfonds->totals)+ $imprevu;
+               $totalfonds->save();
+            }
          } catch (\Throwable $th) {
             //throw $th;
          }
@@ -81,9 +91,18 @@ trait MyTrait
           try {
             //code...
             $percent =PourcentageCommission::where('percent','Pub')->first();
+            $somme=Pub::sum('amount');
 
             $tauxpub=  intval($order->total) * (intval($percent->amount) / 100);
+            $tote=$somme+$tauxpub;
             Pub::create(['amount'=> $tauxpub ,'total'=>$order->total,'fixed'=>$percent->amount]);
+            $totalfonds=TolalFondPub::where('etat',0)->first();
+            if ($totalfonds==null ) {
+                TolalFondPub::create(['totals'=>$tote]);
+            }else{
+               $totalfonds->totals =intval($totalfonds->totals)+ $tauxpub;
+               $totalfonds->save();
+            }
           } catch (\Throwable $th) {
             //throw $th;
           }
@@ -171,4 +190,8 @@ trait MyTrait
 
     return $totalepargne;
    }
+
+
 }
+
+

@@ -5,14 +5,9 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 
-class Imprevu extends Model
+class RetraitPub extends Model
 {
     use HasFactory;
-    protected $fillable = [
-        "amount",
-        "fixed",
-        "total",
-    ];
-
+    protected $fillable = ['amount','raison'];
 
 }

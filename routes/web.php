@@ -156,9 +156,19 @@ Route::post('post/percent',[PercentController::class,'create'])->name('create-po
 Route::put('edit/percent/{id}',[PercentController::class,'edit'])->name('percen-edit');
 
 Route::get("pub/list",[PubController::class,'index'])->name('pub-list');
+Route::post("add/retrait/pub",[PubController::class,'retraitpub'])->name('retrait-pub');
+
 Route::get("imprevue/list",[ImprevuController::class,'index'])->name('imprevu-list');
+
+Route::post("add/retrait/imprevu",[ImprevuController::class,'retraitimprevu'])->name('retrait-imprevu');
+
 Route::get("fond/list",[FondController::class,'index'])->name('fond-list');
 Route::post("fond/list",[FondController::class,'retrait'])->name('fond-retrait');
 Route::get("epargne/list",[EpargneController::class,'index'])->name('epargne-list');
+
 Route::get('retraits/list',[RetraitController::class,'index'])->name('retrait-list');
+
+Route::get('retraits/list/imprevue',[RetraitController::class,'indeximpre'])->name('index-impre');
+
+Route::get('retraits/list/pub',[RetraitController::class,'indexpub'])->name('index-pub');
 });

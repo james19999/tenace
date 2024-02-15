@@ -5,14 +5,8 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 
-class Imprevu extends Model
+class TolalFondImprevu extends Model
 {
     use HasFactory;
-    protected $fillable = [
-        "amount",
-        "fixed",
-        "total",
-    ];
-
-
+    protected  $fillable=['totals','etat'];
 }

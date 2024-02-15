@@ -13,7 +13,7 @@ class FondController extends Controller
 {
 
     public function index(){
-        $fonds=Fond::latest()->get();
+      $fonds=Fond::latest()->get();
        $totalfons= TotalFond::sum('totals');
        $startOfWeek = Carbon::now()->startOfWeek();
 
@@ -36,16 +36,18 @@ class FondController extends Controller
           }else{
             $new_montant=intval($soldefonds->totals) - intval($request->amount);
             $soldefonds->totals=$new_montant;
-             Retrait::create(['amount'=>$request->amount]);
-            $soldefonds->save();
+             Retrait::create(['amount'=>$request->amount,'raison'=>$request->raison]);
+             $soldefonds->save();
             session()->flash("messages","Retrait effectuer");
 
              return back();
              }
 
         }
-      } catch (\Throwable $th) {
+         } catch (\Throwable $th) {
         //throw $th;
       }
    }
+
+
 }

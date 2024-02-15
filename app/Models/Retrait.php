@@ -8,5 +8,7 @@ use Illuminate\Database\Eloquent\Model;
 class Retrait extends Model
 {
     use HasFactory;
-    protected $fillable = ['amount'];
+    protected $fillable = ['amount','raison'];
+
+
 }

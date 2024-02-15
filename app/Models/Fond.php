@@ -13,4 +13,6 @@ class Fond extends Model
         "fixed",
         "total",
     ];
+
+
 }
