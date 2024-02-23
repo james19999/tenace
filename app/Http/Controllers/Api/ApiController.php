@@ -20,47 +20,47 @@ class ApiController extends Controller
     use MyTrait;
     //login système
 
-    public function login (Request $request) {
+    // public function login (Request $request) {
 
-       try {
-         $validator=Validator::make($request->all(),[
-              'email'=>'required|email',
-              'password'=>'required',
-         ]);
+    //    try {
+    //      $validator=Validator::make($request->all(),[
+    //           'email'=>'required|email',
+    //           'password'=>'required',
+    //      ]);
 
-          if ($validator->fails()) {
-            # code...
-            return Response::json([
-                 'status'=>false,
-                 'message'=>$validator->getMessageBag()
-            ]);
-          } else {
-            # code...
+    //       if ($validator->fails()) {
+    //         # code...
+    //         return Response::json([
+    //              'status'=>false,
+    //              'message'=>$validator->getMessageBag()
+    //         ]);
+    //       } else {
+    //         # code...
 
-        $user = User::where('email', $request->email)
-                          ->
-                          where('active',true)
-                           ->first();
+    //     $user = User::where('email', $request->email)
+    //                       ->
+    //                       where('active',true)
+    //                        ->first();
 
-        if (! $user || ! Hash::check($request->password, $user->password)) {
-            throw ValidationException::withMessages([
-                'email' => ['The provided credentials are incorrect.'],
-            ]);
-        }
+    //     if (! $user || ! Hash::check($request->password, $user->password)) {
+    //         throw ValidationException::withMessages([
+    //             'email' => ['The provided credentials are incorrect.'],
+    //         ]);
+    //     }
 
-         $token= $user->createToken($request->password)->plainTextToken;
-         return Response::json([
-            'token'=>$token,
-            'user'=>$user,
-            'status'=>true,
-         ]);
-          }
+    //      $token= $user->createToken($request->password)->plainTextToken;
+    //      return Response::json([
+    //         'token'=>$token,
+    //         'user'=>$user,
+    //         'status'=>true,
+    //      ]);
+    //       }
 
-       } catch (\Throwable $th) {
-        //throw $th;
-        return Response::json(['message'=>$th->getMessage()]);
-       }
-    }
+    //    } catch (\Throwable $th) {
+    //     //throw $th;
+    //     return Response::json(['message'=>$th->getMessage()]);
+    //    }
+    // }
 
     public  function logout_user(Request $request){
         $logout=  $request->user()->currentAccessToken()->delete();
