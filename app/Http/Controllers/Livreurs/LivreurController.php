@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Livreurs;
 use App\Models\PourcentageCommission;
 
 use App\Traits\MyTrait;
+use App\Traits\NewTrait;
 use Carbon\Carbon;
 use App\Models\User;
 use App\Models\Product;
@@ -18,6 +19,7 @@ use Illuminate\Support\Facades\Redirect;
 class LivreurController extends Controller
 {
     use MyTrait;
+    use NewTrait;
     /**
      * Display a listing of the resource.
      */
@@ -186,6 +188,13 @@ class LivreurController extends Controller
                $orders->user_id=Auth::user()->id;
                $orders->status_order=false;
                $orders->take=false;
+               $this->RemoveCommission($orders);
+               $this->RemoveEpargne($orders);
+               $this->RemoveFond($orders);
+               $this->RemovePub($orders);
+               $this->RemoveImprevue( $orders);
+
+
                $orders->save();
               return redirect()->back()->with('success','commande annuler');
 

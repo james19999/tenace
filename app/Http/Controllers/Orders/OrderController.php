@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Orders;
 
 use App\Models\PourcentageCommission;
 use App\Traits\MyTrait;
+use App\Traits\NewTrait;
 use Carbon\Carbon;
 use App\Models\Product;
 use App\Models\Costumer;
@@ -18,6 +19,7 @@ use Illuminate\Support\Facades\Mail;
 class OrderController extends Controller
 {
    use MyTrait;
+   use NewTrait;
     public function index(){
 
         $orders=Order::latest()
@@ -71,6 +73,11 @@ class OrderController extends Controller
                  $orders->user_id=Auth::user()->id;
                  $orders->status_order=false;
                  $orders->take=false;
+                 $this->RemoveCommission($orders);
+                 $this->RemoveEpargne($orders);
+                 $this->RemoveFond($orders);
+                 $this->RemovePub($orders);
+                 $this->RemoveImprevue( $orders);
                  $orders->save();
                 return redirect()->back()->with('success','commande annuler');
 

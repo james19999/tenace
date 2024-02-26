@@ -28,12 +28,12 @@ trait MyTrait
               if ($manager) {
                   # code...
                   $d=  intval($order->total) * (intval($manager->amount) / 100);
-                  $user->commissions()->create(['amount'=>$d ,'total'=>$order->total,'fixed'=>$manager->amount]);
+                  $user->commissions()->create(['amount'=>$d ,'total'=>$order->total,'fixed'=>$manager->amount,'order_id'=>$order->id]);
 
               } else {
                   # code...
                   $d=  intval($order->total) * 0;
-                  $user->commissions()->create(['amount'=>$d ,'total'=>0,'fixed'=>0]);
+                  $user->commissions()->create(['amount'=>$d ,'total'=>0,'fixed'=>0,'order_id'=>$order->id]);
 
 
               }
@@ -74,7 +74,7 @@ trait MyTrait
 
             $imprevu=  intval($order->total) * (intval($percent->amount)/100);
             $tote=$somme+$imprevu;
-            Imprevu::create(['amount'=> $imprevu ,'total'=>$order->total,'fixed'=>$percent->amount]);
+            Imprevu::create(['amount'=> $imprevu ,'total'=>$order->total,'fixed'=>$percent->amount,'order_id'=>$order->id]);
             $totalfonds=TolalFondImprevu::where('etat',0)->first();
             if ($totalfonds==null ) {
                 TolalFondImprevu::create(['totals'=>$tote]);
@@ -95,7 +95,7 @@ trait MyTrait
 
             $tauxpub=  intval($order->total) * (intval($percent->amount) / 100);
             $tote=$somme+$tauxpub;
-            Pub::create(['amount'=> $tauxpub ,'total'=>$order->total,'fixed'=>$percent->amount]);
+            Pub::create(['amount'=> $tauxpub ,'total'=>$order->total,'fixed'=>$percent->amount,'order_id'=>$order->id]);
             $totalfonds=TolalFondPub::where('etat',0)->first();
             if ($totalfonds==null ) {
                 TolalFondPub::create(['totals'=>$tote]);
@@ -116,7 +116,7 @@ trait MyTrait
               $somme=Fond::sum('amount');
               $tauxfond=  intval($order->total) * (intval($percent->amount)/ 100);
               $tote=$somme+$tauxfond;
-              Fond::create(['amount'=>  $tauxfond ,'total'=>$order->total,'fixed'=>$percent->amount]);
+              Fond::create(['amount'=>  $tauxfond ,'total'=>$order->total,'fixed'=>$percent->amount,'order_id'=>$order->id]);
               $totalfonds=TotalFond::where('etat',0)->first();
                  if ($totalfonds==null ) {
                      TotalFond::create(['totals'=>$tote]);
@@ -136,7 +136,7 @@ trait MyTrait
 
             $tauxepr=  intval($order->total) * (intval($percent->amount)/ 100);
 
-            Epargne::create(['amount'=> $tauxepr ,'total'=>$order->total,'fixed'=>$percent->amount]);
+            Epargne::create(['amount'=> $tauxepr ,'total'=>$order->total,'fixed'=>$percent->amount,'order_id'=>$order->id]);
         } catch (\Throwable $th) {
             //throw $th;
         }
