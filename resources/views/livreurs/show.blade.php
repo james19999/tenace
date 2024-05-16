@@ -44,6 +44,7 @@
                            <th style="width: 20%">N°</th>
                            <th style="width: 20%">Code</th>
                            <th style="width: 20%">Nom/Téléphone (Client)</th>
+                           <th style="width: 20%">Adresse</th>
                            <th style="width: 20%">Sous total</th>
                            <th style="width: 20%">Frais</th>
                            <th style="width: 20%">Total</th>
@@ -62,6 +63,7 @@
                          <td style="color: black ">{{ $order->code}}</td>
                          <td style="color: black ">{{ $order->costumer->name ?? '-' }}| {{ $order->costumer->phone ?? '-' }}</td>
 
+                         <td style="color: black ">{{ $order->costumer->adresse }} F</td>
                          <td style="color: black ">{{ $order->subtotal }} F</td>
                          <td style="color: black ">{{ $order->tax }} F </td>
                          <td style="color: black ">{{ $order->total }} F </td>
@@ -97,12 +99,14 @@
                         <th style="width: 20%">N°</th>
                         <th style="width: 20%">Code</th>
                         <th style="width: 20%">Nom/Téléphone (Client)</th>
+                        <th style="width: 20%">Adresse </th>
                         <th style="width: 20% ;color: black" >Sous total</th>
                         <th style="width: 20% ;color: black">Total des frais</th>
                         <th style="width: 20%;color: black">Total</th>
                         <th style="width: 20%">Etat</th>
                         <th style="width: 20%">Produit</th>
                     </tr>
+                    <th style="width: 20%"></th>
                     <th style="width: 20%"></th>
                     <th style="width: 20%"></th>
 
