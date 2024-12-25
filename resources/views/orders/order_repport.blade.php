@@ -18,7 +18,7 @@
                     <div class="row mb-2">
                         <div class="col-md-6">
                             <label for="year" class="form-label">Entrer l'année :</label>
-                            <input class="form-control" type="number" id="year" name="year" placeholder="2023"
+                            <input class="form-control" type="number" id="year" name="year" placeholder=""
                                 required>
                         </div>
                         <div class="col-md-6 d-flex align-items-end">
