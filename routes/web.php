@@ -174,5 +174,5 @@ Route::get('retraits/list/imprevue',[RetraitController::class,'indeximpre'])->na
 Route::get('retraits/list/pub',[RetraitController::class,'indexpub'])->name('index-pub');
 
 
-Route::post('repport/order',[OrderController::class,'order_repport'])->name('repport-order');
+Route::get('repport/order',[OrderController::class,'order_repport'])->name('repport-order');
 });

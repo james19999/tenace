@@ -308,7 +308,9 @@ class OrderController extends Controller
 
      public function order_repport(Request $request){
 
-        $orders = Order::whereYear('created_at', $request->year)->get();
+        $orders = Order::whereYear('created_at', $request->year)
+                        ->where('status','delivered')
+                         ->get();
         return view('orders.order_repport',compact('orders'));
      }
 }

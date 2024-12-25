@@ -13,7 +13,7 @@
                         <strong>{{ session('messages') }}</strong>
                     </div>
                 @endif
-                <form action="{{ route('repport-order') }}" method="POST">
+                <form action="{{ route('repport-order') }}" method="GET">
                     @csrf
                     <div class="row mb-2">
                         <div class="col-md-6">
