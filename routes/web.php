@@ -1,25 +1,26 @@
 <?php
 
-use App\Http\Controllers\PercentController;
+use App\Http\Livewire\RepportOrder;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Route;
+use App\Http\Controllers\PubController;
+use App\Http\Controllers\FondController;
+use App\Http\Controllers\EpargneController;
+use App\Http\Controllers\ImprevuController;
+use App\Http\Controllers\PercentController;
+use App\Http\Controllers\RetraitController;
 use App\Http\Livewire\Products\ProductCart;
 use App\Http\Livewire\Products\ProductForm;
 use App\Http\Livewire\Products\ProductList;
+use App\Http\Controllers\Api\EcomController;
 use App\Http\Controllers\Stock\StockController;
 use App\Http\Controllers\Admins\CheckController;
 use App\Http\Controllers\Orders\OrderController;
 use App\Http\Controllers\Admins\DashboarController;
-use App\Http\Controllers\Api\EcomController;
 use App\Http\Controllers\Livreurs\LivreurController;
 use App\Http\Controllers\Costumers\CostumerController;
 use App\Http\Controllers\Expensive\ExpensiveController;
 use App\Http\Controllers\Brouillons\BrouillonController;
-use App\Http\Controllers\EpargneController;
-use App\Http\Controllers\FondController;
-use App\Http\Controllers\ImprevuController;
-use App\Http\Controllers\PubController;
-use App\Http\Controllers\RetraitController;
 use App\Http\Controllers\TypeExpensive\TypeExpensiveController;
 
 /*
@@ -171,4 +172,7 @@ Route::get('retraits/list',[RetraitController::class,'index'])->name('retrait-li
 Route::get('retraits/list/imprevue',[RetraitController::class,'indeximpre'])->name('index-impre');
 
 Route::get('retraits/list/pub',[RetraitController::class,'indexpub'])->name('index-pub');
+
+
+Route::post('repport/order',[OrderController::class,'order_repport'])->name('repport-order');
 });

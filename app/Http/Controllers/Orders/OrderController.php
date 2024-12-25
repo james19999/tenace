@@ -2,19 +2,19 @@
 
 namespace App\Http\Controllers\Orders;
 
-use App\Models\PourcentageCommission;
-use App\Traits\MyTrait;
-use App\Traits\NewTrait;
 use Carbon\Carbon;
+use App\Models\User;
+use App\Mail\TenaCos;
 use App\Models\Product;
+use App\Traits\MyTrait;
 use App\Models\Costumer;
+use App\Traits\NewTrait;
 use App\Models\Orders\Order;
 use Illuminate\Http\Request;
 use App\Http\Controllers\Controller;
-use App\Mail\TenaCos;
-use App\Models\User;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Mail;
+use App\Models\PourcentageCommission;
 
 class OrderController extends Controller
 {
@@ -304,5 +304,11 @@ class OrderController extends Controller
           $users=User::where('user_type','PT')->get();
 
          return view('orders.order_parthner_trie',compact( "orders","users"));
+     }
+
+     public function order_repport(Request $request){
+
+        $orders = Order::whereYear('created_at', $request->year)->get();
+        return view('orders.order_repport',compact('orders'));
      }
 }
