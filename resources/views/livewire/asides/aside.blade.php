@@ -192,6 +192,15 @@
                         <span class="text">Paramètre</span>
                     </a>
                 </li>
+                <li>
+
+                    <a href=" {{ route('show-deliveries') }}
+                    " class="">
+                        <span class="icon material-icons">calendar_today
+                        </span>
+                        <span class="text">Classement</span>
+                    </a>
+                </li>
             @elseif (Auth::user()->user_type == 'PT')
                 <li>
                     <a href="{{ route('product') }}" class="">
@@ -318,6 +327,16 @@
                         <span class="icon material-icons">bike_scooter
                         </span>
                         <span class="text">Livraisons</span>
+                    </a>
+                </li>
+
+                <li>
+
+                    <a href=" {{ route('show-deliveries') }}
+                    " class="">
+                        <span class="icon material-icons">calendar_today
+                        </span>
+                        <span class="text">Classement</span>
                     </a>
                 </li>
             @endif

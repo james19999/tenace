@@ -172,7 +172,7 @@ Route::get('retraits/list',[RetraitController::class,'index'])->name('retrait-li
 Route::get('retraits/list/imprevue',[RetraitController::class,'indeximpre'])->name('index-impre');
 
 Route::get('retraits/list/pub',[RetraitController::class,'indexpub'])->name('index-pub');
-
+Route::get('show/deliveries',[OrderController::class,'showDeliveries'])->name('show-deliveries');
 
 Route::get('repport/order',[OrderController::class,'order_repport'])->name('repport-order');
 });

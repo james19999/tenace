@@ -313,4 +313,81 @@ class OrderController extends Controller
                          ->get();
         return view('orders.order_repport',compact('orders'));
      }
+
+
+     public function countDeliveriesByDay()
+     {
+         $startOfWeek = Carbon::now()->startOfWeek(); // Début de la semaine (Lundi)
+         $endOfWeek = Carbon::now()->endOfWeek();
+         $results = DB::table('orders')
+             ->join('users', 'orders.user_id', '=', 'users.id')
+             ->select(
+                 'users.id',
+                 'users.name',
+                 DB::raw('DAYNAME(orders.updated_at) as day'), // Jour de la livraison
+                 DB::raw('COUNT(orders.id) as delivered_count') // Nombre de commandes livrées par jour
+             )
+             ->where('users.user_type', '=', 'LVS') // Filtrer les utilisateurs de type LVS
+             ->where('orders.status', '=', 'delivered')
+             ->whereBetween('orders.updated_at', [$startOfWeek, $endOfWeek])  // Filtrer les commandes livrées
+             ->groupBy('users.id', 'users.name', 'day') // Grouper par utilisateur et jour
+             ->get();
+
+         return $results;
+     }
+          public function countTotalDeliveries()
+          {
+              return DB::table('orders')
+                  ->join('users', 'orders.user_id', '=', 'users.id')
+                  ->select(
+                      'users.id',
+                      'users.name',
+                      DB::raw('COUNT(orders.id) as total_deliveries') // Total des livraisons par utilisateur
+                  )
+                  ->where('users.user_type', '=', 'LVS') // Filtrer les utilisateurs de type LVS
+                  ->where('orders.status', '=', 'delivered') // Filtrer les commandes livrées
+                  ->groupBy('users.id', 'users.name') // Grouper par utilisateur
+                  ->orderByDesc('total_deliveries') // Trier par total décroissant
+                  ->get();
+          }
+
+
+          public function formatDeliveriesByDay()
+          {
+              $dailyData = $this->countDeliveriesByDay();
+              $totalData = $this->countTotalDeliveries();
+
+              $formatted = [];
+
+              // Ajout des données totales
+              foreach ($totalData as $total) {
+                  $formatted[$total->id] = [
+                      'name' => $total->name,
+                      'total_deliveries' => $total->total_deliveries,
+                      'days' => []
+                  ];
+              }
+
+              // Ajout des livraisons par jour
+              foreach ($dailyData as $item) {
+                  $formatted[$item->id]['days'][$item->day] = $item->delivered_count;
+              }
+
+              // Compléter les jours manquants avec des valeurs par défaut
+              foreach ($formatted as &$user) {
+                  foreach (['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'] as $day) {
+                      $user['days'][$day] = $user['days'][$day] ?? 0;
+                  }
+              }
+
+              return $formatted;
+          }
+
+
+     public function showDeliveries()
+     {
+         $formatted = $this->formatDeliveriesByDay();
+         return view('orders.deliveries', compact('formatted'));
+     }
+
 }
