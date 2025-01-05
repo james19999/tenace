@@ -336,21 +336,25 @@ class OrderController extends Controller
 
          return $results;
      }
-          public function countTotalDeliveries()
-          {
-              return DB::table('orders')
-                  ->join('users', 'orders.user_id', '=', 'users.id')
-                  ->select(
-                      'users.id',
-                      'users.name',
-                      DB::raw('COUNT(orders.id) as total_deliveries') // Total des livraisons par utilisateur
-                  )
-                  ->where('users.user_type', '=', 'LVS') // Filtrer les utilisateurs de type LVS
-                  ->where('orders.status', '=', 'delivered') // Filtrer les commandes livrées
-                  ->groupBy('users.id', 'users.name') // Grouper par utilisateur
-                  ->orderByDesc('total_deliveries') // Trier par total décroissant
-                  ->get();
-          }
+     public function countTotalDeliveries()
+     {
+         $startOfWeek = Carbon::now()->startOfWeek(); // Début de la semaine (lundi)
+         $endOfWeek = Carbon::now()->endOfWeek();    // Fin de la semaine (dimanche)
+
+         return DB::table('orders')
+             ->join('users', 'orders.user_id', '=', 'users.id')
+             ->select(
+                 'users.id',
+                 'users.name',
+                 DB::raw('COUNT(orders.id) as total_deliveries') // Total des livraisons par utilisateur
+             )
+             ->where('users.user_type', '=', 'LVS') // Filtrer les utilisateurs de type LVS
+             ->where('orders.status', '=', 'delivered') // Filtrer les commandes livrées
+             ->whereBetween('orders.updated_at', [$startOfWeek, $endOfWeek]) // Filtrer les commandes de la semaine en cours
+             ->groupBy('users.id', 'users.name') // Grouper par utilisateur
+             ->orderByDesc('total_deliveries') // Trier par total décroissant
+             ->get();
+     }
 
 
           public function formatDeliveriesByDay()
