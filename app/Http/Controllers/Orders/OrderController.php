@@ -11,6 +11,7 @@ use App\Models\Costumer;
 use App\Traits\NewTrait;
 use App\Models\Orders\Order;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 use App\Http\Controllers\Controller;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Mail;
