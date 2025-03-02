@@ -50,7 +50,7 @@
                     <span class="dropdown-item">
                         {{ Auth::user()->name }}
                     </span>
-                    <a class="dropdown-item" href="https://tenace.digital-services-home.com/">Tenac-cos TOGO</a>
+                    {{--  <a class="dropdown-item" href="https://tenace.digital-services-home.com/">Tenac-cos TOGO</a>  --}}
                     <a class="dropdown-item" href="https://tenaces.tenacostogo.com/">Tenac-cos 2</a>
                     {{--  <a  class="dropdown-item" href="https://tenace-benin.digital-services-home.com/">Tenac-cos BENIN</a>  --}}
                     <a class="dropdown-item" href="{{ route('logout') }}"
