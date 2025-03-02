@@ -23,7 +23,7 @@
             <li class="nav-item icon">
 
             </li>
-           <li class="nav-item icon">
+            <li class="nav-item icon">
 
             </li>
 
@@ -33,15 +33,17 @@
                 <a class="nav-link" data-toggle="dropdown" href="#">
                     <div class="avatar avatar-sm avatar-dnd bg-primary">
                         @php
-                        $settings=App\Models\Setting::all();
+                            $settings = App\Models\Setting::all();
                         @endphp
-                      @forelse ($settings as $setting)
-                      <img src="{{ url('image/',$setting->img) }}" height="100" width="100" class="avatar-img align-top rounded-circle" alt="">
+                        @forelse ($settings as $setting)
+                            <img src="{{ url('image/', $setting->img) }}" height="100" width="100"
+                                class="avatar-img align-top rounded-circle" alt="">
 
-                      @empty
+                        @empty
 
-                      <img src="{{ asset('assets/images/tena.png') }}" height="100" width="100" class="avatar-img align-top rounded-circle" alt="">
-                      @endforelse
+                            <img src="{{ asset('assets/images/tena.png') }}" height="100" width="100"
+                                class="avatar-img align-top rounded-circle" alt="">
+                        @endforelse
                     </div>
                 </a>
                 <div class="dropdown-menu p-1 dropdown-menu-right">
@@ -49,10 +51,10 @@
                         {{ Auth::user()->name }}
                     </span>
                     <a class="dropdown-item" href="https://tenace.digital-services-home.com/">Tenac-cos TOGO</a>
-                    <a  class="dropdown-item" href="https://tenace-ghana.digital-services-home.com/">Tenac-cos GHANA</a>
-                    <a  class="dropdown-item" href="https://tenace-benin.digital-services-home.com/">Tenac-cos BENIN</a>
+                    <a class="dropdown-item" href="https://tenaces.tenacostogo.com/">Tenac-cos 2</a>
+                    {{--  <a  class="dropdown-item" href="https://tenace-benin.digital-services-home.com/">Tenac-cos BENIN</a>  --}}
                     <a class="dropdown-item" href="{{ route('logout') }}"
-                       onclick="event.preventDefault();
+                        onclick="event.preventDefault();
                                      document.getElementById('logout-form').submit();">
                         {{ __('Déconnexion') }}
                     </a>
