@@ -173,7 +173,7 @@ class DashboarController extends Controller
         'qts_seuil'=>$request->qts_seuil,
         'high_price'=>$request->high_price,
         'description'=>$request->description,
-        'img'=>$imageName?? null
+        'img'=>$imageName
     ]);
 
         return redirect()->route('product')->with('messages','produit modifié');
