@@ -2,16 +2,16 @@
 
 namespace App\Http\Controllers\Admins;
 
-use App\Traits\MyTrait;
 use Carbon\Carbon;
 use App\Models\User;
 use App\Models\Product;
+use App\Models\Setting;
+use App\Traits\MyTrait;
 use App\Models\Expensive;
 use App\Models\Orders\Order;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use App\Http\Controllers\Controller;
-use App\Models\Setting;
 use Illuminate\Support\Facades\Hash;
 use LaravelDaily\LaravelCharts\Classes\LaravelChart;
 
@@ -173,7 +173,7 @@ class DashboarController extends Controller
         'qts_seuil'=>$request->qts_seuil,
         'high_price'=>$request->high_price,
         'description'=>$request->description,
-        'img'=>$imageName
+        'img'=>$imageName?? null
     ]);
 
         return redirect()->route('product')->with('messages','produit modifié');
