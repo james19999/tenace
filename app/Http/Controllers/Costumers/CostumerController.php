@@ -45,13 +45,16 @@ class CostumerController extends Controller
 
 
                 # code...
-                $costumers= Costumer::withCount('orders')
-                ->withSum('orders','total')
-                ->orderByDesc('orders_sum_total')->
-
-                whereMonth('created_at', $request->month)
+                $costumers = Costumer::withCount('orders')
+                ->withSum('orders', 'total')
+                ->orderByDesc('orders_sum_total')
+                ->when($request->month, function ($query, $month) {
+                    return $query->whereMonth('created_at', $month);
+                })
                 ->whereYear('created_at', Carbon::now()->year)
-                ->limit($request->limit)
+                ->when($request->limit, function ($query, $limit) {
+                    return $query->limit($limit);
+                })
                 ->get();
                 return view('costumer.top_costumer',compact('costumers','montharray'));
 
