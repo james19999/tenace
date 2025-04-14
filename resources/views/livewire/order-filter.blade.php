@@ -17,10 +17,10 @@
                 <li class="p-4 border rounded">
                     <p><strong>Commande #{{ $order->id }}</strong></p>
                     <p>Date: {{ $order->created_at->format('d/m/Y') }}</p>
-                    <p>Commande:</p>
+                    <p>Produits:</p>
                     <ul class="ml-4 list-disc">
                         @foreach ($order->orderItems as $item)
-                            <li>{{ $item->product->name ?? '' }} - {{ $item->quantity }}x</li>
+                            <li>{{ $item->product->name ?? '' }} </li>
                         @endforeach
                     </ul>
                 </li>
