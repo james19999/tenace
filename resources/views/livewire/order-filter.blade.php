@@ -20,7 +20,7 @@
                     <p>Commande:</p>
                     <ul class="ml-4 list-disc">
                         @foreach ($order->orderItems as $item)
-                            <li>{{ $item->name }} - {{ $item->quantity }}x</li>
+                            <li>{{ $item->product->name ?? '' }} - {{ $item->quantity }}x</li>
                         @endforeach
                     </ul>
                 </li>
