@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Livewire\OrderFilter;
 use App\Http\Livewire\RepportOrder;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Route;
@@ -175,4 +176,5 @@ Route::get('retraits/list/pub',[RetraitController::class,'indexpub'])->name('ind
 Route::get('show/deliveries',[OrderController::class,'showDeliveries'])->name('show-deliveries');
 
 Route::get('repport/order',[OrderController::class,'order_repport'])->name('repport-order');
+Route::get('costumer/achat/order',[OrderController::class,'OrderFilter'])->name('achat');
 });

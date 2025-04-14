@@ -124,6 +124,15 @@
                                 <span class="text">Rapport sur les commandes</span>
                             </a>
                         </li>
+                        <li>
+
+                            <a href=" {{ route('achat') }}
+                            " class="">
+                                <span class="icon material-icons">
+                                </span>
+                                <span class="text">Achat client</span>
+                            </a>
+                        </li>
 
                     </ul>
                 </li>

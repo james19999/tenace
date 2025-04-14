@@ -395,4 +395,9 @@ class OrderController extends Controller
          return view('orders.deliveries', compact('formatted'));
      }
 
+      public function OrderFilter (){
+
+        return view('orders.filter');
+      }
+
 }
