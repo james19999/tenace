@@ -1,4 +1,3 @@
-
 <!DOCTYPE html>
 <html lang="{{ str_replace('_', '-', app()->getLocale()) }}">
 
@@ -31,16 +30,17 @@
     @livewireStyles
 
 
+
 </head>
 
 <body>
     <div class="overlay-mask"></div>
     <div class="main-wrapper ">
 
-             @include('partials.aside')
+        @include('partials.aside')
 
         <div class="right-area">
-             @include('partials.header')
+            @include('partials.header')
 
             <div class="main-content container">
                 <div class="page-header">
@@ -61,7 +61,7 @@
     @livewireScripts
 
 
-    <script src="{{asset('assets/js/vendor.bundle.js')}}"></script>
+    <script src="{{ asset('assets/js/vendor.bundle.js') }}"></script>
 
 
     <script src="{{ asset('assets/js/app.bundle.js') }}"></script>
@@ -77,82 +77,77 @@
 
 
 
-<script src="https://cdn.jsdelivr.net/npm/apexcharts"></script>
-<script src="https://cdn.jsdelivr.net/npm/chart.js@2.8.0"></script>
+    <script src="https://cdn.jsdelivr.net/npm/apexcharts"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@2.8.0"></script>
 
 
 
-<script src="https://code.jquery.com/jquery-3.5.1.js"></script>
-<script src="https://cdn.datatables.net/1.13.4/js/jquery.dataTables.min.js"></script>
-<script src="https://cdn.datatables.net/buttons/2.3.6/js/dataTables.buttons.min.js"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.1.3/jszip.min.js"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/pdfmake/0.1.53/pdfmake.min.js"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/pdfmake/0.1.53/vfs_fonts.js"></script>
-<script src="https://cdn.datatables.net/buttons/2.3.6/js/buttons.html5.min.js"></script>
-<script src="https://cdn.datatables.net/buttons/2.3.6/js/buttons.print.min.js"></script>
+    <script src="https://code.jquery.com/jquery-3.5.1.js"></script>
+    <script src="https://cdn.datatables.net/1.13.4/js/jquery.dataTables.min.js"></script>
+    <script src="https://cdn.datatables.net/buttons/2.3.6/js/dataTables.buttons.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.1.3/jszip.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdfmake/0.1.53/pdfmake.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdfmake/0.1.53/vfs_fonts.js"></script>
+    <script src="https://cdn.datatables.net/buttons/2.3.6/js/buttons.html5.min.js"></script>
+    <script src="https://cdn.datatables.net/buttons/2.3.6/js/buttons.print.min.js"></script>
 
-<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/2.5.0/Chart.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/2.5.0/Chart.min.js"></script>
 
-<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/2.5.0/Chart.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/2.5.0/Chart.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
 
-  <script>
-    $(document).ready(function() {
-    $('#example').DataTable( {
-        dom: 'Bfrtip',
-        buttons: [
-            'copy', 'csv', 'excel', 'pdf', 'print'
-        ]
-    } );
-    } );
-    $(document).ready(function() {
-    $('#examples').DataTable( {
-        dom: 'Bfrtip',
-        buttons: [
-            'copy', 'csv', 'excel', 'pdf', 'print'
-        ]
-    } );
-    } );
-
-
- function printDiv(divName) {
-    var printContents = document.getElementById(divName).innerHTML;
-    var originalContents = document.body.innerHTML;
-
-    document.body.innerHTML = printContents;
-
-    window.print();
-
-    document.body.innerHTML = originalContents;
-    }
+    <script>
+        $(document).ready(function() {
+            $('#example').DataTable({
+                dom: 'Bfrtip',
+                buttons: [
+                    'copy', 'csv', 'excel', 'pdf', 'print'
+                ]
+            });
+        });
+        $(document).ready(function() {
+            $('#examples').DataTable({
+                dom: 'Bfrtip',
+                buttons: [
+                    'copy', 'csv', 'excel', 'pdf', 'print'
+                ]
+            });
+        });
 
 
-    // In your Javascript (external .js resource or <script> tag)
-    $(document).ready(function() {
-        $('.js-example-basic-single').select2();
-    });
+        function printDiv(divName) {
+            var printContents = document.getElementById(divName).innerHTML;
+            var originalContents = document.body.innerHTML;
+
+            document.body.innerHTML = printContents;
+
+            window.print();
+
+            document.body.innerHTML = originalContents;
+        }
 
 
-
-    function extraireNumeroMois() {
-        // Obtenez la valeur de la date depuis l'élément d'entrée
-        var dateInput = document.getElementById("dateInput").value;
-
-        // Créez un objet de date à partir de la valeur de l'entrée
-        var date = new Date(dateInput);
-
-        // Obtenez le numéro du mois (de 0 à 11, où 0 représente janvier et 11 représente décembre)
-        var numeroMois = date.getMonth() + 1;
-
-        // Affichez le numéro du mois dans la console (vous pouvez le traiter comme vous le souhaitez)
-        console.log("Numéro du mois : " + numeroMois);
-    }
+        // In your Javascript (external .js resource or <script> tag)
+        $(document).ready(function() {
+            $('.js-example-basic-single').select2();
+        });
 
 
 
+        function extraireNumeroMois() {
+            // Obtenez la valeur de la date depuis l'élément d'entrée
+            var dateInput = document.getElementById("dateInput").value;
 
+            // Créez un objet de date à partir de la valeur de l'entrée
+            var date = new Date(dateInput);
 
-  </script>
+            // Obtenez le numéro du mois (de 0 à 11, où 0 représente janvier et 11 représente décembre)
+            var numeroMois = date.getMonth() + 1;
+
+            // Affichez le numéro du mois dans la console (vous pouvez le traiter comme vous le souhaitez)
+            console.log("Numéro du mois : " + numeroMois);
+        }
+    </script>
 
 
 
