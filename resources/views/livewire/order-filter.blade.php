@@ -12,20 +12,23 @@
 
     @if ($orders && count($orders))
         <h3 class="text-lg font-bold mt-4">Commandes trouvées :</h3>
-        <ul class="mt-2 space-y-4">
+        <div class="mt-6 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             @foreach ($orders as $order)
-                <li class="p-4 border rounded">
-                    <p><strong>Commande #{{ $order->id }}</strong></p>
-                    <p>Date: {{ $order->created_at->format('d/m/Y') }}</p>
-                    <p>Produits:</p>
-                    <ul class="ml-4 list-disc">
-                        @foreach ($order->orderItems as $item)
-                            <li>{{ $item->product->name ?? '' }} </li>
-                        @endforeach
-                    </ul>
-                </li>
+                <div class="p-4 border rounded shadow bg-white">
+                    <p class="font-semibold text-lg">Commande #{{ $order->id }}</p>
+                    <p class="text-sm text-gray-600">Date : {{ $order->created_at->format('d/m/Y') }}</p>
+
+                    <div class="mt-2">
+                        <p class="font-medium">Produits :</p>
+                        <ul class="list-disc ml-5 mt-1 text-sm text-gray-700">
+                            @foreach ($order->orderItems as $item)
+                                <li>{{ $item->product->name ?? '' }}</li>
+                            @endforeach
+                        </ul>
+                    </div>
+                </div>
             @endforeach
-        </ul>
+        </div>
     @elseif($phone && $month)
         <p class="text-gray-500">Aucune commande trouvée pour ce client ce mois-ci.</p>
     @endif
