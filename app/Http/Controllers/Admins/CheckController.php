@@ -10,6 +10,7 @@ use App\Mail\ParthnerMail;
 use App\Models\Orders\Order;
 use Illuminate\Http\Request;
 use App\Models\Orders\OrderItem;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\URL;
 use App\Http\Controllers\Controller;
 use Illuminate\Support\Facades\Auth;
@@ -112,7 +113,13 @@ class CheckController extends Controller
 
                                 foreach ($users as $key => $user) {
 
-                                 Mail::to($user->email)->send(new TenaCos($order));
+                                    try {
+                            Mail::to($user->email)->send(new TenaCos($order));
+                        } catch (\Exception $e) {
+                            Log::error("Erreur d’envoi à {$user->email} : " . $e->getMessage());
+                        }
+
+                                //  Mail::to($user->email)->send(new TenaCos($order));
 
                                 }
                                 # code...
