@@ -107,6 +107,7 @@ class OrderController extends Controller
                       $this->CalculTauxEpargne($order);
                       $this->CalculTauxFond($order);
                       $this->CalculTauxPub($order);
+                      $this->processCommissions($order);
 
 
                      $orders->save();

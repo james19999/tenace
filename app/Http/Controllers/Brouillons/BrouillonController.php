@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Brouillons;
 
 use App\Models\User;
+use App\Models\Wallet;
 use App\Models\Orders\Order;
 use Illuminate\Http\Request;
 use Illuminate\Support\Carbon;
@@ -59,7 +60,8 @@ class BrouillonController extends Controller
         // ->whereDate('created_at',Carbon::today())
         ->where('created_at','>', Carbon::now()->subDays(2))
         ->get();
-
-        return view('parthners.parthners_order',compact('orders'));
+         $deliveredOrdersCount =$orders->where('status','delivered')->count();
+         $totalCommission=Wallet::where('user_id',Auth::user()->id)->sum('balance');
+        return view('parthners.parthners_order',compact('orders','deliveredOrdersCount','totalCommission'));
       }
 }

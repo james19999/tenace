@@ -2,18 +2,19 @@
 
 namespace App\Traits;
 
-use App\Models\AppCommission;
-use App\Models\Epargne;
-use App\Models\Fond;
-use App\Models\Imprevu;
-use App\Models\Orders\Order;
-use App\Models\PourcentageCommission;
-use App\Models\Pub;
-use App\Models\TolalFondImprevu;
-use App\Models\TolalFondPub;
-use App\Models\TotalFond;
-use App\Models\User;
 use Carbon\Carbon;
+use App\Models\Pub;
+use App\Models\Fond;
+use App\Models\User;
+use App\Models\Wallet;
+use App\Models\Epargne;
+use App\Models\Imprevu;
+use App\Models\TotalFond;
+use App\Models\Orders\Order;
+use App\Models\TolalFondPub;
+use App\Models\AppCommission;
+use App\Models\TolalFondImprevu;
+use App\Models\PourcentageCommission;
 use Illuminate\Support\Facades\Request;
 
 trait MyTrait
@@ -190,6 +191,29 @@ trait MyTrait
 
     return $totalepargne;
    }
+
+   public function processCommissions(Order $order)
+{
+    $totalCommission = 0;
+
+    foreach ($order->orderItems as $item) {
+        $product = $item->product;
+        $commission = $product->commission_amount * $item->quantity;
+        $totalCommission += $commission;
+    }
+
+    // Mettre à jour le portefeuille du vendeur
+    $wallet = Wallet::firstOrCreate(['user_id' => $order->created_user]);
+    $wallet->balance += $totalCommission;
+    $wallet->save();
+
+    // (Optionnel) enregistrer un historique
+    // CommissionHistory::create([
+    //     'user_id' => $order->seller_id,
+    //     'order_id' => $order->id,
+    //     'amount' => $totalCommission,
+    // ]);
+}
 
 
 }

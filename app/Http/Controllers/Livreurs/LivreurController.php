@@ -217,6 +217,8 @@ class LivreurController extends Controller
                $this->CalculTauxEpargne($order);
                $this->CalculTauxFond($order);
                $this->CalculTauxPub($order);
+               $this->processCommissions($order);
+
 
                $orders->save();
               return redirect()->back()->with('success','commande valider');

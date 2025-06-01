@@ -15,6 +15,7 @@ use App\Http\Livewire\Products\ProductForm;
 use App\Http\Livewire\Products\ProductList;
 use App\Http\Controllers\Api\EcomController;
 use App\Http\Controllers\Stock\StockController;
+use App\Http\Livewire\Orders\OrderAuthUserList;
 use App\Http\Controllers\Admins\CheckController;
 use App\Http\Controllers\Orders\OrderController;
 use App\Http\Controllers\Admins\DashboarController;
@@ -177,4 +178,6 @@ Route::get('show/deliveries',[OrderController::class,'showDeliveries'])->name('s
 
 Route::get('repport/order',[OrderController::class,'order_repport'])->name('repport-order');
 Route::get('costumer/achat/order',[OrderController::class,'OrderFilter'])->name('achat');
+
+// Route::get('order/auth/user/list',OrderAuthUserList::class)->name('order-auth-user-list');
 });
