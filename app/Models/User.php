@@ -6,8 +6,8 @@ namespace App\Models;
 use App\Models\Orders\Order;
 use Laravel\Sanctum\HasApiTokens;
 use Illuminate\Notifications\Notifiable;
-use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Foundation\Auth\User as Authenticatable;
+use Illuminate\Database\Eloquent\Factories\HasFactory;
 
 class User extends Authenticatable
 {
@@ -55,4 +55,9 @@ class User extends Authenticatable
     public function commissions(){
         return $this->hasMany(Commission::class);
     }
+    public function wallets(){
+        return $this->hasMany(Wallet::class);
+    }
+
+  
 }

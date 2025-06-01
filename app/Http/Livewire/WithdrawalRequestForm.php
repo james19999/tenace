@@ -14,7 +14,7 @@ class WithdrawalRequestForm extends Component
     public function submitWithdrawalRequest()
     {
         $this->validate([
-            'amount' => 'required|numeric|min:10',
+            'amount' => 'required|numeric|min:5000',
             // 'method' => 'required|string|in:flooz,tmoney,bank',
             // 'details' => 'required|string|max:255',
         ]);
