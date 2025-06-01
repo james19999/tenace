@@ -55,6 +55,12 @@
                                 <span class="text">Type de pourcentage</span>
                             </a>
                         </li>
+                        <li>
+                            <a href="{{ route('virementverify') }}" class="">
+                                <span class="icon material-icons">remove</span>
+                                <span class="text">Demande virement</span>
+                            </a>
+                        </li>
 
                     </ul>
                 </li>
@@ -228,6 +234,12 @@
                     <a href="{{ route('parthnersorder') }}" class="">
                         <span class="icon material-icons">history</span>
                         <span class="text">Mes commandes</span>
+                    </a>
+                </li>
+                <li>
+                    <a href="{{ route('with-auth-user-list') }}" class="">
+                        <span class="icon material-icons">money</span>
+                        <span class="text">Demande de virement</span>
                     </a>
                 </li>
             @elseif(Auth::user()->user_type == 'VDS')

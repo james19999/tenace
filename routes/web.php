@@ -14,6 +14,8 @@ use App\Http\Livewire\Products\ProductCart;
 use App\Http\Livewire\Products\ProductForm;
 use App\Http\Livewire\Products\ProductList;
 use App\Http\Controllers\Api\EcomController;
+use App\Http\Controllers\VirementController;
+use App\Http\Livewire\WithdrawalRequestForm;
 use App\Http\Controllers\Stock\StockController;
 use App\Http\Livewire\Orders\OrderAuthUserList;
 use App\Http\Controllers\Admins\CheckController;
@@ -179,5 +181,6 @@ Route::get('show/deliveries',[OrderController::class,'showDeliveries'])->name('s
 Route::get('repport/order',[OrderController::class,'order_repport'])->name('repport-order');
 Route::get('costumer/achat/order',[OrderController::class,'OrderFilter'])->name('achat');
 
-// Route::get('order/auth/user/list',OrderAuthUserList::class)->name('order-auth-user-list');
+Route::get('with/auth/user/list',[VirementController::class,'createform'])->name('with-auth-user-list');
+Route::get('virement/auth/user/list',[VirementController::class,'virementverify'])->name('virementverify');
 });
