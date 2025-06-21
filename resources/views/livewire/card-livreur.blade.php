@@ -9,7 +9,7 @@
         <div class="col-12 col-sm-6 col-md-6 col-lg-3">
             <div class="card shadow bg-primary text-white">
                 <div class="card-body">
-                    <h6 class="text-uppercase mb-1">Livraisons effectuées</h6>
+                    <h6 class="text-uppercase mb-1">Livraisons totales</h6>
                     <span style="font-size: 130%" class="h1 font-weight-bold mb-0">{{ $totalLivraisons }}</span>
                 </div>
             </div>
