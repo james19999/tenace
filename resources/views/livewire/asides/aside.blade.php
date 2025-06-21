@@ -336,6 +336,12 @@
                 </li>
             @else
                 <li>
+                    <a href="{{ route('Admin') }}" class="active">
+                        <span class="icon material-icons">dashboard</span>
+                        <span class="text">Dashboard</span>
+                    </a>
+                </li>
+                <li>
                     <a href="{{ route('authlivrable', Auth::user()->id) }}" class="">
                         <span class="icon material-icons">shopping_cart
                         </span>

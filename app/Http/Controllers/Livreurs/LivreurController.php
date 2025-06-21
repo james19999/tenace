@@ -2,18 +2,18 @@
 
 namespace App\Http\Controllers\Livreurs;
 
-use App\Models\PourcentageCommission;
-
-use App\Traits\MyTrait;
-use App\Traits\NewTrait;
 use Carbon\Carbon;
+
 use App\Models\User;
 use App\Models\Product;
+use App\Traits\MyTrait;
+use App\Traits\NewTrait;
 use App\Models\Orders\Order;
 use Illuminate\Http\Request;
 use App\Http\Controllers\Controller;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Hash;
+use App\Models\PourcentageCommission;
 use Illuminate\Support\Facades\Redirect;
 
 class LivreurController extends Controller

@@ -448,6 +448,8 @@
                     </div>
                 </div>
             </div>
+        @elseif (Auth::user()->user_type == 'LVS')
+            @livewire('card-livreur')
         @endif
 
 
