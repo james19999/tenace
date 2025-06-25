@@ -23,20 +23,23 @@
                     <div class="col-12" id="printableArea">
                         <div class="row">
                             <div class="col-md-3">
-                            @php
-                                $settings=App\Models\Setting::all();
-                            @endphp
-                             @forelse ($settings as $setting )
-                              <img src="{{ url('image/',$setting->img) }}"   height="100"  width="100" style="background-color: white ; "  alt="" class="logo img-thumbnail "> <br>
-                               <div  class="col-md-8">
-                                   <p>Nom : {{ $setting->name ?? '' }}</p>
-                                    <p>Téléphone: {{ $setting->phone ?? '' }}</p>
-                               </div>
+                                @php
+                                    $settings = App\Models\Setting::all();
+                                @endphp
+                                @forelse ($settings as $setting)
+                                    <img src="{{ url('image/', $setting->img) }}" height="100" width="100"
+                                        style="background-color: white ; " alt="" class="logo img-thumbnail "> <br>
+                                    <div class="col-md-8">
+                                        <p>Nom : {{ $setting->name ?? '' }}</p>
+                                        <p>Téléphone: {{ $setting->phone ?? '' }}</p>
+                                    </div>
 
-                             @empty
+                                @empty
 
-                             <img src="{{ asset('assets/images/tena.png') }}" height="100"  width="100" style="background-color: white ; "  alt="" class="logo img-thumbnail ">TENACE COS
-                             @endforelse
+                                    <img src="{{ asset('assets/images/tena.png') }}" height="100" width="100"
+                                        style="background-color: white ; " alt="" class="logo img-thumbnail ">TENACE
+                                    COS
+                                @endforelse
                             </div>
                             <div class="col-md-3">
                                 <h2>Livreur</h2>
@@ -82,93 +85,90 @@
                             </thead>
                             <tbody>
                                 @foreach ($Orders->orderItems as $items)
-                                <tr>
-                                    <td>{{ $items->product->name ?? '' }}</td>
-                                    <td>
-                                         @if ($items->product->price == $items->price)
-
-                                         {{ $items->product->price }} F (D)
-                                         @else
-                                         {{ $items->product->high_price }} F (G)
-
-                                         @endif
-
-                                    </td>
-                                    <td>{{ $items->quantity }}</td>
-                                    <td>
+                                    <tr>
+                                        <td>{{ $items->product->name ?? '' }}</td>
                                         <td>
                                             @if ($items->product->price == $items->price)
-                                        {{ $items->quantity * $items->product->price }} F
-
+                                                {{ $items->product->price }} F (D)
                                             @else
-
-                                            {{ $items->quantity * $items->product->high_price }} F
+                                                {{ $items->product->high_price }} F (G)
                                             @endif
 
-                                    </td>
-                                </tr>
-                            @endforeach
+                                        </td>
+                                        <td>{{ $items->quantity }}</td>
+                                        <td>
+                                        <td>
+                                            @if ($items->product->price == $items->price)
+                                                {{ $items->quantity * $items->product->price }} F
+                                            @else
+                                                {{ $items->quantity * $items->product->high_price }} F
+                                            @endif
+
+                                        </td>
+                                    </tr>
+                                @endforeach
 
                             </tbody>
                         </table>
                         <div class="container">
                             <div class="row">
-                               <div class="col-md-4">
-                                <p>Sous total: {{ $Orders->subtotal }} F</p>
-                                <p>Remise: {{ $Orders->remis }} %</p>
-                                <p>Total :  {{ $Orders->total}} F</p>
-                                <p>Frais de livraison: {{ $Orders->tax }} F</p>
-                                <p>Montant à payer  :{{ $Orders->total+ $Orders->tax}} F</p>
-                               </div>
-                               <div class="col-md-4">
-                                  <div class="text-right" style="word-wrap: break-word; text-align: right">
+                                <div class="col-md-4">
+                                    <p>Sous total: {{ $Orders->subtotal }} F</p>
+                                    <p>Remise: {{ $Orders->remis }} %</p>
+                                    <p>Total : {{ $Orders->total }} F</p>
+                                    <p>Frais de livraison: {{ $Orders->tax }} F</p>
+                                    <p>Montant à payer :{{ $Orders->total + $Orders->tax }} F</p>
+                                </div>
+                                <div class="col-md-4">
+                                    <div class="text-right" style="word-wrap: break-word; text-align: right">
                                     </div>
-                               </div>
-                               <div class="col-md-4">
-                                  <div class="text-right" style="word-wrap: break-word; text-align: center">
-                                      @if ($Orders->avis==null)
-                                        <p>Merci pour votre achat chez tenace cosmétique</p>
-                                      @else
-                                         <p>{{ $Orders->avis }}</p>
-                                      @endif
+                                </div>
+                                <div class="col-md-4">
+                                    <div class="text-right" style="word-wrap: break-word; text-align: center">
+                                        @if ($Orders->avis == null)
+                                            <p>Merci pour votre achat chez tenace cosmétique</p>
+                                        @else
+                                            <p>{{ $Orders->avis }}</p>
+                                        @endif
 
                                     </div>
-                               </div>
+                                </div>
                             </div>
-                       </div>
+                        </div>
                     </div>
                     <div style="padding-right:5px">
 
-                        <a href="{{ route('order') }}" class="btn btn-warning">Retour</a>
+                        {{--  <a href="{{ route('order') }}" class="btn btn-warning">Retour</a>  --}}
                     </div>
-                        @if ($Orders->status =='delivered')
-                           <button class="btn btn-primary no-print" onclick="printDiv('printableArea')">Print</button>
-                         @else
+                    @if ($Orders->status == 'delivered')
+                        <button class="btn btn-primary no-print" onclick="printDiv('printableArea')">Print</button>
+                    @else
+                        <form action="{{ route('changestatususer', $Orders->id) }}" method="POST"
+                            style="padding-left: 10px">
+                            @csrf
+                            @method('PUT')
+                            <div class="row">
+                                <div class="col-md-4">
+                                    <select name="status" id="" class="form-control">
+                                        <option value="delivered">Valider</option>
+                                        <option value="canceled">Annuler</option>
+                                    </select>
 
-                         <form action="{{ route('changestatususer', $Orders->id) }}" method="POST" style="padding-left: 10px">
-                             @csrf
-                             @method('PUT')
-                             <div class="row">
-                                 <div class="col-md-4">
-                                     <select name="status" id="" class="form-control">
-                                         <option value="delivered">Valider</option>
-                                         <option value="canceled">Annuler</option>
-                                     </select>
-
-                                 </div>
-                                 <div class="col-md-5">
-                                   <input type="text"  class="form-control @error('motif') is-invalid @enderror" name="motif" value="{{ old('motif') }}" placeholder="motif d' annulation">
-                                    @error('motif')
-                                     <div class="alert alert-danger">{{ $message }}</div>
-                                     @enderror
                                 </div>
-                                 <div class="col-md-3">
-                                     <button type="submit" class="btn btn-success">Enregister</button>
-                                 </div>
-                             </div>
+                                <div class="col-md-5">
+                                    <input type="text" class="form-control @error('motif') is-invalid @enderror"
+                                        name="motif" value="{{ old('motif') }}" placeholder="motif d' annulation">
+                                    @error('motif')
+                                        <div class="alert alert-danger">{{ $message }}</div>
+                                    @enderror
+                                </div>
+                                <div class="col-md-3">
+                                    <button type="submit" class="btn btn-success">Enregister</button>
+                                </div>
+                            </div>
 
-                         </form>
-                         @endif
+                        </form>
+                    @endif
                 </div>
             </div>
 

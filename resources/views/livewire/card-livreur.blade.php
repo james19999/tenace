@@ -107,9 +107,11 @@
                                         @endforeach
                                     </td>
                                     <td class="text-dark">
-                                        <a href="{{ route('livrableshow', $order) }}" style="color: white"
-                                            type="button" class="btn btn-success">
-                                            <i class="material-icons f-16">visibility</i>Details</a>
+                                        @if ($order->status != 'delivered')
+                                            <a href="{{ route('livrableshow', $order) }}" style="color: white"
+                                                type="button" class="btn btn-success">
+                                                <i class="material-icons f-16">visibility</i>Details</a>
+                                        @endif
                                     </td>
                                 </tr>
                             @endforeach
