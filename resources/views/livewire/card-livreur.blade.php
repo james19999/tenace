@@ -76,6 +76,7 @@
                                 <th>Total</th>
                                 <th>État</th>
                                 <th>Produits</th>
+                                <th> Action</th>
                             </tr>
                         </thead>
                         <tbody>
@@ -104,6 +105,11 @@
                                         @foreach ($order->orderItems as $items)
                                             <h6>({{ $items->quantity }}) {{ $items->product->name }}</h6>
                                         @endforeach
+                                    </td>
+                                    <td class="text-dark">
+                                        <a href="{{ route('livrableshow', $order) }}" style="color: white"
+                                            type="button" class="btn btn-success">
+                                            <i class="material-icons f-16">visibility</i>Details</a>
                                     </td>
                                 </tr>
                             @endforeach

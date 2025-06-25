@@ -18,6 +18,13 @@ class CardLivreur extends Component
     }
     public function render()
     {
+        //  $startOfMonth = Carbon::now()->startOfMonth();
+        // $endOfMonth = Carbon::now()->endOfMonth();
+
+        // $orders = Order::where('user_id', $this->authuser)
+        //                ->whereBetween('created_at', [$startOfMonth, $endOfMonth])
+        //                ->get();
+
        $startOfWeek = Carbon::now()->startOfWeek();
 
         $orders = Order::where('user_id', $this->authuser)

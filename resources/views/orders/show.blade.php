@@ -29,19 +29,22 @@
                         <div class="row">
                             <div class="col-md-3">
                                 @php
-                                $settings=App\Models\Setting::all();
-                              @endphp
-                             @forelse ($settings as $setting )
-                              <img src="{{ url('image/',$setting->img) }}"   height="100"  width="100" style="background-color: white ; "  alt="" class="logo img-thumbnail "> <br>
-                               <div  class="col-md-8">
-                                   <p>Nom : {{ $setting->name ?? '' }}</p>
-                                    <p>Téléphone: {{ $setting->phone ?? '' }}</p>
-                               </div>
+                                    $settings = App\Models\Setting::all();
+                                @endphp
+                                @forelse ($settings as $setting)
+                                    <img src="{{ url('image/', $setting->img) }}" height="100" width="100"
+                                        style="background-color: white ; " alt="" class="logo img-thumbnail "> <br>
+                                    <div class="col-md-8">
+                                        <p>Nom : {{ $setting->name ?? '' }}</p>
+                                        <p>Téléphone: {{ $setting->phone ?? '' }}</p>
+                                    </div>
 
-                             @empty
+                                @empty
 
-                             <img src="{{ asset('assets/images/tena.png') }}" height="100"  width="100" style="background-color: white ; "  alt="" class="logo img-thumbnail ">TENACE COS
-                             @endforelse
+                                    <img src="{{ asset('assets/images/tena.png') }}" height="100" width="100"
+                                        style="background-color: white ; " alt="" class="logo img-thumbnail ">TENACE
+                                    COS
+                                @endforelse
 
                             </div>
                             <div class="col-md-3">
@@ -91,25 +94,21 @@
                                     <tr>
                                         <td>{{ $items->product->name ?? '' }}</td>
                                         <td>
-                                             @if ($items->product->price == $items->price)
-
-                                             {{ $items->product->price }} F (D)
-                                             @else
-                                             {{ $items->product->high_price }} F (G)
-
-                                             @endif
+                                            @if ($items->product->price == $items->price)
+                                                {{ $items->product->price }} F (D)
+                                            @else
+                                                {{ $items->product->high_price }} F (G)
+                                            @endif
 
                                         </td>
                                         <td>{{ $items->quantity }}</td>
                                         <td>
-                                            <td>
-                                                @if ($items->product->price == $items->price)
-                                            {{ $items->quantity * $items->product->price }} F
-
-                                                @else
-
+                                        <td>
+                                            @if ($items->product->price == $items->price)
+                                                {{ $items->quantity * $items->product->price }} F
+                                            @else
                                                 {{ $items->quantity * $items->product->high_price }} F
-                                                @endif
+                                            @endif
 
                                         </td>
                                     </tr>
@@ -117,37 +116,36 @@
 
                             </tbody>
                         </table>
-                         <div class="container">
-                              <div class="row">
-                                 <div class="col-md-4">
+                        <div class="container">
+                            <div class="row">
+                                <div class="col-md-4">
                                     <p>Sous total: {{ $Orders->subtotal }} F</p>
                                     <p>Remise: {{ $Orders->remis }} %</p>
-                                    <p>Total :  {{ $Orders->total}} F</p>
+                                    <p>Total : {{ $Orders->total }} F</p>
                                     <p>Frais de livraison: {{ $Orders->tax }} F</p>
-                                    <p>Montant à payer  :{{ $Orders->total+ $Orders->tax}} F</p>
-                                 </div>
-                                 <div class="col-md-4">
+                                    <p>Montant à payer :{{ $Orders->total + $Orders->tax }} F</p>
+                                </div>
+                                <div class="col-md-4">
                                     <div class="text-right" style="word-wrap: break-word; text-align: right">
-                                      </div>
-                                 </div>
-                                 <div class="col-md-4">
+                                    </div>
+                                </div>
+                                <div class="col-md-4">
                                     <div class="text-right" style="word-wrap: break-word; text-align: center">
-                                        @if ($Orders->avis==null)
-                                          <p>Merci pour votre achat chez tenace cosmétique</p>
+                                        @if ($Orders->avis == null)
+                                            <p>Merci pour votre achat chez tenace cosmétique</p>
                                         @else
-                                           <p>{{ $Orders->avis }}</p>
+                                            <p>{{ $Orders->avis }}</p>
                                         @endif
 
-                                      </div>
-                                 </div>
-                              </div>
-                         </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
                     </div>
 
 
                     <div class="row" style="padding-left:5px">
                         <div class="col-md-6">
-
 
                             <form action="{{ route('refreshorder', $Orders->id) }}" method="POST">
                                 @csrf
@@ -175,23 +173,21 @@
                                     </div>
                                     <div class="col-md-3">
                                         <label>Livreurs</label>
-                                       <select class="js-example-basic-single  form-control" name="user_take">
-                                          @foreach ($livreurs as $livreur )
-
-                                          <option value="{{ $livreur->id }}"
-                                           {{ $livreur->id == $Orders->user_id ? 'selected' : '' }}
-
-                                            >{{ $livreur->name }} </option>
-
-                                          @endforeach
-                                       </select>
-                                   </div>
+                                        <select class="js-example-basic-single  form-control" name="user_take">
+                                            @foreach ($livreurs as $livreur)
+                                                <option value="{{ $livreur->id }}"
+                                                    {{ $livreur->id == $Orders->user_id ? 'selected' : '' }}>
+                                                    {{ $livreur->name }} </option>
+                                            @endforeach
+                                        </select>
+                                    </div>
                                     <div class="col-md-4 mt-2">
                                         <button type="submit" class="btn btn-info">Relancer</button>
                                     </div>
                                 </div>
 
                             </form>
+
 
 
                         </div>
@@ -231,11 +227,11 @@
                             <hr style="height:2px;border-width:0;color:gray;background-color:gray">
 
                             <form action="{{ route('edit-hours', $Orders->id) }}" method="POST">
-                            @csrf
-                            @method('PUT')
-                            <div class="row">
+                                @csrf
+                                @method('PUT')
+                                <div class="row">
 
-                                 {{--  <div class="col-md-4">
+                                    {{--  <div class="col-md-4">
                                     <input type="text" class="form-control @error('adresse') is-invalid @enderror"
                                         name="adresse" value="{{ $Orders->costumer->adresse ?? '' }}"
                                         placeholder="adresse">
@@ -244,19 +240,19 @@
                                     @enderror
                                 </div>  --}}
 
-                                <div class="col-md-6">
-                                    <input type="time" class="form-control @error('time') is-invalid @enderror"
-                                        name="time" value="{{ $Orders->time }}" placeholder="adresse">
-                                    @error('time')
-                                        <div class="alert alert-danger">{{ $message }}</div>
-                                    @enderror
+                                    <div class="col-md-6">
+                                        <input type="time" class="form-control @error('time') is-invalid @enderror"
+                                            name="time" value="{{ $Orders->time }}" placeholder="adresse">
+                                        @error('time')
+                                            <div class="alert alert-danger">{{ $message }}</div>
+                                        @enderror
+                                    </div>
+                                    <div class="col-md-6">
+                                        <button type="submit" class="btn btn-info">heure</button>
+                                    </div>
                                 </div>
-                                <div class="col-md-6">
-                                    <button type="submit" class="btn btn-info">heure</button>
-                                </div>
-                            </div>
 
-                             </form>
+                            </form>
                         </div>
                     </div>
 
@@ -264,9 +260,9 @@
 
                 </div>
 
-                  <div class="row">
+                <div class="row">
 
-                      <div class="col-md-6">
+                    <div class="col-md-6">
                         <div style="padding-right:0px;padding-top: 5px">
 
                             <a href="{{ route('order') }}" class="btn btn-warning">Retour</a>
@@ -278,9 +274,9 @@
 
 
 
-                  </div>
+                </div>
             </div>
 
             <div>
                 <div>
-         @endsection
+                @endsection
