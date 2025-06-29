@@ -35,7 +35,7 @@ class CardLivreur extends Component
         $livrees = $orders->where('status', 'delivered')->count();
         $echouees = $orders->whereIn('status', ['ordered', 'canceled'])->count();
         $montantTotal = $orders->where('status', 'delivered')->sum('total');
-        $fraisLivraison = $orders->sum('tax');
+        $fraisLivraison = $orders->where('status', 'delivered')->sum('tax');
         return view('livewire.card-livreur'
     , [
             'totalLivraisons' => $totalLivraisons,
