@@ -118,6 +118,7 @@
                                 <span class="text">Commandes annulées</span>
                             </a>
                         </li>
+
                         <li>
                             <a href="{{ route('trie-order-parther') }}" class="">
                                 <span class="icon material-icons">remove</span>
@@ -218,6 +219,43 @@
                 </li>
             @elseif (Auth::user()->user_type == 'PT')
                 <li>
+                    <a href="#authenticationPage" class="" data-toggle="collapse">
+                        <span class="caret material-icons">arrow_right</span>
+                        <span class="icon material-icons">history</span>
+                        <span class="text">Historiques</span>
+                    </a>
+
+                    <ul class="collapse" id="authenticationPage">
+
+                        <li>
+                            <a href="{{ route('history') }}" class="">
+                                <span class="icon material-icons">remove</span>
+                                <span class="text">Commandes & produits</span>
+                            </a>
+                        </li>
+                        <li>
+                            <a href="{{ route('ordered-list-orderer') }}" class="">
+                                <span class="icon material-icons">remove</span>
+                                <span class="text">Commandes en cours</span>
+                            </a>
+                        </li>
+                        <li>
+                            <a href="{{ route('order-report-list') }}" class="">
+                                <span class="icon material-icons">remove</span>
+                                <span class="text">Commandes reprogrammées</span>
+                            </a>
+                        </li>
+                        <li>
+                            <a href="{{ route('order-cancel-list') }}" class="">
+                                <span class="icon material-icons">remove</span>
+                                <span class="text">Commandes annulées</span>
+                            </a>
+                        </li>
+
+
+                    </ul>
+                </li>
+                <li>
                     <a href="{{ route('product') }}" class="">
                         <span class="icon material-icons">store
                         </span>
@@ -243,6 +281,43 @@
                     </a>
                 </li>
             @elseif(Auth::user()->user_type == 'VDS')
+                <li>
+                    <a href="#authenticationPage" class="" data-toggle="collapse">
+                        <span class="caret material-icons">arrow_right</span>
+                        <span class="icon material-icons">history</span>
+                        <span class="text">Historiques</span>
+                    </a>
+
+                    <ul class="collapse" id="authenticationPage">
+
+                        <li>
+                            <a href="{{ route('history') }}" class="">
+                                <span class="icon material-icons">remove</span>
+                                <span class="text">Commandes & produits</span>
+                            </a>
+                        </li>
+                        <li>
+                            <a href="{{ route('ordered-list-orderer') }}" class="">
+                                <span class="icon material-icons">remove</span>
+                                <span class="text">Commandes en cours</span>
+                            </a>
+                        </li>
+                        <li>
+                            <a href="{{ route('order-report-list') }}" class="">
+                                <span class="icon material-icons">remove</span>
+                                <span class="text">Commandes reprogrammées</span>
+                            </a>
+                        </li>
+                        <li>
+                            <a href="{{ route('order-cancel-list') }}" class="">
+                                <span class="icon material-icons">remove</span>
+                                <span class="text">Commandes annulées</span>
+                            </a>
+                        </li>
+
+
+                    </ul>
+                </li>
                 <li>
                     <a href="{{ route('product') }}" class="">
                         <span class="icon material-icons">store
