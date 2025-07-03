@@ -114,7 +114,7 @@ class CheckController extends Controller
                                 foreach ($users as $key => $user) {
 
                                     try {
-                            Mail::to($user->email)->send(new TenaCos($order));
+                            // Mail::to($user->email)->send(new TenaCos($order));
                         } catch (\Exception $e) {
                             Log::error("Erreur d’envoi à {$user->email} : " . $e->getMessage());
                         }
