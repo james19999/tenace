@@ -114,7 +114,7 @@ class CheckController extends Controller
                                 foreach ($users as $key => $user) {
 
                                     try {
-                            // Mail::to($user->email)->send(new TenaCos($order));
+                            Mail::to($user->email)->send(new TenaCos($order));
                         } catch (\Exception $e) {
                             Log::error("Erreur d’envoi à {$user->email} : " . $e->getMessage());
                         }
@@ -175,19 +175,27 @@ class CheckController extends Controller
             }
 
 
-            if (Auth::user()->user_type=="ADMINUSER" || Auth::user()->user_type=="MNG") {
-                 if($request->type=="PU"){
 
-                     foreach ($users as $key => $user) {
+                        if (Auth::user()->user_type=="ADMINUSER" || Auth::user()->user_type=="MNG") {
+                              if ($request->type=="PU") {
+                                # code...
 
-                      Mail::to($user->email)->send(new TenaCos($order));
+                                foreach ($users as $key => $user) {
 
-                     }
-                 }
-                # code...
-            } else {
-                Mail::to('crepinawity@gmail.com')->send(new ParthnerMail(URL::signedRoute('brouillons')));
-            }
+                                    try {
+                            Mail::to($user->email)->send(new TenaCos($order));
+                        } catch (\Exception $e) {
+                            Log::error("Erreur d’envoi à {$user->email} : " . $e->getMessage());
+                        }
+
+                                //  Mail::to($user->email)->send(new TenaCos($order));
+
+                                }
+                                # code...
+                              }
+                        } else {
+                            Mail::to('crepinawity@gmail.com')->send(new ParthnerMail(URL::signedRoute('brouillons')));
+                        }
 
            Cart::instance('cart')->destroy();
            return redirect()->route('order')->with('messages','Commande effectuée');
