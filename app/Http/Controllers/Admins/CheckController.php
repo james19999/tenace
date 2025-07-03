@@ -106,43 +106,27 @@ class CheckController extends Controller
 
                           $orderItem->save();
                       }
-                          $userType = Auth::user()->user_type;
 
-if (in_array($userType, ['ADMINUSER', 'MNG']) && $request->type == "PU") {
-    foreach ($users as $user) {
-        if (filter_var($user->email)) {
-            try {
-                Mail::to($user->email)->send(new TenaCos($order));
-            } catch (\Exception $e) {
-                Log::error("Erreur d’envoi à {$user->email} : " . $e->getMessage());
-            }
-        }
-    }
-} else {
-    Mail::to('crepinawity@gmail.com')->send(new ParthnerMail(URL::signedRoute('brouillons')));
-}
+                        if (Auth::user()->user_type=="ADMINUSER" || Auth::user()->user_type=="MNG") {
+                              if ($request->type=="PU") {
+                                # code...
 
+                                foreach ($users as $key => $user) {
 
-                        // if (Auth::user()->user_type=="ADMINUSER" || Auth::user()->user_type=="MNG") {
-                        //       if ($request->type=="PU") {
-                        //         # code...
+                                    try {
+                            Mail::to($user->email)->send(new TenaCos($order));
+                        } catch (\Exception $e) {
+                            Log::error("Erreur d’envoi à {$user->email} : " . $e->getMessage());
+                        }
 
-                        //         foreach ($users as $key => $user) {
+                                //  Mail::to($user->email)->send(new TenaCos($order));
 
-                        //             try {
-                        //     Mail::to($user->email)->send(new TenaCos($order));
-                        // } catch (\Exception $e) {
-                        //     Log::error("Erreur d’envoi à {$user->email} : " . $e->getMessage());
-                        // }
-
-                        //         //  Mail::to($user->email)->send(new TenaCos($order));
-
-                        //         }
-                        //         # code...
-                        //       }
-                        // } else {
-                        //     Mail::to('crepinawity@gmail.com')->send(new ParthnerMail(URL::signedRoute('brouillons')));
-                        // }
+                                }
+                                # code...
+                              }
+                        } else {
+                            Mail::to('crepinawity@gmail.com')->send(new ParthnerMail(URL::signedRoute('brouillons')));
+                        }
 
                      Cart::instance('cart')->destroy();
                      return redirect()->route('order')->with('messages','Commande effectuée');
