@@ -13,9 +13,11 @@
             </p>
         </div>
 
-        <button onclick="window.print()" class="btn btn-success">
+        <button onclick="window.print()" class="btn btn-success no-print">
             🖨 Imprimer
         </button>
+
+
 
     </div>
 
@@ -82,85 +84,111 @@
     --}}
 
     {{-- TABLEAU --}}
-    <div class="card shadow-sm border-0">
+    <div id="printArea">
 
-        <div class="card-body p-0">
+        <div class="card shadow-sm border-0">
 
-            <div class="table-responsive">
+            <div class="card-body p-0">
 
-                <table class="table table-hover table-striped align-middle mb-0">
+                <div class="table-responsive">
 
-                    <thead class="table-light">
+                    <table class="table table-hover table-striped align-middle mb-0">
 
-                        <tr>
-                            <th>Produit</th>
-                            <th class="text-center">Jour</th>
-                            <th class="text-center">Semaine</th>
-                            <th class="text-center">Mois</th>
-                            <th class="text-center">Année</th>
+                        <thead class="table-light">
 
-                            {{--
-                            <th class="text-end">
-                                CA Annuel
-                            </th>
-                            --}}
-                        </tr>
-
-                    </thead>
-
-                    <tbody>
-
-                        @forelse($reports as $report)
                             <tr>
-
-                                <td class="fw-semibold">
-                                    {{ $report->name }}
-                                </td>
-
-                                <td class="text-center">
-                                    {{ number_format($report->daily_qty) }}
-                                </td>
-
-                                <td class="text-center">
-                                    {{ number_format($report->weekly_qty) }}
-                                </td>
-
-                                <td class="text-center">
-                                    {{ number_format($report->monthly_qty) }}
-                                </td>
-
-                                <td class="text-center fw-bold">
-                                    {{ number_format($report->yearly_qty) }}
-                                </td>
+                                <th>Produit</th>
+                                <th class="text-center">Jour</th>
+                                <th class="text-center">Semaine</th>
+                                <th class="text-center">Mois</th>
+                                <th class="text-center">Année</th>
 
                                 {{--
-                                <td class="text-end text-success fw-bold">
-                                    {{ number_format($report->yearly_amount) }} XOF
-                                </td>
+                                <th class="text-end">
+                                    CA Annuel
+                                </th>
                                 --}}
-
                             </tr>
 
-                        @empty
+                        </thead>
 
-                            <tr>
+                        <tbody>
 
-                                <td colspan="5" class="text-center py-4 text-muted">
-                                    Aucun mouvement trouvé
-                                </td>
+                            @forelse($reports as $report)
+                                <tr>
 
-                            </tr>
-                        @endforelse
+                                    <td class="fw-semibold">
+                                        {{ $report->name }}
+                                    </td>
 
-                    </tbody>
+                                    <td class="text-center">
+                                        {{ number_format($report->daily_qty) }}
+                                    </td>
 
-                </table>
+                                    <td class="text-center">
+                                        {{ number_format($report->weekly_qty) }}
+                                    </td>
+
+                                    <td class="text-center">
+                                        {{ number_format($report->monthly_qty) }}
+                                    </td>
+
+                                    <td class="text-center fw-bold">
+                                        {{ number_format($report->yearly_qty) }}
+                                    </td>
+
+                                    {{--
+                                    <td class="text-end text-success fw-bold">
+                                        {{ number_format($report->yearly_amount) }} XOF
+                                    </td>
+                                    --}}
+
+                                </tr>
+
+                            @empty
+
+                                <tr>
+
+                                    <td colspan="5" class="text-center py-4 text-muted">
+                                        Aucun mouvement trouvé
+                                    </td>
+
+                                </tr>
+                            @endforelse
+
+                        </tbody>
+
+                    </table>
+
+                </div>
 
             </div>
 
+
         </div>
-
-
     </div>
+    <style>
+        @media print {
 
+            body * {
+                visibility: hidden;
+            }
+
+            #printArea,
+            #printArea * {
+                visibility: visible;
+            }
+
+            #printArea {
+                position: absolute;
+                left: 0;
+                top: 0;
+                width: 100%;
+            }
+
+            .no-print {
+                display: none !important;
+            }
+        }
+    </style>
 </div>
