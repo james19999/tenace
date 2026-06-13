@@ -17,8 +17,8 @@ class ProductAuditReport extends Component
     {
         $this->reports = DB::table('products')
             ->leftJoin('order_items', 'products.id', '=', 'order_items.product_id')
-            ->leftJoin('orders', 'orders.id', '=', 'order_items.order_id')
->where('orders.status', 'deliverd')
+            ->leftJoin('orders', 'orders.id', '=', 'order_items.order_id')->
+             where('orders.status', 'deliverd')
             ->select(
                 'products.id',
                 'products.name',
