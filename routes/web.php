@@ -6,6 +6,7 @@ use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\PubController;
 use App\Http\Controllers\FondController;
+use App\Http\Livewire\ProductAuditReport;
 use App\Http\Controllers\EpargneController;
 use App\Http\Controllers\ImprevuController;
 use App\Http\Controllers\PercentController;
@@ -56,7 +57,10 @@ Route::get('type/expensives',[TypeExpensiveController::class,'index'])->name('ty
 Route::delete('destroy/expensives/{id}',[TypeExpensiveController::class,'destroy'])->name('destroy-expensives');
 Route::post('type/expensives/create',[TypeExpensiveController::class,'create'])->name('type-expensives-create');
 Route::put('type/expensives/expensives/{id}', [TypeExpensiveController::class,'update'])->name('typeexpensives');
-
+Route::get(
+    '/audit-produits',
+    ProductAuditReport::class
+)->name('audit.products');
 
 Route::get('erport/expensive/repport/expensives',[ExpensiveController::class,'repport'])->name('repport-expensives');
 

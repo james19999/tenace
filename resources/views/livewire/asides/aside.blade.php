@@ -71,6 +71,13 @@
                         <span class="text">Produits</span>
                     </a>
                 </li>
+                <li>
+                    <a href="{{ route('audit.products') }}" class="">
+                        <span class="icon material-icons">store
+                        </span>
+                        <span class="text">Audit</span>
+                    </a>
+                </li>
                 <li wire:poll.5s>
                     <a href="{{ route('productcart') }}" class="">
                         <span class="icon material-icons">add_shopping_cart</span>
