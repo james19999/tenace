@@ -111,6 +111,9 @@ class ProductAuditReport extends Component
     }
     public function render()
     {
-        return view('livewire.product-audit-report');
+        return view('livewire.product-audit-report')
+                ->extends('layouts.admin')
+           ->section('content')
+        ;
     }
 }
