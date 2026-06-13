@@ -1,161 +1,164 @@
-<div class="p-6 space-y-6">
+<div class="container-fluid py-4">
 
     {{-- HEADER --}}
-    <div class="flex justify-between items-center">
+    <div class="d-flex justify-content-between align-items-center mb-4">
 
         <div>
-            <h1 class="text-2xl font-bold">
+            <h1 class="h3 fw-bold mb-1">
                 Audit des ventes produits
             </h1>
 
-            <p class="text-gray-500 text-sm">
+            <p class="text-muted mb-0">
                 Rapport journalier, hebdomadaire, mensuel et annuel
             </p>
         </div>
 
-        <button onclick="window.print()" class="px-5 py-2 bg-[#43A047] text-white rounded-lg">
-
+        <button onclick="window.print()" class="btn btn-success">
             🖨 Imprimer
-
         </button>
 
     </div>
 
     {{-- KPI --}}
-    <div class="grid md:grid-cols-5 gap-4">
+    {{--
+    <div class="row g-3 mb-4">
 
-        <div class="bg-white p-4 rounded shadow">
-            <div class="text-sm text-gray-500">
-                Aujourd'hui
-            </div>
-
-            <div class="text-2xl font-bold">
-                {{ number_format($this->totalDaily) }}
-            </div>
-        </div>
-
-        <div class="bg-white p-4 rounded shadow">
-            <div class="text-sm text-gray-500">
-                Cette semaine
-            </div>
-
-            <div class="text-2xl font-bold">
-                {{ number_format($this->totalWeekly) }}
+        <div class="col-md-2">
+            <div class="card shadow-sm border-0">
+                <div class="card-body">
+                    <small class="text-muted">Aujourd'hui</small>
+                    <h4 class="fw-bold mb-0">
+                        {{ number_format($this->totalDaily) }}
+                    </h4>
+                </div>
             </div>
         </div>
 
-        <div class="bg-white p-4 rounded shadow">
-            <div class="text-sm text-gray-500">
-                Ce mois
-            </div>
-
-            <div class="text-2xl font-bold">
-                {{ number_format($this->totalMonthly) }}
-            </div>
-        </div>
-
-        <div class="bg-white p-4 rounded shadow">
-            <div class="text-sm text-gray-500">
-                Cette année
-            </div>
-
-            <div class="text-2xl font-bold text-green-700">
-                {{ number_format($this->totalYearly) }}
+        <div class="col-md-2">
+            <div class="card shadow-sm border-0">
+                <div class="card-body">
+                    <small class="text-muted">Cette semaine</small>
+                    <h4 class="fw-bold mb-0">
+                        {{ number_format($this->totalWeekly) }}
+                    </h4>
+                </div>
             </div>
         </div>
 
-        <div class="bg-white p-4 rounded shadow">
-            <div class="text-sm text-gray-500">
-                CA annuel
+        <div class="col-md-2">
+            <div class="card shadow-sm border-0">
+                <div class="card-body">
+                    <small class="text-muted">Ce mois</small>
+                    <h4 class="fw-bold mb-0">
+                        {{ number_format($this->totalMonthly) }}
+                    </h4>
+                </div>
             </div>
+        </div>
 
-            <div class="text-2xl font-bold text-blue-700">
-                {{ number_format($this->totalAmount) }} XOF
+        <div class="col-md-3">
+            <div class="card shadow-sm border-0">
+                <div class="card-body">
+                    <small class="text-muted">Cette année</small>
+                    <h4 class="fw-bold text-success mb-0">
+                        {{ number_format($this->totalYearly) }}
+                    </h4>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-md-3">
+            <div class="card shadow-sm border-0">
+                <div class="card-body">
+                    <small class="text-muted">CA annuel</small>
+                    <h4 class="fw-bold text-primary mb-0">
+                        {{ number_format($this->totalAmount) }} XOF
+                    </h4>
+                </div>
             </div>
         </div>
 
     </div>
+    --}}
 
     {{-- TABLEAU --}}
-    <div class="bg-white rounded-xl shadow overflow-hidden">
+    <div class="card shadow-sm border-0">
 
-        <table class="w-full text-sm">
+        <div class="card-body p-0">
 
-            <thead class="bg-gray-100">
+            <div class="table-responsive">
 
-                <tr>
-                    <th class="px-4 py-3 text-left">
-                        Produit
-                    </th>
+                <table class="table table-hover table-striped align-middle mb-0">
 
-                    <th class="px-4 py-3 text-center">
-                        Jour
-                    </th>
+                    <thead class="table-light">
 
-                    <th class="px-4 py-3 text-center">
-                        Semaine
-                    </th>
+                        <tr>
+                            <th>Produit</th>
+                            <th class="text-center">Jour</th>
+                            <th class="text-center">Semaine</th>
+                            <th class="text-center">Mois</th>
+                            <th class="text-center">Année</th>
 
-                    <th class="px-4 py-3 text-center">
-                        Mois
-                    </th>
+                            {{--
+                            <th class="text-end">
+                                CA Annuel
+                            </th>
+                            --}}
+                        </tr>
 
-                    <th class="px-4 py-3 text-center">
-                        Année
-                    </th>
+                    </thead>
 
-                    <th class="px-4 py-3 text-right">
-                        CA Annuel
-                    </th>
-                </tr>
+                    <tbody>
 
-            </thead>
+                        @forelse($reports as $report)
+                            <tr>
 
-            <tbody>
+                                <td class="fw-semibold">
+                                    {{ $report->name }}
+                                </td>
 
-                @forelse($reports as $report)
-                    <tr class="border-b hover:bg-gray-50">
+                                <td class="text-center">
+                                    {{ number_format($report->daily_qty) }}
+                                </td>
 
-                        <td class="px-4 py-3 font-medium">
-                            {{ $report->name }}
-                        </td>
+                                <td class="text-center">
+                                    {{ number_format($report->weekly_qty) }}
+                                </td>
 
-                        <td class="px-4 py-3 text-center">
-                            {{ number_format($report->daily_qty) }}
-                        </td>
+                                <td class="text-center">
+                                    {{ number_format($report->monthly_qty) }}
+                                </td>
 
-                        <td class="px-4 py-3 text-center">
-                            {{ number_format($report->weekly_qty) }}
-                        </td>
+                                <td class="text-center fw-bold">
+                                    {{ number_format($report->yearly_qty) }}
+                                </td>
 
-                        <td class="px-4 py-3 text-center">
-                            {{ number_format($report->monthly_qty) }}
-                        </td>
+                                {{--
+                                <td class="text-end text-success fw-bold">
+                                    {{ number_format($report->yearly_amount) }} XOF
+                                </td>
+                                --}}
 
-                        <td class="px-4 py-3 text-center font-semibold">
-                            {{ number_format($report->yearly_qty) }}
-                        </td>
+                            </tr>
 
-                        <td class="px-4 py-3 text-right text-green-700 font-bold">
-                            {{ number_format($report->yearly_amount) }} XOF
-                        </td>
+                        @empty
 
-                    </tr>
+                            <tr>
 
-                @empty
+                                <td colspan="5" class="text-center py-4 text-muted">
+                                    Aucun mouvement trouvé
+                                </td>
 
-                    <tr>
+                            </tr>
+                        @endforelse
 
-                        <td colspan="6" class="text-center py-10 text-gray-500">
-                            Aucun mouvement trouvé
-                        </td>
+                    </tbody>
 
-                    </tr>
-                @endforelse
+                </table>
 
-            </tbody>
+            </div>
 
-        </table>
+        </div>
 
     </div>
 
