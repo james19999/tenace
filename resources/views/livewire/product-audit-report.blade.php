@@ -7,9 +7,7 @@
                 Audit des ventes produits
             </h2>
 
-            <p class="text-muted mb-0">
-                Rapport dynamique des ventes
-            </p>
+
         </div>
 
         <button onclick="window.print()" class="btn btn-success no-print">
