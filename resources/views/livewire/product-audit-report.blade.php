@@ -1,10 +1,9 @@
 <div class="container-fluid py-4">
 
-    ```
     <div class="d-flex justify-content-between align-items-center mb-4">
 
         <div>
-            <h2 class="fw-bold">
+            <h2 class="fw-bold mb-1">
                 Audit des ventes produits
             </h2>
 
@@ -19,7 +18,7 @@
 
     </div>
 
-    <!-- FILTRES -->
+    {{-- FILTRES --}}
 
     <div class="card shadow-sm mb-4 no-print">
 
@@ -35,13 +34,21 @@
 
                     <select wire:model="filterType" class="form-select">
 
-                        <option value="day">Jour</option>
+                        <option value="day">
+                            Jour
+                        </option>
 
-                        <option value="week">Semaine</option>
+                        <option value="week">
+                            Semaine
+                        </option>
 
-                        <option value="month">Mois</option>
+                        <option value="month">
+                            Mois
+                        </option>
 
-                        <option value="year">Année</option>
+                        <option value="year">
+                            Année
+                        </option>
 
                     </select>
 
@@ -90,7 +97,7 @@
                             Année
                         </label>
 
-                        <input type="number" class="form-control" wire:model="selectedYear">
+                        <input type="number" min="2020" class="form-control" wire:model="selectedYear">
 
                     </div>
                 @endif
@@ -101,13 +108,13 @@
 
     </div>
 
-    <!-- KPI -->
+    {{-- KPI --}}
 
     <div class="row mb-4">
 
         <div class="col-md-6">
 
-            <div class="card shadow-sm">
+            <div class="card shadow-sm border-0">
 
                 <div class="card-body">
 
@@ -116,7 +123,9 @@
                     </small>
 
                     <h3 class="fw-bold">
+
                         {{ number_format($this->totalQty) }}
+
                     </h3>
 
                 </div>
@@ -127,7 +136,7 @@
 
         <div class="col-md-6">
 
-            <div class="card shadow-sm">
+            <div class="card shadow-sm border-0">
 
                 <div class="card-body">
 
@@ -136,7 +145,10 @@
                     </small>
 
                     <h3 class="fw-bold text-success">
-                        {{ number_format($this->totalAmount) }} XOF
+
+                        {{ number_format($this->totalAmount) }}
+                        XOF
+
                     </h3>
 
                 </div>
@@ -147,11 +159,19 @@
 
     </div>
 
-    <!-- TABLEAU -->
+    {{-- TABLEAU --}}
 
     <div id="printArea">
 
-        <div class="card shadow-sm">
+        <div class="card shadow-sm border-0">
+
+            <div class="card-header bg-white">
+
+                <h5 class="mb-0">
+                    Détail des ventes
+                </h5>
+
+            </div>
 
             <div class="table-responsive">
 
@@ -164,12 +184,12 @@
                             <th>Produit</th>
 
                             <th class="text-center">
-                                Quantité vendue
+                                Quantité
                             </th>
 
-                            {{--  <th class="text-center">
-                            Montant
-                        </th>  --}}
+                            <th class="text-end">
+                                Montant
+                            </th>
 
                         </tr>
 
@@ -189,12 +209,13 @@
                                     {{ number_format($report->qty) }}
 
                                 </td>
-                                {{--
-                            <td class="text-center text-success fw-bold">
 
-                                {{ number_format($report->amount) }} XOF
+                                <td class="text-end text-success fw-bold">
 
-                            </td>  --}}
+                                    {{ number_format($report->amount) }}
+                                    XOF
+
+                                </td>
 
                             </tr>
 
@@ -202,7 +223,7 @@
 
                             <tr>
 
-                                <td colspan="3" class="text-center py-4 text-muted">
+                                <td colspan="3" class="text-center py-4">
 
                                     Aucun résultat trouvé
 
@@ -235,8 +256,8 @@
 
             #printArea {
                 position: absolute;
-                top: 0;
                 left: 0;
+                top: 0;
                 width: 100%;
             }
 
@@ -245,6 +266,5 @@
             }
         }
     </style>
-    ```
 
 </div>
