@@ -1,15 +1,15 @@
 <div class="container-fluid py-4">
 
-    {{-- HEADER --}}
+    ```
     <div class="d-flex justify-content-between align-items-center mb-4">
 
         <div>
-            <h1 class="h3 fw-bold mb-1">
+            <h2 class="fw-bold">
                 Audit des ventes produits
-            </h1>
+            </h2>
 
             <p class="text-muted mb-0">
-                Rapport journalier, hebdomadaire, mensuel et annuel
+                Rapport dynamique des ventes
             </p>
         </div>
 
@@ -17,156 +17,210 @@
             🖨 Imprimer
         </button>
 
+    </div>
 
+    <!-- FILTRES -->
+
+    <div class="card shadow-sm mb-4 no-print">
+
+        <div class="card-body">
+
+            <div class="row g-3">
+
+                <div class="col-md-3">
+
+                    <label class="form-label">
+                        Type de période
+                    </label>
+
+                    <select wire:model="filterType" class="form-select">
+
+                        <option value="day">Jour</option>
+
+                        <option value="week">Semaine</option>
+
+                        <option value="month">Mois</option>
+
+                        <option value="year">Année</option>
+
+                    </select>
+
+                </div>
+
+                @if ($filterType == 'day')
+                    <div class="col-md-3">
+
+                        <label class="form-label">
+                            Date
+                        </label>
+
+                        <input type="date" class="form-control" wire:model="selectedDay">
+
+                    </div>
+                @endif
+
+                @if ($filterType == 'week')
+                    <div class="col-md-3">
+
+                        <label class="form-label">
+                            Semaine
+                        </label>
+
+                        <input type="week" class="form-control" wire:model="selectedWeek">
+
+                    </div>
+                @endif
+
+                @if ($filterType == 'month')
+                    <div class="col-md-3">
+
+                        <label class="form-label">
+                            Mois
+                        </label>
+
+                        <input type="month" class="form-control" wire:model="selectedMonth">
+
+                    </div>
+                @endif
+
+                @if ($filterType == 'year')
+                    <div class="col-md-3">
+
+                        <label class="form-label">
+                            Année
+                        </label>
+
+                        <input type="number" class="form-control" wire:model="selectedYear">
+
+                    </div>
+                @endif
+
+            </div>
+
+        </div>
 
     </div>
 
-    {{-- KPI --}}
-    {{--
-    <div class="row g-3 mb-4">
+    <!-- KPI -->
 
-        <div class="col-md-2">
-            <div class="card shadow-sm border-0">
+    <div class="row mb-4">
+
+        <div class="col-md-6">
+
+            <div class="card shadow-sm">
+
                 <div class="card-body">
-                    <small class="text-muted">Aujourd'hui</small>
-                    <h4 class="fw-bold mb-0">
-                        {{ number_format($this->totalDaily) }}
-                    </h4>
+
+                    <small class="text-muted">
+                        Quantité vendue
+                    </small>
+
+                    <h3 class="fw-bold">
+                        {{ number_format($this->totalQty) }}
+                    </h3>
+
                 </div>
+
             </div>
+
         </div>
 
-        <div class="col-md-2">
-            <div class="card shadow-sm border-0">
-                <div class="card-body">
-                    <small class="text-muted">Cette semaine</small>
-                    <h4 class="fw-bold mb-0">
-                        {{ number_format($this->totalWeekly) }}
-                    </h4>
-                </div>
-            </div>
-        </div>
+        <div class="col-md-6">
 
-        <div class="col-md-2">
-            <div class="card shadow-sm border-0">
-                <div class="card-body">
-                    <small class="text-muted">Ce mois</small>
-                    <h4 class="fw-bold mb-0">
-                        {{ number_format($this->totalMonthly) }}
-                    </h4>
-                </div>
-            </div>
-        </div>
+            <div class="card shadow-sm">
 
-        <div class="col-md-3">
-            <div class="card shadow-sm border-0">
                 <div class="card-body">
-                    <small class="text-muted">Cette année</small>
-                    <h4 class="fw-bold text-success mb-0">
-                        {{ number_format($this->totalYearly) }}
-                    </h4>
-                </div>
-            </div>
-        </div>
 
-        <div class="col-md-3">
-            <div class="card shadow-sm border-0">
-                <div class="card-body">
-                    <small class="text-muted">CA annuel</small>
-                    <h4 class="fw-bold text-primary mb-0">
+                    <small class="text-muted">
+                        Chiffre d'affaires
+                    </small>
+
+                    <h3 class="fw-bold text-success">
                         {{ number_format($this->totalAmount) }} XOF
-                    </h4>
+                    </h3>
+
                 </div>
+
             </div>
+
         </div>
 
     </div>
-    --}}
 
-    {{-- TABLEAU --}}
+    <!-- TABLEAU -->
+
     <div id="printArea">
 
-        <div class="card shadow-sm border-0">
+        <div class="card shadow-sm">
 
-            <div class="card-body p-0">
+            <div class="table-responsive">
 
-                <div class="table-responsive">
+                <table class="table table-striped table-hover mb-0">
 
-                    <table class="table table-hover table-striped align-middle mb-0">
+                    <thead class="table-light">
 
-                        <thead class="table-light">
+                        <tr>
 
+                            <th>Produit</th>
+
+                            <th class="text-center">
+                                Quantité vendue
+                            </th>
+
+                            {{--  <th class="text-center">
+                            Montant
+                        </th>  --}}
+
+                        </tr>
+
+                    </thead>
+
+                    <tbody>
+
+                        @forelse($reports as $report)
                             <tr>
-                                <th>Produit</th>
-                                <th class="text-center">Jour</th>
-                                <th class="text-center">Semaine</th>
-                                <th class="text-center">Mois</th>
-                                <th class="text-center">Année</th>
 
+                                <td>
+                                    {{ $report->name }}
+                                </td>
+
+                                <td class="text-center fw-bold">
+
+                                    {{ number_format($report->qty) }}
+
+                                </td>
                                 {{--
-                                <th class="text-end">
-                                    CA Annuel
-                                </th>
-                                --}}
+                            <td class="text-center text-success fw-bold">
+
+                                {{ number_format($report->amount) }} XOF
+
+                            </td>  --}}
+
                             </tr>
 
-                        </thead>
+                        @empty
 
-                        <tbody>
+                            <tr>
 
-                            @forelse($reports as $report)
-                                <tr>
+                                <td colspan="3" class="text-center py-4 text-muted">
 
-                                    <td class="fw-semibold">
-                                        {{ $report->name }}
-                                    </td>
+                                    Aucun résultat trouvé
 
-                                    <td class="text-center">
-                                        {{ number_format($report->daily_qty) }}
-                                    </td>
+                                </td>
 
-                                    <td class="text-center">
-                                        {{ number_format($report->weekly_qty) }}
-                                    </td>
+                            </tr>
+                        @endforelse
 
-                                    <td class="text-center">
-                                        {{ number_format($report->monthly_qty) }}
-                                    </td>
+                    </tbody>
 
-                                    <td class="text-center fw-bold">
-                                        {{ number_format($report->yearly_qty) }}
-                                    </td>
-
-                                    {{--
-                                    <td class="text-end text-success fw-bold">
-                                        {{ number_format($report->yearly_amount) }} XOF
-                                    </td>
-                                    --}}
-
-                                </tr>
-
-                            @empty
-
-                                <tr>
-
-                                    <td colspan="5" class="text-center py-4 text-muted">
-                                        Aucun mouvement trouvé
-                                    </td>
-
-                                </tr>
-                            @endforelse
-
-                        </tbody>
-
-                    </table>
-
-                </div>
+                </table>
 
             </div>
 
-
         </div>
+
     </div>
+
     <style>
         @media print {
 
@@ -181,8 +235,8 @@
 
             #printArea {
                 position: absolute;
-                left: 0;
                 top: 0;
+                left: 0;
                 width: 100%;
             }
 
@@ -191,4 +245,6 @@
             }
         }
     </style>
+    ```
+
 </div>

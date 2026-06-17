@@ -6,84 +6,98 @@ use Livewire\Component;
 use Illuminate\Support\Facades\DB;
 class ProductAuditReport extends Component
 {
-        public $reports = [];
+    public $reports = [];
 
-    public function mount()
-    {
-        $this->loadReport();
+ public $filterType = 'day';
+
+public $selectedDay;
+public $selectedWeek;
+public $selectedMonth;
+public $selectedYear;
+
+public function mount()
+{
+    $this->selectedDay = now()->format('Y-m-d');
+    $this->selectedWeek = now()->format('Y-\WW');
+    $this->selectedMonth = now()->format('Y-m');
+    $this->selectedYear = now()->year;
+
+    $this->loadReport();
+}
+
+public function updated()
+{
+    $this->loadReport();
+}
+public function loadReport()
+{
+    $query = DB::table('products')
+        ->leftJoin('order_items', 'products.id', '=', 'order_items.product_id')
+        ->leftJoin('orders', 'orders.id', '=', 'order_items.order_id')
+        ->where('orders.status', 'delivered');
+
+    switch ($this->filterType) {
+
+        case 'day':
+
+            $query->whereDate(
+                'orders.created_at',
+                $this->selectedDay
+            );
+
+            break;
+
+        case 'week':
+
+            [$year, $week] = explode('-W', $this->selectedWeek);
+
+            $query->whereRaw(
+                'YEARWEEK(orders.created_at,1)=?',
+                [$year . str_pad($week, 2, '0', STR_PAD_LEFT)]
+            );
+
+            break;
+
+        case 'month':
+
+            [$year, $month] = explode('-', $this->selectedMonth);
+
+            $query->whereYear('orders.created_at', $year)
+                  ->whereMonth('orders.created_at', $month);
+
+            break;
+
+        case 'year':
+
+            $query->whereYear(
+                'orders.created_at',
+                $this->selectedYear
+            );
+
+            break;
     }
 
-    public function loadReport()
-    {
-        $this->reports = DB::table('products')
-            ->leftJoin('order_items', 'products.id', '=', 'order_items.product_id')
-            ->leftJoin('orders', 'orders.id', '=', 'order_items.order_id')->
-             where('orders.status', 'delivered')
-            ->select(
-                'products.id',
-                'products.name',
+    $this->reports = $query
+        ->select(
+            'products.id',
+            'products.name',
 
-                DB::raw("
-                    COALESCE(SUM(
-                        CASE
-                            WHEN DATE(orders.created_at) = CURDATE()
-                            THEN order_items.quantity
-                            ELSE 0
-                        END
-                    ),0) as daily_qty
-                "),
+            DB::raw('SUM(order_items.quantity) as qty'),
 
-                DB::raw("
-                    COALESCE(SUM(
-                        CASE
-                            WHEN YEARWEEK(orders.created_at,1)
-                            = YEARWEEK(CURDATE(),1)
-                            THEN order_items.quantity
-                            ELSE 0
-                        END
-                    ),0) as weekly_qty
-                "),
+            DB::raw('SUM(
+                order_items.quantity * order_items.price
+            ) as amount')
+        )
 
-                DB::raw("
-                    COALESCE(SUM(
-                        CASE
-                            WHEN MONTH(orders.created_at)=MONTH(CURDATE())
-                            AND YEAR(orders.created_at)=YEAR(CURDATE())
-                            THEN order_items.quantity
-                            ELSE 0
-                        END
-                    ),0) as monthly_qty
-                "),
+        ->groupBy(
+            'products.id',
+            'products.name'
+        )
 
-                DB::raw("
-                    COALESCE(SUM(
-                        CASE
-                            WHEN YEAR(orders.created_at)=YEAR(CURDATE())
-                            THEN order_items.quantity
-                            ELSE 0
-                        END
-                    ),0) as yearly_qty
-                "),
+        ->orderByDesc('qty')
 
-                DB::raw("
-                    COALESCE(SUM(
-                        CASE
-                            WHEN YEAR(orders.created_at)=YEAR(CURDATE())
-                            THEN (order_items.quantity * order_items.price)
-                            ELSE 0
-                        END
-                    ),0) as yearly_amount
-                ")
-            )
-
-            ->groupBy(
-                'products.id',
-                'products.name'
-            )
-
-            ->orderBy('products.name')
-            ->get();
-    }
+        ->get();
+}
 
     public function getTotalDailyProperty()
     {
