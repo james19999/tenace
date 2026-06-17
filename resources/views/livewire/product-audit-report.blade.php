@@ -32,7 +32,7 @@
                         Type de période
                     </label>
 
-                    <select wire:model="filterType" class="form-select">
+                    <select wire:model="filterType" class="form-select form-control">
 
                         <option value="day">
                             Jour
@@ -112,7 +112,7 @@
 
     <div class="row mb-4">
 
-        <div class="col-md-6">
+        <div class="col-md-12">
 
             <div class="card shadow-sm border-0">
 
@@ -134,7 +134,7 @@
 
         </div>
 
-        <div class="col-md-6">
+        {{--  <div class="col-md-6">
 
             <div class="card shadow-sm border-0">
 
@@ -155,7 +155,7 @@
 
             </div>
 
-        </div>
+        </div>  --}}
 
     </div>
 
@@ -186,10 +186,10 @@
                             <th class="text-center">
                                 Quantité
                             </th>
-
+                            {{--
                             <th class="text-end">
                                 Montant
-                            </th>
+                            </th>  --}}
 
                         </tr>
 
@@ -209,13 +209,13 @@
                                     {{ number_format($report->qty) }}
 
                                 </td>
-
+                                {{--
                                 <td class="text-end text-success fw-bold">
 
                                     {{ number_format($report->amount) }}
                                     XOF
 
-                                </td>
+                                </td>  --}}
 
                             </tr>
 
