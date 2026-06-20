@@ -162,7 +162,7 @@
                 <div class="card shadow-sm border-0 h-100">
                     <div class="card-body">
                         <small class="text-muted">
-                            CA net après taxes
+                            CA net après remise
                         </small>
 
                         <h3 class="fw-bold text-success mb-0">
@@ -176,7 +176,7 @@
 
         {{-- TABLEAU --}}
 
-        <div>
+        <div class="mt-3">
 
             <div class="card shadow-sm border-0">
 
