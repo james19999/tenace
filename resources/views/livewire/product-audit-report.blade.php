@@ -176,9 +176,9 @@
 
         {{-- TABLEAU --}}
 
-        <div class="mt-3">
+        <div>
 
-            <div class="card shadow-sm border-0">
+            <div class="card shadow-sm border-0 mt-3">
 
                 <div class="card-header bg-white">
 
