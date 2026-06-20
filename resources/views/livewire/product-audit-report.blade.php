@@ -171,7 +171,7 @@
                     </div>
                 </div>
             </div>
-
+            {{ $totalYesterday }}
         </div>
 
         {{-- TABLEAU --}}

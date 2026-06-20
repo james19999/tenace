@@ -2,6 +2,7 @@
 
 namespace App\Http\Livewire;
 
+use Carbon\Carbon;
 use Livewire\Component;
 use App\Models\Orders\Order;
 use Illuminate\Support\Facades\DB;
@@ -156,7 +157,10 @@ $this->tax = $taxQuery->sum('tax');
 }
     public function render()
     {
-        return view('livewire.product-audit-report')
+        $totalYesterday = Order::where('status', 'delivered')
+    ->whereDate('created_at', Carbon::yesterday())
+    ->sum('total');
+        return view('livewire.product-audit-report',compact('totalYesterday'))
             ->extends('layouts.admin')
             ->section('content');
     }
