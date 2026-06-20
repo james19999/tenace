@@ -55,7 +55,7 @@ class ProductAuditReport extends Component
                 $query->whereDate(
                     'orders.created_at',
                     $this->selectedDay
-                );
+                )->sum('total');
 
                 break;
 
