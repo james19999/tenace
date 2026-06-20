@@ -107,137 +107,140 @@
     </div>
 
     {{-- KPI --}}
-
-    <div class="row mb-4">
-
-        <div class="col-md-6">
-
-            <div class="card shadow-sm border-0">
-
-                <div class="card-body">
-
-                    <small class="text-muted">
-                        Quantité vendue
-                    </small>
-
-                    <h3 class="fw-bold">
-
-                        {{ number_format($this->totalQty) }}
-
-                    </h3>
-
-                </div>
-
-            </div>
-
-        </div>
-
-        <div class="col-md-6">
-
-            <div class="card shadow-sm border-0">
-
-                <div class="card-body">
-
-                    <small class="text-muted">
-                        Chiffre d'affaires
-                    </small>
-
-                    <h3 class="fw-bold text-success">
-
-                        {{ number_format($this->totalAmount) }}
-                        XOF
-
-                    </h3>
-
-                </div>
-
-            </div>
-
-        </div>
-
-    </div>
-
-    {{-- TABLEAU --}}
-
     <div id="printArea">
 
-        <div class="card shadow-sm border-0">
 
-            <div class="card-header bg-white">
+        <div class="row mb-4">
 
-                <h5 class="mb-0">
-                    Détail des ventes du {{ now() }}
-                </h5>
+            <div class="col-md-6">
+
+                <div class="card shadow-sm border-0">
+
+                    <div class="card-body">
+
+                        <small class="text-muted">
+                            Quantité vendue
+                        </small>
+
+                        <h3 class="fw-bold">
+
+                            {{ number_format($this->totalQty) }}
+
+                        </h3>
+
+                    </div>
+
+                </div>
 
             </div>
 
-            <div class="table-responsive">
+            <div class="col-md-6">
 
-                <table class="table table-striped table-hover mb-0">
+                <div class="card shadow-sm border-0">
 
-                    <thead class="table-light">
+                    <div class="card-body">
 
-                        <tr>
+                        <small class="text-muted">
+                            Chiffre d'affaires
+                        </small>
 
-                            <th>Produit</th>
+                        <h3 class="fw-bold text-success">
 
-                            <th class="text-center">
-                                Quantité
-                            </th>
+                            {{ number_format($this->totalAmount) }}
+                            XOF
 
-                            <th class="text-end">
-                                Montant
-                            </th>
+                        </h3>
 
-                        </tr>
+                    </div>
 
-                    </thead>
-
-                    <tbody>
-
-                        @forelse($reports as $report)
-                            <tr>
-
-                                <td>
-                                    {{ $report->name }}
-                                </td>
-
-                                <td class="text-center fw-bold">
-
-                                    {{ number_format($report->qty) }}
-
-                                </td>
-
-                                <td class="text-end text-success fw-bold">
-
-                                    {{ number_format($report->amount) }}
-                                    XOF
-
-                                </td>
-
-                            </tr>
-
-                        @empty
-
-                            <tr>
-
-                                <td colspan="3" class="text-center py-4">
-
-                                    Aucun résultat trouvé
-
-                                </td>
-
-                            </tr>
-                        @endforelse
-
-                    </tbody>
-
-                </table>
+                </div>
 
             </div>
 
         </div>
 
+        {{-- TABLEAU --}}
+
+        <div>
+
+            <div class="card shadow-sm border-0">
+
+                <div class="card-header bg-white">
+
+                    <h5 class="mb-0">
+                        Détail des ventes du {{ now() }}
+                    </h5>
+
+                </div>
+
+                <div class="table-responsive">
+
+                    <table class="table table-striped table-hover mb-0">
+
+                        <thead class="table-light">
+
+                            <tr>
+
+                                <th>Produit</th>
+
+                                <th class="text-center">
+                                    Quantité
+                                </th>
+
+                                <th class="text-end">
+                                    Montant
+                                </th>
+
+                            </tr>
+
+                        </thead>
+
+                        <tbody>
+
+                            @forelse($reports as $report)
+                                <tr>
+
+                                    <td>
+                                        {{ $report->name }}
+                                    </td>
+
+                                    <td class="text-center fw-bold">
+
+                                        {{ number_format($report->qty) }}
+
+                                    </td>
+
+                                    <td class="text-end text-success fw-bold">
+
+                                        {{ number_format($report->amount) }}
+                                        XOF
+
+                                    </td>
+
+                                </tr>
+
+                            @empty
+
+                                <tr>
+
+                                    <td colspan="3" class="text-center py-4">
+
+                                        Aucun résultat trouvé
+
+                                    </td>
+
+                                </tr>
+                            @endforelse
+
+                        </tbody>
+
+                    </table>
+
+                </div>
+
+            </div>
+
+        </div>
     </div>
 
     <style>
