@@ -105,7 +105,7 @@
         </div>
 
     </div>
-    <p>{{ $totalYesterday }}</p>
+
     {{-- KPI --}}
     <div id="printArea">
 
@@ -147,11 +147,11 @@
                 <div class="card shadow-sm border-0 h-100">
                     <div class="card-body">
                         <small class="text-muted">
-                            Total taxes
+                            Total remise
                         </small>
 
                         <h3 class="fw-bold text-danger mb-0">
-                            {{ number_format($tax) }} XOF
+                            {{ number_format($totaldif) }} XOF
                         </h3>
                     </div>
                 </div>

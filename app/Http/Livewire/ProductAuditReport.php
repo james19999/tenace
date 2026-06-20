@@ -18,7 +18,8 @@ class ProductAuditReport extends Component
     public $selectedMonth;
     public $selectedYear;
 
-    public $tax = 0;
+    public $totaldif = 0;
+    public $total = 0;
     public function mount()
     {
         $this->selectedDay = now()->format('Y-m-d');
@@ -50,8 +51,8 @@ class ProductAuditReport extends Component
             ->join('orders', 'orders.id', '=', 'order_items.order_id')
             ->where('orders.status', 'delivered');
 
-            $taxQuery = Order::query()
-        ->where('status', 'delivered');
+            $totalQuery = Order::query()
+           ->where('status', 'delivered');
 
 switch ($this->filterType) {
 
@@ -62,7 +63,7 @@ switch ($this->filterType) {
             $this->selectedDay
         );
 
-        $taxQuery->whereDate(
+        $totalQuery->whereDate(
             'created_at',
             $this->selectedDay
         );
@@ -82,7 +83,7 @@ switch ($this->filterType) {
                 [$yearWeek]
             );
 
-            $taxQuery->whereRaw(
+            $totalQuery->whereRaw(
                 'YEARWEEK(created_at,1) = ?',
                 [$yearWeek]
             );
@@ -99,7 +100,7 @@ switch ($this->filterType) {
             $query->whereYear('orders.created_at', $year)
                   ->whereMonth('orders.created_at', $month);
 
-            $taxQuery->whereYear('created_at', $year)
+            $totalQuery->whereYear('created_at', $year)
                      ->whereMonth('created_at', $month);
         }
 
@@ -112,7 +113,7 @@ switch ($this->filterType) {
             $this->selectedYear
         );
 
-        $taxQuery->whereYear(
+        $totalQuery->whereYear(
             'created_at',
             $this->selectedYear
         );
@@ -120,7 +121,7 @@ switch ($this->filterType) {
         break;
 }
 
-$this->tax = $taxQuery->sum('tax');
+$this->total = $totalQuery->sum('total');
         $this->reports = $query
             ->select(
                 'products.id',
@@ -153,7 +154,8 @@ $this->tax = $taxQuery->sum('tax');
 
     public function getNetAmountProperty()
 {
-    return $this->totalAmount - $this->tax;
+    $this->totaldif= $this->totalAmount -$this->total;
+    return $this->totalAmount-$this->totaldif;
 }
     public function render()
     {
