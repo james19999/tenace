@@ -152,10 +152,13 @@ class ProductAuditReport extends Component
         return collect($this->reports)->sum('amount');
     }
 
+    public function getTaxProperty()
+{
+    return $this->totalAmount - $this->total;
+}
     public function getNetAmountProperty()
     {
-        $this->totaldif = $this->totalAmount - $this->total;
-        return $this->totalAmount - $this->totaldif;
+        return $this->totalAmount - $this->tax;
     }
     public function render()
     {

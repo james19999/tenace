@@ -151,7 +151,7 @@
                         </small>
 
                         <h3 class="fw-bold text-danger mb-0">
-                            {{ number_format($totaldif) }} XOF
+                            {{ number_format($this->tax) }} XOF
                         </h3>
                     </div>
                 </div>
