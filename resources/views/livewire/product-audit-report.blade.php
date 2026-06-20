@@ -105,7 +105,7 @@
         </div>
 
     </div>
-
+    <p>{{ $totalYesterday }}</p>
     {{-- KPI --}}
     <div id="printArea">
 
@@ -171,7 +171,7 @@
                     </div>
                 </div>
             </div>
-            {{ $totalYesterday }}
+
         </div>
 
         {{-- TABLEAU --}}
