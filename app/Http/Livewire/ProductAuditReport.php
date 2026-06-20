@@ -3,6 +3,7 @@
 namespace App\Http\Livewire;
 
 use Livewire\Component;
+use App\Models\Orders\Order;
 use Illuminate\Support\Facades\DB;
 
 class ProductAuditReport extends Component
@@ -16,13 +17,14 @@ class ProductAuditReport extends Component
     public $selectedMonth;
     public $selectedYear;
 
+    public $tax;
+
     public function mount()
     {
         $this->selectedDay = now()->format('Y-m-d');
         $this->selectedWeek = now()->format('Y-\WW');
         $this->selectedMonth = now()->format('Y-m');
         $this->selectedYear = now()->year;
-
         $this->loadReport();
     }
 
@@ -55,7 +57,10 @@ class ProductAuditReport extends Component
                 $query->whereDate(
                     'orders.created_at',
                     $this->selectedDay
-                )->sum('total');
+                );
+        $this->tax =  Order::where('status','delivered')
+            ->whereDate('created_at',$this->selectedDay)
+            ->sum('tax');
 
                 break;
 
