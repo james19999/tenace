@@ -45,8 +45,8 @@ class ProductAuditReport extends Component
     {
         $query = DB::table('products')
             ->join('order_items', 'products.id', '=', 'order_items.product_id')
-            ->join('orders', 'orders.id', '=', 'order_items.order_id')
-            ->where('orders.status', 'delivered');
+            ->join('orders', 'orders.id', '=', 'order_items.order_id');
+            // ->where('orders.status', 'delivered');
 
         switch ($this->filterType) {
 
