@@ -110,7 +110,7 @@
 
     <div class="row mb-4">
 
-        <div class="col-md-12">
+        <div class="col-md-6">
 
             <div class="card shadow-sm border-0">
 
@@ -166,7 +166,7 @@
             <div class="card-header bg-white">
 
                 <h5 class="mb-0">
-                    Détail des ventes
+                    Détail des ventes du {{ now() }}
                 </h5>
 
             </div>
