@@ -160,7 +160,7 @@ $this->tax = $taxQuery->sum('tax');
         $totalYesterday = Order::where('status', 'delivered')
     ->whereDate('created_at', Carbon::yesterday())
     ->sum('total');
-        return view('livewire.product-audit-report',compact('totalYesterday'))
+        return view('livewire.product-audit-report',['totalYesterday'=>$totalYesterday])
             ->extends('layouts.admin')
             ->section('content');
     }
