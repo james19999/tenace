@@ -17,8 +17,7 @@ class ProductAuditReport extends Component
     public $selectedMonth;
     public $selectedYear;
 
-    public $tax;
-
+    public $tax = 0;
     public function mount()
     {
         $this->selectedDay = now()->format('Y-m-d');
@@ -50,63 +49,77 @@ class ProductAuditReport extends Component
             ->join('orders', 'orders.id', '=', 'order_items.order_id')
             ->where('orders.status', 'delivered');
 
-        switch ($this->filterType) {
+            $taxQuery = Order::query()
+        ->where('status', 'delivered');
 
-            case 'day':
+switch ($this->filterType) {
 
-                $query->whereDate(
-                    'orders.created_at',
-                    $this->selectedDay
-                );
-        $this->tax =  Order::where('status','delivered')
-            ->whereDate('created_at',$this->selectedDay)
-            ->sum('tax');
+    case 'day':
 
-                break;
+        $query->whereDate(
+            'orders.created_at',
+            $this->selectedDay
+        );
 
-            case 'week':
+        $taxQuery->whereDate(
+            'created_at',
+            $this->selectedDay
+        );
 
-                if ($this->selectedWeek) {
+        break;
 
-                    [$year, $week] = explode('-W', $this->selectedWeek);
+    case 'week':
 
-                    $query->whereRaw(
-                        'YEARWEEK(orders.created_at,1) = ?',
-                        [$year . str_pad($week, 2, '0', STR_PAD_LEFT)]
-                    );
-                }
+        if ($this->selectedWeek) {
 
-                break;
+            [$year, $week] = explode('-W', $this->selectedWeek);
 
-            case 'month':
+            $yearWeek = $year . str_pad($week, 2, '0', STR_PAD_LEFT);
 
-                if ($this->selectedMonth) {
+            $query->whereRaw(
+                'YEARWEEK(orders.created_at,1) = ?',
+                [$yearWeek]
+            );
 
-                    [$year, $month] = explode('-', $this->selectedMonth);
-
-                    $query->whereYear(
-                        'orders.created_at',
-                        $year
-                    );
-
-                    $query->whereMonth(
-                        'orders.created_at',
-                        $month
-                    );
-                }
-
-                break;
-
-            case 'year':
-
-                $query->whereYear(
-                    'orders.created_at',
-                    $this->selectedYear
-                );
-
-                break;
+            $taxQuery->whereRaw(
+                'YEARWEEK(created_at,1) = ?',
+                [$yearWeek]
+            );
         }
 
+        break;
+
+    case 'month':
+
+        if ($this->selectedMonth) {
+
+            [$year, $month] = explode('-', $this->selectedMonth);
+
+            $query->whereYear('orders.created_at', $year)
+                  ->whereMonth('orders.created_at', $month);
+
+            $taxQuery->whereYear('created_at', $year)
+                     ->whereMonth('created_at', $month);
+        }
+
+        break;
+
+    case 'year':
+
+        $query->whereYear(
+            'orders.created_at',
+            $this->selectedYear
+        );
+
+        $taxQuery->whereYear(
+            'created_at',
+            $this->selectedYear
+        );
+
+        break;
+}
+
+$this->tax = $taxQuery->sum('tax');
         $this->reports = $query
             ->select(
                 'products.id',
@@ -137,6 +150,10 @@ class ProductAuditReport extends Component
         return collect($this->reports)->sum('amount');
     }
 
+    public function getNetAmountProperty()
+{
+    return $this->totalAmount - $this->tax;
+}
     public function render()
     {
         return view('livewire.product-audit-report')

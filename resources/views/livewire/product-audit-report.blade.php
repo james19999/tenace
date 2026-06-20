@@ -110,51 +110,66 @@
     <div id="printArea">
 
 
-        <div class="row mb-4">
+        <div class="row g-3 mb-4">
 
-            <div class="col-md-6">
-
-                <div class="card shadow-sm border-0">
-
+            {{-- Quantité vendue --}}
+            <div class="col-md-3">
+                <div class="card shadow-sm border-0 h-100">
                     <div class="card-body">
-
                         <small class="text-muted">
                             Quantité vendue
                         </small>
 
-                        <h3 class="fw-bold">
-
+                        <h3 class="fw-bold text-dark mb-0">
                             {{ number_format($this->totalQty) }}
-
                         </h3>
-
                     </div>
-
                 </div>
-
             </div>
 
-            <div class="col-md-6">
-
-                <div class="card shadow-sm border-0">
-
+            {{-- Chiffre d'affaires --}}
+            <div class="col-md-3">
+                <div class="card shadow-sm border-0 h-100">
                     <div class="card-body">
-
                         <small class="text-muted">
                             Chiffre d'affaires
                         </small>
 
-                        <h3 class="fw-bold text-success">
-
-                            {{ number_format($this->totalAmount - $this->tax) }}
-                            XOF
-
+                        <h3 class="fw-bold text-primary mb-0">
+                            {{ number_format($this->totalAmount) }} XOF
                         </h3>
-
                     </div>
-
                 </div>
+            </div>
 
+            {{-- Taxes --}}
+            <div class="col-md-3">
+                <div class="card shadow-sm border-0 h-100">
+                    <div class="card-body">
+                        <small class="text-muted">
+                            Total taxes
+                        </small>
+
+                        <h3 class="fw-bold text-danger mb-0">
+                            {{ number_format($tax) }} XOF
+                        </h3>
+                    </div>
+                </div>
+            </div>
+
+            {{-- CA Net --}}
+            <div class="col-md-3">
+                <div class="card shadow-sm border-0 h-100">
+                    <div class="card-body">
+                        <small class="text-muted">
+                            CA net après taxes
+                        </small>
+
+                        <h3 class="fw-bold text-success mb-0">
+                            {{ number_format($this->netAmount) }} XOF
+                        </h3>
+                    </div>
+                </div>
             </div>
 
         </div>
