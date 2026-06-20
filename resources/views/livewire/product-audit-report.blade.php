@@ -146,7 +146,7 @@
 
                         <h3 class="fw-bold text-success">
 
-                            {{ number_format($this->totalAmount - $this->tax) }}
+                            {{ number_format($this->totalAmount) }}
                             XOF
 
                         </h3>
