@@ -450,7 +450,6 @@
                     </a>
                 </li>
                 <li>
-
                     <a href=" {{ route('ranking') }}
                     " class="">
                         <span class="icon material-icons">calendar_today
