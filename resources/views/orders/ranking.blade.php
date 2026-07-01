@@ -22,7 +22,7 @@
                 <th>Rang</th>
                 <th>Livreur</th>
                 <th>Commandes livrées</th>
-                <th>Chiffre d'affaire</th>
+                <th>Montant générer </th>
             </tr>
 
         </thead>
