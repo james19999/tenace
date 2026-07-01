@@ -44,7 +44,7 @@ class DashboarController extends Controller
             'group_by_period' => 'month',
             'chart_type' => 'bar',
             'aggregate_function' => 'sum',
-            'aggregate_field' => 'total',
+            'aggregate_field' => 'subtotal',
             'where_raw' => "status='delivered' ",
         ];
 
@@ -84,7 +84,7 @@ class DashboarController extends Controller
             'group_by_period' => 'day',
 
             'aggregate_function' => 'sum',
-            'aggregate_field' => 'total',
+            'aggregate_field' => 'subtotal',
 
             'where_raw' => "status='delivered' ",
 
@@ -104,7 +104,7 @@ class DashboarController extends Controller
             'group_by_period' => 'year',
             'chart_type' => 'bar',
             'aggregate_function' => 'sum',
-            'aggregate_field' => 'total',
+            'aggregate_field' => 'subtotal',
             'where_raw' => "status='delivered' ",
         ];
 
@@ -121,14 +121,14 @@ class DashboarController extends Controller
         count();
         $OrderdeAmount = Order::where('status', 'delivered')
         ->whereDate('created_at',Carbon::today())
-        ->sum('total');
+        ->sum('subtotal');
 
         $startOfWeek = Carbon::now()->startOfWeek();
 
         $totalOrdersThisWeek = Order::where('created_at', '>=', $startOfWeek)
          ->
          where('status', 'delivered')
-        ->sum('total');
+        ->sum('subtotal');
 
 
         $anneeEnCours = now()->year;
@@ -137,7 +137,7 @@ class DashboarController extends Controller
 
         $totalCommandes = Order::whereYear('created_at', $anneeEnCours)
             ->where('status', 'delivered')
-            ->sum('total');
+            ->sum('subtotal');
             $rupture = Product::where('qts_seuil', '>=', DB::raw('qt_initial'))
             ->orWhere(function ($query) {
                 $query->where('qt_initial', 0);
