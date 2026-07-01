@@ -181,6 +181,7 @@ Route::get('retraits/list/imprevue',[RetraitController::class,'indeximpre'])->na
 
 Route::get('retraits/list/pub',[RetraitController::class,'indexpub'])->name('index-pub');
 Route::get('show/deliveries',[OrderController::class,'showDeliveries'])->name('show-deliveries');
+Route::get('ranking/ranking',[OrderController::class,'ranking'])->name('ranking');
 
 Route::get('repport/order',[OrderController::class,'order_repport'])->name('repport-order');
 Route::get('costumer/achat/order',[OrderController::class,'OrderFilter'])->name('achat');

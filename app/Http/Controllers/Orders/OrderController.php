@@ -401,4 +401,38 @@ class OrderController extends Controller
         return view('orders.filter');
       }
 
+
+
+
+    public function annualRanking($year = null)
+    {
+        $year = $year ?? now()->year;
+
+        return DB::table('orders')
+            ->join('users', 'orders.user_id', '=', 'users.id')
+            ->select(
+                'users.id',
+                'users.name',
+                DB::raw('COUNT(orders.id) as total_deliveries'),
+                DB::raw('SUM(orders.total) as total_revenue')
+            )
+            ->where('users.user_type', 'LVS')
+            ->where('orders.status', 'delivered')
+            ->whereYear('orders.updated_at', $year)
+            ->groupBy('users.id', 'users.name')
+            ->orderByDesc('total_deliveries')
+            ->orderByDesc('total_revenue')
+            ->get();
+    }
+
+
+
+    public function ranking(Request $request)
+    {
+        $year = $request->year ?? now()->year;
+
+        $ranking = $this->annualRanking($year);
+
+        return view('orders.ranking', compact('ranking', 'year'));
+    }
 }

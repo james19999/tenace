@@ -449,6 +449,15 @@
                         <span class="text">Classement</span>
                     </a>
                 </li>
+                <li>
+
+                    <a href=" {{ route('ranking') }}
+                    " class="">
+                        <span class="icon material-icons">calendar_today
+                        </span>
+                        <span class="text">Rang</span>
+                    </a>
+                </li>
             @endif
 
 
