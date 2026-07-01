@@ -121,7 +121,7 @@ class ProductAuditReport extends Component
                 break;
         }
 
-        $this->total = $totalQuery->sum('subtotal');
+        $this->total = $totalQuery->sum('total');
         $this->reports = $query
             ->select(
                 'products.id',
@@ -164,7 +164,7 @@ class ProductAuditReport extends Component
     {
         $totalYesterday = Order::where('status', 'delivered')
             ->whereDate('created_at', Carbon::yesterday())
-            ->sum('subtotal');
+            ->sum('total');
         return view('livewire.product-audit-report', ['totalYesterday' => $totalYesterday])
             ->extends('layouts.admin')
             ->section('content');
