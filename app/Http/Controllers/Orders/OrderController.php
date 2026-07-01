@@ -416,7 +416,7 @@ class OrderController extends Controller
                 DB::raw('COUNT(orders.id) as total_deliveries'),
                 DB::raw('SUM(orders.total) as total_revenue')
             )
-            ->where('users.user_type', 'LVS')
+            // ->where('users.user_type', 'LVS')
             ->where('orders.status', 'delivered')
             ->whereYear('orders.updated_at', $year)
             ->groupBy('users.id', 'users.name')
