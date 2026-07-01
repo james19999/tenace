@@ -427,7 +427,7 @@ class OrderController extends Controller
 
 
 
-    public function ranking(Request $request)
+        public function ranking(Request $request)
     {
         $year = $request->year ?? now()->year;
 
