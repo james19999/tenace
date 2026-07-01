@@ -4,7 +4,7 @@
 @section('content')
     <div class="col-12 ">
         <div style="padding-top: 10px">
-            <h3>Classement</h4>
+            <h3>Classement/ <a href="{{ route('ranking') }}">Rang</a> </h4>
         </div>
         <div class="card shadow">
             <div class="card-body ">
