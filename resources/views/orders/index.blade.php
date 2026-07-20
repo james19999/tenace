@@ -6,6 +6,41 @@
         <div style="padding-top: 10px">
             <h3>Liste des commandes</h4>
         </div>
+        <form method="GET" action="{{ route('order') }}" class="mb-3">
+
+            <div class="row">
+
+                <div class="col-md-3">
+
+                    <select name="filter" class="form-control" onchange="this.form.submit()">
+
+                        <option value="today" {{ $filter == 'today' ? 'selected' : '' }}>
+                            Aujourd'hui
+                        </option>
+
+                        <option value="week" {{ $filter == 'week' ? 'selected' : '' }}>
+                            Cette semaine
+                        </option>
+
+                        <option value="month" {{ $filter == 'month' ? 'selected' : '' }}>
+                            Ce mois
+                        </option>
+
+                        <option value="year" {{ $filter == 'year' ? 'selected' : '' }}>
+                            Cette année
+                        </option>
+
+                        <option value="all" {{ $filter == 'all' ? 'selected' : '' }}>
+                            Toutes les commandes
+                        </option>
+
+                    </select>
+
+                </div>
+
+            </div>
+
+        </form>
         <div class="card shadow">
             <div class="card-body ">
                 @if (Session::has('messages'))
