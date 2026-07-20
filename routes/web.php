@@ -5,6 +5,7 @@ use App\Http\Livewire\RepportOrder;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\PubController;
+use App\Http\Livewire\Orders\EditOrder;
 use App\Http\Controllers\FondController;
 use App\Http\Livewire\ProductAuditReport;
 use App\Http\Controllers\EpargneController;
@@ -110,6 +111,8 @@ Route::get('view/costumer/{id}',[CostumerController::class,'viewcostumer'])->nam
 Route::resource('costumer',CostumerController::class);
 
 Route::post('palce/order',[CheckController::class,'palce_order'])->name('palceorder');
+
+Route::get('edit/order/{order}',EditOrder::class)->name('edit-order');
 
 Route::get('order/list',[OrderController::class,'index'])->name('order');
 Route::get('order/cancel/list',[OrderController::class,'order_cancel_list'])->name('order-cancel-list');

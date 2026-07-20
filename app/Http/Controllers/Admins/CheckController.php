@@ -147,6 +147,7 @@ class CheckController extends Controller
                ->get();
 
             $code = $this->getName();
+
             $order = Order::create([
                 'costumer_id'=>$request->costumer_id,
                 'subtotal'=>round($request->subtotal) ,
