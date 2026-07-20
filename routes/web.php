@@ -124,6 +124,9 @@ Route::put('refresh/specific/order/{id}',[OrderController::class,'refresh_specif
 
 Route::get('order/check/type/{id}',[OrderController::class,'check_type'])->name('check-type');
 
+Route::get('/orders/{order}/invoice', [OrderController::class, 'invoice'])
+    ->name('orders.invoice');
+
 Route::get('order/show/{id}',[OrderController::class,'show'])->name('ordershow');
 
 Route::put('change/order/status/{id}',[OrderController::class,'change_order_status'])->name('changestatus');

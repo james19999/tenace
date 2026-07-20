@@ -30,6 +30,13 @@ class OrderController extends Controller
 
     //     return view('orders.index',compact('orders'));
     // }
+
+    public function invoice(Order $order)
+    {
+        $order->load('orderItems.product', 'costumer');
+
+        return view('orders.invoice', compact('order'));
+    }
     public function index(Request $request)
     {
         $filter = $request->get('filter', 'today');

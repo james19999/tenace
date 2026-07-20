@@ -142,6 +142,13 @@
                                             <a href="{{ route('edit-order', $order) }}" class="btn btn-info">
                                                 <i class="fa fa-edit"></i> Modifier la commande
                                             </a>
+                                            <a href="{{ route('orders.invoice', $order) }}" class="btn btn-success btn-sm">
+
+                                                <i class="fa fa-print"></i>
+
+                                                Facture
+
+                                            </a>
                                         </div>
                                     </td>
                                 </tr>
