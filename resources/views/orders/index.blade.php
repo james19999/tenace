@@ -104,7 +104,9 @@
                                                     <i class="material-icons f-16">edit</i>{{ $order->type }}</a>
                                             @endif
 
-                                            <a href="{{ route('edit-order', $order) }}">Edit</a>
+                                            <a href="{{ route('edit-order', $order) }}" class="btn btn-info">
+                                                <i class="fa fa-edit"></i> Modifier la commande
+                                            </a>
                                         </div>
                                     </td>
                                 </tr>
