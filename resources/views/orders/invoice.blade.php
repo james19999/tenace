@@ -256,10 +256,9 @@
             <div class="row align-items-center">
 
 
-                <div class="col-md-6">
+                <div class="col-md-8">
 
 
-                    <img src="{{ asset('assets/images/tena.png') }}" class="logo mb-2">
 
 
                     <div class="company-name">
