@@ -278,7 +278,6 @@
 
                         <br>
 
-                        Email : contact@entreprise.com
 
                     </p>
 
@@ -536,24 +535,7 @@
             <div class="row mt-4">
 
 
-                <div class="col-md-6">
 
-
-                    <h6>
-
-                        Merci pour votre confiance.
-
-                    </h6>
-
-
-                    <small class="text-muted">
-
-                        Cette facture tient lieu de reçu.
-
-                    </small>
-
-
-                </div>
 
 
 
@@ -671,7 +653,24 @@
 
                 </div>
 
+                <div class="col-md-6">
 
+
+                    <h6>
+
+                        Merci pour votre confiance.
+
+                    </h6>
+
+
+                    <small class="text-muted">
+
+                        Cette facture tient lieu de reçu.
+
+                    </small>
+
+
+                </div>
 
             </div>
 
