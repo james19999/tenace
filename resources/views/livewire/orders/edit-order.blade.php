@@ -1,10 +1,6 @@
 <div>
 
-    @if (session()->has('success'))
-        <div class="alert alert-success">
-            {{ session('success') }}
-        </div>
-    @endif
+
 
     <div class="card shadow">
 
@@ -275,7 +271,13 @@
             </div>
 
         </div>
-
+        <div class="m-5">
+            @if (session()->has('success'))
+                <div class="alert alert-success">
+                    {{ session('success') }}
+                </div>
+            @endif
+        </div>
         <div class="card-footer text-right">
 
             <button class="btn btn-primary" wire:click="save" wire:loading.attr="disabled">
