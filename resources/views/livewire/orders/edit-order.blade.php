@@ -5,7 +5,7 @@
     <div class="card shadow">
 
         <div class="card-header">
-            <h4>Modification de la commande #{{ $order->code }}</h4>
+            <h4>Modification de la commande #{{ $order->code }}: {{ $order->costumer->name }} </h4>
         </div>
 
         <div class="card-body">
