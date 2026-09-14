@@ -18,6 +18,7 @@ class Order extends Model
         'subtotal',
         'tax',
         'total',
+        'type',
         'code',
         'time',
         'brouillon',
@@ -25,7 +26,8 @@ class Order extends Model
         'avis',
         'remis',
         'montant',
-        'type'
+        'order_by',
+        'date_order',
     ];
 
 

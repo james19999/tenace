@@ -46,10 +46,12 @@ class CheckController extends Controller
                     'adresse'=>'required',
                     'tax'=>'required',
                     'time'=>'required',
+                    'date_order'=>'required',
                     'remis'=>'required',
                 ],
                 [
                     'name.required'=>'Le nom du client',
+                    'date_order.required'=>'Mettez une date de livraison',
                     'phone.required'=>'Le numéro de téléphone',
                     'adresse.required'=>'L\'adresse de livraison',
                     'tax.required'=>'Entrer les frais de livraison',
@@ -83,6 +85,8 @@ class CheckController extends Controller
                           'costumer_id'=>$constumer->id,
                           'subtotal'=>round($request->subtotal) ,
                           'tax'=>$request->tax,
+                          'date_order'=>$request->date_order,
+                          'order_by'=>Auth::user()->id,
                           'time'=>$request->time,
                           'remis'=>$request->remis,
                           'total'=>intval($request->remis)==0?($request->subtotal):
@@ -154,6 +158,8 @@ class CheckController extends Controller
                 'tax'=>$request->tax,
                 'time'=>$request->time,
                 'remis'=>$request->remis,
+                'date_order'=>$request->date_order,
+                 'order_by'=>Auth::user()->id,
                 'total'=>intval($request->remis)==0?($request->subtotal):
                 intval(($request->subtotal))-
                 (intval(($request->subtotal))*intval($request->remis))/100,

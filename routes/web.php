@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Livewire\OrderList;
 use App\Http\Livewire\OrderFilter;
 use App\Http\Livewire\RepportOrder;
 use Illuminate\Support\Facades\Auth;
@@ -111,6 +112,7 @@ Route::get('view/costumer/{id}',[CostumerController::class,'viewcostumer'])->nam
 Route::resource('costumer',CostumerController::class);
 
 Route::post('palce/order',[CheckController::class,'palce_order'])->name('palceorder');
+Route::get('order/liste',OrderList::class)->name('order-liste-order');
 
 Route::get('edit/order/{order}',EditOrder::class)->name('edit-order');
 

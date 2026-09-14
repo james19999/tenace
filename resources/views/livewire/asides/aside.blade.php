@@ -78,6 +78,13 @@
                         <span class="text">Audit</span>
                     </a>
                 </li>
+                <li>
+                    <a href="{{ route('order-liste-order') }}" class="">
+                        <span class="icon material-icons">add_shopping_cart
+                        </span>
+                        <span class="text">Gestion commande</span>
+                    </a>
+                </li>
 
                 <li wire:poll.5s>
                     <a href="{{ route('productcart') }}" class="">
