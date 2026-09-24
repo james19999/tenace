@@ -147,29 +147,28 @@
     <div wire:loading.remove>
 
         @forelse($orders as $order)
-            <div class="card shadow-sm border-0 mb-3">
 
-                <div class="card-body">
+            <div class="card shadow-sm border-0 mb-4">
+
+                {{-- ================================================= --}}
+                {{-- HEADER COMMANDE --}}
+                {{-- ================================================= --}}
+
+                <div class="card-header bg-white border-0 py-3">
 
                     <div class="row align-items-center">
 
-
-                        {{-- ========================================= --}}
-                        {{-- INFORMATIONS COMMANDE --}}
-                        {{-- ========================================= --}}
-
+                        {{-- Numéro commande --}}
                         <div class="col-md-4">
 
                             <div class="d-flex align-items-center">
 
 
+
                                 <div>
 
                                     <h5 class="mb-1">
-
-                                        Commande
-                                        #{{ $order->id }}
-
+                                        Commande #{{ $order->id }}
                                     </h5>
 
                                     <small class="text-muted">
@@ -187,77 +186,61 @@
                         </div>
 
 
-                        {{-- ========================================= --}}
                         {{-- CLIENT --}}
-                        {{-- ========================================= --}}
-
                         <div class="col-md-3">
 
                             <small class="text-muted d-block">
+                                <i class="bi bi-person"></i>
                                 Client
                             </small>
 
-                            <strong>
-
-                                @if ($order->costumer)
+                            @if ($order->costumer)
+                                <strong class="d-block">
                                     {{ $order->costumer->name }}
-                                    {{ $order->costumer->phone }}
-                                @else
-                                    Client #{{ $order->costumer_id }}
-                                @endif
+                                </strong>
 
-                            </strong>
+                                @if ($order->costumer->phone)
+                                    <a href="tel:{{ $order->costumer->phone }}" class="text-decoration-none">
+                                        <i class="bi bi-telephone"></i>
+                                        {{ $order->costumer->phone }}
+                                    </a>
+                                @endif
+                            @else
+                                <strong>
+                                    Client #{{ $order->costumer_id }}
+                                </strong>
+                            @endif
 
                         </div>
 
 
-                        {{-- ========================================= --}}
-                        {{-- DATE / HEURE LIVRAISON --}}
-                        {{-- ========================================= --}}
-
-                        <div class="col-md-2">
+                        {{-- DATE LIVRAISON --}}
+                        <div class="col-md-3">
 
                             <small class="text-muted d-block">
+                                <i class="bi bi-calendar-event"></i>
                                 Livraison prévue
                             </small>
 
                             <strong class="text-primary">
 
-                                <i class="bi bi-clock"></i>
-
                                 {{ \Carbon\Carbon::parse($order->date_order)->format('d/m/Y') }}
 
-                            </strong>
+                                à
 
-                        </div>
-
-
-                        {{-- ========================================= --}}
-                        {{-- TOTAL --}}
-                        {{-- ========================================= --}}
-
-                        <div class="col-md-2">
-
-                            <small class="text-muted d-block">
-                                Total
-                            </small>
-
-                            <strong class="fs-5">
-
-                                {{ number_format($order->total ?? 0, 2, ',', ' ') }}
+                                {{ \Carbon\Carbon::parse($order->time)->format('H:i') }}
 
                             </strong>
 
                         </div>
 
 
-                        {{-- ========================================= --}}
-                        {{-- ACTION --}}
-                        {{-- ========================================= --}}
+                        {{-- TYPE --}}
+                        <div class="col-md-2 text-md-end">
 
-                        <div class="col-md-1 text-end">
                             @if ($order->type === 'PR')
-                                <button wire:click="changeType({{ $order->id }})" class="btn btn-sm btn-warning">
+                                <button type="button" wire:click="openChangeTypeModal({{ $order->id }})"
+                                    class="btn btn-sm btn-warning">
                                     PR → PU
                                 </button>
                             @else
@@ -270,22 +253,188 @@
 
                     </div>
 
+                </div>
 
-                    {{-- ============================================= --}}
-                    {{-- DEUXIÈME LIGNE --}}
-                    {{-- ============================================= --}}
+
+                {{-- ================================================= --}}
+                {{-- PRODUITS --}}
+                {{-- ================================================= --}}
+
+                <div class="card-body pt-0">
 
                     <hr>
 
+                    <div class="d-flex justify-content-between align-items-center mb-3">
 
-                    <div class="row align-items-center">
+                        <h6 class="mb-0">
+
+                            <i class="bi bi-cart3 text-primary"></i>
+
+                            Produits
+
+                        </h6>
+
+                        <span class="badge bg-light text-dark">
+
+                            {{ $order->orderItems->count() }}
+
+                            {{ $order->orderItems->count() > 1 ? 'produits' : 'produit' }}
+
+                        </span>
+
+                    </div>
 
 
-                        {{-- STATUT --}}
+                    {{-- TABLE PRODUITS --}}
+
+                    <div class="table-responsive">
+
+                        <table class="table table-sm align-middle mb-0">
+
+                            <thead class="table-light">
+
+                                <tr>
+
+                                    <th>
+                                        Produit
+                                    </th>
+
+                                    <th class="text-center">
+                                        Quantité
+                                    </th>
+
+                                    <th class="text-end">
+                                        Prix
+                                    </th>
+
+                                    <th class="text-end">
+                                        Total
+                                    </th>
+
+                                </tr>
+
+                            </thead>
+
+                            <tbody>
+
+                                @forelse($order->orderItems as $item)
+                                    <tr>
+
+                                        <td>
+
+                                            @if ($item->product)
+                                                <strong>
+                                                    {{ $item->product->name }}
+                                                </strong>
+                                            @else
+                                                Produit #{{ $item->product_id }}
+                                            @endif
+
+                                        </td>
+
+
+                                        <td class="text-center">
+
+                                            <span class="badge bg-secondary">
+
+                                                {{ $item->quantity }}
+
+                                            </span>
+
+                                        </td>
+
+
+                                        <td class="text-end">
+
+                                            {{ number_format($item->price ?? 0, 2, ',', ' ') }} XOF
+
+                                        </td>
+
+
+                                        <td class="text-end fw-bold">
+
+                                            {{ number_format(($item->quantity ?? 0) * ($item->price ?? 0), 2, ',', ' ') }}
+                                            XOF
+
+                                        </td>
+
+                                    </tr>
+
+                                @empty
+
+                                    <tr>
+
+                                        <td colspan="4" class="text-center text-muted py-3">
+
+                                            Aucun produit dans cette commande.
+
+                                        </td>
+
+                                    </tr>
+                                @endforelse
+
+                            </tbody>
+
+                        </table>
+
+                    </div>
+
+
+                    {{-- ================================================= --}}
+                    {{-- INFORMATIONS FINANCIÈRES --}}
+                    {{-- ================================================= --}}
+
+                    <div class="row mt-4">
+
                         <div class="col-md-3">
 
-                            <small class="text-muted me-2">
-                                Statut :
+                            <small class="text-muted d-block">
+                                Sous-total
+                            </small>
+
+                            <strong>
+
+                                {{ number_format($order->subtotal ?? 0, 2, ',', ' ') }} XOF
+
+                            </strong>
+
+                        </div>
+
+
+                        <div class="col-md-3">
+
+                            <small class="text-muted d-block">
+                                Montant
+                            </small>
+
+                            <strong>
+
+                                {{ number_format($order->montant ?? 0, 2, ',', ' ') }} XOF
+
+                            </strong>
+
+                        </div>
+
+
+                        <div class="col-md-3">
+
+                            <small class="text-muted d-block">
+                                Total
+                            </small>
+
+                            <strong class="fs-5 text-primary">
+
+                                {{ number_format($order->total ?? 0, 2, ',', ' ') }} XOF
+
+                            </strong>
+
+                        </div>
+
+
+                        <div class="col-md-3">
+
+                            <small class="text-muted d-block">
+                                Statut
                             </small>
 
                             @php
@@ -314,55 +463,66 @@
 
                         </div>
 
+                    </div>
 
-                        {{-- SUBTOTAL --}}
-                        <div class="col-md-3">
-
-                            <small class="text-muted">
-                                Sous-total :
-                            </small>
-
-                            <strong>
-
-                                {{ number_format($order->subtotal ?? 0, 2, ',', ' ') }}
-
-                            </strong>
-
-                        </div>
+                </div>
 
 
-                        {{-- MONTANT --}}
-                        <div class="col-md-3">
+                {{-- ================================================= --}}
+                {{-- FOOTER ACTIONS --}}
+                {{-- ================================================= --}}
+
+                <div class="card-footer bg-light border-0">
+
+                    <div class="d-flex justify-content-between align-items-center">
+
+                        <div>
 
                             <small class="text-muted">
-                                Montant :
-                            </small>
 
-                            <strong>
-
-                                {{ number_format($order->montant ?? 0, 2, ',', ' ') }}
-
-                            </strong>
-
-                        </div>
-
-
-                        {{-- CRÉÉ PAR --}}
-                        <div class="col-md-3 text-md-end">
-
-                            <small class="text-muted">
                                 Créée par :
+
+                                <strong>
+
+                                    {{ $order->createduser?->name ?? '-' }}
+
+                                </strong>
+
                             </small>
 
-                            <strong>
+                        </div>
 
-                                @if ($order->createduser)
-                                    {{ $order->createduser->name }}
-                                @else
-                                    -
-                                @endif
 
-                            </strong>
+                        <div class="d-flex gap-2">
+
+
+                            {{-- DETAILS --}}
+
+                            <a href="{{ route('edit-order', $order->id) }}" type="button"
+                                class="btn btn-sm btn-outline-primary">
+
+                                <i class="bi bi-eye"></i>
+
+                                Modifier la commande
+                            </a>
+
+
+                            {{-- MODIFIER DATE --}}
+
+                            <button type="button" wire:click="openEditModal({{ $order->id }})"
+                                class="btn btn-sm btn-outline-secondary">
+                                <i class="bi bi-calendar-event"></i>
+                                Modifier la livraison
+                            </button>
+
+
+                            {{-- SUPPRIMER --}}
+
+                            <button type="button" wire:click="openDeleteModal({{ $order->id }})"
+                                class="btn btn-sm btn-outline-danger">
+                                <i class="bi bi-trash"></i>
+                                Supprimer
+                            </button>
 
                         </div>
 
@@ -374,16 +534,11 @@
 
         @empty
 
-            {{-- ============================================= --}}
-            {{-- AUCUNE COMMANDE --}}
-            {{-- ============================================= --}}
-
             <div class="card border-0 shadow-sm">
 
                 <div class="card-body text-center py-5">
 
-                    <i class="bi bi-calendar-x
-                               display-4 text-muted"></i>
+                    <i class="bi bi-calendar-x display-4 text-muted"></i>
 
                     <h5 class="mt-3">
                         Aucune commande
@@ -398,12 +553,11 @@
                 </div>
 
             </div>
+
         @endforelse
 
 
-        {{-- ========================================================= --}}
         {{-- PAGINATION --}}
-        {{-- ========================================================= --}}
 
         @if ($orders->hasPages())
             <div class="mt-4">
@@ -412,7 +566,304 @@
 
             </div>
         @endif
+        @if ($showEditModal)
+            <div class="modal fade show" style="display: block;" tabindex="-1" role="dialog" aria-modal="true">
 
+                <div class="modal-dialog modal-dialog-centered">
+
+                    <div class="modal-content">
+
+                        {{-- HEADER --}}
+
+                        <div class="modal-header">
+
+                            <h5 class="modal-title">
+
+                                <i class="bi bi-calendar-event text-primary"></i>
+
+                                Modifier la livraison
+
+                            </h5>
+
+                            <button type="button" class="btn-close" wire:click="closeEditModal"></button>
+
+                        </div>
+
+
+                        {{-- BODY --}}
+
+                        <div class="modal-body">
+
+                            <div class="alert alert-info">
+
+                                <i class="bi bi-info-circle"></i>
+
+                                Vous pouvez uniquement modifier
+                                la date et l'heure de livraison.
+
+                            </div>
+
+
+                            {{-- DATE --}}
+
+                            <div class="mb-3">
+
+                                <label class="form-label">
+                                    Date de livraison
+                                </label>
+
+                                <input type="date" wire:model="editDate"
+                                    class="form-control @error('editDate') is-invalid @enderror">
+
+                                @error('editDate')
+                                    <div class="invalid-feedback">
+                                        {{ $message }}
+                                    </div>
+                                @enderror
+
+                            </div>
+
+
+                            {{-- HEURE --}}
+
+                            <div class="mb-3">
+
+                                <label class="form-label">
+                                    Heure de livraison
+                                </label>
+
+                                <input type="time" wire:model="editTime"
+                                    class="form-control @error('editTime') is-invalid @enderror">
+
+                                @error('editTime')
+                                    <div class="invalid-feedback">
+                                        {{ $message }}
+                                    </div>
+                                @enderror
+
+                            </div>
+
+                        </div>
+
+
+                        {{-- FOOTER --}}
+
+                        <div class="modal-footer">
+
+                            <button type="button" class="btn btn-secondary" wire:click="closeEditModal">
+                                Annuler
+                            </button>
+
+                            <button type="button" class="btn btn-primary" wire:click="updateDeliveryDate"
+                                wire:loading.attr="disabled">
+
+                                <span wire:loading.remove wire:target="updateDeliveryDate">
+
+                                    <i class="bi bi-check-circle"></i>
+
+                                    Enregistrer
+
+                                </span>
+
+                                <span wire:loading wire:target="updateDeliveryDate">
+
+                                    <span class="spinner-border spinner-border-sm"></span>
+
+                                    Enregistrement...
+
+                                </span>
+
+                            </button>
+
+                        </div>
+
+                    </div>
+
+                </div>
+
+            </div>
+
+
+            {{-- BACKDROP --}}
+
+            <div class="modal-backdrop fade show"></div>
+        @endif
     </div>
+    @if ($showTypeModal)
+        <div class="modal fade show" style="display: block;" tabindex="-1" role="dialog" aria-modal="true">
 
+            <div class="modal-dialog modal-dialog-centered">
+
+                <div class="modal-content">
+
+                    <div class="modal-header bg-warning">
+
+                        <h5 class="modal-title">
+
+                            <i class="bi bi-exclamation-triangle"></i>
+
+                            Confirmation
+
+                        </h5>
+
+                        <button type="button" class="btn-close" wire:click="$set('showTypeModal', false)"></button>
+
+                    </div>
+
+
+                    <div class="modal-body text-center">
+
+                        <i class="bi bi-arrow-repeat text-warning" style="font-size:50px;"></i>
+
+                        <h5 class="mt-3">
+                            Changer le type de la commande ?
+                        </h5>
+
+                        <p class="text-muted">
+
+                            Voulez-vous vraiment changer
+
+                            <strong>PR</strong>
+
+                            en
+
+                            <strong>PU</strong> ?
+
+                        </p>
+
+                    </div>
+
+
+                    <div class="modal-footer">
+
+                        <button type="button" class="btn btn-secondary" wire:click="$set('showTypeModal', false)">
+                            Annuler
+                        </button>
+
+                        <button type="button" wire:click="confirmChangeType" class="btn btn-warning">
+                            <i class="bi bi-check-circle"></i>
+                            Oui, changer en PU
+                        </button>
+
+                    </div>
+
+                </div>
+
+            </div>
+
+        </div>
+
+        <div class="modal-backdrop fade show"></div>
+    @endif
+
+    @if ($showDeleteModal)
+        <div class="modal fade show" style="display: block;" tabindex="-1" role="dialog" aria-modal="true">
+
+            <div class="modal-dialog modal-dialog-centered">
+
+                <div class="modal-content">
+
+                    {{-- HEADER --}}
+
+                    <div class="modal-header bg-danger text-white">
+
+                        <h5 class="modal-title">
+
+                            <i class="bi bi-exclamation-triangle"></i>
+
+                            Confirmation de suppression
+
+                        </h5>
+
+                        <button type="button" class="btn-close btn-close-white"
+                            wire:click="closeDeleteModal"></button>
+
+                    </div>
+
+
+                    {{-- BODY --}}
+
+                    <div class="modal-body text-center">
+
+                        <div class="mb-3">
+
+                            <i class="bi bi-trash3 text-danger" style="font-size: 60px;"></i>
+
+                        </div>
+
+
+                        <h5>
+                            Supprimer cette commande ?
+                        </h5>
+
+
+                        <p class="text-muted mb-0">
+
+                            Êtes-vous sûr de vouloir supprimer
+
+                            <strong>
+                                la commande #{{ $deleteOrderId }}
+                            </strong>
+
+                            ?
+
+                        </p>
+
+
+                        <div class="alert alert-warning mt-3 mb-0">
+
+                            <i class="bi bi-info-circle"></i>
+
+                            Cette action est irréversible.
+
+                        </div>
+
+                    </div>
+
+
+                    {{-- FOOTER --}}
+
+                    <div class="modal-footer">
+
+                        <button type="button" class="btn btn-secondary" wire:click="closeDeleteModal">
+                            <i class="bi bi-x-circle"></i>
+                            Annuler
+                        </button>
+
+
+                        <button type="button" class="btn btn-danger" wire:click="deleteOrder"
+                            wire:loading.attr="disabled">
+
+                            <span wire:loading.remove wire:target="deleteOrder">
+
+                                <i class="bi bi-trash"></i>
+
+                                Oui, supprimer
+
+                            </span>
+
+
+                            <span wire:loading wire:target="deleteOrder">
+
+                                <span class="spinner-border spinner-border-sm"></span>
+
+                                Suppression...
+
+                            </span>
+
+                        </button>
+
+                    </div>
+
+                </div>
+
+            </div>
+
+        </div>
+
+
+        {{-- BACKDROP --}}
+
+        <div class="modal-backdrop fade show"></div>
+    @endif
 </div>
