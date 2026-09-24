@@ -54,7 +54,7 @@
                         <button wire:click="selectDate('{{ $dateValue }}')"
                             class="btn
                             {{ $selectedDate === $dateValue ? 'btn-primary' : 'btn-outline-secondary' }}"
-                            style="min-width: 120px;">
+                            style="min-width: 120px; margin: 1%;">
 
                             <div class="small">
                                 {{ \Carbon\Carbon::parse($dateValue)->translatedFormat('D') }}
