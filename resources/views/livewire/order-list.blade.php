@@ -53,7 +53,7 @@
 
                         <button wire:click="selectDate('{{ $dateValue }}')"
                             class="btn
-                            {{ $selectedDate === $dateValue ? 'btn-primary' : 'btn-outline-secondary' }}"
+                            {{ $selectedDate === $dateValue ? 'btn-primary' : 'bg-success' }}"
                             style="min-width: 120px; margin: 1%;">
 
                             <div class="small">
@@ -66,7 +66,7 @@
 
                             <span
                                 class="badge
-                                {{ $selectedDate === $dateValue ? 'bg-white text-primary' : 'bg-secondary' }}">
+                                {{ $selectedDate === $dateValue ? 'bg-danger text-primary' : 'bg-success' }}">
                                 {{ $date->total_orders }}
                             </span>
 
