@@ -12,6 +12,10 @@ class Order extends Model
 {
     use HasFactory;
 
+    protected $attributes = [
+        'commission' => 0,
+    ];
+
     protected $fillable=[
         'user_id',
         'costumer_id',

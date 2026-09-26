@@ -16,6 +16,9 @@ class CostumerContactHistory extends Model
         'follow_up_at',
         'responded_at',
         'response',
+        'sentiment',
+        'follow_up_decision',
+        'message_template_id',
         'notes',
     ];
 
@@ -33,5 +36,10 @@ class CostumerContactHistory extends Model
     public function user(): BelongsTo
     {
         return $this->belongsTo(User::class);
+    }
+
+    public function messageTemplate(): BelongsTo
+    {
+        return $this->belongsTo(CostumerContactMessageTemplate::class, 'message_template_id');
     }
 }

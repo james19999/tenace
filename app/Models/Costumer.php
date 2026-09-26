@@ -40,4 +40,9 @@ class Costumer extends Model
     {
         return $this->hasOne(CostumerContactHistory::class, 'costumer_id')->latestOfMany();
     }
+
+    public function contactPreference(): HasOne
+    {
+        return $this->hasOne(CostumerContactPreference::class, 'costumer_id');
+    }
 }
