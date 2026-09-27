@@ -47,7 +47,7 @@ class CheckController extends Controller
                     'adresse'=>'required',
                     'tax'=>'required',
                     'time'=>'required',
-                    'date_order'=>'required',
+                    'date_order'=>'required|date',
                     'remis'=>'required',
                     'follow_up_at'=>'required|date',
                 ],
@@ -144,6 +144,7 @@ class CheckController extends Controller
             $request->validate([
                 'tax'=>'required',
                 'time'=>'required',
+                'date_order'=>'required|date',
                 'follow_up_at'=>'required|date',
             ],
             [

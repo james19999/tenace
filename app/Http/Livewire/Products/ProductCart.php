@@ -5,6 +5,7 @@ namespace App\Http\Livewire\Products;
 use Livewire\Component;
 use App\Models\Costumer;
 use App\Models\CostumerContactSetting;
+use Illuminate\Support\Carbon;
 use Gloudemans\Shoppingcart\Facades\Cart;
 
 class ProductCart extends Component
@@ -19,9 +20,10 @@ class ProductCart extends Component
         $this->calculateTotal();
         $settings = CostumerContactSetting::first();
         $this->defaultFollowUpDays = $settings ? (int) $settings->default_follow_up_days : 14;
+        $deliveryDate = Carbon::parse(old('date_order', now()->toDateString()));
         $this->defaultFollowUpAt = old(
             'follow_up_at',
-            now()->addDays($this->defaultFollowUpDays)->format('Y-m-d\\TH:i')
+            $deliveryDate->addDays($this->defaultFollowUpDays)->setTime(9, 0)->format('Y-m-d\\TH:i')
         );
     }
 

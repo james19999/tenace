@@ -31,6 +31,11 @@ class Costumer extends Model
         return $this->hasMany(Order::class);
     }
 
+    public function latestOrder(): HasOne
+    {
+        return $this->hasOne(Order::class, 'costumer_id')->latestOfMany();
+    }
+
     public function contactHistories(): HasMany
     {
         return $this->hasMany(CostumerContactHistory::class, 'costumer_id');

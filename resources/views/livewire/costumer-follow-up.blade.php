@@ -151,6 +151,29 @@
         </div>
     @endif
 
+    @if ($showScheduledDateModal)
+        <div class="modal fade show d-block follow-up-modal" id="scheduled-follow-up-date-modal" style="background: rgba(0,0,0,.5)" tabindex="-1" role="dialog" aria-modal="true">
+            <div class="modal-dialog modal-dialog-centered follow-up-modal-dialog" role="document">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h5 class="modal-title">Modifier la prochaine date de contact</h5>
+                        <button type="button" class="close" wire:click="beginClosingModal('scheduled-follow-up-date-modal')" aria-label="Fermer"><span>&times;</span></button>
+                    </div>
+                    <div class="modal-body">
+                        <p>Avance la date à aujourd’hui ou choisis une autre échéance pour rendre ce contact disponible plus tôt.</p>
+                        <label for="scheduled-follow-up-date">Nouvelle date</label>
+                        <input id="scheduled-follow-up-date" type="datetime-local" class="form-control" wire:model="scheduledFollowUpDate">
+                        @error('scheduledFollowUpDate') <small class="text-danger">{{ $message }}</small> @enderror
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" wire:click="beginClosingModal('scheduled-follow-up-date-modal')">Annuler</button>
+                        <button type="button" class="btn btn-primary" wire:click="saveScheduledDate">Enregistrer la date</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    @endif
+
     <div class="card shadow">
         <div class="card-header bg-white">
             <div class="form-row align-items-end">
@@ -191,7 +214,14 @@
                         @php
                             $status = $statuses[$costumer->id];
                             $latest = $costumer->latestContactHistory;
-                            $nextFollowUpAt = $costumer->contactPreference?->next_follow_up_at ?? $latest?->follow_up_at;
+                            $nextFollowUpAt = $costumer->contactPreference?->next_follow_up_at;
+                            if (!$nextFollowUpAt && $latest) {
+                                $nextFollowUpAt = $latest->follow_up_at;
+                            } elseif (!$nextFollowUpAt && $costumer->latestOrder) {
+                                $orderDate = $costumer->latestOrder->date_order ?: $costumer->latestOrder->created_at;
+                                $nextFollowUpAt = \Illuminate\Support\Carbon::parse($orderDate)->addDays((int) $defaultFollowUpDays);
+                            }
+                            $hasPurchase = $costumer->orders_count > 0;
                             $badge = ['not_contacted' => 'success', 'contacted' => 'warning', 'responded' => 'info', 'to_follow_up' => 'warning', 'review_required' => 'danger', 'closed' => 'secondary', 'do_not_contact' => 'dark'][$status];
                             $statusLabel = ['not_contacted' => 'Non contacté', 'contacted' => 'Contacté / en attente', 'responded' => 'Répondu', 'to_follow_up' => 'À relancer', 'review_required' => 'Décision requise', 'closed' => 'Suivi clôturé', 'do_not_contact' => 'Ne plus solliciter'][$status];
                         @endphp
@@ -222,9 +252,20 @@
                                 @elseif ($status === 'review_required')
                                     <button class="btn btn-sm btn-primary" wire:click="decideFollowUp({{ $costumer->id }}, 'continue')">Continuer</button>
                                     <button class="btn btn-sm btn-danger" wire:click="decideFollowUp({{ $costumer->id }}, 'stop')">Clôturer</button>
-                                @elseif (!in_array($status, ['responded', 'closed']))
+                                @elseif ($status === 'responded')
+                                    <span class="badge badge-info">Avis reçu</span>
+                                @elseif ($status === 'closed')
+                                    <span class="badge badge-secondary">Suivi clôturé</span>
+                                @elseif (!$hasPurchase)
+                                    <button class="btn btn-sm btn-outline-secondary" disabled>Aucune commande</button>
+                                @elseif ($nextFollowUpAt && $nextFollowUpAt->isFuture())
+                                    <button class="btn btn-sm btn-outline-secondary" disabled title="Contact possible à partir de cette date">Contacter le {{ $nextFollowUpAt->format('d/m/Y') }}</button>
+                                    @if ($hasPurchase && !in_array($status, ['responded', 'closed', 'do_not_contact', 'review_required']))
+                                        <button class="btn btn-sm btn-outline-primary" wire:click="openScheduledDateModal({{ $costumer->id }})">Modifier la date</button>
+                                    @endif
+                                @else
                                     <button class="btn btn-sm btn-primary" wire:click="openContactModal({{ $costumer->id }}, '{{ $latest ? 'follow_up' : 'initial' }}')">
-                                        {{ $status === 'not_contacted' ? 'Contacter' : 'Relancer' }}
+                                        {{ $latest ? 'Relancer' : 'Contacter' }}
                                     </button>
                                 @endif
                                 @if ($latest && $status !== 'responded')

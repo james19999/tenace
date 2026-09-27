@@ -94,8 +94,8 @@
              <div class="col-md-6">
                  <div class="form-group">
                      <label for="customer-follow-up-at">Prochaine relance du client</label>
-                     <input type="datetime-local" class="form-control" id="customer-follow-up-at" name="follow_up_at" wire:model.defer="defaultFollowUpAt" value="{{ old('follow_up_at', $defaultFollowUpAt) }}" required>
-                     <small class="form-text text-muted">Date proposée par défaut {{ $defaultFollowUpDays }} jours après aujourd’hui. Tu peux la modifier.</small>
+                     <input type="datetime-local" class="form-control" id="customer-follow-up-at" name="follow_up_at" data-delay-days="{{ $defaultFollowUpDays }}" wire:model.defer="defaultFollowUpAt" value="{{ old('follow_up_at', $defaultFollowUpAt) }}" required>
+                     <small class="form-text text-muted">Date proposée {{ $defaultFollowUpDays }} jours après la livraison. Tu peux la modifier.</small>
                      @error('follow_up_at')
                          <span class="text-danger">{{ $message }}</span>
                      @enderror
@@ -114,9 +114,9 @@
              </div>
              <div class="col-md-6">
                  <div class="form-group">
-                     <label for="">Date de livraison</label>
-                     <input type="date" class="form-control" id="date_order" name="date_order"
-                         placeholder="date de livraison" value="{{ old('date_order') }}">
+                    <label for="">Date de livraison</label>
+                    <input type="date" class="form-control" id="date_order" name="date_order"
+                        placeholder="date de livraison" value="{{ old('date_order', now()->toDateString()) }}">
                      @error('date_order')
                          <span class="text-danger">{{ $message }}</span>
                      @enderror
@@ -222,4 +222,33 @@
              </div>
          </div>
  </form>
+ <script>
+     (function () {
+         var deliveryDate = document.getElementById('date_order');
+         var followUpDate = document.getElementById('customer-follow-up-at');
+         if (!deliveryDate || !followUpDate) return;
+
+         var manuallyChanged = false;
+         var updatingFromDeliveryDate = false;
+         var delayDays = parseInt(followUpDate.getAttribute('data-delay-days'), 10) || 14;
+
+         followUpDate.addEventListener('input', function () {
+             if (!updatingFromDeliveryDate) manuallyChanged = true;
+         });
+
+         deliveryDate.addEventListener('change', function () {
+             if (manuallyChanged || !deliveryDate.value) return;
+             var parts = deliveryDate.value.split('-').map(Number);
+             var nextDate = new Date(parts[0], parts[1] - 1, parts[2] + delayDays);
+             var formattedDate = nextDate.getFullYear() + '-'
+                 + String(nextDate.getMonth() + 1).padStart(2, '0') + '-'
+                 + String(nextDate.getDate()).padStart(2, '0') + 'T09:00';
+
+             updatingFromDeliveryDate = true;
+             followUpDate.value = formattedDate;
+             followUpDate.dispatchEvent(new Event('input', { bubbles: true }));
+             updatingFromDeliveryDate = false;
+         });
+     })();
+ </script>
  </div>

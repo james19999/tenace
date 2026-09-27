@@ -9,6 +9,7 @@ use App\Models\CostumerContactPreference;
 use App\Models\CostumerContactSetting;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Carbon;
 use Livewire\Component;
 use Livewire\WithPagination;
 
@@ -19,15 +20,18 @@ class CostumerFollowUp extends Component
     protected $paginationTheme = 'bootstrap';
 
     public $search = '';
-    public $statusFilter = 'all';
+    public $statusFilter = 'to_follow_up';
     public $showContactModal = false;
     public $showResponseModal = false;
     public $showHistoryModal = false;
     public $showSettings = false;
     public $showDoNotContactModal = false;
     public $showDeleteTemplateModal = false;
+    public $showScheduledDateModal = false;
     public $selectedCostumerId;
     public $selectedHistoryId;
+    public $scheduledDateCostumerId;
+    public $scheduledFollowUpDate = '';
     public $deletingTemplateId;
     public $deletingTemplateName = '';
     public $contactType = 'initial';
@@ -167,6 +171,51 @@ class CostumerFollowUp extends Component
         $this->showHistoryModal = true;
     }
 
+    public function openScheduledDateModal(int $costumerId): void
+    {
+        $costumer = Costumer::with(['latestContactHistory', 'latestOrder', 'contactPreference'])->findOrFail($costumerId);
+        abort_if($costumer->contactPreference && $costumer->contactPreference->do_not_contact_at, 403);
+        abort_unless($costumer->orders()->exists(), 403);
+
+        $this->scheduledDateCostumerId = $costumer->id;
+        $date = $costumer->contactPreference?->next_follow_up_at
+            ?? $costumer->latestContactHistory?->follow_up_at;
+
+        if (!$date && $costumer->latestOrder) {
+            $orderDate = $costumer->latestOrder->date_order ?: $costumer->latestOrder->created_at;
+            $date = Carbon::parse($orderDate)->addDays((int) $this->defaultFollowUpDays)->setTime(9, 0);
+        }
+
+        $this->scheduledFollowUpDate = $date ? $date->format('Y-m-d\\TH:i') : now()->format('Y-m-d\\TH:i');
+        $this->showScheduledDateModal = true;
+    }
+
+    public function saveScheduledDate(): void
+    {
+        $this->validate([
+            'scheduledDateCostumerId' => 'required|exists:costumers,id',
+            'scheduledFollowUpDate' => 'required|date',
+        ]);
+
+        $costumer = Costumer::with(['latestContactHistory', 'contactPreference'])
+            ->findOrFail($this->scheduledDateCostumerId);
+        abort_if($costumer->contactPreference && $costumer->contactPreference->do_not_contact_at, 403);
+        abort_unless($costumer->orders()->exists(), 403);
+
+        $previousPreferenceDate = $costumer->contactPreference?->next_follow_up_at;
+        if (!$previousPreferenceDate && $costumer->latestContactHistory?->follow_up_at) {
+            $costumer->latestContactHistory->update(['follow_up_at' => $this->scheduledFollowUpDate]);
+        }
+
+        CostumerContactPreference::updateOrCreate(
+            ['costumer_id' => $costumer->id],
+            ['next_follow_up_at' => $this->scheduledFollowUpDate, 'updated_by' => Auth::id()]
+        );
+
+        $this->dispatchBrowserEvent('animate-follow-up-modal-close', ['modal' => 'scheduled-follow-up-date-modal', 'type' => 'scheduled-date']);
+        session()->flash('messages', 'La prochaine date de contact a été modifiée.');
+    }
+
     public function openDoNotContactModal(int $costumerId): void
     {
         $this->selectedCostumerId = $costumerId;
@@ -203,6 +252,7 @@ class CostumerFollowUp extends Component
             'follow-up-history-modal' => 'history',
             'follow-up-do-not-contact-modal' => 'do-not-contact',
             'delete-template-modal' => 'delete-template',
+            'scheduled-follow-up-date-modal' => 'scheduled-date',
         ];
 
         if (isset($modalTypes[$modal])) {
@@ -227,6 +277,9 @@ class CostumerFollowUp extends Component
         } elseif ($modal === 'delete-template') {
             $this->showDeleteTemplateModal = false;
             $this->reset(['deletingTemplateId', 'deletingTemplateName']);
+        } elseif ($modal === 'scheduled-date') {
+            $this->showScheduledDateModal = false;
+            $this->reset(['scheduledDateCostumerId', 'scheduledFollowUpDate']);
         }
     }
 
@@ -385,7 +438,13 @@ class CostumerFollowUp extends Component
         }
 
         $latest = $costumer->latestContactHistory;
-        $nextFollowUpAt = $costumer->contactPreference?->next_follow_up_at ?? $latest?->follow_up_at;
+        $nextFollowUpAt = $costumer->contactPreference?->next_follow_up_at;
+        if (!$nextFollowUpAt && $latest) {
+            $nextFollowUpAt = $latest->follow_up_at;
+        } elseif (!$nextFollowUpAt && $costumer->latestOrder) {
+            $orderDate = $costumer->latestOrder->date_order ?: $costumer->latestOrder->created_at;
+            $nextFollowUpAt = Carbon::parse($orderDate)->addDays((int) $this->defaultFollowUpDays);
+        }
         if (!$latest) {
             return $nextFollowUpAt && $nextFollowUpAt->isPast() ? 'to_follow_up' : 'not_contacted';
         }
@@ -411,6 +470,10 @@ class CostumerFollowUp extends Component
             return $query->whereDoesntHave('contactHistories')
                 ->whereDoesntHave('contactPreference', fn ($preference) => $preference
                     ->whereNotNull('next_follow_up_at')->where('next_follow_up_at', '<=', now()))
+                ->whereDoesntHave('latestOrder', fn ($order) => $order->whereRaw(
+                    'DATE_ADD(COALESCE(orders.date_order, orders.created_at), INTERVAL '.(int) $this->defaultFollowUpDays.' DAY) <= ?',
+                    [now()]
+                ))
                 ->whereDoesntHave('contactPreference', fn ($preference) => $preference->whereNotNull('do_not_contact_at'));
         }
 
@@ -461,6 +524,14 @@ class CostumerFollowUp extends Component
                             ->whereHas('latestContactHistory', fn ($history) => $history
                                 ->whereNotNull('follow_up_at')->where('follow_up_at', '<=', now())
                                 ->where(fn ($decision) => $decision->whereNull('follow_up_decision')->orWhere('follow_up_decision', 'continue')));
+                    })
+                    ->orWhere(function ($orderDue) {
+                        $orderDue->whereDoesntHave('contactHistories')
+                            ->whereDoesntHave('contactPreference', fn ($preference) => $preference->whereNotNull('next_follow_up_at'))
+                            ->whereHas('latestOrder', fn ($order) => $order->whereRaw(
+                                'DATE_ADD(COALESCE(orders.date_order, orders.created_at), INTERVAL '.(int) $this->defaultFollowUpDays.' DAY) <= ?',
+                                [now()]
+                            ));
                     });
             });
         }
@@ -569,11 +640,12 @@ class CostumerFollowUp extends Component
         ];
 
         $query = $this->searchQuery(Costumer::query())
-            ->with(['latestContactHistory.user', 'contactPreference'])
+            ->with(['latestContactHistory.user', 'latestOrder', 'contactPreference'])
             ->withCount([
                 'contactHistories as contact_histories_count' => fn ($history) => $history->whereNotNull('responded_at'),
-                'contactHistories as follow_up_count' => fn ($history) => $history->where('contact_type', 'follow_up'),
-            ]);
+            'contactHistories as follow_up_count' => fn ($history) => $history->where('contact_type', 'follow_up'),
+                'orders',
+        ]);
 
         if ($this->statusFilter !== 'all') {
             $statusIds = $this->searchQuery($this->statusQuery($this->statusFilter))->select('costumers.id');
