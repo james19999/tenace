@@ -4,16 +4,25 @@ namespace App\Http\Livewire\Products;
 
 use Livewire\Component;
 use App\Models\Costumer;
+use App\Models\CostumerContactSetting;
 use Gloudemans\Shoppingcart\Facades\Cart;
 
 class ProductCart extends Component
 {
     public $remis = 0;
     public $totals = 0;
+    public $defaultFollowUpDays = 14;
+    public $defaultFollowUpAt;
 
     public function mount()
     {
         $this->calculateTotal();
+        $settings = CostumerContactSetting::first();
+        $this->defaultFollowUpDays = $settings ? (int) $settings->default_follow_up_days : 14;
+        $this->defaultFollowUpAt = old(
+            'follow_up_at',
+            now()->addDays($this->defaultFollowUpDays)->format('Y-m-d\\TH:i')
+        );
     }
 
     public function updatedRemis()
@@ -54,7 +63,11 @@ class ProductCart extends Component
 
     public function render()
     {
-        return view('livewire.products.product-cart',['Costumers'=>Costumer::all()->sortBy('name')])
+        return view('livewire.products.product-cart', [
+            'Costumers' => Costumer::all()->sortBy('name'),
+            'defaultFollowUpDays' => $this->defaultFollowUpDays,
+            'defaultFollowUpAt' => $this->defaultFollowUpAt,
+        ])
         ->extends('layouts.admin')
         ->section('content');
         $this->total();

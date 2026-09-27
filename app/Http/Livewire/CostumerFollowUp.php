@@ -108,7 +108,11 @@ class CostumerFollowUp extends Component
 
         CostumerContactPreference::updateOrCreate(
             ['costumer_id' => $this->selectedCostumerId],
-            ['calling_code' => $callingCode, 'updated_by' => Auth::id()]
+            [
+                'calling_code' => $callingCode,
+                'next_follow_up_at' => $this->followUpAt ?: null,
+                'updated_by' => Auth::id(),
+            ]
         );
 
         CostumerContactHistory::create([
@@ -150,6 +154,8 @@ class CostumerFollowUp extends Component
             'responded_at' => now(),
             'follow_up_at' => null,
         ]);
+        CostumerContactPreference::where('costumer_id', $this->selectedCostumerId)
+            ->update(['next_follow_up_at' => null]);
 
         $this->dispatchBrowserEvent('animate-follow-up-modal-close', ['modal' => 'follow-up-response-modal', 'type' => 'response']);
         session()->flash('messages', 'Réponse enregistrée. Le suivi de ce client est terminé.');
@@ -177,7 +183,12 @@ class CostumerFollowUp extends Component
 
         CostumerContactPreference::updateOrCreate(
             ['costumer_id' => $this->selectedCostumerId],
-            ['do_not_contact_at' => now(), 'do_not_contact_reason' => $this->doNotContactReason, 'updated_by' => Auth::id()]
+            [
+                'do_not_contact_at' => now(),
+                'do_not_contact_reason' => $this->doNotContactReason,
+                'next_follow_up_at' => null,
+                'updated_by' => Auth::id(),
+            ]
         );
 
         $this->dispatchBrowserEvent('animate-follow-up-modal-close', ['modal' => 'follow-up-do-not-contact-modal', 'type' => 'do-not-contact']);
@@ -320,6 +331,10 @@ class CostumerFollowUp extends Component
         abort_unless($latest && $this->statusFor($customer) === 'review_required', 403);
 
         $latest->update(['follow_up_decision' => $decision]);
+        if ($decision === 'stop') {
+            CostumerContactPreference::where('costumer_id', $costumerId)
+                ->update(['next_follow_up_at' => null]);
+        }
         session()->flash('messages', $decision === 'continue'
             ? 'Une nouvelle série de relances est autorisée.'
             : 'Le suivi est clôturé après les relances prévues.');
@@ -364,26 +379,28 @@ class CostumerFollowUp extends Component
             return 'do_not_contact';
         }
 
-        if ($costumer->contact_histories_count > 0) {
+        $hasNewScheduledFollowUp = $costumer->contactPreference && $costumer->contactPreference->next_follow_up_at;
+        if ($costumer->contact_histories_count > 0 && !$hasNewScheduledFollowUp) {
             return 'responded';
         }
 
         $latest = $costumer->latestContactHistory;
+        $nextFollowUpAt = $costumer->contactPreference?->next_follow_up_at ?? $latest?->follow_up_at;
         if (!$latest) {
-            return 'not_contacted';
+            return $nextFollowUpAt && $nextFollowUpAt->isPast() ? 'to_follow_up' : 'not_contacted';
         }
 
-        if ($latest->follow_up_decision === 'stop') {
+        if ($latest->follow_up_decision === 'stop' && !$hasNewScheduledFollowUp) {
             return 'closed';
         }
 
         if ($costumer->follow_up_count >= $this->maxFollowUps
             && $latest->follow_up_decision !== 'continue'
-            && $latest->follow_up_at && $latest->follow_up_at->isPast()) {
+            && $nextFollowUpAt && $nextFollowUpAt->isPast()) {
             return 'review_required';
         }
 
-        return $latest->follow_up_at && $latest->follow_up_at->isPast() ? 'to_follow_up' : 'contacted';
+        return $nextFollowUpAt && $nextFollowUpAt->isPast() ? 'to_follow_up' : 'contacted';
     }
 
     protected function statusQuery(string $status): Builder
@@ -392,11 +409,14 @@ class CostumerFollowUp extends Component
 
         if ($status === 'not_contacted') {
             return $query->whereDoesntHave('contactHistories')
+                ->whereDoesntHave('contactPreference', fn ($preference) => $preference
+                    ->whereNotNull('next_follow_up_at')->where('next_follow_up_at', '<=', now()))
                 ->whereDoesntHave('contactPreference', fn ($preference) => $preference->whereNotNull('do_not_contact_at'));
         }
 
         if ($status === 'responded') {
             return $query->whereHas('contactHistories', fn ($history) => $history->whereNotNull('responded_at'))
+                ->whereDoesntHave('contactPreference', fn ($preference) => $preference->whereNotNull('next_follow_up_at'))
                 ->whereDoesntHave('contactPreference', fn ($preference) => $preference->whereNotNull('do_not_contact_at'));
         }
 
@@ -404,7 +424,10 @@ class CostumerFollowUp extends Component
             return $query->whereHas('contactPreference', fn ($preference) => $preference->whereNotNull('do_not_contact_at'));
         }
 
-        $query->whereDoesntHave('contactHistories', fn ($history) => $history->whereNotNull('responded_at'))
+        $query->where(function ($followUpCycle) {
+            $followUpCycle->whereDoesntHave('contactHistories', fn ($history) => $history->whereNotNull('responded_at'))
+                ->orWhereHas('contactPreference', fn ($preference) => $preference->whereNotNull('next_follow_up_at'));
+        })
             ->whereDoesntHave('contactPreference', fn ($preference) => $preference->whereNotNull('do_not_contact_at'));
 
         if ($status === 'closed') {
@@ -413,26 +436,49 @@ class CostumerFollowUp extends Component
 
         if ($status === 'review_required') {
             return $query->whereHas('contactHistories', fn ($history) => $history->where('contact_type', 'follow_up'), '>=', $this->maxFollowUps)
-                ->whereHas('latestContactHistory', fn ($history) => $history
-                    ->whereNull('follow_up_decision')->whereNotNull('follow_up_at')->where('follow_up_at', '<=', now()));
+                ->where(function ($due) {
+                    $due->whereHas('contactPreference', fn ($preference) => $preference
+                        ->whereNotNull('next_follow_up_at')->where('next_follow_up_at', '<=', now()))
+                        ->orWhere(function ($historyDue) {
+                            $historyDue->whereDoesntHave('contactPreference', fn ($preference) => $preference->whereNotNull('next_follow_up_at'))
+                                ->whereHas('latestContactHistory', fn ($history) => $history
+                                    ->whereNull('follow_up_decision')->whereNotNull('follow_up_at')->where('follow_up_at', '<=', now()));
+                        });
+                })
+                ->whereHas('latestContactHistory', fn ($history) => $history->whereNull('follow_up_decision'));
         }
 
         if ($status === 'to_follow_up') {
-            return $query->where(function ($attempts) {
-                $attempts->whereHas('contactHistories', fn ($history) => $history->where('contact_type', 'follow_up'), '<', $this->maxFollowUps)
-                    ->orWhereHas('latestContactHistory', fn ($history) => $history->where('follow_up_decision', 'continue'));
-            })->whereHas('latestContactHistory', fn ($history) => $history
-                ->whereNotNull('follow_up_at')->where('follow_up_at', '<=', now())
-                ->where(fn ($decision) => $decision->whereNull('follow_up_decision')->orWhere('follow_up_decision', 'continue')));
+            return $query->where(function ($due) {
+                $due->whereHas('contactPreference', fn ($preference) => $preference
+                    ->whereNotNull('next_follow_up_at')->where('next_follow_up_at', '<=', now()))
+                    ->orWhere(function ($historyDue) {
+                        $historyDue->whereDoesntHave('contactPreference', fn ($preference) => $preference->whereNotNull('next_follow_up_at'))
+                            ->where(function ($attempts) {
+                                $attempts->whereHas('contactHistories', fn ($history) => $history->where('contact_type', 'follow_up'), '<', $this->maxFollowUps)
+                                    ->orWhereHas('latestContactHistory', fn ($history) => $history->where('follow_up_decision', 'continue'));
+                            })
+                            ->whereHas('latestContactHistory', fn ($history) => $history
+                                ->whereNotNull('follow_up_at')->where('follow_up_at', '<=', now())
+                                ->where(fn ($decision) => $decision->whereNull('follow_up_decision')->orWhere('follow_up_decision', 'continue')));
+                    });
+            });
         }
 
         if ($status === 'contacted') {
-            return $query->whereHas('latestContactHistory', fn ($history) => $history
-                ->where(function ($followUp) {
-                    $followUp->whereNull('follow_up_at')->orWhere('follow_up_at', '>', now());
-                })->where(function ($decision) {
-                    $decision->whereNull('follow_up_decision')->orWhere('follow_up_decision', '!=', 'stop');
-                }));
+            return $query->whereHas('contactHistories')->where(function ($pending) {
+                $pending->whereHas('contactPreference', fn ($preference) => $preference
+                    ->whereNotNull('next_follow_up_at')->where('next_follow_up_at', '>', now()))
+                    ->orWhere(function ($historyPending) {
+                        $historyPending->whereDoesntHave('contactPreference', fn ($preference) => $preference->whereNotNull('next_follow_up_at'))
+                            ->whereHas('latestContactHistory', fn ($history) => $history
+                                ->where(function ($followUp) {
+                                    $followUp->whereNull('follow_up_at')->orWhere('follow_up_at', '>', now());
+                                })->where(function ($decision) {
+                                    $decision->whereNull('follow_up_decision')->orWhere('follow_up_decision', '!=', 'stop');
+                                }));
+                    });
+            });
         }
 
         return $query;
@@ -475,7 +521,7 @@ class CostumerFollowUp extends Component
             $message = rtrim($message)."\n\nVotre commande : ".$products.'.';
         }
 
-        return rtrim($message)."\n\nTENANCE COSMETIQUE";
+        return rtrim($message)."\n\nTENACE COSMETIQUE";
     }
 
     protected function contactUrl(Costumer $costumer, string $channel): ?string

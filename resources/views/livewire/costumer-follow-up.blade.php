@@ -78,7 +78,7 @@
 
             <hr>
             <h6 class="text-uppercase text-muted">Modèles de contact</h6>
-            <p class="small text-muted">Utilise <code>&#123;&#123;name&#125;&#125;</code> pour le nom du client et <code>&#123;&#123;product&#125;&#125;</code> pour le produit de sa dernière commande. La signature « TENANCE COSMETIQUE » est ajoutée automatiquement.</p>
+            <p class="small text-muted">Utilise <code>&#123;&#123;name&#125;&#125;</code> pour le nom du client et <code>&#123;&#123;product&#125;&#125;</code> pour le produit de sa dernière commande. La signature « TENACE COSMETIQUE » est ajoutée automatiquement.</p>
             <div class="form-row align-items-end">
                 <div class="form-group col-md-3">
                     <label>Canal</label>
@@ -191,6 +191,7 @@
                         @php
                             $status = $statuses[$costumer->id];
                             $latest = $costumer->latestContactHistory;
+                            $nextFollowUpAt = $costumer->contactPreference?->next_follow_up_at ?? $latest?->follow_up_at;
                             $badge = ['not_contacted' => 'success', 'contacted' => 'warning', 'responded' => 'info', 'to_follow_up' => 'warning', 'review_required' => 'danger', 'closed' => 'secondary', 'do_not_contact' => 'dark'][$status];
                             $statusLabel = ['not_contacted' => 'Non contacté', 'contacted' => 'Contacté / en attente', 'responded' => 'Répondu', 'to_follow_up' => 'À relancer', 'review_required' => 'Décision requise', 'closed' => 'Suivi clôturé', 'do_not_contact' => 'Ne plus solliciter'][$status];
                         @endphp
@@ -205,10 +206,10 @@
                             <td>
                                 @if ($status === 'review_required')
                                     <span class="text-danger font-weight-bold">Limite de relances atteinte</span>
-                                @elseif ($status === 'to_follow_up')
-                                    <span class="text-warning font-weight-bold">Échue : {{ $latest->follow_up_at->format('d/m/Y H:i') }}</span>
-                                @elseif ($latest && $latest->follow_up_at)
-                                    {{ $latest->follow_up_at->format('d/m/Y H:i') }}
+                                @elseif ($nextFollowUpAt && $status === 'to_follow_up')
+                                    <span class="text-warning font-weight-bold">Échue : {{ $nextFollowUpAt->format('d/m/Y H:i') }}</span>
+                                @elseif ($nextFollowUpAt)
+                                    {{ $nextFollowUpAt->format('d/m/Y H:i') }}
                                 @else
                                     —
                                 @endif
@@ -222,7 +223,7 @@
                                     <button class="btn btn-sm btn-primary" wire:click="decideFollowUp({{ $costumer->id }}, 'continue')">Continuer</button>
                                     <button class="btn btn-sm btn-danger" wire:click="decideFollowUp({{ $costumer->id }}, 'stop')">Clôturer</button>
                                 @elseif (!in_array($status, ['responded', 'closed']))
-                                    <button class="btn btn-sm btn-primary" wire:click="openContactModal({{ $costumer->id }}, '{{ $status === 'not_contacted' ? 'initial' : 'follow_up' }}')">
+                                    <button class="btn btn-sm btn-primary" wire:click="openContactModal({{ $costumer->id }}, '{{ $latest ? 'follow_up' : 'initial' }}')">
                                         {{ $status === 'not_contacted' ? 'Contacter' : 'Relancer' }}
                                     </button>
                                 @endif

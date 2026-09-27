@@ -11,10 +11,10 @@
              <div class="col-md-3">
 
                  <div style="padding-top: 10px">
-                     <select class="js-example-basic-single  form-control" name="costumer_id">
+                     <select id="order-costumer-id" class="js-example-basic-single form-control" name="costumer_id">
                          <option value="default">Nouveau client</option>
                          @foreach ($Costumers as $Costumer)
-                             <option value="{{ $Costumer->id }}">{{ $Costumer->name }} | {{ $Costumer->phone }}
+                             <option value="{{ $Costumer->id }}" @selected((string) old('costumer_id') === (string) $Costumer->id)>{{ $Costumer->name }} | {{ $Costumer->phone }}
                              </option>
                          @endforeach
                      </select>
@@ -85,6 +85,18 @@
                      <input type="number" class="form-control" id="remise" name="remis" placeholder="Remise"
                          value="{{ old('remis', 0) }}">
                      @error('remis')
+                         <span class="text-danger">{{ $message }}</span>
+                     @enderror
+                 </div>
+             </div>
+         </div>
+         <div class="row">
+             <div class="col-md-6">
+                 <div class="form-group">
+                     <label for="customer-follow-up-at">Prochaine relance du client</label>
+                     <input type="datetime-local" class="form-control" id="customer-follow-up-at" name="follow_up_at" wire:model.defer="defaultFollowUpAt" value="{{ old('follow_up_at', $defaultFollowUpAt) }}" required>
+                     <small class="form-text text-muted">Date proposée par défaut {{ $defaultFollowUpDays }} jours après aujourd’hui. Tu peux la modifier.</small>
+                     @error('follow_up_at')
                          <span class="text-danger">{{ $message }}</span>
                      @enderror
                  </div>
