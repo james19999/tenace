@@ -39,6 +39,9 @@ class CostumerFollowUp extends Component
     public $contactedAt;
     public $followUpAt;
     public $notes = '';
+    public $responseReceivedNow = false;
+    public $immediateResponse = '';
+    public $immediateSentiment = 'neutral';
     public $response = '';
     public $sentiment = 'neutral';
     public $individualCallingCode = '+228';
@@ -76,6 +79,11 @@ class CostumerFollowUp extends Component
             ->where('active', true)->value('id');
     }
 
+    public function updatedResponseReceivedNow($value = null): void
+    {
+        $this->resetValidation($this->responseReceivedNow ? 'followUpAt' : 'immediateResponse');
+    }
+
     public function openContactModal(int $costumerId, string $type = 'initial'): void
     {
         $costumer = Costumer::with('contactPreference')->findOrFail($costumerId);
@@ -88,21 +96,32 @@ class CostumerFollowUp extends Component
         $this->contactedAt = now()->format('Y-m-d\TH:i');
         $this->followUpAt = now()->addDays((int) $this->defaultFollowUpDays)->format('Y-m-d\TH:i');
         $this->notes = '';
+        $this->responseReceivedNow = false;
+        $this->immediateResponse = '';
+        $this->immediateSentiment = 'neutral';
         $this->showContactModal = true;
     }
 
     public function saveContact(): void
     {
-        $this->validate([
+        $rules = [
             'selectedCostumerId' => 'required|exists:costumers,id',
             'contactType' => 'required|in:initial,follow_up',
             'channel' => 'required|in:whatsapp,sms,call,other',
             'contactedAt' => 'required|date',
-            'followUpAt' => 'nullable|date|after:contactedAt',
+            'responseReceivedNow' => 'boolean',
+            'immediateResponse' => 'nullable|string|max:10000',
+            'immediateSentiment' => 'required|in:positive,neutral,negative',
             'individualCallingCode' => ['required', 'regex:/^\\+?[0-9]{1,4}$/'],
             'selectedTemplateId' => 'nullable|exists:costumer_contact_message_templates,id',
             'notes' => 'nullable|string|max:5000',
-        ]);
+        ];
+        if ($this->responseReceivedNow) {
+            $rules['immediateResponse'] = 'required|string|max:10000';
+        } else {
+            $rules['followUpAt'] = 'nullable|date|after:contactedAt';
+        }
+        $this->validate($rules);
 
         abort_if(CostumerContactPreference::where('costumer_id', $this->selectedCostumerId)->whereNotNull('do_not_contact_at')->exists(), 403);
 
@@ -110,11 +129,12 @@ class CostumerFollowUp extends Component
             ? $this->individualCallingCode
             : '+'.$this->individualCallingCode;
 
+        $followUpAt = $this->responseReceivedNow ? null : ($this->followUpAt ?: null);
         CostumerContactPreference::updateOrCreate(
             ['costumer_id' => $this->selectedCostumerId],
             [
                 'calling_code' => $callingCode,
-                'next_follow_up_at' => $this->followUpAt ?: null,
+                'next_follow_up_at' => $followUpAt,
                 'updated_by' => Auth::id(),
             ]
         );
@@ -125,13 +145,18 @@ class CostumerFollowUp extends Component
             'contact_type' => $this->contactType,
             'channel' => $this->channel,
             'contacted_at' => $this->contactedAt,
-            'follow_up_at' => $this->followUpAt,
+            'follow_up_at' => $followUpAt,
+            'response' => $this->responseReceivedNow ? $this->immediateResponse : null,
+            'sentiment' => $this->responseReceivedNow ? $this->immediateSentiment : null,
+            'responded_at' => $this->responseReceivedNow ? now() : null,
             'message_template_id' => $this->selectedTemplateId,
             'notes' => $this->notes ?: null,
         ]);
 
         $this->dispatchBrowserEvent('animate-follow-up-modal-close', ['modal' => 'follow-up-contact-modal', 'type' => 'contact']);
-        session()->flash('messages', 'Contact enregistré dans l’historique.');
+        session()->flash('messages', $this->responseReceivedNow
+            ? 'Contact et réponse enregistrés. Le suivi de ce client est terminé.'
+            : 'Contact enregistré dans l’historique.');
     }
 
     public function openResponseModal(int $historyId): void
@@ -173,20 +198,12 @@ class CostumerFollowUp extends Component
 
     public function openScheduledDateModal(int $costumerId): void
     {
-        $costumer = Costumer::with(['latestContactHistory', 'latestOrder', 'contactPreference'])->findOrFail($costumerId);
+        $costumer = Costumer::with('contactPreference')->findOrFail($costumerId);
         abort_if($costumer->contactPreference && $costumer->contactPreference->do_not_contact_at, 403);
         abort_unless($costumer->orders()->exists(), 403);
 
         $this->scheduledDateCostumerId = $costumer->id;
-        $date = $costumer->contactPreference?->next_follow_up_at
-            ?? $costumer->latestContactHistory?->follow_up_at;
-
-        if (!$date && $costumer->latestOrder) {
-            $orderDate = $costumer->latestOrder->date_order ?: $costumer->latestOrder->created_at;
-            $date = Carbon::parse($orderDate)->addDays((int) $this->defaultFollowUpDays)->setTime(9, 0);
-        }
-
-        $this->scheduledFollowUpDate = $date ? $date->format('Y-m-d\\TH:i') : now()->format('Y-m-d\\TH:i');
+        $this->scheduledFollowUpDate = now()->format('Y-m-d\\TH:i');
         $this->showScheduledDateModal = true;
     }
 
@@ -264,7 +281,7 @@ class CostumerFollowUp extends Component
     {
         if ($modal === 'contact') {
             $this->showContactModal = false;
-            $this->reset(['selectedCostumerId', 'notes', 'selectedTemplateId']);
+            $this->reset(['selectedCostumerId', 'notes', 'selectedTemplateId', 'responseReceivedNow', 'immediateResponse', 'immediateSentiment']);
         } elseif ($modal === 'response') {
             $this->showResponseModal = false;
             $this->reset(['selectedHistoryId', 'selectedCostumerId', 'response', 'sentiment']);
@@ -643,16 +660,21 @@ class CostumerFollowUp extends Component
             ->with(['latestContactHistory.user', 'latestOrder', 'contactPreference'])
             ->withCount([
                 'contactHistories as contact_histories_count' => fn ($history) => $history->whereNotNull('responded_at'),
-            'contactHistories as follow_up_count' => fn ($history) => $history->where('contact_type', 'follow_up'),
+                'contactHistories as follow_up_count' => fn ($history) => $history->where('contact_type', 'follow_up'),
                 'orders',
-        ]);
+            ])
+            ->withMax('orders', 'created_at');
 
         if ($this->statusFilter !== 'all') {
             $statusIds = $this->searchQuery($this->statusQuery($this->statusFilter))->select('costumers.id');
             $query->whereIn('costumers.id', $statusIds);
         }
 
-        $costumers = $query->orderBy('name')->paginate(15);
+        $costumers = $query
+            ->orderByDesc('orders_count')
+            ->orderByDesc('orders_max_created_at')
+            ->orderBy('name')
+            ->paginate(15);
         $statuses = $costumers->getCollection()->mapWithKeys(fn ($costumer) => [$costumer->id => $this->statusFor($costumer)]);
 
         return view('livewire.costumer-follow-up', [

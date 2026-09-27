@@ -337,16 +337,37 @@
                         @elseif ($channel !== 'other')
                             <div class="alert alert-warning">Ce client n’a pas de numéro utilisable pour ce moyen de contact.</div>
                         @endif
-                        <div class="form-group">
-                            <label>Date de relance prévue (facultatif)</label>
-                            <input type="datetime-local" class="form-control" wire:model="followUpAt">
-                            <small class="form-text text-muted">Par défaut : {{ $defaultFollowUpDays }} jours après le contact. Tu peux choisir une autre date.</small>
+                        <div class="form-group form-check">
+                            <input type="checkbox" class="form-check-input" id="response-received-now" wire:model="responseReceivedNow">
+                            <label class="form-check-label" for="response-received-now">Le client répond maintenant</label>
                         </div>
+                        @if ($responseReceivedNow)
+                            <div class="form-group">
+                                <label>Réponse ou avis du client</label>
+                                <textarea class="form-control" rows="4" wire:model="immediateResponse" placeholder="Note la réponse du client"></textarea>
+                                @error('immediateResponse') <small class="text-danger">{{ $message }}</small> @enderror
+                            </div>
+                            <div class="form-group">
+                                <label>Tonalité de l’avis</label>
+                                <select class="form-control" wire:model="immediateSentiment">
+                                    <option value="positive">Positif</option>
+                                    <option value="neutral">Neutre</option>
+                                    <option value="negative">Négatif</option>
+                                </select>
+                            </div>
+                            <div class="alert alert-info">La réponse sera enregistrée avec ce contact et aucune relance ne sera planifiée.</div>
+                        @else
+                            <div class="form-group">
+                                <label>Date de relance prévue (facultatif)</label>
+                                <input type="datetime-local" class="form-control" wire:model="followUpAt">
+                                <small class="form-text text-muted">Par défaut : {{ $defaultFollowUpDays }} jours après le contact. Tu peux choisir une autre date.</small>
+                            </div>
+                        @endif
                         <div class="form-group mb-0">
                             <label>Note sur le contact</label>
                             <textarea class="form-control" rows="3" wire:model="notes" placeholder="Contexte ou résultat du contact"></textarea>
                         </div>
-                        @foreach (['channel', 'contactedAt', 'followUpAt', 'individualCallingCode', 'selectedTemplateId', 'notes'] as $field)
+                        @foreach (['channel', 'contactedAt', 'followUpAt', 'individualCallingCode', 'selectedTemplateId', 'notes', 'immediateSentiment'] as $field)
                             @error($field) <small class="text-danger d-block">{{ $message }}</small> @enderror
                         @endforeach
                     </div>
