@@ -119,6 +119,7 @@
                                 <td class="text-nowrap">
                                     <button class="btn btn-sm btn-warning" wire:click="editMessageTemplate({{ $template->id }})">Modifier</button>
                                     <button class="btn btn-sm btn-outline-secondary" wire:click="toggleMessageTemplate({{ $template->id }})">{{ $template->active ? 'Désactiver' : 'Activer' }}</button>
+                                    <button class="btn btn-sm btn-outline-danger" wire:click="openDeleteTemplateModal({{ $template->id }})">Supprimer</button>
                                 </td>
                             </tr>
                         @endforeach
@@ -128,6 +129,27 @@
           </div>
         @endif
     </div>
+
+    @if ($showDeleteTemplateModal)
+        <div class="modal fade show d-block follow-up-modal" id="delete-template-modal" style="background: rgba(0,0,0,.5)" tabindex="-1" role="dialog" aria-modal="true">
+            <div class="modal-dialog modal-dialog-centered follow-up-modal-dialog" role="document">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h5 class="modal-title">Supprimer le modèle</h5>
+                        <button type="button" class="close" wire:click="beginClosingModal('delete-template-modal')" aria-label="Fermer"><span>&times;</span></button>
+                    </div>
+                    <div class="modal-body">
+                        <p class="mb-1">Confirme-tu la suppression de ce modèle ?</p>
+                        <strong>{{ $deletingTemplateName }}</strong>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" wire:click="beginClosingModal('delete-template-modal')">Annuler</button>
+                        <button type="button" class="btn btn-danger" wire:click="confirmDeleteMessageTemplate">Supprimer</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    @endif
 
     <div class="card shadow">
         <div class="card-header bg-white">

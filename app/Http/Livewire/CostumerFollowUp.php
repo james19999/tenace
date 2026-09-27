@@ -25,8 +25,11 @@ class CostumerFollowUp extends Component
     public $showHistoryModal = false;
     public $showSettings = false;
     public $showDoNotContactModal = false;
+    public $showDeleteTemplateModal = false;
     public $selectedCostumerId;
     public $selectedHistoryId;
+    public $deletingTemplateId;
+    public $deletingTemplateName = '';
     public $contactType = 'initial';
     public $channel = 'whatsapp';
     public $contactedAt;
@@ -188,6 +191,7 @@ class CostumerFollowUp extends Component
             'follow-up-response-modal' => 'response',
             'follow-up-history-modal' => 'history',
             'follow-up-do-not-contact-modal' => 'do-not-contact',
+            'delete-template-modal' => 'delete-template',
         ];
 
         if (isset($modalTypes[$modal])) {
@@ -209,6 +213,9 @@ class CostumerFollowUp extends Component
         } elseif ($modal === 'do-not-contact') {
             $this->showDoNotContactModal = false;
             $this->reset(['selectedCostumerId', 'doNotContactReason']);
+        } elseif ($modal === 'delete-template') {
+            $this->showDeleteTemplateModal = false;
+            $this->reset(['deletingTemplateId', 'deletingTemplateName']);
         }
     }
 
@@ -272,6 +279,31 @@ class CostumerFollowUp extends Component
             $this->selectedTemplateId = null;
         }
         session()->flash('messages', $template->active ? 'Le modèle a été activé.' : 'Le modèle a été désactivé.');
+    }
+
+    public function openDeleteTemplateModal(int $templateId): void
+    {
+        $template = CostumerContactMessageTemplate::findOrFail($templateId);
+        $this->deletingTemplateId = $template->id;
+        $this->deletingTemplateName = $template->name;
+        $this->showDeleteTemplateModal = true;
+    }
+
+    public function confirmDeleteMessageTemplate(): void
+    {
+        $template = CostumerContactMessageTemplate::findOrFail($this->deletingTemplateId);
+        $templateId = $template->id;
+        $template->delete();
+
+        if ((int) $this->selectedTemplateId === $templateId) {
+            $this->selectedTemplateId = null;
+        }
+        if ((int) $this->editingTemplateId === $templateId) {
+            $this->cancelMessageTemplateEdit();
+        }
+
+        $this->dispatchBrowserEvent('animate-follow-up-modal-close', ['modal' => 'delete-template-modal', 'type' => 'delete-template']);
+        session()->flash('messages', 'Le modèle a été supprimé.');
     }
 
     public function decideFollowUp(int $costumerId, string $decision): void
