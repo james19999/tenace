@@ -235,7 +235,7 @@ class LivreurController extends Controller
 
     $orders =Order::where('user_id',Auth::user()->id)
     ->where('status_order',true)
-    ->whereDate('created_at',Carbon::today())
+    // ->whereDate('created_at',Carbon::today())
     ->get();
      return view('livreurs.aut_livre_list',compact('orders'));
   }
