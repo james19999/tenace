@@ -31,7 +31,7 @@ class DeliveryAlert extends Component
             ->whereDate('date_order', '<', $today)
             ->whereNotIn('status', [
                 'delivered',
-                'cancelled',
+                'canceled',
             ])
             ->count();
 
@@ -43,7 +43,7 @@ class DeliveryAlert extends Component
             ->whereDate('date_order', $today)
             ->whereNotIn('status', [
                 'delivered',
-                'cancelled',
+                'canceled',
             ])
             ->count();
     }
