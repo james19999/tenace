@@ -36,11 +36,7 @@ class DeliveryAlert extends Component
             ->count();
 
 
-        /*
-        |--------------------------------------------------------------------------
-        | Commandes prévues aujourd'hui
-        |--------------------------------------------------------------------------
-        */
+
 
         $this->todayOrdersCount = Order::query()
             ->whereNotNull('date_order')
