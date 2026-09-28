@@ -156,7 +156,7 @@ class LivreurController extends Controller
         $orders=Order::where('status_order',0)
               ->where('status','ordered')
               ->latest()
-            //   ->whereDate('created_at',Carbon::today())
+              ->whereDate('created_at',Carbon::today())
               ->where('brouillon',1)
               ->where('type','PU')
               ->get();

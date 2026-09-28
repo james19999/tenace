@@ -2,6 +2,7 @@
 
 namespace App\Http\Livewire;
 
+use App\Models\User;
 use Livewire\Component;
 use App\Models\Orders\Order;
 use Livewire\WithPagination;
@@ -10,6 +11,12 @@ use Illuminate\Support\Carbon;
 class OrderList extends Component
 {
    use WithPagination;
+
+   public $showAssignModal = false;
+
+public $assignOrderId = null;
+
+public $selectedLivreur = null;
 public $showDeleteModal = false;
 
 public $deleteOrderId = null;
@@ -34,6 +41,62 @@ public $typeOrderId;
         $this->selectedDate = now()->toDateString();
     }
 
+    public function openAssignModal($orderId)
+{
+    $order = Order::findOrFail($orderId);
+
+    $this->assignOrderId = $order->id;
+
+    // Si la commande possède déjà un livreur,
+    // on le sélectionne automatiquement
+    $this->selectedLivreur = $order->user_id;
+
+    $this->showAssignModal = true;
+}
+
+public function closeAssignModal()
+{
+    $this->showAssignModal = false;
+
+    $this->assignOrderId = null;
+
+    $this->selectedLivreur = null;
+}
+public function assignOrder()
+{
+    $this->validate([
+        'selectedLivreur' => 'required|exists:users,id',
+    ], [
+        'selectedLivreur.required' => 'Veuillez sélectionner un livreur.',
+        'selectedLivreur.exists' => 'Le livreur sélectionné est invalide.',
+    ]);
+
+    // Vérifier que l'utilisateur est bien un livreur
+    $livreur = User::where('id', $this->selectedLivreur)
+        ->where('user_type', 'LVS')
+        ->first();
+
+    if (!$livreur) {
+
+
+
+        return;
+    }
+
+    $order = Order::findOrFail($this->assignOrderId);
+
+    $order->update([
+        'user_id' => $livreur->id,
+    ]);
+
+    $this->showAssignModal = false;
+
+    $this->assignOrderId = null;
+
+    $this->selectedLivreur = null;
+
+    $this->resetPage();
+}
     public function openEditModal($orderId)
 {
     $order = Order::findOrFail($orderId);
@@ -214,6 +277,7 @@ public function deleteOrder()
             ->with([
                 'costumer',
                 'createduser',
+                'user'
             ])
             ->whereDate('date_order', $this->selectedDate)
             ->orderBy('date_order')
@@ -235,12 +299,16 @@ public function deleteOrder()
             ->count();
 
 
-
+    $livreurs = User::query()
+        ->where('user_type', 'LVS')
+        ->orderBy('name')
+        ->get();
 
         return view('livewire.order-list', [
             'dates' => $dates,
             'orders' => $orders,
             'selectedDateCount' => $selectedDateCount,
+            'livreurs' => $livreurs,
         ])        ->extends('layouts.admin')
         ->section('content');
     }
