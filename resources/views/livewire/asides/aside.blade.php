@@ -346,11 +346,25 @@
                         <span class="text">Panier ({{ Cart::instance('cart')->count() }})</span>
                     </a>
                 </li>
+                <li>
+                    <a href="{{ route('order-liste-order') }}" class="">
+                        <span class="icon material-icons">add_shopping_cart
+                        </span>
+                        <span class="text">Gestion commande</span>
+                    </a>
+                </li>
             @elseif (Auth::user()->user_type == 'CSA')
                 <li>
                     <a href="{{ route('order') }}" class="">
                         <span class="icon material-icons">shopping_cart</span>
                         <span class="text">Commandes</span>
+                    </a>
+                </li>
+                <li>
+                    <a href="{{ route('order-liste-order') }}" class="">
+                        <span class="icon material-icons">add_shopping_cart
+                        </span>
+                        <span class="text">Gestion commande</span>
                     </a>
                 </li>
             @elseif (Auth::user()->user_type == 'MNG')
@@ -423,6 +437,14 @@
                         </li>
 
                     </ul>
+                </li>
+
+                <li>
+                    <a href="{{ route('order-liste-order') }}" class="">
+                        <span class="icon material-icons">add_shopping_cart
+                        </span>
+                        <span class="text">Gestion commande</span>
+                    </a>
                 </li>
             @else
                 <li>
