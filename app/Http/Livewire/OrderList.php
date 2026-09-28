@@ -87,6 +87,7 @@ public function assignOrder()
 
     $order->update([
         'user_id' => $livreur->id,
+        'status_order'=>true,
     ]);
 
     $this->showAssignModal = false;
@@ -282,7 +283,7 @@ public function deleteOrder()
             ->whereDate('date_order', $this->selectedDate)
             ->orderBy('date_order')
               ->where('status','ordered')
-            ->where('type','PR')
+            // ->where('type','PR')
             ->paginate(10);
 
 
