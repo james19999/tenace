@@ -236,7 +236,7 @@
 
 
                         {{-- TYPE --}}
-                        <div class="col-md-2 text-md-end">
+                        {{--  <div class="col-md-2 text-md-end">
 
                             @if ($order->type === 'PR')
                                 <button type="button" wire:click="openChangeTypeModal({{ $order->id }})"
@@ -248,6 +248,21 @@
                                     {{ $order->type }}
                                 </span>
                             @endif
+
+                        </div>  --}}
+
+                        <div class="col-md-2 text-end">
+
+                            <button type="button" wire:click="openAssignModal({{ $order->id }})"
+                                class="btn btn-sm btn-outline-primary">
+                                <i class="bi bi-person-badge"></i>
+
+                                @if ($order->user_id)
+                                    Modifier livreur
+                                @else
+                                    Attribuer livreur
+                                @endif
+                            </button>
 
                         </div>
 
@@ -485,6 +500,26 @@
                                 <strong>
 
                                     {{ $order->createduser?->name ?? '-' }}
+
+                                </strong>
+
+                            </small>
+
+                        </div>
+                        <div>
+
+                            <small class="text-muted">
+
+                                Livreur :
+
+                                <strong>
+
+                                    @if ($order->user)
+                                        <div class="small text-muted mt-1">
+                                            <i class="bi bi-person"></i>
+                                            {{ $order->user->name }}
+                                        </div>
+                                    @endif
 
                                 </strong>
 
@@ -865,5 +900,138 @@
         {{-- BACKDROP --}}
 
         <div class="modal-backdrop fade show"></div>
+    @endif
+
+    @if ($showAssignModal)
+
+        <div class="modal fade show" style="display: block;" tabindex="-1" role="dialog" aria-modal="true">
+
+            <div class="modal-dialog modal-dialog-centered">
+
+                <div class="modal-content">
+
+                    {{-- HEADER --}}
+
+                    <div class="modal-header">
+
+                        <h5 class="modal-title">
+
+                            <i class="bi bi-person-badge text-primary"></i>
+
+                            Attribution du livreur
+
+                        </h5>
+
+                        <button type="button" class="btn-close" wire:click="closeAssignModal"></button>
+
+                    </div>
+
+
+                    {{-- BODY --}}
+
+                    <div class="modal-body">
+
+                        <div class="alert alert-info">
+
+                            <i class="bi bi-info-circle"></i>
+
+                            Sélectionnez le livreur auquel vous souhaitez
+                            attribuer cette commande.
+
+                        </div>
+
+
+                        <div class="mb-3">
+
+                            <label class="form-label fw-bold">
+
+                                Livreur
+
+                            </label>
+
+
+                            <select wire:model="selectedLivreur"
+                                class="form-select  form-control @error('selectedLivreur') is-invalid @enderror">
+
+                                <option value="">
+                                    -- Sélectionner un livreur --
+                                </option>
+
+                                @foreach ($livreurs as $livreur)
+                                    <option value="{{ $livreur->id }}">
+
+                                        {{ $livreur->name }}
+
+                                        @if ($livreur->phone)
+                                            - {{ $livreur->phone }}
+                                        @endif
+
+                                    </option>
+                                @endforeach
+
+                            </select>
+
+
+                            @error('selectedLivreur')
+                                <div class="invalid-feedback">
+                                    {{ $message }}
+                                </div>
+                            @enderror
+
+                        </div>
+
+                    </div>
+
+
+                    {{-- FOOTER --}}
+
+                    <div class="modal-footer">
+
+                        <button type="button" class="btn btn-secondary" wire:click="closeAssignModal">
+
+                            <i class="bi bi-x-circle"></i>
+
+                            Annuler
+
+                        </button>
+
+
+                        <button type="button" class="btn btn-primary" wire:click="assignOrder"
+                            wire:loading.attr="disabled">
+
+                            <span wire:loading.remove wire:target="assignOrder">
+
+                                <i class="bi bi-check-circle"></i>
+
+                                Valider l'attribution
+
+                            </span>
+
+
+                            <span wire:loading wire:target="assignOrder">
+
+                                <span class="spinner-border spinner-border-sm"></span>
+
+                                Attribution...
+
+                            </span>
+
+                        </button>
+
+                    </div>
+
+                </div>
+
+            </div>
+
+        </div>
+
+
+        {{-- BACKDROP --}}
+
+        <div class="modal-backdrop fade show">
+
+        </div>
+
     @endif
 </div>

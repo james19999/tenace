@@ -29,7 +29,7 @@
 
             </li>
 
-            @livewire('delivery-alert')
+            {{--  @livewire('delivery-alert')  --}}
 
             <!-- Messages Dropdown Menu -->
             <li class="nav-item dropdown with-caret  ">
