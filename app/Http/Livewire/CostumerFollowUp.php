@@ -28,6 +28,8 @@ class CostumerFollowUp extends Component
     public $showDoNotContactModal = false;
     public $showDeleteTemplateModal = false;
     public $showScheduledDateModal = false;
+    public $showFollowUpDecisionModal = false;
+    public $pendingFollowUpDecision = '';
     public $selectedCostumerId;
     public $selectedHistoryId;
     public $scheduledDateCostumerId;
@@ -36,6 +38,7 @@ class CostumerFollowUp extends Component
     public $deletingTemplateName = '';
     public $contactType = 'initial';
     public $channel = 'whatsapp';
+    public $channelDetail = '';
     public $contactedAt;
     public $followUpAt;
     public $notes = '';
@@ -91,6 +94,7 @@ class CostumerFollowUp extends Component
         $this->selectedCostumerId = $costumer->id;
         $this->contactType = $type === 'follow_up' ? 'follow_up' : 'initial';
         $this->channel = 'whatsapp';
+        $this->channelDetail = '';
         $this->selectedTemplateId = CostumerContactMessageTemplate::where('channel', 'whatsapp')->where('active', true)->value('id');
         $this->individualCallingCode = $costumer->contactPreference->calling_code ?? $this->defaultCountryCallingCode;
         $this->contactedAt = now()->format('Y-m-d\TH:i');
@@ -108,6 +112,7 @@ class CostumerFollowUp extends Component
             'selectedCostumerId' => 'required|exists:costumers,id',
             'contactType' => 'required|in:initial,follow_up',
             'channel' => 'required|in:whatsapp,sms,call,other',
+            'channelDetail' => $this->channel === 'other' ? 'required|string|max:120' : 'nullable|string|max:120',
             'contactedAt' => 'required|date',
             'responseReceivedNow' => 'boolean',
             'immediateResponse' => 'nullable|string|max:10000',
@@ -144,6 +149,7 @@ class CostumerFollowUp extends Component
             'user_id' => Auth::id(),
             'contact_type' => $this->contactType,
             'channel' => $this->channel,
+            'channel_detail' => $this->channel === 'other' ? trim($this->channelDetail) : null,
             'contacted_at' => $this->contactedAt,
             'follow_up_at' => $followUpAt,
             'response' => $this->responseReceivedNow ? $this->immediateResponse : null,
@@ -270,6 +276,7 @@ class CostumerFollowUp extends Component
             'follow-up-do-not-contact-modal' => 'do-not-contact',
             'delete-template-modal' => 'delete-template',
             'scheduled-follow-up-date-modal' => 'scheduled-date',
+            'follow-up-decision-confirm-modal' => 'follow-up-decision',
         ];
 
         if (isset($modalTypes[$modal])) {
@@ -297,6 +304,9 @@ class CostumerFollowUp extends Component
         } elseif ($modal === 'scheduled-date') {
             $this->showScheduledDateModal = false;
             $this->reset(['scheduledDateCostumerId', 'scheduledFollowUpDate']);
+        } elseif ($modal === 'follow-up-decision') {
+            $this->showFollowUpDecisionModal = false;
+            $this->reset(['selectedCostumerId', 'pendingFollowUpDecision']);
         }
     }
 
@@ -408,6 +418,30 @@ class CostumerFollowUp extends Component
         session()->flash('messages', $decision === 'continue'
             ? 'Une nouvelle série de relances est autorisée.'
             : 'Le suivi est clôturé après les relances prévues.');
+    }
+
+    public function openFollowUpDecisionModal(int $costumerId, string $decision): void
+    {
+        abort_unless(in_array($decision, ['continue', 'stop'], true), 403);
+        $customer = Costumer::with(['latestContactHistory', 'contactPreference'])->withCount([
+            'contactHistories as contact_histories_count' => fn ($query) => $query->whereNotNull('responded_at'),
+            'contactHistories as follow_up_count' => fn ($query) => $query->where('contact_type', 'follow_up'),
+        ])->findOrFail($costumerId);
+        abort_unless($this->statusFor($customer) === 'review_required', 403);
+
+        $this->selectedCostumerId = $customer->id;
+        $this->pendingFollowUpDecision = $decision;
+        $this->showFollowUpDecisionModal = true;
+    }
+
+    public function confirmFollowUpDecision(): void
+    {
+        $this->validate([
+            'selectedCostumerId' => 'required|exists:costumers,id',
+            'pendingFollowUpDecision' => 'required|in:continue,stop',
+        ]);
+        $this->decideFollowUp((int) $this->selectedCostumerId, $this->pendingFollowUpDecision);
+        $this->dispatchBrowserEvent('animate-follow-up-modal-close', ['modal' => 'follow-up-decision-confirm-modal', 'type' => 'follow-up-decision']);
     }
 
     public function saveSettings(): void

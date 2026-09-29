@@ -250,8 +250,8 @@
                                 @if ($status === 'do_not_contact')
                                     <button class="btn btn-sm btn-success" wire:click="allowContactAgain({{ $costumer->id }})">Réactiver</button>
                                 @elseif ($status === 'review_required')
-                                    <button class="btn btn-sm btn-primary" wire:click="decideFollowUp({{ $costumer->id }}, 'continue')">Continuer</button>
-                                    <button class="btn btn-sm btn-danger" wire:click="decideFollowUp({{ $costumer->id }}, 'stop')">Clôturer</button>
+                                    <button class="btn btn-sm btn-primary" wire:click="openFollowUpDecisionModal({{ $costumer->id }}, 'continue')">Continuer</button>
+                                    <button class="btn btn-sm btn-danger" wire:click="openFollowUpDecisionModal({{ $costumer->id }}, 'stop')">Clôturer</button>
                                 @elseif ($status === 'responded')
                                     <span class="badge badge-info">Avis reçu</span>
                                 @elseif ($status === 'closed')
@@ -311,6 +311,13 @@
                                 <input type="datetime-local" class="form-control" wire:model="contactedAt">
                             </div>
                         </div>
+                        @if ($channel === 'other')
+                            <div class="form-group">
+                                <label for="channel-detail">Précise le moyen de contact</label>
+                                <input id="channel-detail" type="text" class="form-control" wire:model="channelDetail" maxlength="120" placeholder="Ex. e-mail, Facebook, visite en boutique…">
+                                @error('channelDetail') <small class="text-danger">{{ $message }}</small> @enderror
+                            </div>
+                        @endif
                         <div class="form-row">
                             <div class="form-group col-md-6">
                                 <label>Modèle de {{ ['whatsapp' => 'message WhatsApp', 'sms' => 'SMS', 'call' => 'trame d’appel', 'other' => 'contact'][$channel] }}</label>
@@ -334,6 +341,9 @@
                             <a href="{{ $contactUrl }}" target="_blank" rel="noopener" class="btn btn-outline-primary mb-3">
                                 {{ $channel === 'call' ? 'Appeler' : 'Ouvrir' }} {{ ['whatsapp' => 'WhatsApp', 'sms' => 'les SMS', 'call' => '', 'other' => ''][$channel] }} {{ $selectedCostumer->phone }}
                             </a>
+                            @if ($channel === 'whatsapp')
+                                <small class="d-block text-muted mb-3">WhatsApp s’ouvrira selon la configuration de votre appareil et de votre navigateur.</small>
+                            @endif
                         @elseif ($channel !== 'other')
                             <div class="alert alert-warning">Ce client n’a pas de numéro utilisable pour ce moyen de contact.</div>
                         @endif
@@ -367,7 +377,7 @@
                             <label>Note sur le contact</label>
                             <textarea class="form-control" rows="3" wire:model="notes" placeholder="Contexte ou résultat du contact"></textarea>
                         </div>
-                        @foreach (['channel', 'contactedAt', 'followUpAt', 'individualCallingCode', 'selectedTemplateId', 'notes', 'immediateSentiment'] as $field)
+                        @foreach (['channel', 'channelDetail', 'contactedAt', 'followUpAt', 'individualCallingCode', 'selectedTemplateId', 'notes', 'immediateSentiment'] as $field)
                             @error($field) <small class="text-danger d-block">{{ $message }}</small> @enderror
                         @endforeach
                     </div>
@@ -408,7 +418,7 @@
                     @forelse ($history as $item)
                         <div class="border rounded p-3 mb-2">
                             <div class="d-flex justify-content-between flex-wrap">
-                                <strong>{{ $item->contact_type === 'follow_up' ? 'Relance' : 'Contact initial' }} · {{ ['whatsapp' => 'WhatsApp', 'sms' => 'SMS', 'call' => 'Appel', 'other' => 'Autre'][$item->channel] }}</strong>
+                                <strong>{{ $item->contact_type === 'follow_up' ? 'Relance' : 'Contact initial' }} · {{ ['whatsapp' => 'WhatsApp', 'sms' => 'SMS', 'call' => 'Appel', 'other' => ($item->channel_detail ?: 'Autre')][$item->channel] }}</strong>
                                 <span>{{ $item->contacted_at->format('d/m/Y H:i') }} — {{ $item->user->name ?? 'Utilisateur supprimé' }}</span>
                             </div>
                             @if ($item->follow_up_at)<div class="small text-muted">Relance prévue : {{ $item->follow_up_at->format('d/m/Y H:i') }}</div>@endif
@@ -428,6 +438,24 @@
                         <p class="text-muted mb-0">Aucun contact enregistré.</p>
                     @endforelse
                 </div>
+            </div></div>
+        </div>
+    @endif
+
+    @if ($showFollowUpDecisionModal && $selectedCostumer)
+        <div class="modal fade show d-block follow-up-modal" id="follow-up-decision-confirm-modal" style="background: rgba(0,0,0,.5)" tabindex="-1" role="dialog">
+            <div class="modal-dialog modal-dialog-scrollable follow-up-modal-dialog" role="document"><div class="modal-content">
+                <div class="modal-header"><h5 class="modal-title">{{ $pendingFollowUpDecision === 'continue' ? 'Confirmer la reprise des relances' : 'Confirmer la clôture du suivi' }}</h5><button type="button" class="close" wire:click="beginClosingModal('follow-up-decision-confirm-modal')" aria-label="Fermer"><span>&times;</span></button></div>
+                <div class="modal-body">
+                    @if ($pendingFollowUpDecision === 'continue')
+                        <p>Veux-tu autoriser une nouvelle série de relances pour <strong>{{ $selectedCostumer->name }}</strong> ?</p>
+                        <p class="text-muted mb-0">Le client restera dans le suivi et pourra être relancé à la prochaine échéance.</p>
+                    @else
+                        <p>Veux-tu arrêter les relances pour <strong>{{ $selectedCostumer->name }}</strong> ?</p>
+                        <p class="text-muted mb-0">Le suivi sera marqué comme clôturé. Une nouvelle commande pourra démarrer un nouveau suivi.</p>
+                    @endif
+                </div>
+                <div class="modal-footer"><button type="button" class="btn btn-secondary" wire:click="beginClosingModal('follow-up-decision-confirm-modal')">Annuler</button><button type="button" class="btn btn-{{ $pendingFollowUpDecision === 'continue' ? 'primary' : 'danger' }}" wire:click="confirmFollowUpDecision">{{ $pendingFollowUpDecision === 'continue' ? 'Confirmer et continuer' : 'Confirmer la clôture' }}</button></div>
             </div></div>
         </div>
     @endif

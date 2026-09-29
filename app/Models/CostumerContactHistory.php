@@ -12,6 +12,7 @@ class CostumerContactHistory extends Model
         'user_id',
         'contact_type',
         'channel',
+        'channel_detail',
         'contacted_at',
         'follow_up_at',
         'responded_at',
