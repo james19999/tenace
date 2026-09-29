@@ -11,12 +11,11 @@
              <div class="col-md-3">
 
                  <div style="padding-top: 10px">
-                     <select id="order-costumer-id" class="js-example-basic-single form-control" name="costumer_id">
+                     <select id="order-costumer-id" class="js-customer-search form-control" data-ajax-url="{{ route('costumer.search') }}" name="costumer_id">
                          <option value="default">Nouveau client</option>
-                         @foreach ($Costumers as $Costumer)
-                             <option value="{{ $Costumer->id }}" @selected((string) old('costumer_id') === (string) $Costumer->id)>{{ $Costumer->name }} | {{ $Costumer->phone }}
-                             </option>
-                         @endforeach
+                         @if ($selectedCostumer)
+                             <option value="{{ $selectedCostumer->id }}" selected>{{ $selectedCostumer->name }} | {{ $selectedCostumer->phone }}</option>
+                         @endif
                      </select>
                  </div>
              </div>

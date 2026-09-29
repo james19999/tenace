@@ -108,6 +108,8 @@ Route::get('product/form',ProductForm::class)->name('productform');
 
 Route::get('product/cart',ProductCart::class)->name('productcart');
 Route::get('costumer/follow-up', CostumerFollowUp::class)->name('costumer.follow-up');
+Route::get('costumer/data', [CostumerController::class, 'datatable'])->name('costumer.data');
+Route::get('costumer/search', [CostumerController::class, 'search'])->name('costumer.search');
 Route::get('costumer/top',[CostumerController::class,'topcostumer'])->name('top-costumers');
 Route::get('view/costumer/{id}',[CostumerController::class,'viewcostumer'])->name('view-costumers');
 

@@ -12,9 +12,9 @@
              <form action="{{ route('top-costumers') }}">
                  <div class="row">
                     <div class="col-md-4">
-                         <label for="">Nombre de page
+                         <label for="">Nombre de résultats (max. 500)
 
-                             <input type="number" name="limit" value="{{ old('limit',10) }}" id="" class="form-control" placeholder="Entrer">
+                             <input type="number" name="limit" value="{{ $limit }}" min="1" max="500" id="" class="form-control" placeholder="Entrer">
                          </label>
 
                     </div>
@@ -25,7 +25,7 @@
                                 @foreach($montharray as $key => $value)
                                     <option value="{{ $key }}" class="form-control"
 
-                                    >{{ $value }}</option>
+                                    @selected($month === (int) $key)>{{ $value }}</option>
                                 @endforeach
                             </select>
 

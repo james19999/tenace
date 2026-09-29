@@ -14,14 +14,97 @@ class CostumerController extends Controller
     /**
      * Display a listing of the resource.
      */
-    public function index()
+    public function index(Request $request)
     {
-        //
+        return view('costumer.index');
+    }
 
-        $costumers=Costumer::all()->sortBy('name');
+    public function datatable(Request $request)
+    {
+        $draw = max((int) $request->input('draw', 0), 0);
+        $start = max((int) $request->input('start', 0), 0);
+        $length = min(max((int) $request->input('length', 10), 1), 100);
+        $search = trim((string) $request->input('search.value', ''));
 
+        $columns = ['id', 'name', 'phone', 'email', 'adresse', 'id'];
+        $orderColumn = (int) $request->input('order.0.column', 1);
+        $orderBy = $columns[$orderColumn] ?? 'name';
+        $direction = strtolower((string) $request->input('order.0.dir', 'asc')) === 'desc' ? 'desc' : 'asc';
 
-        return view('costumer.index',compact('costumers'));
+        $query = Costumer::query();
+        if ($search !== '') {
+            $term = '%'.$search.'%';
+            $query->where(function ($customers) use ($term) {
+                $customers->where('name', 'like', $term)
+                    ->orWhere('phone', 'like', $term)
+                    ->orWhere('email', 'like', $term)
+                    ->orWhere('adresse', 'like', $term);
+            });
+        }
+
+        $recordsFiltered = (clone $query)->count();
+        $customers = $query->select(['id', 'name', 'phone', 'email', 'adresse'])
+            ->orderBy($orderBy, $direction)
+            ->offset($start)
+            ->limit($length)
+            ->get();
+
+        $data = $customers->values()->map(function (Costumer $customer, int $index) use ($start) {
+            $editUrl = route('costumer.edit', $customer->id);
+            $deleteUrl = route('costumer.destroy', $customer->id);
+            $actions = '<div class="btn-group btn-group-sm">'
+                .'<a href="'.$editUrl.'" class="btn btn-warning text-white"><i class="material-icons">edit</i> Modifier</a>'
+                .'<form method="POST" action="'.$deleteUrl.'" onsubmit="return confirm(\'Supprimer ce client ?\')">'
+                .'<input type="hidden" name="_token" value="'.e(csrf_token()).'">'
+                .'<input type="hidden" name="_method" value="DELETE">'
+                .'<button type="submit" class="btn btn-danger"><i class="material-icons">delete</i> Supprimer</button>'
+                .'</form></div>';
+
+            return [
+                'number' => $start + $index + 1,
+                'name' => e($customer->name),
+                'phone' => e($customer->phone),
+                'email' => e($customer->email ?? '@'),
+                'address' => e($customer->adresse ?? '-'),
+                'actions' => $actions,
+            ];
+        });
+
+        return response()->json([
+            'draw' => $draw,
+            'recordsTotal' => Costumer::count(),
+            'recordsFiltered' => $recordsFiltered,
+            'data' => $data,
+        ]);
+    }
+
+    public function search(Request $request)
+    {
+        $validated = $request->validate([
+            'q' => 'nullable|string|max:100',
+            'page' => 'nullable|integer|min:1',
+        ]);
+
+        $term = trim($validated['q'] ?? '');
+        $costumers = Costumer::query()
+            ->when($term !== '', function ($query) use ($term) {
+                $prefix = $term.'%';
+                $query->where(function ($customers) use ($prefix) {
+                    $customers->where('name', 'like', $prefix)
+                        ->orWhere('phone', 'like', $prefix)
+                        ->orWhere('email', 'like', $prefix);
+                });
+            })
+            ->orderBy('name')
+            ->paginate(20, ['id', 'name', 'phone'], 'page', (int) ($validated['page'] ?? 1));
+
+        return response()->json([
+            'results' => $costumers->getCollection()->map(fn (Costumer $costumer) => [
+                'id' => $costumer->id,
+                'text' => $costumer->name.' | '.$costumer->phone,
+            ]),
+            'pagination' => ['more' => $costumers->hasMorePages()],
+        ]);
     }
 
     public function topcostumer(Request $request)
@@ -45,18 +128,20 @@ class CostumerController extends Controller
 
 
                 # code...
-                $costumers = Costumer::withCount('orders')
+        $limit = min(max((int) $request->input('limit', 10), 1), 500);
+        $month = (int) $request->input('month');
+        $month = $month >= 1 && $month <= 12 ? $month : null;
+
+        $costumers = Costumer::withCount('orders')
                 ->withSum('orders', 'total')
                 ->orderByDesc('orders_sum_total')
-                ->when($request->month, function ($query, $month) {
+                ->when($month, function ($query) use ($month) {
                     return $query->whereMonth('created_at', $month);
                 })
                 ->whereYear('created_at', Carbon::now()->year)
-                ->when($request->limit, function ($query, $limit) {
-                    return $query->limit($limit);
-                })
+                ->limit($limit)
                 ->get();
-                return view('costumer.top_costumer',compact('costumers','montharray'));
+                return view('costumer.top_costumer', compact('costumers', 'montharray', 'limit', 'month'));
 
     }
     public function viewcostumer($id)
