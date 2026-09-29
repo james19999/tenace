@@ -1,6 +1,8 @@
 <header>
     <div>
+
         <ul class="navbar-nav">
+
             <li class="nav-item icon">
                 <button class="hamburger" id="hamburger-btn">
                     <span class="material-icons">menu</span>
@@ -27,6 +29,7 @@
 
             </li>
 
+            {{--  @livewire('delivery-alert')  --}}
 
             <!-- Messages Dropdown Menu -->
             <li class="nav-item dropdown with-caret  ">
