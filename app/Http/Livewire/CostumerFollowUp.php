@@ -470,6 +470,10 @@ class CostumerFollowUp extends Component
             return 'closed';
         }
 
+        if ($latest->follow_up_decision === 'stop' && $hasNewScheduledFollowUp) {
+            return $nextFollowUpAt && $nextFollowUpAt->isPast() ? 'to_follow_up' : 'contacted';
+        }
+
         if ($costumer->follow_up_count >= $this->maxFollowUps
             && $latest->follow_up_decision !== 'continue'
             && $nextFollowUpAt && $nextFollowUpAt->isPast()) {
@@ -530,8 +534,14 @@ class CostumerFollowUp extends Component
 
         if ($status === 'to_follow_up') {
             return $query->where(function ($due) {
-                $due->whereHas('contactPreference', fn ($preference) => $preference
-                    ->whereNotNull('next_follow_up_at')->where('next_follow_up_at', '<=', now()))
+                $due->where(function ($scheduledDue) {
+                    $scheduledDue->whereHas('contactPreference', fn ($preference) => $preference
+                        ->whereNotNull('next_follow_up_at')->where('next_follow_up_at', '<=', now()))
+                        ->where(function ($attempts) {
+                            $attempts->whereHas('contactHistories', fn ($history) => $history->where('contact_type', 'follow_up'), '<', $this->maxFollowUps)
+                                ->orWhereHas('latestContactHistory', fn ($history) => $history->whereIn('follow_up_decision', ['continue', 'stop']));
+                        });
+                })
                     ->orWhere(function ($historyDue) {
                         $historyDue->whereDoesntHave('contactPreference', fn ($preference) => $preference->whereNotNull('next_follow_up_at'))
                             ->where(function ($attempts) {
