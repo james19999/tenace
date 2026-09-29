@@ -168,31 +168,39 @@ class OrderController extends Controller
 
     public function refresh_order(Request $request, $id)
     {
+        $validated = $request->validate([
+            'user_take' => 'nullable|integer|exists:users,id',
+            'time' => 'nullable|date_format:H:i',
+            'adresse' => 'nullable|string|max:1000',
+        ]);
+
         $orders = Order::findOrfail($id);
-        $livreurs = User::where('id', $request->user_take)->first();
+        if ($orders->status_order == 0 || $orders->status_order == 1) {
+            $orders->status_order = true;
+            $orders->status = 'ordered';
+            $orders->take = true;
+            $orders->time = $validated['time'] ?? $orders->time;
 
-
-        if ($orders) {
-
-            if ($orders->status_order == 0 || $orders->status_order == 1) {
-                $orders->status_order = true;
-                $orders->user_id = $request->user_take;
-                $orders->status = "ordered";
-                $orders->time = $request->time;
-                $orders->take = true;
-
-                $constumer = Costumer::findOrfail($orders->costumer_id);
-
-                $constumer->update(['adresse' => $request->adresse]);
-                Mail::to($livreurs->email)->send(new TenaCos($orders));
-
-                $orders->save();
-
-                return redirect()->back()->with('success', 'commande relancé');
-            } else {
-                return redirect()->back()->with('success', 'commande déjà en cours');
+            if (!empty($validated['user_take'])) {
+                $orders->user_id = $validated['user_take'];
             }
+
+            if (array_key_exists('adresse', $validated)) {
+                $customer = Costumer::findOrFail($orders->costumer_id);
+                $customer->update(['adresse' => $validated['adresse']]);
+            }
+
+            $orders->save();
+
+            $livreur = $orders->user_id ? User::find($orders->user_id) : null;
+            if ($livreur && filter_var($livreur->email, FILTER_VALIDATE_EMAIL)) {
+                Mail::to($livreur->email)->send(new TenaCos($orders));
+            }
+
+            return redirect()->back()->with('success', 'commande relancé');
         }
+
+        return redirect()->back()->with('success', 'commande déjà en cours');
     }
 
     public function delete($id)

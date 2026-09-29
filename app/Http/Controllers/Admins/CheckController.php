@@ -6,6 +6,7 @@ use App\Models\User;
 use App\Mail\TenaCos;
 use App\Mail\TenanCos;
 use App\Models\Costumer;
+use App\Models\CostumerContactPreference;
 use App\Mail\ParthnerMail;
 use App\Models\Orders\Order;
 use Illuminate\Http\Request;
@@ -46,8 +47,9 @@ class CheckController extends Controller
                     'adresse'=>'required',
                     'tax'=>'required',
                     'time'=>'required',
-                    'date_order'=>'required',
+                    'date_order'=>'required|date',
                     'remis'=>'required',
+                    'follow_up_at'=>'required|date',
                 ],
                 [
                     'name.required'=>'Le nom du client',
@@ -100,6 +102,8 @@ class CheckController extends Controller
                           'type'=>$request->type
                       ]);
 
+                      $this->updateCustomerFollowUp($request, $constumer->id);
+
                       foreach (Cart::instance('cart')->content() as $item) {
                           $orderItem = new OrderItem();
                           $orderItem->product_id = $item->id;
@@ -140,6 +144,8 @@ class CheckController extends Controller
             $request->validate([
                 'tax'=>'required',
                 'time'=>'required',
+                'date_order'=>'required|date',
+                'follow_up_at'=>'required|date',
             ],
             [
                 'tax.required'=>'Entrer les frais de livraison',
@@ -170,6 +176,8 @@ class CheckController extends Controller
                 'avis'=>$request->avis,
                 'type'=>$request->type
             ]);
+
+            $this->updateCustomerFollowUp($request, (int) $request->costumer_id);
 
             foreach (Cart::instance('cart')->content() as $item) {
                 $orderItem = new OrderItem();
@@ -209,6 +217,16 @@ class CheckController extends Controller
          }
 
 
+    }
+
+    private function updateCustomerFollowUp(Request $request, int $costumerId): void
+    {
+        $preference = CostumerContactPreference::firstOrNew(['costumer_id' => $costumerId]);
+        $preference->next_follow_up_at = $preference->do_not_contact_at
+            ? null
+            : $request->input('follow_up_at');
+        $preference->updated_by = Auth::id();
+        $preference->save();
     }
 
     public  function getName($n = 3)

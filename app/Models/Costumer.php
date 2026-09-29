@@ -8,6 +8,8 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Laravel\Sanctum\HasApiTokens;
 use Illuminate\Notifications\Notifiable;
 use Illuminate\Foundation\Auth\User as Authenticatable;
+use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Relations\HasOne;
 class Costumer extends Model
 {
     use HasApiTokens, HasFactory, Notifiable;
@@ -27,5 +29,25 @@ class Costumer extends Model
     // ];
     public function orders(){
         return $this->hasMany(Order::class);
+    }
+
+    public function latestOrder(): HasOne
+    {
+        return $this->hasOne(Order::class, 'costumer_id')->latestOfMany();
+    }
+
+    public function contactHistories(): HasMany
+    {
+        return $this->hasMany(CostumerContactHistory::class, 'costumer_id');
+    }
+
+    public function latestContactHistory(): HasOne
+    {
+        return $this->hasOne(CostumerContactHistory::class, 'costumer_id')->latestOfMany('contacted_at');
+    }
+
+    public function contactPreference(): HasOne
+    {
+        return $this->hasOne(CostumerContactPreference::class, 'costumer_id');
     }
 }

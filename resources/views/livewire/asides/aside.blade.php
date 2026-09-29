@@ -166,6 +166,12 @@
                     </a>
                 </li>
                 <li>
+                    <a href="{{ route('costumer.follow-up') }}" class="">
+                        <span class="icon material-icons">support_agent</span>
+                        <span class="text">Suivi clientèle</span>
+                    </a>
+                </li>
+                <li>
                     <a href="{{ route('parthners') }}" class="">
                         <span class="icon material-icons">person
                         </span>
@@ -406,6 +412,12 @@
                     <a href="{{ route('costumer.index') }}" class="">
                         <span class="icon material-icons">contact_phone</span>
                         <span class="text">Clients</span>
+                    </a>
+                </li>
+                <li>
+                    <a href="{{ route('costumer.follow-up') }}" class="">
+                        <span class="icon material-icons">support_agent</span>
+                        <span class="text">Suivi clientèle</span>
                     </a>
                 </li>
                 <li wire:poll.2s>
