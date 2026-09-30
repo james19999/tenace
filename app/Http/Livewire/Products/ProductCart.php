@@ -66,7 +66,7 @@ class ProductCart extends Component
     public function render()
     {
         return view('livewire.products.product-cart', [
-            'selectedCostumer' => is_numeric(old('costumer_id')) ? Costumer::find(old('costumer_id')) : null,
+            'Costumers' => Costumer::all()->sortBy('name'),
             'defaultFollowUpDays' => $this->defaultFollowUpDays,
             'defaultFollowUpAt' => $this->defaultFollowUpAt,
         ])
