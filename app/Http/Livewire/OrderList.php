@@ -10,31 +10,32 @@ use Illuminate\Support\Carbon;
 
 class OrderList extends Component
 {
-   use WithPagination;
+    use WithPagination;
+    public $showText = false;
 
-   public $showAssignModal = false;
+    public $showAssignModal = false;
 
-public $assignOrderId = null;
+    public $assignOrderId = null;
 
-public $selectedLivreur = null;
-public $showDeleteModal = false;
+    public $selectedLivreur = null;
+    public $showDeleteModal = false;
 
-public $deleteOrderId = null;
+    public $deleteOrderId = null;
     protected $paginationTheme = 'bootstrap';
 
     public $selectedDate;
 
     public $showEditModal = false;
 
-public $selectedOrderId;
+    public $selectedOrderId;
 
-public $editDate;
+    public $editDate;
 
-public $editTime;
+    public $editTime;
 
-public $showTypeModal = false;
+    public $showTypeModal = false;
 
-public $typeOrderId;
+    public $typeOrderId;
     public function mount()
     {
         // Date sélectionnée par défaut
@@ -42,138 +43,138 @@ public $typeOrderId;
     }
 
     public function openAssignModal($orderId)
-{
-    $order = Order::findOrFail($orderId);
+    {
+        $order = Order::findOrFail($orderId);
 
-    $this->assignOrderId = $order->id;
+        $this->assignOrderId = $order->id;
 
-    // Si la commande possède déjà un livreur,
-    // on le sélectionne automatiquement
-    $this->selectedLivreur = $order->user_id;
+        // Si la commande possède déjà un livreur,
+        // on le sélectionne automatiquement
+        $this->selectedLivreur = $order->user_id;
 
-    $this->showAssignModal = true;
-}
-
-public function closeAssignModal()
-{
-    $this->showAssignModal = false;
-
-    $this->assignOrderId = null;
-
-    $this->selectedLivreur = null;
-}
-public function assignOrder()
-{
-    $this->validate([
-        'selectedLivreur' => 'required|exists:users,id',
-    ], [
-        'selectedLivreur.required' => 'Veuillez sélectionner un livreur.',
-        'selectedLivreur.exists' => 'Le livreur sélectionné est invalide.',
-    ]);
-
-    // Vérifier que l'utilisateur est bien un livreur
-    $livreur = User::where('id', $this->selectedLivreur)
-        ->where('user_type', 'LVS')
-        ->first();
-
-    if (!$livreur) {
-
-
-
-        return;
+        $this->showAssignModal = true;
     }
 
-    $order = Order::findOrFail($this->assignOrderId);
+    public function closeAssignModal()
+    {
+        $this->showAssignModal = false;
 
-    $order->update([
-        'user_id' => $livreur->id,
-        'status_order'=>true,
-    ]);
+        $this->assignOrderId = null;
 
-    $this->showAssignModal = false;
-
-    $this->assignOrderId = null;
-
-    $this->selectedLivreur = null;
-
-    $this->resetPage();
-}
-    public function openEditModal($orderId)
-{
-    $order = Order::findOrFail($orderId);
-
-    $this->selectedOrderId = $order->id;
-
-    $date = \Carbon\Carbon::parse($order->date_order);
-    $datetime = \Carbon\Carbon::parse($order->time);
-
-    $this->editDate = $date->format('Y-m-d');
-    $this->editTime = $datetime->format('H:i');
-
-    $this->showEditModal = true;
-}
-
-public function updateDeliveryDate()
-{
-    $this->validate([
-        'editDate' => 'required|date',
-        'editTime' => 'required|date_format:H:i',
-    ]);
-
-    $order = Order::findOrFail($this->selectedOrderId);
-
-    $order->update([
-        'date_order' => $this->editDate,
-         'time'=> $this->editTime ,
-    ]);
-
-    $this->showEditModal = false;
-
-    $this->reset([
-        'selectedOrderId',
-        'editDate',
-        'editTime',
-    ]);
-}
-
-public function closeEditModal()
-{
-    $this->showEditModal = false;
-
-    $this->reset([
-        'selectedOrderId',
-        'editDate',
-        'editTime',
-    ]);
-}
-public function openChangeTypeModal($orderId)
-{
-    $order = Order::findOrFail($orderId);
-
-    if ($order->type !== 'PR') {
-        return;
+        $this->selectedLivreur = null;
     }
+    public function assignOrder()
+    {
+        $this->validate([
+            'selectedLivreur' => 'required|exists:users,id',
+        ], [
+            'selectedLivreur.required' => 'Veuillez sélectionner un livreur.',
+            'selectedLivreur.exists' => 'Le livreur sélectionné est invalide.',
+        ]);
 
-    $this->typeOrderId = $order->id;
+        // Vérifier que l'utilisateur est bien un livreur
+        $livreur = User::where('id', $this->selectedLivreur)
+            ->where('user_type', 'LVS')
+            ->first();
 
-    $this->showTypeModal = true;
-}
+        if (!$livreur) {
 
-public function confirmChangeType()
-{
-    $order = Order::findOrFail($this->typeOrderId);
 
-    if ($order->type === 'PR') {
+
+            return;
+        }
+
+        $order = Order::findOrFail($this->assignOrderId);
 
         $order->update([
-            'type' => 'PU',
+            'user_id' => $livreur->id,
+            'status_order' => true,
+        ]);
+
+        $this->showAssignModal = false;
+
+        $this->assignOrderId = null;
+
+        $this->selectedLivreur = null;
+
+        $this->resetPage();
+    }
+    public function openEditModal($orderId)
+    {
+        $order = Order::findOrFail($orderId);
+
+        $this->selectedOrderId = $order->id;
+
+        $date = \Carbon\Carbon::parse($order->date_order);
+        $datetime = \Carbon\Carbon::parse($order->time);
+
+        $this->editDate = $date->format('Y-m-d');
+        $this->editTime = $datetime->format('H:i');
+
+        $this->showEditModal = true;
+    }
+
+    public function updateDeliveryDate()
+    {
+        $this->validate([
+            'editDate' => 'required|date',
+            'editTime' => 'required|date_format:H:i',
+        ]);
+
+        $order = Order::findOrFail($this->selectedOrderId);
+
+        $order->update([
+            'date_order' => $this->editDate,
+            'time' => $this->editTime,
+        ]);
+
+        $this->showEditModal = false;
+
+        $this->reset([
+            'selectedOrderId',
+            'editDate',
+            'editTime',
         ]);
     }
 
-    $this->showTypeModal = false;
+    public function closeEditModal()
+    {
+        $this->showEditModal = false;
 
-    $this->typeOrderId = null;
-}
+        $this->reset([
+            'selectedOrderId',
+            'editDate',
+            'editTime',
+        ]);
+    }
+    public function openChangeTypeModal($orderId)
+    {
+        $order = Order::findOrFail($orderId);
+
+        if ($order->type !== 'PR') {
+            return;
+        }
+
+        $this->typeOrderId = $order->id;
+
+        $this->showTypeModal = true;
+    }
+
+    public function confirmChangeType()
+    {
+        $order = Order::findOrFail($this->typeOrderId);
+
+        if ($order->type === 'PR') {
+
+            $order->update([
+                'type' => 'PU',
+            ]);
+        }
+
+        $this->showTypeModal = false;
+
+        $this->typeOrderId = null;
+    }
 
     /**
      * Sélection d'une date
@@ -221,34 +222,39 @@ public function confirmChangeType()
     }
 
     public function openDeleteModal($orderId)
-{
-    $order = Order::findOrFail($orderId);
+    {
+        $order = Order::findOrFail($orderId);
 
-    $this->deleteOrderId = $order->id;
+        $this->deleteOrderId = $order->id;
 
-    $this->showDeleteModal = true;
-}
+        $this->showDeleteModal = true;
+    }
 
-public function closeDeleteModal()
-{
-    $this->showDeleteModal = false;
 
-    $this->deleteOrderId = null;
-}
+    public function toggleText()
+    {
+        $this->showText = !$this->showText;
+    }
+    public function closeDeleteModal()
+    {
+        $this->showDeleteModal = false;
 
-public function deleteOrder()
-{
-    $order = Order::findOrFail($this->deleteOrderId);
+        $this->deleteOrderId = null;
+    }
 
-    $order->delete();
+    public function deleteOrder()
+    {
+        $order = Order::findOrFail($this->deleteOrderId);
 
-    $this->showDeleteModal = false;
+        $order->delete();
 
-    $this->deleteOrderId = null;
+        $this->showDeleteModal = false;
 
-    // Si tu utilises la pagination
-    $this->resetPage();
-}
+        $this->deleteOrderId = null;
+
+        // Si tu utilises la pagination
+        $this->resetPage();
+    }
     public function render()
     {
         /*
@@ -263,8 +269,8 @@ public function deleteOrder()
             ->selectRaw('COUNT(*) as total_orders')
             ->groupByRaw('DATE(date_order)')
             ->orderBy('date')
-            ->where('status','ordered')
-            ->where('type','PR')
+            ->where('status', 'ordered')
+            ->where('type', 'PR')
             ->get();
 
 
@@ -282,8 +288,8 @@ public function deleteOrder()
             ])
             ->whereDate('date_order', $this->selectedDate)
             ->orderBy('date_order')
-              ->where('status','ordered')
-            // ->where('type','PR')
+            ->where('status', 'ordered')
+            ->where('type', 'PR')
             ->paginate(10);
 
 
@@ -295,22 +301,22 @@ public function deleteOrder()
 
         $selectedDateCount = Order::query()
             ->whereDate('date_order', $this->selectedDate)
-              ->where('status','ordered')
-            ->where('type','PR')
+            ->where('status', 'ordered')
+            ->where('type', 'PR')
             ->count();
 
 
-    $livreurs = User::query()
-        ->where('user_type', 'LVS')
-        ->orderBy('name')
-        ->get();
+        $livreurs = User::query()
+            ->where('user_type', 'LVS')
+            ->orderBy('name')
+            ->get();
 
         return view('livewire.order-list', [
             'dates' => $dates,
             'orders' => $orders,
             'selectedDateCount' => $selectedDateCount,
             'livreurs' => $livreurs,
-        ])        ->extends('layouts.admin')
-        ->section('content');
+        ])->extends('layouts.admin')
+            ->section('content');
     }
 }

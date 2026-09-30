@@ -236,20 +236,20 @@
 
 
                         {{-- TYPE --}}
-                        {{--  <div class="col-md-2 text-md-end">
+                        {{-- <div class="col-md-2 text-md-end">
 
                             @if ($order->type === 'PR')
                                 <button type="button" wire:click="openChangeTypeModal({{ $order->id }})"
-                                    class="btn btn-sm btn-warning">
-                                    PR → PU
-                                </button>
-                            @else
-                                <span class="badge bg-success">
-                                    {{ $order->type }}
-                                </span>
-                            @endif
+                    class="btn btn-sm btn-warning">
+                    PR → PU
+                    </button>
+                    @else
+                    <span class="badge bg-success">
+                        {{ $order->type }}
+                    </span>
+                    @endif
 
-                        </div>  --}}
+                </div> --}}
 
                         <div class="col-md-2 text-end">
 
@@ -279,7 +279,7 @@
 
                     <hr>
 
-                    <div class="d-flex justify-content-between align-items-center mb-3">
+                    <div wire:click="toggleText" class="d-flex justify-content-between align-items-center mb-3">
 
                         <h6 class="mb-0">
 
@@ -301,184 +301,186 @@
 
 
                     {{-- TABLE PRODUITS --}}
+                    @if ($showText)
+                        <div class="table-responsive">
 
-                    <div class="table-responsive">
+                            <table class="table table-sm align-middle mb-0">
 
-                        <table class="table table-sm align-middle mb-0">
-
-                            <thead class="table-light">
-
-                                <tr>
-
-                                    <th>
-                                        Produit
-                                    </th>
-
-                                    <th class="text-center">
-                                        Quantité
-                                    </th>
-
-                                    <th class="text-end">
-                                        Prix
-                                    </th>
-
-                                    <th class="text-end">
-                                        Total
-                                    </th>
-
-                                </tr>
-
-                            </thead>
-
-                            <tbody>
-
-                                @forelse($order->orderItems as $item)
-                                    <tr>
-
-                                        <td>
-
-                                            @if ($item->product)
-                                                <strong>
-                                                    {{ $item->product->name }}
-                                                </strong>
-                                            @else
-                                                Produit #{{ $item->product_id }}
-                                            @endif
-
-                                        </td>
-
-
-                                        <td class="text-center">
-
-                                            <span class="badge bg-secondary">
-
-                                                {{ $item->quantity }}
-
-                                            </span>
-
-                                        </td>
-
-
-                                        <td class="text-end">
-
-                                            {{ number_format($item->price ?? 0, 2, ',', ' ') }} XOF
-
-                                        </td>
-
-
-                                        <td class="text-end fw-bold">
-
-                                            {{ number_format(($item->quantity ?? 0) * ($item->price ?? 0), 2, ',', ' ') }}
-                                            XOF
-
-                                        </td>
-
-                                    </tr>
-
-                                @empty
+                                <thead class="table-light">
 
                                     <tr>
 
-                                        <td colspan="4" class="text-center text-muted py-3">
+                                        <th>
+                                            Produit
+                                        </th>
 
-                                            Aucun produit dans cette commande.
+                                        <th class="text-center">
+                                            Quantité
+                                        </th>
 
-                                        </td>
+                                        <th class="text-end">
+                                            Prix
+                                        </th>
+
+                                        <th class="text-end">
+                                            Total
+                                        </th>
 
                                     </tr>
-                                @endforelse
 
-                            </tbody>
+                                </thead>
 
-                        </table>
+                                <tbody>
 
-                    </div>
+                                    @forelse($order->orderItems as $item)
+                                        <tr>
 
+                                            <td>
 
-                    {{-- ================================================= --}}
-                    {{-- INFORMATIONS FINANCIÈRES --}}
-                    {{-- ================================================= --}}
+                                                @if ($item->product)
+                                                    <strong>
+                                                        {{ $item->product->name }}
+                                                    </strong>
+                                                @else
+                                                    Produit #{{ $item->product_id }}
+                                                @endif
 
-                    <div class="row mt-4">
-
-                        <div class="col-md-3">
-
-                            <small class="text-muted d-block">
-                                Sous-total
-                            </small>
-
-                            <strong>
-
-                                {{ number_format($order->subtotal ?? 0, 2, ',', ' ') }} XOF
-
-                            </strong>
-
-                        </div>
+                                            </td>
 
 
-                        <div class="col-md-3">
+                                            <td class="text-center">
 
-                            <small class="text-muted d-block">
-                                Montant
-                            </small>
+                                                <span class="badge bg-secondary">
 
-                            <strong>
+                                                    {{ $item->quantity }}
 
-                                {{ number_format($order->montant ?? 0, 2, ',', ' ') }} XOF
+                                                </span>
 
-                            </strong>
-
-                        </div>
+                                            </td>
 
 
-                        <div class="col-md-3">
+                                            <td class="text-end">
 
-                            <small class="text-muted d-block">
-                                Total
-                            </small>
+                                                {{ number_format($item->price ?? 0, 2, ',', ' ') }} XOF
 
-                            <strong class="fs-5 text-primary">
-
-                                {{ number_format($order->total ?? 0, 2, ',', ' ') }} XOF
-
-                            </strong>
-
-                        </div>
+                                            </td>
 
 
-                        <div class="col-md-3">
+                                            <td class="text-end fw-bold">
 
-                            <small class="text-muted d-block">
-                                Statut
-                            </small>
+                                                {{ number_format(($item->quantity ?? 0) * ($item->price ?? 0), 2, ',', ' ') }}
+                                                XOF
 
-                            @php
+                                            </td>
 
-                                $statusClass = match ($order->status) {
-                                    'pending' => 'bg-warning text-dark',
+                                        </tr>
 
-                                    'confirmed' => 'bg-info',
+                                    @empty
 
-                                    'ready' => 'bg-primary',
+                                        <tr>
 
-                                    'delivered' => 'bg-success',
+                                            <td colspan="4" class="text-center text-muted py-3">
 
-                                    'cancelled' => 'bg-danger',
+                                                Aucun produit dans cette commande.
 
-                                    default => 'bg-secondary',
-                                };
+                                            </td>
 
-                            @endphp
+                                        </tr>
+                                    @endforelse
 
-                            <span class="badge {{ $statusClass }}">
+                                </tbody>
 
-                                {{ ucfirst($order->status) }}
-
-                            </span>
+                            </table>
 
                         </div>
 
-                    </div>
+
+
+                        {{-- ================================================= --}}
+                        {{-- INFORMATIONS FINANCIÈRES --}}
+                        {{-- ================================================= --}}
+
+                        <div class="row mt-4">
+
+                            <div class="col-md-3">
+
+                                <small class="text-muted d-block">
+                                    Sous-total
+                                </small>
+
+                                <strong>
+
+                                    {{ number_format($order->subtotal ?? 0, 2, ',', ' ') }} XOF
+
+                                </strong>
+
+                            </div>
+
+
+                            <div class="col-md-3">
+
+                                <small class="text-muted d-block">
+                                    Montant
+                                </small>
+
+                                <strong>
+
+                                    {{ number_format($order->montant ?? 0, 2, ',', ' ') }} XOF
+
+                                </strong>
+
+                            </div>
+
+
+                            <div class="col-md-3">
+
+                                <small class="text-muted d-block">
+                                    Total
+                                </small>
+
+                                <strong class="fs-5 text-primary">
+
+                                    {{ number_format($order->total ?? 0, 2, ',', ' ') }} XOF
+
+                                </strong>
+
+                            </div>
+
+
+                            <div class="col-md-3">
+
+                                <small class="text-muted d-block">
+                                    Statut
+                                </small>
+
+                                @php
+
+                                    $statusClass = match ($order->status) {
+                                        'pending' => 'bg-warning text-dark',
+
+                                        'confirmed' => 'bg-info',
+
+                                        'ready' => 'bg-primary',
+
+                                        'delivered' => 'bg-success',
+
+                                        'cancelled' => 'bg-danger',
+
+                                        default => 'bg-secondary',
+                                    };
+
+                                @endphp
+
+                                <span class="badge {{ $statusClass }}">
+
+                                    {{ ucfirst($order->status) }}
+
+                                </span>
+
+                            </div>
+
+                        </div>
+                    @endif
 
                 </div>
 
