@@ -91,7 +91,7 @@
              </div>
          </div>
          <div class="row">
-             <div class="col-md-6">
+             <div class="col-12 col-md-4">
                  <div class="form-group">
                      <label for="customer-follow-up-at">Prochaine relance du client</label>
                      <input type="datetime-local" class="form-control" id="customer-follow-up-at" name="follow_up_at" data-delay-days="{{ $defaultFollowUpDays }}" wire:model.defer="defaultFollowUpAt" value="{{ old('follow_up_at', $defaultFollowUpAt) }}" required>
@@ -101,9 +101,7 @@
                      @enderror
                  </div>
              </div>
-         </div>
-         <div class="row">
-             <div class="col-md-6">
+             <div class="col-12 col-md-4">
                  <div class="form-group">
                      <label for="">Type de commande</label>
                      <select name="type" id="" class="form-control">
@@ -112,7 +110,7 @@
                      </select>
                  </div>
              </div>
-             <div class="col-md-6">
+             <div class="col-12 col-md-4">
                  <div class="form-group">
                     <label for="">Date de livraison</label>
                     <input type="date" class="form-control" id="date_order" name="date_order"
