@@ -9,7 +9,6 @@ use App\Models\CostumerContactPreference;
 use App\Models\CostumerContactSetting;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Facades\Cache;
-use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Carbon;
 use Livewire\Component;
@@ -166,8 +165,7 @@ class CostumerFollowUp extends Component
             'message_template_id' => $this->selectedTemplateId,
             'notes' => $this->notes ?: null,
         ]);
-        $this->forgetFollowUpCounts();
-
+        $this->forgetFollowUpData();
         $this->dispatchBrowserEvent('animate-follow-up-modal-close', ['modal' => 'follow-up-contact-modal', 'type' => 'contact']);
         session()->flash('messages', $this->responseReceivedNow
             ? 'Contact et réponse enregistrés. Le suivi de ce client est terminé.'
@@ -200,8 +198,7 @@ class CostumerFollowUp extends Component
         ]);
         CostumerContactPreference::where('costumer_id', $this->selectedCostumerId)
             ->update(['next_follow_up_at' => null]);
-        $this->forgetFollowUpCounts();
-
+        $this->forgetFollowUpData();
         $this->dispatchBrowserEvent('animate-follow-up-modal-close', ['modal' => 'follow-up-response-modal', 'type' => 'response']);
         session()->flash('messages', 'Réponse enregistrée. Le suivi de ce client est terminé.');
     }
@@ -254,8 +251,7 @@ class CostumerFollowUp extends Component
             ['costumer_id' => $costumer->id],
             ['next_follow_up_at' => $this->scheduledFollowUpDate, 'updated_by' => Auth::id()]
         );
-        $this->forgetFollowUpCounts();
-
+        $this->forgetFollowUpData();
         $this->dispatchBrowserEvent('animate-follow-up-modal-close', ['modal' => 'scheduled-follow-up-date-modal', 'type' => 'scheduled-date']);
         session()->flash('messages', 'La prochaine date de contact a été modifiée.');
     }
@@ -283,7 +279,7 @@ class CostumerFollowUp extends Component
                 'updated_by' => Auth::id(),
             ]
         );
-
+        $this->forgetFollowUpData();
         $this->dispatchBrowserEvent('animate-follow-up-modal-close', ['modal' => 'follow-up-do-not-contact-modal', 'type' => 'do-not-contact']);
         session()->flash('messages', 'Le client est marqué « ne plus solliciter ».');
     }
@@ -298,10 +294,12 @@ class CostumerFollowUp extends Component
             'delete-template-modal' => 'delete-template',
             'scheduled-follow-up-date-modal' => 'scheduled-date',
             'follow-up-decision-confirm-modal' => 'follow-up-decision',
+            'follow-up-feedback-modal' => 'feedback',
         ];
 
         if (isset($modalTypes[$modal])) {
             $this->dispatchBrowserEvent('animate-follow-up-modal-close', ['modal' => $modal, 'type' => $modalTypes[$modal]]);
+            $this->skipRender();
         }
     }
 
@@ -328,6 +326,9 @@ class CostumerFollowUp extends Component
         } elseif ($modal === 'follow-up-decision') {
             $this->showFollowUpDecisionModal = false;
             $this->reset(['selectedCostumerId', 'pendingFollowUpDecision']);
+        } elseif ($modal === 'feedback') {
+            $this->showFeedbackModal = false;
+            $this->reset(['feedbackSentiment']);
         }
     }
 
@@ -339,7 +340,7 @@ class CostumerFollowUp extends Component
             'do_not_contact_reason' => null,
             'updated_by' => Auth::id(),
         ]);
-
+        $this->forgetFollowUpData();
         session()->flash('messages', 'Le suivi du client est réactivé.');
     }
 
@@ -436,6 +437,7 @@ class CostumerFollowUp extends Component
             CostumerContactPreference::where('costumer_id', $costumerId)
                 ->update(['next_follow_up_at' => null]);
         }
+        $this->forgetFollowUpData();
         session()->flash('messages', $decision === 'continue'
             ? 'Une nouvelle série de relances est autorisée.'
             : 'Le suivi est clôturé après les relances prévues.');
@@ -661,7 +663,10 @@ class CostumerFollowUp extends Component
             return null;
         }
 
-        $order = $costumer->orders()->with('orderItems.product')->latest()->first();
+        $order = $costumer->latestOrder;
+        if ($order && !$order->relationLoaded('orderItems')) {
+            $order->load('orderItems.product');
+        }
         $products = $order
             ? $order->orderItems->pluck('product.name')->filter()->unique()->implode(', ')
             : '';
@@ -675,6 +680,36 @@ class CostumerFollowUp extends Component
         }
 
         return rtrim($message)."\n\nTENACE COSMETIQUE";
+    }
+
+    protected function detectCallingCode(?string $phone): ?string
+    {
+        $phone = trim((string) $phone);
+        $hasInternationalPrefix = str_starts_with($phone, '+') || str_starts_with($phone, '00');
+        $digits = preg_replace('/\D+/', '', $phone);
+
+        if (str_starts_with($digits, '00')) {
+            $digits = substr($digits, 2);
+        }
+
+        $callingCodes = [
+            '1', '7', '20', '27', '33', '34', '39', '44', '49', '52', '55', '60', '61', '62', '63', '64', '65', '66',
+            '81', '82', '84', '86', '90', '91', '92', '93', '94', '95', '98',
+            '211', '212', '213', '216', '218', '220', '221', '222', '223', '224', '225', '226', '227', '228', '229',
+            '230', '231', '232', '233', '234', '235', '236', '237', '238', '239', '240', '241', '242', '243', '244',
+            '245', '246', '248', '249', '250', '251', '252', '253', '254', '255', '256', '257', '258', '260', '261',
+            '262', '263', '264', '265', '266', '267', '268', '269',
+        ];
+        usort($callingCodes, fn ($left, $right) => strlen($right) <=> strlen($left));
+
+        foreach ($callingCodes as $callingCode) {
+            if (str_starts_with($digits, $callingCode)
+                && ($hasInternationalPrefix || strlen($digits) >= 11)) {
+                return '+'.$callingCode;
+            }
+        }
+
+        return null;
     }
 
     protected function contactUrl(Costumer $costumer, string $channel): ?string
@@ -708,39 +743,97 @@ class CostumerFollowUp extends Component
         return null;
     }
 
+    protected function followUpCountsCacheKey(): string
+    {
+        return 'customer-follow-up-counts:'.$this->defaultFollowUpDays.':'.$this->maxFollowUps;
+    }
+
+    protected function forgetFollowUpData(): void
+    {
+        Cache::forget($this->followUpCountsCacheKey());
+        $versionKey = 'customer-follow-up-list-version';
+        Cache::add($versionKey, 1);
+        Cache::increment($versionKey);
+    }
+
+    protected function loadFollowUpCounts(): array
+    {
+        return Cache::remember($this->followUpCountsCacheKey(), now()->addSeconds(20), function () {
+            $sentimentCounts = CostumerContactHistory::query()
+                ->whereNotNull('responded_at')
+                ->selectRaw('sentiment, COUNT(*) as aggregate')
+                ->groupBy('sentiment')
+                ->pluck('aggregate', 'sentiment');
+
+            return [
+                'all' => Costumer::count(),
+                'not_contacted' => $this->statusQuery('not_contacted')->count(),
+                'contacted' => $this->statusQuery('contacted')->count(),
+                'responded' => $this->statusQuery('responded')->count(),
+                'to_follow_up' => $this->statusQuery('to_follow_up')->count(),
+                'review_required' => $this->statusQuery('review_required')->count(),
+                'closed' => $this->statusQuery('closed')->count(),
+                'do_not_contact' => $this->statusQuery('do_not_contact')->count(),
+                'feedback' => [
+                    'positive' => (int) $sentimentCounts->get('positive', 0),
+                    'neutral' => (int) $sentimentCounts->get('neutral', 0),
+                    'negative' => (int) $sentimentCounts->get('negative', 0),
+                    'unclassified' => (int) $sentimentCounts->get(null, 0),
+                ],
+            ];
+        });
+    }
+
+    protected function loadFollowUpPage(): array
+    {
+        $version = Cache::get('customer-follow-up-list-version', 1);
+        $cacheKey = 'customer-follow-up-page:'.$version.':'.hash('sha256', serialize([
+            $this->search,
+            $this->statusFilter,
+            (int) $this->page,
+            $this->defaultFollowUpDays,
+            $this->maxFollowUps,
+        ]));
+
+        return Cache::remember($cacheKey, now()->addSeconds(20), function () {
+            $query = $this->searchQuery(Costumer::query())
+                ->with(['latestContactHistory.user', 'latestOrder', 'contactPreference'])
+                ->withCount([
+                    'contactHistories as contact_histories_count' => fn ($history) => $history->whereNotNull('responded_at'),
+                    'contactHistories as follow_up_count' => fn ($history) => $history->where('contact_type', 'follow_up'),
+                    'orders',
+                ])
+                ->withMax('orders', 'created_at');
+
+            if ($this->statusFilter !== 'all') {
+                $statusIds = $this->searchQuery($this->statusQuery($this->statusFilter))->select('costumers.id');
+                $query->whereIn('costumers.id', $statusIds);
+            }
+
+            $costumers = $query
+                ->orderByDesc('orders_count')
+                ->orderByDesc('orders_max_created_at')
+                ->orderBy('name')
+                ->paginate(15);
+            $statuses = $costumers->getCollection()->mapWithKeys(fn ($costumer) => [$costumer->id => $this->statusFor($costumer)]);
+
+            return [$costumers, $statuses];
+        });
+    }
+
     public function render()
     {
-        $counts = [
-            'all' => Costumer::count(),
-            'not_contacted' => $this->statusQuery('not_contacted')->count(),
-            'contacted' => $this->statusQuery('contacted')->count(),
-            'responded' => $this->statusQuery('responded')->count(),
-            'to_follow_up' => $this->statusQuery('to_follow_up')->count(),
-            'review_required' => $this->statusQuery('review_required')->count(),
-            'closed' => $this->statusQuery('closed')->count(),
-            'do_not_contact' => $this->statusQuery('do_not_contact')->count(),
-        ];
+        $counts = $this->loadFollowUpCounts();
+        [$costumers, $statuses] = $this->loadFollowUpPage();
 
-        $query = $this->searchQuery(Costumer::query())
-            ->with(['latestContactHistory.user', 'latestOrder', 'contactPreference'])
-            ->withCount([
-                'contactHistories as contact_histories_count' => fn ($history) => $history->whereNotNull('responded_at'),
-                'contactHistories as follow_up_count' => fn ($history) => $history->where('contact_type', 'follow_up'),
-                'orders',
-            ])
-            ->withMax('orders', 'created_at');
-
-        if ($this->statusFilter !== 'all') {
-            $statusIds = $this->searchQuery($this->statusQuery($this->statusFilter))->select('costumers.id');
-            $query->whereIn('costumers.id', $statusIds);
+        $selectedCostumer = null;
+        if ($this->selectedCostumerId) {
+            $selectedCostumerQuery = Costumer::with('contactPreference');
+            if ($this->showContactModal) {
+                $selectedCostumerQuery->with('latestOrder.orderItems.product');
+            }
+            $selectedCostumer = $selectedCostumerQuery->find($this->selectedCostumerId);
         }
-
-        $costumers = $query
-            ->orderByDesc('orders_count')
-            ->orderByDesc('orders_max_created_at')
-            ->orderBy('name')
-            ->paginate(15);
-        $statuses = $costumers->getCollection()->mapWithKeys(fn ($costumer) => [$costumer->id => $this->statusFor($costumer)]);
 
         return view('livewire.costumer-follow-up', [
             'costumers' => $costumers,
@@ -749,11 +842,18 @@ class CostumerFollowUp extends Component
             'history' => $this->showHistoryModal && $this->selectedCostumerId
                 ? CostumerContactHistory::with(['user', 'messageTemplate'])->where('costumer_id', $this->selectedCostumerId)->orderByDesc('contacted_at')->get()
                 : collect(),
-            'selectedCostumer' => $this->selectedCostumerId ? Costumer::find($this->selectedCostumerId) : null,
-            'contactUrl' => $this->selectedCostumerId ? $this->contactUrl(Costumer::find($this->selectedCostumerId), $this->channel) : null,
+            'selectedCostumer' => $selectedCostumer,
+            'contactUrl' => $this->showContactModal && $selectedCostumer ? $this->contactUrl($selectedCostumer, $this->channel) : null,
             'messageTemplates' => CostumerContactMessageTemplate::where('active', true)->where('channel', $this->channel)->orderBy('name')->get(),
             'allMessageTemplates' => CostumerContactMessageTemplate::orderBy('channel')->orderBy('name')->get(),
-            'selectedMessage' => $this->selectedCostumerId ? $this->selectedMessage(Costumer::find($this->selectedCostumerId)) : null,
+            'selectedMessage' => $this->showContactModal && $selectedCostumer ? $this->selectedMessage($selectedCostumer) : null,
+            'feedbacks' => $this->showFeedbackModal
+                ? CostumerContactHistory::with('costumer')
+                    ->whereNotNull('responded_at')
+                    ->where('sentiment', $this->feedbackSentiment)
+                    ->orderByDesc('responded_at')
+                    ->paginate(10, ['*'], 'feedbackPage')
+                : null,
         ])->extends('layouts.admin')->section('content');
     }
 }

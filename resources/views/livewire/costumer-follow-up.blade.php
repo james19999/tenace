@@ -43,6 +43,30 @@
         @endforeach
     </div>
 
+    @php
+        $feedbackCounts = $counts['feedback'] ?? ['positive' => 0, 'neutral' => 0, 'negative' => 0];
+        $feedbackTotal = array_sum($feedbackCounts);
+        $feedbackMax = max($feedbackCounts ?: [0]);
+    @endphp
+    <div class="card shadow my-3">
+        <div class="card-header bg-white d-flex justify-content-between align-items-center flex-wrap">
+            <h5 class="text-uppercase text-muted mb-0 card-title">Avis des clients</h5>
+            <span class="text-muted">{{ $feedbackTotal }} réponse(s) enregistrée(s)</span>
+        </div>
+        <div class="card-body">
+            @foreach (['positive' => ['Positifs', 'success'], 'neutral' => ['Neutres', 'secondary'], 'negative' => ['Négatifs', 'danger']] as $sentimentKey => [$sentimentLabel, $sentimentColor])
+                @php $sentimentCount = $feedbackCounts[$sentimentKey] ?? 0; @endphp
+                <button type="button" class="btn btn-link text-left text-decoration-none p-0 d-block w-100 mb-3" wire:click="openFeedbackDetails('{{ $sentimentKey }}')" aria-label="Voir les avis {{ strtolower($sentimentLabel) }}">
+                    <span class="d-flex justify-content-between mb-1"><span>{{ $sentimentLabel }}</span><strong>{{ $sentimentCount }}</strong></span>
+                    <span class="progress" style="height: 14px"><span class="progress-bar bg-{{ $sentimentColor }}" role="progressbar" style="width: {{ $feedbackMax ? round($sentimentCount / $feedbackMax * 100) : 0 }}%" aria-valuenow="{{ $sentimentCount }}" aria-valuemin="0" aria-valuemax="{{ $feedbackMax }}"></span></span>
+                </button>
+            @endforeach
+            @if (($feedbackCounts['unclassified'] ?? 0) > 0)
+                <small class="text-muted">{{ $feedbackCounts['unclassified'] }} réponse(s) sans tonalité renseignée.</small>
+            @endif
+        </div>
+    </div>
+
     <div class="card shadow mb-3">
         <div class="card-header bg-white d-flex justify-content-between align-items-center flex-wrap">
             <h5 class="text-uppercase text-muted mb-0 card-title">Paramètres du suivi</h5>
@@ -174,6 +198,39 @@
         </div>
     @endif
 
+    @if ($showFeedbackModal)
+        @php $feedbackLabel = ['positive' => 'positifs', 'neutral' => 'neutres', 'negative' => 'négatifs'][$feedbackSentiment] ?? 'clients'; @endphp
+        <div class="modal fade show d-block follow-up-modal" id="follow-up-feedback-modal" style="background: rgba(0,0,0,.5)" tabindex="-1" role="dialog" aria-modal="true">
+            <div class="modal-dialog modal-lg modal-dialog-centered modal-dialog-scrollable follow-up-modal-dialog" role="document"><div class="modal-content">
+                <div class="modal-header"><h5 class="modal-title">Avis {{ $feedbackLabel }}</h5><button type="button" class="close" wire:click="beginClosingModal('follow-up-feedback-modal')" aria-label="Fermer"><span>&times;</span></button></div>
+                <div class="modal-body">
+                    @forelse ($feedbacks as $feedback)
+                        <div class="border rounded p-3 mb-2">
+                            <div class="d-flex justify-content-between flex-wrap">
+                                <strong>{{ $feedback->costumer->name ?? 'Client supprimé' }}</strong>
+                                <span class="text-muted">{{ $feedback->responded_at->format('d/m/Y H:i') }}</span>
+                            </div>
+                            @if ($feedback->costumer)
+                                <div class="small text-muted">{{ $feedback->costumer->phone ?: 'Téléphone absent' }} · {{ $feedback->costumer->email ?: 'E-mail absent' }}</div>
+                            @endif
+                            <p class="mb-2 mt-2 {{ $feedbackSentiment === 'negative' ? 'text-danger' : '' }}">{{ $feedback->response ?: 'Aucun commentaire saisi.' }}</p>
+                            @if ($feedback->costumer)
+                                <a class="btn btn-sm btn-outline-info" href="{{ route('view-costumers', $feedback->costumer->id) }}">Voir la fiche</a>
+                                <button class="btn btn-sm btn-outline-secondary" wire:click="openHistory({{ $feedback->costumer->id }})">Voir l’historique</button>
+                            @endif
+                        </div>
+                    @empty
+                        <p class="text-muted mb-0">Aucun avis dans cette catégorie.</p>
+                    @endforelse
+                    @if ($feedbacks)
+                        <div class="mt-3">{{ $feedbacks->links() }}</div>
+                    @endif
+                </div>
+                <div class="modal-footer"><button type="button" class="btn btn-secondary" wire:click="beginClosingModal('follow-up-feedback-modal')">Fermer</button></div>
+            </div></div>
+        </div>
+    @endif
+
     <div class="card shadow">
         <div class="card-header bg-white">
             <div class="form-row align-items-end">
@@ -296,6 +353,40 @@
                     </div>
                     <div class="modal-body">
                         <p class="text-muted">Ouvre le moyen choisi, effectue le contact, puis enregistre-le ici dans l’historique.</p>
+                        @php
+                            $customerPhone = trim((string) $selectedCostumer->phone);
+                            $customerPhoneDigits = preg_replace('/\D+/', '', $customerPhone);
+                            $callingCodeDigits = ltrim(preg_replace('/\D+/', '', (string) $individualCallingCode), '0');
+                            $hasInternationalPrefix = str_starts_with($customerPhone, '+')
+                                || str_starts_with($customerPhone, '00')
+                                || ($callingCodeDigits !== '' && str_starts_with($customerPhoneDigits, $callingCodeDigits));
+                        @endphp
+                        <div class="alert alert-light border">
+                            <strong>Client :</strong> {{ $selectedCostumer->name }}<br>
+                            <strong>Numéro enregistré :</strong> {{ $customerPhone ?: 'Aucun numéro renseigné' }}
+                        </div>
+                        @if ($hasInternationalPrefix)
+                            <div class="alert alert-info">
+                                Ce numéro semble déjà contenir un indicatif international. Il sera conservé tel quel : l’indicatif par défaut ne sera pas ajouté une seconde fois.
+                            </div>
+                        @endif
+                        @if ($selectedCostumer->latestOrder)
+                            <div class="card border mb-3">
+                                <div class="card-header py-2"><strong>Produits de la dernière commande</strong></div>
+                                <ul class="list-group list-group-flush">
+                                    @forelse ($selectedCostumer->latestOrder->orderItems as $orderItem)
+                                        <li class="list-group-item py-2 d-flex justify-content-between">
+                                            <span>{{ $orderItem->product->name ?? 'Produit supprimé' }}</span>
+                                            <span class="text-muted">× {{ $orderItem->quantity }}</span>
+                                        </li>
+                                    @empty
+                                        <li class="list-group-item text-muted">Aucun produit détaillé pour cette commande.</li>
+                                    @endforelse
+                                </ul>
+                            </div>
+                        @else
+                            <div class="alert alert-warning">Aucune commande n’est enregistrée pour ce client.</div>
+                        @endif
                         <div class="form-row">
                             <div class="form-group col-md-6">
                                 <label>Moyen utilisé</label>
@@ -308,13 +399,13 @@
                             </div>
                             <div class="form-group col-md-6">
                                 <label>Date du contact</label>
-                                <input type="datetime-local" class="form-control" wire:model="contactedAt">
+                                <input type="datetime-local" class="form-control" wire:model.defer="contactedAt">
                             </div>
                         </div>
                         @if ($channel === 'other')
                             <div class="form-group">
                                 <label for="channel-detail">Précise le moyen de contact</label>
-                                <input id="channel-detail" type="text" class="form-control" wire:model="channelDetail" maxlength="120" placeholder="Ex. e-mail, Facebook, visite en boutique…">
+                                <input id="channel-detail" type="text" class="form-control" wire:model.defer="channelDetail" maxlength="120" placeholder="Ex. e-mail, Facebook, visite en boutique…">
                                 @error('channelDetail') <small class="text-danger">{{ $message }}</small> @enderror
                             </div>
                         @endif
@@ -348,34 +439,35 @@
                             <div class="alert alert-warning">Ce client n’a pas de numéro utilisable pour ce moyen de contact.</div>
                         @endif
                         <div class="form-group form-check">
-                            <input type="checkbox" class="form-check-input" id="response-received-now" wire:model="responseReceivedNow">
+                            <input type="checkbox" class="form-check-input" id="response-received-now" wire:model.defer="responseReceivedNow">
                             <label class="form-check-label" for="response-received-now">Le client répond maintenant</label>
                         </div>
-                        @if ($responseReceivedNow)
+                        <div id="immediate-response-fields" style="{{ $responseReceivedNow ? '' : 'display: none;' }}">
                             <div class="form-group">
                                 <label>Réponse ou avis du client</label>
-                                <textarea class="form-control" rows="4" wire:model="immediateResponse" placeholder="Note la réponse du client"></textarea>
+                                <textarea class="form-control" rows="4" wire:model.defer="immediateResponse" placeholder="Note la réponse du client"></textarea>
                                 @error('immediateResponse') <small class="text-danger">{{ $message }}</small> @enderror
                             </div>
                             <div class="form-group">
                                 <label>Tonalité de l’avis</label>
-                                <select class="form-control" wire:model="immediateSentiment">
+                                <select class="form-control" wire:model.defer="immediateSentiment">
                                     <option value="positive">Positif</option>
                                     <option value="neutral">Neutre</option>
                                     <option value="negative">Négatif</option>
                                 </select>
                             </div>
                             <div class="alert alert-info">La réponse sera enregistrée avec ce contact et aucune relance ne sera planifiée.</div>
-                        @else
+                        </div>
+                        <div id="scheduled-follow-up-fields" style="{{ $responseReceivedNow ? 'display: none;' : '' }}">
                             <div class="form-group">
                                 <label>Date de relance prévue (facultatif)</label>
-                                <input type="datetime-local" class="form-control" wire:model="followUpAt">
+                                <input type="datetime-local" class="form-control" wire:model.defer="followUpAt">
                                 <small class="form-text text-muted">Par défaut : {{ $defaultFollowUpDays }} jours après le contact. Tu peux choisir une autre date.</small>
                             </div>
-                        @endif
+                        </div>
                         <div class="form-group mb-0">
                             <label>Note sur le contact</label>
-                            <textarea class="form-control" rows="3" wire:model="notes" placeholder="Contexte ou résultat du contact"></textarea>
+                            <textarea class="form-control" rows="3" wire:model.defer="notes" placeholder="Contexte ou résultat du contact"></textarea>
                         </div>
                         @foreach (['channel', 'channelDetail', 'contactedAt', 'followUpAt', 'individualCallingCode', 'selectedTemplateId', 'notes', 'immediateSentiment'] as $field)
                             @error($field) <small class="text-danger d-block">{{ $message }}</small> @enderror
@@ -522,6 +614,17 @@
     </style>
     <script>
         (function () {
+            if (!window.followUpResponseToggleBound) {
+                window.followUpResponseToggleBound = true;
+                document.addEventListener('change', function (event) {
+                    if (!event.target || event.target.id !== 'response-received-now') return;
+                    var responseFields = document.getElementById('immediate-response-fields');
+                    var followUpFields = document.getElementById('scheduled-follow-up-fields');
+                    if (responseFields) responseFields.style.display = event.target.checked ? '' : 'none';
+                    if (followUpFields) followUpFields.style.display = event.target.checked ? 'none' : '';
+                });
+            }
+
             if (window.followUpModalCloseBound) return;
             window.followUpModalCloseBound = true;
             window.addEventListener('animate-follow-up-modal-close', function (event) {
@@ -537,6 +640,7 @@
                     if (transitionEvent && transitionEvent.target !== modal) return;
                     if (finished) return;
                     finished = true;
+                    modal.style.display = 'none';
                     var root = modal.closest('[wire\\:id]');
                     if (root && window.Livewire) {
                         Livewire.find(root.getAttribute('wire:id')).call('finishClosingModal', event.detail.type);
