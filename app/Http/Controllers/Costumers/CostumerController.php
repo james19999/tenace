@@ -86,14 +86,19 @@ class CostumerController extends Controller
         ]);
 
         $term = trim($validated['q'] ?? '');
+        if (mb_strlen($term) < 2) {
+            return response()->json([
+                'results' => [],
+                'pagination' => ['more' => false],
+            ]);
+        }
+
         $costumers = Costumer::query()
-            ->when($term !== '', function ($query) use ($term) {
+            ->where(function ($customers) use ($term) {
                 $prefix = $term.'%';
-                $query->where(function ($customers) use ($prefix) {
-                    $customers->where('name', 'like', $prefix)
-                        ->orWhere('phone', 'like', $prefix)
-                        ->orWhere('email', 'like', $prefix);
-                });
+                $customers->where('name', 'like', $prefix)
+                    ->orWhere('phone', 'like', $prefix)
+                    ->orWhere('email', 'like', $prefix);
             })
             ->orderBy('name')
             ->paginate(20, ['id', 'name', 'phone'], 'page', (int) ($validated['page'] ?? 1));
