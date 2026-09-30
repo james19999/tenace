@@ -8,6 +8,8 @@ use App\Models\CostumerContactMessageTemplate;
 use App\Models\CostumerContactPreference;
 use App\Models\CostumerContactSetting;
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Carbon;
 use Livewire\Component;
@@ -24,6 +26,8 @@ class CostumerFollowUp extends Component
     public $showContactModal = false;
     public $showResponseModal = false;
     public $showHistoryModal = false;
+    public $showFeedbackModal = false;
+    public $feedbackSentiment = '';
     public $showSettings = false;
     public $showDoNotContactModal = false;
     public $showDeleteTemplateModal = false;
@@ -59,6 +63,8 @@ class CostumerFollowUp extends Component
     public $defaultCountryCallingCode = '+228';
 
     protected $queryString = ['search', 'statusFilter'];
+
+    protected $listeners = ['showFeedbackDetails' => 'openFeedbackDetails'];
 
     public function mount(): void
     {
@@ -96,7 +102,9 @@ class CostumerFollowUp extends Component
         $this->channel = 'whatsapp';
         $this->channelDetail = '';
         $this->selectedTemplateId = CostumerContactMessageTemplate::where('channel', 'whatsapp')->where('active', true)->value('id');
-        $this->individualCallingCode = $costumer->contactPreference->calling_code ?? $this->defaultCountryCallingCode;
+        $this->individualCallingCode = $this->detectCallingCode($costumer->phone)
+            ?? $costumer->contactPreference->calling_code
+            ?? $this->defaultCountryCallingCode;
         $this->contactedAt = now()->format('Y-m-d\TH:i');
         $this->followUpAt = now()->addDays((int) $this->defaultFollowUpDays)->format('Y-m-d\TH:i');
         $this->notes = '';
@@ -158,6 +166,7 @@ class CostumerFollowUp extends Component
             'message_template_id' => $this->selectedTemplateId,
             'notes' => $this->notes ?: null,
         ]);
+        $this->forgetFollowUpCounts();
 
         $this->dispatchBrowserEvent('animate-follow-up-modal-close', ['modal' => 'follow-up-contact-modal', 'type' => 'contact']);
         session()->flash('messages', $this->responseReceivedNow
@@ -191,6 +200,7 @@ class CostumerFollowUp extends Component
         ]);
         CostumerContactPreference::where('costumer_id', $this->selectedCostumerId)
             ->update(['next_follow_up_at' => null]);
+        $this->forgetFollowUpCounts();
 
         $this->dispatchBrowserEvent('animate-follow-up-modal-close', ['modal' => 'follow-up-response-modal', 'type' => 'response']);
         session()->flash('messages', 'Réponse enregistrée. Le suivi de ce client est terminé.');
@@ -199,7 +209,17 @@ class CostumerFollowUp extends Component
     public function openHistory(int $costumerId): void
     {
         $this->selectedCostumerId = $costumerId;
+        $this->showFeedbackModal = false;
         $this->showHistoryModal = true;
+    }
+
+    public function openFeedbackDetails(string $sentiment): void
+    {
+        abort_unless(in_array($sentiment, ['positive', 'neutral', 'negative'], true), 404);
+
+        $this->feedbackSentiment = $sentiment;
+        $this->showFeedbackModal = true;
+        $this->resetPage('feedbackPage');
     }
 
     public function openScheduledDateModal(int $costumerId): void
@@ -234,6 +254,7 @@ class CostumerFollowUp extends Component
             ['costumer_id' => $costumer->id],
             ['next_follow_up_at' => $this->scheduledFollowUpDate, 'updated_by' => Auth::id()]
         );
+        $this->forgetFollowUpCounts();
 
         $this->dispatchBrowserEvent('animate-follow-up-modal-close', ['modal' => 'scheduled-follow-up-date-modal', 'type' => 'scheduled-date']);
         session()->flash('messages', 'La prochaine date de contact a été modifiée.');

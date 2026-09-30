@@ -3,9 +3,9 @@
 @section('content')
 
 <div class="col-12 ">
-    <div  style="padding-top: 10px">
-       <a href="{{ route('costumer.create') }}" class="btn btn-primary  pull-right">Ajouter un client</a>
-       <a href="{{ route('top-costumers') }}" class="btn btn-success  pull-right" style="color: white">top client</a>
+    <div class="d-flex justify-content-end mb-3">
+       <a href="{{ route('costumer.create') }}" class="btn btn-sm btn-primary mr-2">Ajouter un client</a>
+       <a href="{{ route('top-costumers') }}" class="btn btn-sm btn-success text-white">Top clients</a>
     </div>
    <div class="card shadow">
        <div class="card-body ">
@@ -15,7 +15,7 @@
                </div>
             @endif
            <div class="table-responsive">
-               <table id="example" class="table table-hover w-100">
+               <table id="customer-table" class="table table-hover w-100" data-source="{{ route('costumer.data') }}">
                    <thead class="thead-light">
                        <tr>
                            <th style="width: 20%">N°</th>
@@ -27,36 +27,6 @@
                        </tr>
                    </thead>
                    <tbody>
-                        @php
-                            $i=1;
-                        @endphp
-                         @foreach ($costumers as $costumer )
-                      <tr>
-
-                         <td style="color: black ">{{ $i++ }}</td>
-                         <td style="color: black ">{{ $costumer->name }}</td>
-                         <td style="color: black ">{{ $costumer->phone }} </td>
-                         <td style="color: black ">{{ $costumer->email ?? '@' }} </td>
-                         <td style="color: black ">{{ $costumer->adresse ?? '-' }} </td>
-                         <td style="color: black " class=" pull-right">
-
-                             <div class="btn-group btn-group-justified">
-                                 <a  href="{{ route('costumer.edit',$costumer) }}" style="color: white" type="button" class="btn btn-warning">
-                                     <i class="material-icons">edit</i>
-                                     Modifier</a>
-                                     <form   method="POST" action="{{ route('costumer.destroy',$costumer) }}"
-                                     onclick="return confirm('supprimer') "
-                                    >
-                                         @csrf
-                                          @method("DELETE")
-                                        <button  style="padding-bottom: 12%" class="btn btn-sm btn-danger"
-                                         ><i class="material-icons">delete</i>Supprimer</button>
-                                    </form>
-                             </div>
-                         </td>
-                      </tr>
-                         @endforeach
-
                    </tbody>
                    <tfoot class="thead-light">
                     <tr>

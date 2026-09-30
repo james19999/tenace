@@ -113,6 +113,28 @@
                 ]
             });
         });
+        $(document).ready(function() {
+            var $customerTable = $('#customer-table');
+            if (!$customerTable.length) return;
+
+            $customerTable.DataTable({
+                processing: true,
+                serverSide: true,
+                pageLength: 10,
+                ajax: $customerTable.data('source'),
+                dom: 'Bfrtip',
+                buttons: ['copy', 'csv', 'excel', 'pdf', 'print'],
+                order: [[1, 'asc']],
+                columns: [
+                    { data: 'number', orderable: false, searchable: false },
+                    { data: 'name', name: 'name' },
+                    { data: 'phone', name: 'phone' },
+                    { data: 'email', name: 'email' },
+                    { data: 'address', name: 'adresse' },
+                    { data: 'actions', orderable: false, searchable: false }
+                ]
+            });
+        });
 
 
         function printDiv(divName) {
@@ -130,6 +152,22 @@
         // In your Javascript (external .js resource or <script> tag)
         $(document).ready(function() {
             $('.js-example-basic-single').select2();
+            $('.js-customer-search').each(function() {
+                var $customerSelect = $(this);
+                $customerSelect.select2({
+                    placeholder: 'Rechercher par nom ou téléphone',
+                    minimumInputLength: 2,
+                    ajax: {
+                        url: $customerSelect.data('ajax-url'),
+                        dataType: 'json',
+                        delay: 250,
+                        data: function(params) {
+                            return { q: params.term || '', page: params.page || 1 };
+                        },
+                        processResults: function(data) { return data; }
+                    }
+                });
+            });
         });
 
 
