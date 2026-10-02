@@ -62,7 +62,7 @@
                         </div>
 
                         <button class="btn btn-primary btn-block my-4">
-                            Connectez-vous
+                            Connectez-vous svp
                         </button>
                         <hr style="padding-top: 8px">
                         <a href="https://digital-services-home.com/" style="color: black" class="d-block text-center">@ DIGITAL SERVCICES</a>
