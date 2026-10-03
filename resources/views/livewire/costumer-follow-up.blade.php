@@ -28,7 +28,7 @@
                             <div class="row">
                                 <div class="col">
                                     <h5 class="text-uppercase text-muted mb-0 card-title">{{ $label }}</h5>
-{{--                                  <span style="font-size: 130%" class="h1 font-weight-bold mb-0">{{ $counts[$key] }}</span> --}}
+                                    <span style="font-size: 130%" class="h1 font-weight-bold mb-0">{{ $counts[$key] }}</span>
                                 </div>
                                 <div class="col-auto col">
                                     <button type="button" class="btn btn-transparent-primary btn-lg btn-circle" tabindex="-1">
