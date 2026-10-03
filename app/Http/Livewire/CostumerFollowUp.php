@@ -541,16 +541,47 @@ class CostumerFollowUp extends Component
         return $nextFollowUpAt && $nextFollowUpAt->isPast() ? 'to_follow_up' : 'contacted';
     }
 
+    protected function dueOrdersCutoff(): string
+    {
+        return now()->subDays((int) $this->defaultFollowUpDays)->format('Y-m-d H:i:s');
+    }
+
+    protected function dueCustomerIdsFromOrders(): array
+    {
+        $cutoff = $this->dueOrdersCutoff();
+        $cacheKey = 'customer-follow-up-due-orders:'.$cutoff;
+
+        return Cache::remember($cacheKey, now()->addMinutes(5), function () use ($cutoff) {
+            return Order::query()
+                ->select('costumer_id')
+                ->whereNotNull('costumer_id')
+                ->where('costumer_id', '!=', '')
+                ->groupBy('costumer_id')
+                ->havingRaw('MAX(COALESCE(date_order, created_at)) <= ?', [$cutoff])
+                ->pluck('costumer_id')
+                ->map(fn ($id) => (int) $id)
+                ->filter()
+                ->values()
+                ->all();
+        });
+    }
+
     protected function statusQuery(string $status, ?Builder $query = null): Builder
     {
         $query = $query ?: Costumer::query();
 
         if ($status === 'not_contacted') {
-            return $query->whereDoesntHave('contactHistories')
+            $query->whereDoesntHave('contactHistories')
                 ->whereDoesntHave('contactPreference', fn ($preference) => $preference
                     ->whereNotNull('next_follow_up_at')->where('next_follow_up_at', '<=', now()))
-                ->whereNotExists(fn ($dueOrder) => $this->constrainLatestOrderDue($dueOrder))
                 ->whereDoesntHave('contactPreference', fn ($preference) => $preference->whereNotNull('do_not_contact_at'));
+
+            $dueOrderCustomerIds = $this->dueCustomerIdsFromOrders();
+            if (!empty($dueOrderCustomerIds)) {
+                $query->whereNotIn('costumers.id', $dueOrderCustomerIds);
+            }
+
+            return $query;
         }
 
         if ($status === 'responded') {
@@ -579,10 +610,10 @@ class CostumerFollowUp extends Component
                     $due->whereHas('contactPreference', fn ($preference) => $preference
                         ->whereNotNull('next_follow_up_at')->where('next_follow_up_at', '<=', now()))
                         ->orWhere(function ($historyDue) {
-                        $historyDue->whereDoesntHave('contactPreference', fn ($preference) => $preference->whereNotNull('next_follow_up_at'))
+                            $historyDue->whereDoesntHave('contactPreference', fn ($preference) => $preference->whereNotNull('next_follow_up_at'))
                                 ->where(function ($latestHistory) {
                                     $this->whereLatestContactHistory($latestHistory, fn ($history) => $history
-                                    ->whereNull('follow_up_decision')->whereNotNull('follow_up_at')->where('follow_up_at', '<=', now()));
+                                        ->whereNull('follow_up_decision')->whereNotNull('follow_up_at')->where('follow_up_at', '<=', now()));
                                 });
                         });
                 })
@@ -592,7 +623,9 @@ class CostumerFollowUp extends Component
         }
 
         if ($status === 'to_follow_up') {
-            return $query->where(function ($due) {
+            $dueOrderCustomerIds = $this->dueCustomerIdsFromOrders();
+
+            return $query->where(function ($due) use ($dueOrderCustomerIds) {
                 $due->where(function ($scheduledDue) {
                     $scheduledDue->whereHas('contactPreference', fn ($preference) => $preference
                         ->whereNotNull('next_follow_up_at')->where('next_follow_up_at', '<=', now()))
@@ -617,10 +650,14 @@ class CostumerFollowUp extends Component
                                     ->where(fn ($decision) => $decision->whereNull('follow_up_decision')->orWhere('follow_up_decision', 'continue')));
                             });
                     })
-                    ->orWhere(function ($orderDue) {
-                        $orderDue->whereDoesntHave('contactHistories')
-                            ->whereDoesntHave('contactPreference', fn ($preference) => $preference->whereNotNull('next_follow_up_at'))
-                            ->whereExists(fn ($dueOrder) => $this->constrainLatestOrderDue($dueOrder));
+                    ->orWhere(function ($orderDue) use ($dueOrderCustomerIds) {
+                        if (empty($dueOrderCustomerIds)) {
+                            $orderDue->whereRaw('0 = 1');
+                        } else {
+                            $orderDue->whereIn('costumers.id', $dueOrderCustomerIds)
+                                ->whereDoesntHave('contactHistories')
+                                ->whereDoesntHave('contactPreference', fn ($preference) => $preference->whereNotNull('next_follow_up_at'));
+                        }
                     });
             });
         }
@@ -633,38 +670,17 @@ class CostumerFollowUp extends Component
                         $historyPending->whereDoesntHave('contactPreference', fn ($preference) => $preference->whereNotNull('next_follow_up_at'))
                             ->where(function ($latestHistory) {
                                 $this->whereLatestContactHistory($latestHistory, fn ($history) => $history
-                                ->where(function ($followUp) {
-                                    $followUp->whereNull('follow_up_at')->orWhere('follow_up_at', '>', now());
-                                })->where(function ($decision) {
-                                    $decision->whereNull('follow_up_decision')->orWhere('follow_up_decision', '!=', 'stop');
-                                }));
+                                    ->where(function ($followUp) {
+                                        $followUp->whereNull('follow_up_at')->orWhere('follow_up_at', '>', now());
+                                    })->where(function ($decision) {
+                                        $decision->whereNull('follow_up_decision')->orWhere('follow_up_decision', '!=', 'stop');
+                                    }));
                             });
                     });
             });
         }
 
         return $query;
-    }
-
-    /**
-     * Match the legacy VARCHAR orders.costumer_id to the numeric customer ID
-     * without casting the indexed orders column. This lets MySQL use
-     * orders_costumer_id_id_follow_up_idx instead of materializing every
-     * customer's latest order for each follow-up count.
-     */
-    protected function constrainLatestOrderDue(\Illuminate\Database\Query\Builder $query): \Illuminate\Database\Query\Builder
-    {
-        $cutoff = now()->subDays((int) $this->defaultFollowUpDays);
-
-        return $query->selectRaw('1')
-            ->from('orders as follow_up_due_orders')
-            ->whereRaw('follow_up_due_orders.costumer_id = CAST(costumers.id AS CHAR)')
-            ->whereNotExists(function ($newer) use ($cutoff) {
-                $newer->selectRaw('1')
-                    ->from('orders as newer_orders')
-                    ->whereRaw('newer_orders.costumer_id = CAST(costumers.id AS CHAR)')
-                    ->whereRaw('COALESCE(newer_orders.date_order, newer_orders.created_at) > ?', [$cutoff]);
-            });
     }
 
     protected function whereLatestContactHistory(Builder $query, callable $constraints): Builder
@@ -791,6 +807,7 @@ class CostumerFollowUp extends Component
     protected function forgetFollowUpData(): void
     {
         Cache::forget($this->followUpCountsCacheKey());
+        Cache::forget('customer-follow-up-due-orders:'.$this->dueOrdersCutoff());
         $versionKey = 'customer-follow-up-list-version';
         Cache::add($versionKey, 1);
         Cache::increment($versionKey);
@@ -798,22 +815,31 @@ class CostumerFollowUp extends Component
 
     protected function loadFollowUpCounts(): array
     {
-        return Cache::remember($this->followUpCountsCacheKey(), now()->addMinutes(2), function () {
+        return Cache::remember($this->followUpCountsCacheKey(), now()->addMinutes(5), function () {
             $sentimentCounts = CostumerContactHistory::query()
                 ->whereNotNull('responded_at')
                 ->selectRaw('sentiment, COUNT(*) as aggregate')
                 ->groupBy('sentiment')
                 ->pluck('aggregate', 'sentiment');
 
+            $all = Costumer::count();
+            $doNotContact = CostumerContactPreference::whereNotNull('do_not_contact_at')->count();
+            $responded = $this->statusQuery('responded')->count();
+            $closed = $this->statusQuery('closed')->count();
+            $reviewRequired = $this->statusQuery('review_required')->count();
+            $toFollowUp = $this->statusQuery('to_follow_up')->count();
+            $contacted = $this->statusQuery('contacted')->count();
+            $notContacted = max(0, $all - ($doNotContact + $responded + $closed + $reviewRequired + $toFollowUp + $contacted));
+
             return [
-                'all' => Costumer::count(),
-                'not_contacted' => $this->statusQuery('not_contacted')->count(),
-                'contacted' => $this->statusQuery('contacted')->count(),
-                'responded' => $this->statusQuery('responded')->count(),
-                'to_follow_up' => $this->statusQuery('to_follow_up')->count(),
-                'review_required' => $this->statusQuery('review_required')->count(),
-                'closed' => $this->statusQuery('closed')->count(),
-                'do_not_contact' => $this->statusQuery('do_not_contact')->count(),
+                'all' => $all,
+                'not_contacted' => $notContacted,
+                'contacted' => $contacted,
+                'responded' => $responded,
+                'to_follow_up' => $toFollowUp,
+                'review_required' => $reviewRequired,
+                'closed' => $closed,
+                'do_not_contact' => $doNotContact,
                 'feedback' => [
                     'positive' => (int) $sentimentCounts->get('positive', 0),
                     'neutral' => (int) $sentimentCounts->get('neutral', 0),
@@ -835,7 +861,7 @@ class CostumerFollowUp extends Component
             $this->maxFollowUps,
         ]));
 
-        return Cache::remember($cacheKey, now()->addSeconds(30), function () {
+        return Cache::remember($cacheKey, now()->addMinutes(2), function () {
             $query = Costumer::query();
 
             $this->searchQuery($query);
@@ -847,17 +873,18 @@ class CostumerFollowUp extends Component
             $costumers = $query
                 ->select('costumers.*')
                 ->selectRaw('(SELECT COUNT(*) FROM orders WHERE orders.costumer_id = CAST(costumers.id AS CHAR)) as orders_count')
-                ->selectRaw('(SELECT MAX(created_at) FROM orders WHERE orders.costumer_id = CAST(costumers.id AS CHAR)) as orders_max_created_at')
+                ->selectRaw('(SELECT MAX(id) FROM orders WHERE orders.costumer_id = CAST(costumers.id AS CHAR)) as orders_latest_id')
                 ->with(['latestContactHistory.user', 'contactPreference'])
-                ->withCount([
-                    'contactHistories as contact_histories_count' => fn ($history) => $history->whereNotNull('responded_at'),
-                    'contactHistories as follow_up_count' => fn ($history) => $history->where('contact_type', 'follow_up'),
-                ])
                 ->orderByDesc('orders_count')
-                ->orderByDesc('orders_max_created_at')
+                ->orderByDesc('orders_latest_id')
                 ->orderBy('name')
                 ->orderBy('costumers.id')
                 ->paginate(15);
+
+            $costumers->getCollection()->loadCount([
+                'contactHistories as contact_histories_count' => fn ($history) => $history->whereNotNull('responded_at'),
+                'contactHistories as follow_up_count' => fn ($history) => $history->where('contact_type', 'follow_up'),
+            ]);
 
             // orders.costumer_id is VARCHAR in production while costumers.id is BIGINT.
             // Fetch latest orders by string IDs so MySQL can use the orders customer index.
