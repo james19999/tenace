@@ -46,7 +46,20 @@
     @php
         $feedbackCounts = $counts['feedback'] ?? ['positive' => 0, 'neutral' => 0, 'negative' => 0];
         $feedbackTotal = array_sum($feedbackCounts);
-        $feedbackMax = max($feedbackCounts ?: [0]);
+        $sentimentValues = [
+            'positive' => (int) ($feedbackCounts['positive'] ?? 0),
+            'neutral' => (int) ($feedbackCounts['neutral'] ?? 0),
+            'negative' => (int) ($feedbackCounts['negative'] ?? 0),
+        ];
+        $feedbackMax = max($sentimentValues ?: [0]);
+        $chartScale = max(1, $feedbackMax);
+        $chartPoints = collect($sentimentValues)->values()->map(fn ($value, $index) => [
+            'x' => 48 + ($index * 132),
+            'y' => 126 - (($value / $chartScale) * 96),
+            'value' => $value,
+        ]);
+        $chartLine = $chartPoints->map(fn ($point) => $point['x'].','.$point['y'])->implode(' ');
+        $chartArea = 'M '.$chartPoints->first()['x'].' 126 L '.$chartLine.' L '.$chartPoints->last()['x'].' 126 Z';
     @endphp
     <div class="card shadow my-3">
         <div class="card-header bg-white d-flex justify-content-between align-items-center flex-wrap">
@@ -54,16 +67,38 @@
             <span class="text-muted">{{ $feedbackTotal }} réponse(s) enregistrée(s)</span>
         </div>
         <div class="card-body">
-            @foreach (['positive' => ['Positifs', 'success'], 'neutral' => ['Neutres', 'secondary'], 'negative' => ['Négatifs', 'danger']] as $sentimentKey => [$sentimentLabel, $sentimentColor])
-                @php $sentimentCount = $feedbackCounts[$sentimentKey] ?? 0; @endphp
-                <button type="button" class="btn btn-link text-left text-decoration-none p-0 d-block w-100 mb-3" wire:click="openFeedbackDetails('{{ $sentimentKey }}')" aria-label="Voir les avis {{ strtolower($sentimentLabel) }}">
-                    <span class="d-flex justify-content-between mb-1"><span>{{ $sentimentLabel }}</span><strong>{{ $sentimentCount }}</strong></span>
-                    <span class="progress" style="height: 14px"><span class="progress-bar bg-{{ $sentimentColor }}" role="progressbar" style="width: {{ $feedbackMax ? round($sentimentCount / $feedbackMax * 100) : 0 }}%" aria-valuenow="{{ $sentimentCount }}" aria-valuemin="0" aria-valuemax="{{ $feedbackMax }}"></span></span>
-                </button>
-            @endforeach
-            @if (($feedbackCounts['unclassified'] ?? 0) > 0)
-                <small class="text-muted">{{ $feedbackCounts['unclassified'] }} réponse(s) sans tonalité renseignée.</small>
-            @endif
+            <div class="row align-items-center">
+                <div class="col-12 col-lg-5 mb-4 mb-lg-0">
+                    <div class="border rounded p-2 bg-light">
+                        <svg viewBox="0 0 360 180" role="img" aria-label="Courbe des avis positifs, neutres et négatifs" style="display:block;width:100%;height:auto;min-height:170px">
+                            <line x1="34" y1="30" x2="34" y2="126" stroke="#dee2e6" />
+                            <line x1="34" y1="126" x2="344" y2="126" stroke="#dee2e6" />
+                            <line x1="34" y1="78" x2="344" y2="78" stroke="#e9ecef" stroke-dasharray="4 4" />
+                            <path d="{{ $chartArea }}" fill="rgba(0,123,255,.10)" />
+                            <polyline points="{{ $chartLine }}" fill="none" stroke="#007bff" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" />
+                            @foreach ($chartPoints as $index => $point)
+                                <circle cx="{{ $point['x'] }}" cy="{{ $point['y'] }}" r="5" fill="{{ ['#28a745', '#6c757d', '#dc3545'][$index] }}" stroke="#fff" stroke-width="2" />
+                                <text x="{{ $point['x'] }}" y="{{ max(18, $point['y'] - 10) }}" text-anchor="middle" font-size="12" fill="#495057">{{ $point['value'] }}</text>
+                            @endforeach
+                            <text x="48" y="153" text-anchor="middle" font-size="11" fill="#28a745">Positifs</text>
+                            <text x="180" y="153" text-anchor="middle" font-size="11" fill="#6c757d">Neutres</text>
+                            <text x="312" y="153" text-anchor="middle" font-size="11" fill="#dc3545">Négatifs</text>
+                        </svg>
+                    </div>
+                </div>
+                <div class="col-12 col-lg-7">
+                    @foreach (['positive' => ['Positifs', 'success'], 'neutral' => ['Neutres', 'secondary'], 'negative' => ['Négatifs', 'danger']] as $sentimentKey => [$sentimentLabel, $sentimentColor])
+                        @php $sentimentCount = $feedbackCounts[$sentimentKey] ?? 0; @endphp
+                        <button type="button" class="btn btn-link text-left text-decoration-none p-0 d-block w-100 mb-3" wire:click="openFeedbackDetails('{{ $sentimentKey }}')" aria-label="Voir les avis {{ strtolower($sentimentLabel) }}">
+                            <span class="d-flex justify-content-between mb-1"><span>{{ $sentimentLabel }}</span><strong>{{ $sentimentCount }}</strong></span>
+                            <span class="progress" style="height: 14px"><span class="progress-bar bg-{{ $sentimentColor }}" role="progressbar" style="width: {{ $feedbackMax ? round($sentimentCount / $feedbackMax * 100) : 0 }}%" aria-valuenow="{{ $sentimentCount }}" aria-valuemin="0" aria-valuemax="{{ $feedbackMax }}"></span></span>
+                        </button>
+                    @endforeach
+                    @if (($feedbackCounts['unclassified'] ?? 0) > 0)
+                        <small class="text-muted">{{ $feedbackCounts['unclassified'] }} réponse(s) sans tonalité renseignée.</small>
+                    @endif
+                </div>
+            </div>
         </div>
     </div>
 
