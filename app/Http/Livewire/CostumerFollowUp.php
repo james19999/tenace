@@ -756,33 +756,33 @@ class CostumerFollowUp extends Component
         Cache::increment($versionKey);
     }
 
-    protected function loadFollowUpCounts(): array
-    {
-        return Cache::remember($this->followUpCountsCacheKey(), now()->addSeconds(20), function () {
-            $sentimentCounts = CostumerContactHistory::query()
-                ->whereNotNull('responded_at')
-                ->selectRaw('sentiment, COUNT(*) as aggregate')
-                ->groupBy('sentiment')
-                ->pluck('aggregate', 'sentiment');
-
-            return [
-                'all' => Costumer::count(),
-              //  'not_contacted' => $this->statusQuery('not_contacted')->count(),//
-                'contacted' => $this->statusQuery('contacted')->count(),
-                'responded' => $this->statusQuery('responded')->count(),
-                'to_follow_up' => $this->statusQuery('to_follow_up')->count(),
-                'review_required' => $this->statusQuery('review_required')->count(),
-                'closed' => $this->statusQuery('closed')->count(),
-                'do_not_contact' => $this->statusQuery('do_not_contact')->count(),
-                'feedback' => [
-                    'positive' => (int) $sentimentCounts->get('positive', 0),
-                    'neutral' => (int) $sentimentCounts->get('neutral', 0),
-                    'negative' => (int) $sentimentCounts->get('negative', 0),
-                    'unclassified' => (int) $sentimentCounts->get(null, 0),
-                ],
-            ];
-        });
-    }
+//  protected function loadFollowUpCounts(): array
+//    {
+//        return Cache::remember($this->followUpCountsCacheKey(), now()->addSeconds(20), function () {
+//            $sentimentCounts = CostumerContactHistory::query()
+//                ->whereNotNull('responded_at')
+//                ->selectRaw('sentiment, COUNT(*) as aggregate')
+//                ->groupBy('sentiment')
+//                ->pluck('aggregate', 'sentiment');
+//
+//            return [
+//                'all' => Costumer::count(),
+//                'not_contacted' => $this->statusQuery('not_contacted')->count(),
+//                'contacted' => $this->statusQuery('contacted')->count(),
+//                'responded' => $this->statusQuery('responded')->count(),
+//                'to_follow_up' => $this->statusQuery('to_follow_up')->count(),
+//                'review_required' => $this->statusQuery('review_required')->count(),
+//                'closed' => $this->statusQuery('closed')->count(),
+//                'do_not_contact' => $this->statusQuery('do_not_contact')->count(),
+//                'feedback' => [
+//                    'positive' => (int) $sentimentCounts->get('positive', 0),
+//                    'neutral' => (int) $sentimentCounts->get('neutral', 0),
+//                    'negative' => (int) $sentimentCounts->get('negative', 0),
+//                    'unclassified' => (int) $sentimentCounts->get(null, 0),
+//                ],
+//            ];
+//        });
+//    }
 
     protected function loadFollowUpPage(): array
     {
@@ -823,7 +823,7 @@ class CostumerFollowUp extends Component
 
     public function render()
     {
-        $counts = $this->loadFollowUpCounts();
+//        $counts = $this->loadFollowUpCounts();
         [$costumers, $statuses] = $this->loadFollowUpPage();
 
         $selectedCostumer = null;
@@ -837,7 +837,7 @@ class CostumerFollowUp extends Component
 
         return view('livewire.costumer-follow-up', [
             'costumers' => $costumers,
-            'counts' => $counts,
+//            'counts' => $counts,
             'statuses' => $statuses,
             'history' => $this->showHistoryModal && $this->selectedCostumerId
                 ? CostumerContactHistory::with(['user', 'messageTemplate'])->where('costumer_id', $this->selectedCostumerId)->orderByDesc('contacted_at')->get()
