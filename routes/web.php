@@ -88,6 +88,7 @@ Route::get('/brouillon/show/{id}',[BrouillonController::class,'show'])->name('br
 Route::get('/consultation',[DashboarController::class,'consultation'])->name('consultation');
 
 Route::put('/set/password/{id}',[DashboarController::class,'setpassword'])->name('set-password');
+Route::put('/user/role/{id}',[DashboarController::class,'updateUserRole'])->name('user.update-role');
 
 Route::get('/rupture/products/stock',[DashboarController::class,'rupture'])->name('rupture');
 

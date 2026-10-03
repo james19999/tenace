@@ -142,7 +142,240 @@
            </div>
        </div>
    </div>
+{{-- ============================================================ --}}
+{{-- Section : Gestion des rôles utilisateurs (Admin uniquement) --}}
+{{-- ============================================================ --}}
+<div class="card shadow mt-4">
+    <div class="card-header bg-white py-3 d-flex align-items-center justify-content-between">
+        <h5 class="mb-0 font-weight-bold text-dark">
+            <span class="material-icons align-middle mr-2" style="color:#7e1615;">manage_accounts</span>
+            Gestion des rôles utilisateurs
+        </h5>
+    </div>
+    <div class="card-body">
+
+        {{-- Alertes --}}
+        @if(session('role_success'))
+            <div class="alert alert-success alert-dismissible fade show" role="alert">
+                <span class="material-icons align-middle mr-1">check_circle</span>
+                {{ session('role_success') }}
+                <button type="button" class="close" data-dismiss="alert"><span>&times;</span></button>
+            </div>
+        @endif
+        @if(session('role_error'))
+            <div class="alert alert-danger alert-dismissible fade show" role="alert">
+                <span class="material-icons align-middle mr-1">error</span>
+                {{ session('role_error') }}
+                <button type="button" class="close" data-dismiss="alert"><span>&times;</span></button>
+            </div>
+        @endif
+
+        {{-- Barre de recherche instantanée (au fur et à mesure de la frappe) --}}
+        <form method="GET" action="{{ route('setting') }}" id="user-search-form" class="mb-4" onsubmit="return false;">
+            <div class="input-group" style="max-width:420px;">
+                <input type="text"
+                       id="user-search-input"
+                       name="user_search"
+                       value="{{ $search ?? '' }}"
+                       class="form-control"
+                       placeholder="Rechercher par nom ou e-mail…"
+                       autocomplete="off">
+                <div class="input-group-append">
+                    <button class="btn btn-primary" type="button" id="user-search-btn" tabindex="-1">
+                        <span class="material-icons align-middle" style="font-size:18px;">search</span>
+                    </button>
+                    <button type="button" id="user-search-clear" class="btn btn-outline-secondary" style="{{ $search ? 'display:inline-flex;' : 'display:none;' }}">
+                        <span class="material-icons align-middle" style="font-size:18px;">close</span>
+                    </button>
+                </div>
+            </div>
+        </form>
+
+        {{-- Conteneur dynamique AJAX du Tableau et de la Pagination --}}
+        <div id="users-table-container">
+            <div class="table-responsive">
+                <table class="table table-hover align-middle mb-0">
+                    <thead class="thead-light">
+                        <tr>
+                            <th>#</th>
+                            <th>Nom</th>
+                            <th>E-mail</th>
+                            <th>Rôle actuel</th>
+                            <th style="width:220px;">Changer le rôle</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @forelse($users as $u)
+                            <tr>
+                                <td class="text-muted small">{{ $u->id }}</td>
+                                <td class="font-weight-bold">{{ $u->name }}</td>
+                                <td class="text-muted small">{{ $u->email }}</td>
+                                <td>
+                                    @php
+                                        $roleLabels = [
+                                            'ADMINUSER'   => ['label' => 'Admin',          'class' => 'badge-danger'],
+                                            'CALLCENTER'  => ['label' => 'SAV',            'class' => 'badge-primary'],
+                                            'VDS'         => ['label' => 'Vendeur',        'class' => 'badge-success'],
+                                            'MNG'         => ['label' => 'Manager',        'class' => 'badge-warning text-dark'],
+                                            'LVS'         => ['label' => 'Livreur',        'class' => 'badge-info'],
+                                            'PT'          => ['label' => 'Partenaire',     'class' => 'badge-secondary'],
+                                            'CSA'         => ['label' => 'CSA',            'class' => 'badge-dark'],
+                                            'User'        => ['label' => 'Utilisateur',    'class' => 'badge-light border'],
+                                        ];
+                                        $badge = $roleLabels[$u->user_type] ?? ['label' => $u->user_type, 'class' => 'badge-secondary'];
+                                    @endphp
+                                    <span class="badge {{ $badge['class'] }} px-2 py-1">{{ $badge['label'] }}</span>
+                                </td>
+                                <td>
+                                    @if($u->id !== Auth::id())
+                                        <button type="button" class="btn btn-sm btn-primary shadow-sm" data-toggle="modal" data-target="#modal-role-{{ $u->id }}">
+                                            <i class="material-icons mr-1" style="font-size:16px;vertical-align:middle;">manage_accounts</i>
+                                            Changer
+                                        </button>
+
+                                        {{-- Modal Confirmation Changement de Rôle --}}
+                                        <div class="modal fade" id="modal-role-{{ $u->id }}" tabindex="-1" aria-labelledby="modalRoleLabel{{ $u->id }}" aria-hidden="true">
+                                            <div class="modal-dialog">
+                                                <div class="modal-content">
+                                                    <div class="modal-header">
+                                                        <h4 class="modal-title" id="modalRoleLabel{{ $u->id }}">Modifier le rôle</h4>
+                                                        <button type="button" class="btn btn-light btn-circle dismiss" data-dismiss="modal" aria-label="Close">
+                                                            <span aria-hidden="true" class="material-icons">close</span>
+                                                        </button>
+                                                    </div>
+                                                    <form action="{{ route('user.update-role', $u->id) }}" method="POST">
+                                                        @csrf
+                                                        @method('PUT')
+                                                        <div class="modal-body text-left">
+                                                            <div class="mb-3 p-3 bg-light rounded">
+                                                                <div class="font-weight-bold text-dark">{{ $u->name }}</div>
+                                                                <div class="text-muted small">{{ $u->email }}</div>
+                                                                <div class="mt-2">
+                                                                    <span class="text-muted small mr-1">Rôle actuel :</span>
+                                                                    <span class="badge {{ $badge['class'] }} px-2 py-1">{{ $badge['label'] }}</span>
+                                                                </div>
+                                                            </div>
+
+                                                            <div class="form-group mb-0">
+                                                                <label for="select-role-{{ $u->id }}" class="font-weight-bold text-dark">Nouveau rôle :</label>
+                                                                <select name="user_type" id="select-role-{{ $u->id }}" class="form-control" required>
+                                                                    @foreach($roleLabels as $val => $info)
+                                                                        <option value="{{ $val }}" {{ $u->user_type === $val ? 'selected' : '' }}>
+                                                                            {{ $info['label'] }} ({{ $val }})
+                                                                        </option>
+                                                                    @endforeach
+                                                                </select>
+                                                            </div>
+                                                        </div>
+                                                        <div class="modal-footer">
+                                                            <button type="button" class="btn btn-secondary" data-dismiss="modal">Annuler</button>
+                                                            <button type="submit" class="btn btn-primary">Valider la modification</button>
+                                                        </div>
+                                                    </form>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    @else
+                                        <span class="text-muted small font-italic">Votre compte</span>
+                                    @endif
+                                </td>
+                            </tr>
+                        @empty
+                            <tr>
+                                <td colspan="5" class="text-center py-4 text-muted">
+                                    <span class="material-icons d-block mb-2" style="font-size:2rem;">person_search</span>
+                                    Aucun utilisateur trouvé.
+                                </td>
+                            </tr>
+                        @endforelse
+                    </tbody>
+                </table>
+            </div>
+
+            {{-- Pagination --}}
+            @if($users->hasPages())
+                <div class="mt-3">
+                    {{ $users->appends(['user_search' => $search])->links() }}
+                </div>
+            @endif
+        </div>
+
+    </div>
 </div>
 
+</div>
 
+<script>
+    document.addEventListener('DOMContentLoaded', function () {
+        const searchInput = document.getElementById('user-search-input');
+        const clearBtn = document.getElementById('user-search-clear');
+        const container = document.getElementById('users-table-container');
+        let searchTimer = null;
+
+        if (searchInput && container) {
+            function performSearch(query) {
+                if (clearBtn) {
+                    clearBtn.style.display = query.trim() ? 'inline-flex' : 'none';
+                }
+
+                clearTimeout(searchTimer);
+                searchTimer = setTimeout(function () {
+                    const url = new URL('{{ route("setting") }}', window.location.origin);
+                    if (query.trim()) {
+                        url.searchParams.set('user_search', query.trim());
+                    }
+
+                    fetch(url.toString(), {
+                        headers: { 'X-Requested-With': 'XMLHttpRequest' }
+                    })
+                    .then(response => response.text())
+                    .then(html => {
+                        const parser = new DOMParser();
+                        const doc = parser.parseFromString(html, 'text/html');
+                        const newContainer = doc.getElementById('users-table-container');
+                        if (newContainer) {
+                            container.innerHTML = newContainer.innerHTML;
+                        }
+                    })
+                    .catch(err => console.error('Erreur recherche utilisateurs:', err));
+                }, 250);
+            }
+
+            // Recherche automatique instantanée lors de la frappe
+            searchInput.addEventListener('input', function () {
+                performSearch(this.value);
+            });
+
+            // Bouton vider la recherche
+            if (clearBtn) {
+                clearBtn.addEventListener('click', function () {
+                    searchInput.value = '';
+                    performSearch('');
+                    searchInput.focus();
+                });
+            }
+
+            // Navigation pagination via AJAX fluide sans rechargement de page
+            container.addEventListener('click', function (e) {
+                const link = e.target.closest('.pagination a');
+                if (link && link.href) {
+                    e.preventDefault();
+                    fetch(link.href, {
+                        headers: { 'X-Requested-With': 'XMLHttpRequest' }
+                    })
+                    .then(response => response.text())
+                    .then(html => {
+                        const parser = new DOMParser();
+                        const doc = parser.parseFromString(html, 'text/html');
+                        const newContainer = doc.getElementById('users-table-container');
+                        if (newContainer) {
+                            container.innerHTML = newContainer.innerHTML;
+                        }
+                    })
+                    .catch(err => console.error('Erreur pagination:', err));
+                }
+            });
+        }
+    });
+</script>
 @endsection

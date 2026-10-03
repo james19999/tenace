@@ -168,7 +168,7 @@
                 <li>
                     <a href="{{ route('costumer.follow-up') }}" class="">
                         <span class="icon material-icons">support_agent</span>
-                        <span class="text">Suivi clientèle</span>
+                        <span class="text">SAV</span>
                     </a>
                 </li>
                 <li>
@@ -417,7 +417,7 @@
                 <li>
                     <a href="{{ route('costumer.follow-up') }}" class="">
                         <span class="icon material-icons">support_agent</span>
-                        <span class="text">Suivi clientèle</span>
+                        <span class="text">SAV</span>
                     </a>
                 </li>
                 <li wire:poll.2s>
@@ -462,7 +462,7 @@
                 <li>
                     <a href="{{ route('costumer.follow-up') }}" class="active">
                         <span class="icon material-icons">support_agent</span>
-                        <span class="text">Suivi clientèle</span>
+                        <span class="text">SAV</span>
                     </a>
                 </li>
             @else

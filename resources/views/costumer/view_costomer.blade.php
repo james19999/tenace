@@ -7,8 +7,12 @@
         <div>
             <nav aria-label="breadcrumb">
                 <ol class="breadcrumb bg-transparent p-0 mb-1">
+                    @unless(Auth::user()->isCallCenter())
                     <li class="breadcrumb-item"><a href="{{ route('costumer.index') }}">Clients</a></li>
+                    @endunless
+                    @unless(Auth::user()->isCallCenter())
                     <li class="breadcrumb-item"><a href="{{ route('top-costumers') }}">Top clients</a></li>
+                    @endunless
                     <li class="breadcrumb-item active" aria-current="page">Fiche client</li>
                 </ol>
             </nav>
@@ -20,9 +24,11 @@
             <a href="{{ route('costumer.follow-up', ['search' => $costumers->phone ?: $costumers->name]) }}" class="btn btn-outline-primary btn-sm mr-2 shadow-sm">
                 <i class="fas fa-bell mr-1"></i> Suivi & Relances
             </a>
+            @unless(Auth::user()->isCallCenter())
             <a href="{{ route('top-costumers') }}" class="btn btn-secondary btn-sm shadow-sm">
                 <i class="fas fa-arrow-left mr-1"></i> Retour aux top clients
             </a>
+            @endunless
         </div>
     </div>
 

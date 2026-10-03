@@ -13,6 +13,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use App\Http\Controllers\Controller;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\Auth;
 use LaravelDaily\LaravelCharts\Classes\LaravelChart;
 
 class DashboarController extends Controller
@@ -290,9 +291,44 @@ class DashboarController extends Controller
 
     }
 
-    public function settings(){
-        $settings=Setting::limit(1)->get();
-        return view('dashboard.settings',compact('settings'));
+    public function settings(Request $request){
+        $settings = Setting::limit(1)->get();
+
+        // Recherche utilisateurs pour la gestion des rôles
+        $search = $request->input('user_search');
+        $usersQuery = User::query();
+        if ($search) {
+            $usersQuery->where(function ($q) use ($search) {
+                $q->where('name', 'like', "%{$search}%")
+                  ->orWhere('email', 'like', "%{$search}%");
+            });
+        }
+        $users = $usersQuery->orderBy('name')->paginate(5, ['*'], 'users_page');
+
+        return view('dashboard.settings', compact('settings', 'users', 'search'));
+    }
+
+    public function updateUserRole(Request $request, $id)
+    {
+        // Double vérification : seul l'admin peut changer un rôle
+        if (Auth::user()->user_type !== User::ROLE_ADMIN) {
+            abort(403);
+        }
+
+        $request->validate([
+            'user_type' => ['required', 'in:ADMINUSER,CALLCENTER,VDS,MNG,LVS,PT,CSA,User'],
+        ]);
+
+        $user = User::findOrFail($id);
+
+        // Empêcher l'admin de changer son propre rôle par accident
+        if ($user->id === Auth::id()) {
+            return back()->with('role_error', 'Vous ne pouvez pas modifier votre propre rôle.');
+        }
+
+        $user->update(['user_type' => $request->user_type]);
+
+        return back()->with('role_success', "Le rôle de {$user->name} a été mis à jour avec succès.");
     }
 
     public function settinginfo(Request $request) {
