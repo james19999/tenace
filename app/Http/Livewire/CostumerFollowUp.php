@@ -541,9 +541,9 @@ class CostumerFollowUp extends Component
         return $nextFollowUpAt && $nextFollowUpAt->isPast() ? 'to_follow_up' : 'contacted';
     }
 
-    protected function statusQuery(string $status): Builder
+    protected function statusQuery(string $status, ?Builder $query = null): Builder
     {
-        $query = Costumer::query();
+        $query = $query ?: Costumer::query();
 
         if ($status === 'not_contacted') {
             return $query->whereDoesntHave('contactHistories')
@@ -654,19 +654,17 @@ class CostumerFollowUp extends Component
      */
     protected function constrainLatestOrderDue(\Illuminate\Database\Query\Builder $query): \Illuminate\Database\Query\Builder
     {
-        $now = now();
-        $days = (int) $this->defaultFollowUpDays;
+        $cutoff = now()->subDays((int) $this->defaultFollowUpDays);
 
         return $query->selectRaw('1')
             ->from('orders as follow_up_due_orders')
             ->whereRaw('follow_up_due_orders.costumer_id = CAST(costumers.id AS CHAR)')
-            ->whereRaw(
-                'follow_up_due_orders.id = (SELECT MAX(latest_follow_up_order.id) FROM orders AS latest_follow_up_order WHERE latest_follow_up_order.costumer_id = follow_up_due_orders.costumer_id)'
-            )
-            ->whereRaw(
-                'DATE_ADD(COALESCE(follow_up_due_orders.date_order, follow_up_due_orders.created_at), INTERVAL '.$days.' DAY) <= ?',
-                [$now]
-            );
+            ->whereNotExists(function ($newer) use ($cutoff) {
+                $newer->selectRaw('1')
+                    ->from('orders as newer_orders')
+                    ->whereRaw('newer_orders.costumer_id = CAST(costumers.id AS CHAR)')
+                    ->whereRaw('COALESCE(newer_orders.date_order, newer_orders.created_at) > ?', [$cutoff]);
+            });
     }
 
     protected function whereLatestContactHistory(Builder $query, callable $constraints): Builder
@@ -800,7 +798,7 @@ class CostumerFollowUp extends Component
 
     protected function loadFollowUpCounts(): array
     {
-        return Cache::remember($this->followUpCountsCacheKey(), now()->addSeconds(20), function () {
+        return Cache::remember($this->followUpCountsCacheKey(), now()->addMinutes(2), function () {
             $sentimentCounts = CostumerContactHistory::query()
                 ->whereNotNull('responded_at')
                 ->selectRaw('sentiment, COUNT(*) as aggregate')
@@ -837,34 +835,28 @@ class CostumerFollowUp extends Component
             $this->maxFollowUps,
         ]));
 
-        return Cache::remember($cacheKey, now()->addSeconds(20), function () {
-            $orderMetrics = Order::query()
-                ->select('costumer_id')
-                ->selectRaw('COUNT(*) as orders_count')
-                ->selectRaw('MAX(created_at) as orders_max_created_at')
-                ->groupBy('costumer_id');
+        return Cache::remember($cacheKey, now()->addSeconds(30), function () {
+            $query = Costumer::query();
 
-            $query = $this->searchQuery(Costumer::query())
-                ->leftJoinSub($orderMetrics, 'order_metrics', fn ($join) => $join
-                    ->whereRaw('order_metrics.costumer_id = CAST(costumers.id AS CHAR)'))
+            $this->searchQuery($query);
+
+            if ($this->statusFilter !== 'all') {
+                $this->statusQuery($this->statusFilter, $query);
+            }
+
+            $costumers = $query
                 ->select('costumers.*')
-                ->selectRaw('COALESCE(order_metrics.orders_count, 0) as orders_count')
-                ->addSelect('order_metrics.orders_max_created_at')
+                ->selectRaw('(SELECT COUNT(*) FROM orders WHERE orders.costumer_id = CAST(costumers.id AS CHAR)) as orders_count')
+                ->selectRaw('(SELECT MAX(created_at) FROM orders WHERE orders.costumer_id = CAST(costumers.id AS CHAR)) as orders_max_created_at')
                 ->with(['latestContactHistory.user', 'contactPreference'])
                 ->withCount([
                     'contactHistories as contact_histories_count' => fn ($history) => $history->whereNotNull('responded_at'),
                     'contactHistories as follow_up_count' => fn ($history) => $history->where('contact_type', 'follow_up'),
-                ]);
-
-            if ($this->statusFilter !== 'all') {
-                $statusIds = $this->searchQuery($this->statusQuery($this->statusFilter))->select('costumers.id');
-                $query->whereIn('costumers.id', $statusIds);
-            }
-
-            $costumers = $query
+                ])
                 ->orderByDesc('orders_count')
                 ->orderByDesc('orders_max_created_at')
                 ->orderBy('name')
+                ->orderBy('costumers.id')
                 ->paginate(15);
 
             // orders.costumer_id is VARCHAR in production while costumers.id is BIGINT.
