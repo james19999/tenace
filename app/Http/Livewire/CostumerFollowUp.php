@@ -566,8 +566,9 @@ class CostumerFollowUp extends Component
             $orderDate = $costumer->latestOrder->date_order ?: $costumer->latestOrder->created_at;
             $nextFollowUpAt = Carbon::parse($orderDate)->addDays((int) $this->defaultFollowUpDays);
         }
+        $isDue = $nextFollowUpAt && ($nextFollowUpAt->isPast() || $nextFollowUpAt->isToday());
         if (!$latest) {
-            return $nextFollowUpAt && $nextFollowUpAt->isPast() ? 'to_follow_up' : 'not_contacted';
+            return $isDue ? 'to_follow_up' : 'not_contacted';
         }
 
         if ($latest->follow_up_decision === 'stop' && !$hasNewScheduledFollowUp) {
@@ -575,16 +576,16 @@ class CostumerFollowUp extends Component
         }
 
         if ($latest->follow_up_decision === 'stop' && $hasNewScheduledFollowUp) {
-            return $nextFollowUpAt && $nextFollowUpAt->isPast() ? 'to_follow_up' : 'contacted';
+            return $isDue ? 'to_follow_up' : 'contacted';
         }
 
         if ($costumer->follow_up_count >= $this->maxFollowUps
             && $latest->follow_up_decision !== 'continue'
-            && $nextFollowUpAt && $nextFollowUpAt->isPast()) {
+            && $isDue) {
             return 'review_required';
         }
 
-        return $nextFollowUpAt && $nextFollowUpAt->isPast() ? 'to_follow_up' : 'contacted';
+        return $isDue ? 'to_follow_up' : 'contacted';
     }
 
     protected function dueOrdersCutoff(): string
@@ -619,7 +620,7 @@ class CostumerFollowUp extends Component
         if ($status === 'not_contacted') {
             $query->whereDoesntHave('contactHistories')
                 ->whereDoesntHave('contactPreference', fn ($preference) => $preference
-                    ->whereNotNull('next_follow_up_at')->where('next_follow_up_at', '<=', now()))
+                    ->whereNotNull('next_follow_up_at')->where('next_follow_up_at', '<=', now()->endOfDay()))
                 ->whereDoesntHave('contactPreference', fn ($preference) => $preference->whereNotNull('do_not_contact_at'));
 
             $dueOrderCustomerIds = $this->dueCustomerIdsFromOrders();
@@ -654,12 +655,12 @@ class CostumerFollowUp extends Component
             return $query->whereHas('contactHistories', fn ($history) => $history->where('contact_type', 'follow_up'), '>=', $this->maxFollowUps)
                 ->where(function ($due) {
                     $due->whereHas('contactPreference', fn ($preference) => $preference
-                        ->whereNotNull('next_follow_up_at')->where('next_follow_up_at', '<=', now()))
+                        ->whereNotNull('next_follow_up_at')->where('next_follow_up_at', '<=', now()->endOfDay()))
                         ->orWhere(function ($historyDue) {
                             $historyDue->whereDoesntHave('contactPreference', fn ($preference) => $preference->whereNotNull('next_follow_up_at'))
                                 ->where(function ($latestHistory) {
                                     $this->whereLatestContactHistory($latestHistory, fn ($history) => $history
-                                        ->whereNull('follow_up_decision')->whereNotNull('follow_up_at')->where('follow_up_at', '<=', now()));
+                                        ->whereNull('follow_up_decision')->whereNotNull('follow_up_at')->where('follow_up_at', '<=', now()->endOfDay()));
                                 });
                         });
                 })
@@ -674,7 +675,7 @@ class CostumerFollowUp extends Component
             return $query->where(function ($due) use ($dueOrderCustomerIds) {
                 $due->where(function ($scheduledDue) {
                     $scheduledDue->whereHas('contactPreference', fn ($preference) => $preference
-                        ->whereNotNull('next_follow_up_at')->where('next_follow_up_at', '<=', now()))
+                        ->whereNotNull('next_follow_up_at')->where('next_follow_up_at', '<=', now()->endOfDay()))
                         ->where(function ($attempts) {
                             $attempts->whereHas('contactHistories', fn ($history) => $history->where('contact_type', 'follow_up'), '<', $this->maxFollowUps)
                                 ->orWhere(function ($latestHistory) {
@@ -692,7 +693,7 @@ class CostumerFollowUp extends Component
                             })
                             ->where(function ($latestHistory) {
                                 $this->whereLatestContactHistory($latestHistory, fn ($history) => $history
-                                    ->whereNotNull('follow_up_at')->where('follow_up_at', '<=', now())
+                                    ->whereNotNull('follow_up_at')->where('follow_up_at', '<=', now()->endOfDay())
                                     ->where(fn ($decision) => $decision->whereNull('follow_up_decision')->orWhere('follow_up_decision', 'continue')));
                             });
                     })
@@ -711,13 +712,13 @@ class CostumerFollowUp extends Component
         if ($status === 'contacted') {
             return $query->whereHas('contactHistories')->where(function ($pending) {
                 $pending->whereHas('contactPreference', fn ($preference) => $preference
-                    ->whereNotNull('next_follow_up_at')->where('next_follow_up_at', '>', now()))
+                    ->whereNotNull('next_follow_up_at')->where('next_follow_up_at', '>', now()->endOfDay()))
                     ->orWhere(function ($historyPending) {
                         $historyPending->whereDoesntHave('contactPreference', fn ($preference) => $preference->whereNotNull('next_follow_up_at'))
                             ->where(function ($latestHistory) {
                                 $this->whereLatestContactHistory($latestHistory, fn ($history) => $history
                                     ->where(function ($followUp) {
-                                        $followUp->whereNull('follow_up_at')->orWhere('follow_up_at', '>', now());
+                                        $followUp->whereNull('follow_up_at')->orWhere('follow_up_at', '>', now()->endOfDay());
                                     })->where(function ($decision) {
                                         $decision->whereNull('follow_up_decision')->orWhere('follow_up_decision', '!=', 'stop');
                                     }));
@@ -874,9 +875,14 @@ class CostumerFollowUp extends Component
             $endOfDay = $parsedDate->copy()->endOfDay();
 
             // 1. Contacts effectués à la date sélectionnée
+            $doneCustomerIds = CostumerContactHistory::whereBetween('contacted_at', [$startOfDay, $endOfDay])
+                ->pluck('costumer_id')
+                ->map(fn ($id) => (int) $id)
+                ->unique()
+                ->values();
             $doneCount = CostumerContactHistory::whereBetween('contacted_at', [$startOfDay, $endOfDay])->count();
 
-            // 2. Clients prévus à la date sélectionnée
+            // 2. Clients prévus / restant à relancer à la date sélectionnée
             $prefIds = CostumerContactPreference::whereDate('next_follow_up_at', $date)
                 ->whereNull('do_not_contact_at')
                 ->pluck('costumer_id');
@@ -899,6 +905,9 @@ class CostumerFollowUp extends Component
 
             $scheduledCount = count($todayCustomerIds);
 
+            // Volume total du jour = contacts déjà effectués + contacts encore à relancer
+            $totalDayScheduled = $doneCustomerIds->merge($todayCustomerIds)->unique()->count();
+
             // 3. Contacts en retard (prévus avant le jour sélectionné)
             $overduePrefIds = CostumerContactPreference::where('next_follow_up_at', '<', $startOfDay)
                 ->whereNull('do_not_contact_at')
@@ -919,9 +928,9 @@ class CostumerFollowUp extends Component
 
             $overdueCount = count($overdueCustomerIds);
 
-            // 4. Pourcentage d'avancement du jour
-            $progressRate = $scheduledCount > 0
-                ? min(100, (int) round(($doneCount / $scheduledCount) * 100))
+            // 4. Pourcentage d'avancement réel du jour : réalisés / total du jour
+            $progressRate = $totalDayScheduled > 0
+                ? min(100, (int) round(($doneCount / $totalDayScheduled) * 100))
                 : ($doneCount > 0 ? 100 : 0);
 
             // 5. Historique sur 7 jours jusqu'à la date sélectionnée pour la courbe
@@ -931,18 +940,54 @@ class CostumerFollowUp extends Component
                 ->groupBy('dt')
                 ->pluck('aggregate', 'dt');
 
+            $prefDays = CostumerContactPreference::whereBetween('next_follow_up_at', [$chartStart, $endOfDay])
+                ->whereNull('do_not_contact_at')
+                ->selectRaw('DATE(next_follow_up_at) as dt, costumer_id')
+                ->get()
+                ->groupBy('dt');
+
+            $histDays = CostumerContactHistory::whereBetween('follow_up_at', [$chartStart, $endOfDay])
+                ->selectRaw('DATE(follow_up_at) as dt, costumer_id')
+                ->get()
+                ->groupBy('dt');
+
+            $orderStart = $chartStart->copy()->subDays((int) $this->defaultFollowUpDays)->startOfDay();
+            $orderEnd = $endOfDay->copy()->subDays((int) $this->defaultFollowUpDays)->endOfDay();
+            $orderDays = Order::whereBetween(DB::raw('COALESCE(date_order, created_at)'), [$orderStart, $orderEnd])
+                ->whereNotNull('costumer_id')
+                ->where('costumer_id', '!=', '')
+                ->selectRaw('DATE(COALESCE(date_order, created_at)) as dt, costumer_id')
+                ->get()
+                ->groupBy('dt');
+
             $chartDays = [];
             for ($i = 6; $i >= 0; $i--) {
                 $cur = $parsedDate->copy()->subDays($i);
                 $curDateStr = $cur->format('Y-m-d');
                 $cDone = (int) ($historyCounts->get($curDateStr, 0));
 
+                $orderTargetDate = $cur->copy()->subDays((int) $this->defaultFollowUpDays)->format('Y-m-d');
+                $pIds = collect($prefDays->get($curDateStr, []))->pluck('costumer_id');
+                $hIds = collect($histDays->get($curDateStr, []))->pluck('costumer_id');
+                $oIds = collect($orderDays->get($orderTargetDate, []))->pluck('costumer_id');
+
+                $cRemaining = $pIds->merge($hIds)->merge($oIds)->unique()->filter()->count();
+                $cTotal = $cRemaining + $cDone;
+                $cRate = $cTotal > 0
+                    ? min(100, (int) round(($cDone / $cTotal) * 100))
+                    : ($cDone > 0 ? 100 : 0);
+
                 $chartDays[] = [
                     'date' => $curDateStr,
                     'label' => ucfirst($cur->locale('fr')->isoFormat('ddd D')),
+                    'full_date' => ucfirst($cur->locale('fr')->isoFormat('dddd D MMMM')),
                     'is_selected' => $curDateStr === $date,
                     'is_today' => $curDateStr === now()->format('Y-m-d'),
                     'done' => $cDone,
+                    'scheduled' => $cTotal,
+                    'remaining' => $cRemaining,
+                    'rate' => $cRate,
+                    'overdue' => $cRemaining,
                 ];
             }
 
@@ -952,6 +997,7 @@ class CostumerFollowUp extends Component
                 'isToday' => $date === now()->format('Y-m-d'),
                 'doneCount' => $doneCount,
                 'scheduledCount' => $scheduledCount,
+                'totalScheduled' => $totalDayScheduled,
                 'overdueCount' => $overdueCount,
                 'progressRate' => $progressRate,
                 'todayCustomerIds' => $todayCustomerIds,
