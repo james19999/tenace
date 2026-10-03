@@ -7,6 +7,7 @@ use App\Models\CostumerContactHistory;
 use App\Models\CostumerContactMessageTemplate;
 use App\Models\CostumerContactPreference;
 use App\Models\CostumerContactSetting;
+use App\Models\Orders\Order;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Auth;
@@ -813,14 +814,23 @@ class CostumerFollowUp extends Component
         ]));
 
         return Cache::remember($cacheKey, now()->addSeconds(20), function () {
+            $orderMetrics = Order::query()
+                ->select('costumer_id')
+                ->selectRaw('COUNT(*) as orders_count')
+                ->selectRaw('MAX(created_at) as orders_max_created_at')
+                ->groupBy('costumer_id');
+
             $query = $this->searchQuery(Costumer::query())
+                ->leftJoinSub($orderMetrics, 'order_metrics', fn ($join) => $join
+                    ->whereRaw('order_metrics.costumer_id = CAST(costumers.id AS CHAR)'))
+                ->select('costumers.*')
+                ->selectRaw('COALESCE(order_metrics.orders_count, 0) as orders_count')
+                ->addSelect('order_metrics.orders_max_created_at')
                 ->with(['latestContactHistory.user', 'latestOrder', 'contactPreference'])
                 ->withCount([
                     'contactHistories as contact_histories_count' => fn ($history) => $history->whereNotNull('responded_at'),
                     'contactHistories as follow_up_count' => fn ($history) => $history->where('contact_type', 'follow_up'),
-                    'orders',
-                ])
-                ->withMax('orders', 'created_at');
+                ]);
 
             if ($this->statusFilter !== 'all') {
                 $statusIds = $this->searchQuery($this->statusQuery($this->statusFilter))->select('costumers.id');
