@@ -292,12 +292,45 @@
                 </table>
             </div>
 
-            {{-- Pagination --}}
-            @if($users->hasPages())
-                <div class="mt-3">
-                    {{ $users->appends(['user_search' => $search])->links() }}
+            {{-- Pagination propre avec style Bootstrap et taille contrôlée --}}
+            <style>
+                #users-table-container .pagination {
+                    margin-bottom: 0;
+                    flex-wrap: wrap;
+                }
+                #users-table-container .pagination .page-item .page-link {
+                    color: #7e1615;
+                    border-color: #dee2e6;
+                    padding: 6px 12px;
+                    font-size: 0.9rem;
+                }
+                #users-table-container .pagination .page-item.active .page-link {
+                    background-color: #7e1615;
+                    border-color: #7e1615;
+                    color: #ffffff;
+                }
+                #users-table-container .pagination .page-item.disabled .page-link {
+                    color: #6c757d;
+                }
+                #users-table-container .pagination svg {
+                    width: 14px !important;
+                    height: 14px !important;
+                    max-width: 14px !important;
+                    max-height: 14px !important;
+                    vertical-align: middle;
+                }
+            </style>
+
+            <div class="d-flex justify-content-between align-items-center flex-wrap mt-3 pt-2 border-top">
+                <div class="text-muted small mb-2 mb-md-0">
+                    Affichage de <span class="font-weight-bold">{{ $users->firstItem() ?? 0 }}</span> à <span class="font-weight-bold">{{ $users->lastItem() ?? 0 }}</span> sur <span class="font-weight-bold">{{ $users->total() }}</span> utilisateur(s)
                 </div>
-            @endif
+                @if($users->hasPages())
+                    <div>
+                        {{ $users->appends(['user_search' => $search])->links('pagination::bootstrap-4') }}
+                    </div>
+                @endif
+            </div>
         </div>
 
     </div>
