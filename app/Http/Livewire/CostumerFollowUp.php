@@ -675,8 +675,7 @@ class CostumerFollowUp extends Component
             $latest->selectRaw('1')
                 ->from('costumer_contact_histories as latest_customer_contact')
                 ->whereColumn('latest_customer_contact.costumer_id', 'costumers.id')
-                ->whereRaw('latest_customer_contact.contacted_at = (SELECT MAX(max_contacted_at.contacted_at) FROM costumer_contact_histories AS max_contacted_at WHERE max_contacted_at.costumer_id = costumers.id)')
-                ->whereRaw('latest_customer_contact.id = (SELECT MAX(tied_contact.id) FROM costumer_contact_histories AS tied_contact WHERE tied_contact.costumer_id = latest_customer_contact.costumer_id AND tied_contact.contacted_at = latest_customer_contact.contacted_at)');
+                ->whereRaw('latest_customer_contact.id = (SELECT latest_contact.id FROM costumer_contact_histories AS latest_contact WHERE latest_contact.costumer_id = costumers.id ORDER BY latest_contact.contacted_at DESC, latest_contact.id DESC LIMIT 1)');
 
             $constraints($latest);
         });
