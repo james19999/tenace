@@ -56,14 +56,17 @@ Route::post('/store/pathner',[DashboarController::class,'store_pathner'])->name(
 
 
 Route::middleware(['auth'])->group(function () {
+
+// -------------------------------------------------------
+// Routes interdites au Call-Center (admin, gestion, compta...)
+// -------------------------------------------------------
+Route::middleware(['role:ADMINUSER,VDS,MNG,LVS,PT,CSA'])->group(function () {
+
 Route::get('type/expensives',[TypeExpensiveController::class,'index'])->name('type-expensives');
 Route::delete('destroy/expensives/{id}',[TypeExpensiveController::class,'destroy'])->name('destroy-expensives');
 Route::post('type/expensives/create',[TypeExpensiveController::class,'create'])->name('type-expensives-create');
 Route::put('type/expensives/expensives/{id}', [TypeExpensiveController::class,'update'])->name('typeexpensives');
-Route::get(
-    '/audit-produits',
-    ProductAuditReport::class
-)->name('audit.products');
+Route::get('/audit-produits', ProductAuditReport::class)->name('audit.products');
 
 Route::get('erport/expensive/repport/expensives',[ExpensiveController::class,'repport'])->name('repport-expensives');
 
@@ -71,7 +74,6 @@ Route::get('/expensives',[ExpensiveController::class,'index'])->name('expensives
 Route::delete('destroy/expensives/{id}',[ExpensiveController::class,'destroy'])->name('destroy-expensives');
 Route::post('/expensives/create',[ExpensiveController::class,'create'])->name('expensives-create');
 Route::put('/expensives/{id}', [ExpensiveController::class,'update'])->name('expensives-update');
-
 
 Route::get('show/{id}/product',[StockController::class,'show_product'])->name('show-product');
 Route::post('entrer/stock/{id}',[StockController::class,'enter_stocks'])->name('enter_stock');
@@ -102,18 +104,30 @@ Route::get('settings/config',[DashboarController::class,'settings'])->name('sett
 Route::post('settinginfo/config',[DashboarController::class,'settinginfo'])->name('setting-info');
 Route::put('settinginfo/update/config/{id}',[DashboarController::class,'settinginfoupdate'])->name('setting-update');
 
+}); // fin role non-callcenter
 
 Route::get('product/list',ProductList::class)->name('product');
 Route::get('product/form',ProductForm::class)->name('productform');
 
 Route::get('product/cart',ProductCart::class)->name('productcart');
-Route::get('costumer/follow-up', CostumerFollowUp::class)->name('costumer.follow-up');
-Route::get('costumer/top',[CostumerController::class,'topcostumer'])->name('top-costumers');
-Route::get('view/costumer/{id}',[CostumerController::class,'viewcostumer'])->name('view-costumers');
-Route::get('costumer/data', [CostumerController::class, 'datatable'])->name('costumer.data');
-Route::get('costumer/search', [CostumerController::class, 'search'])->name('costumer.search');
 
-Route::resource('costumer',CostumerController::class);
+// -------------------------------------------------------
+// Routes accessibles au Call-Center ET aux admins
+// -------------------------------------------------------
+Route::middleware(['role:ADMINUSER,CALLCENTER,VDS,MNG'])->group(function () {
+    Route::get('costumer/follow-up', CostumerFollowUp::class)->name('costumer.follow-up');
+    Route::get('view/costumer/{id}',[CostumerController::class,'viewcostumer'])->name('view-costumers');
+    Route::get('costumer/search', [CostumerController::class, 'search'])->name('costumer.search');
+});
+
+// -------------------------------------------------------
+// Routes réservées aux admins / managers (interdites au Call-Center)
+// -------------------------------------------------------
+Route::middleware(['role:ADMINUSER,VDS,MNG,LVS,PT'])->group(function () {
+    Route::get('costumer/top',[CostumerController::class,'topcostumer'])->name('top-costumers');
+    Route::get('costumer/data', [CostumerController::class, 'datatable'])->name('costumer.data');
+    Route::resource('costumer',CostumerController::class);
+});
 
 Route::post('palce/order',[CheckController::class,'palce_order'])->name('palceorder');
 Route::get('order/liste',OrderList::class)->name('order-liste-order');

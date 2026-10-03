@@ -48,7 +48,51 @@ class User extends Authenticatable
         'password' => 'hashed',
     ];
 
-    public function orders(){
+    // -------------------------------------------------------
+    // Constantes de rôles
+    // -------------------------------------------------------
+    const ROLE_ADMIN       = 'ADMINUSER';
+    const ROLE_CALL_CENTER = 'CALLCENTER';
+    const ROLE_SALES       = 'VDS';
+    const ROLE_MANAGER     = 'MNG';
+    const ROLE_LIVREUR     = 'LVS';
+    const ROLE_PARTNER     = 'PT';
+
+    // -------------------------------------------------------
+    // Helpers de rôle
+    // -------------------------------------------------------
+    public function isAdmin(): bool
+    {
+        return $this->user_type === self::ROLE_ADMIN;
+    }
+
+    public function isCallCenter(): bool
+    {
+        return $this->user_type === self::ROLE_CALL_CENTER;
+    }
+
+    public function isLivreur(): bool
+    {
+        return $this->user_type === self::ROLE_LIVREUR;
+    }
+
+    public function isSales(): bool
+    {
+        return $this->user_type === self::ROLE_SALES;
+    }
+
+    public function isManager(): bool
+    {
+        return $this->user_type === self::ROLE_MANAGER;
+    }
+
+    public function hasRole(string|array $roles): bool
+    {
+        return in_array($this->user_type, (array) $roles, true);
+    }
+
+    public function orders()
+    {
         return $this->hasMany(Order::class);
     }
 

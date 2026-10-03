@@ -458,6 +458,13 @@
                         <span class="text">Gestion commande</span>
                     </a>
                 </li>
+            @elseif (Auth::user()->user_type == 'CALLCENTER')
+                <li>
+                    <a href="{{ route('costumer.follow-up') }}" class="active">
+                        <span class="icon material-icons">support_agent</span>
+                        <span class="text">Suivi clientèle</span>
+                    </a>
+                </li>
             @else
                 <li>
                     <a href="{{ route('Admin') }}" class="active">
