@@ -813,8 +813,8 @@ class CostumerFollowUp extends Component
             $costumers = $query
                 ->orderByDesc('orders_count')
                 ->orderByDesc('orders_max_created_at')
-                ->orderBy('name')
-                ->paginate(15);
+                ->orderBy('name');
+//                ->paginate(15);
             $statuses = $costumers->getCollection()->mapWithKeys(fn ($costumer) => [$costumer->id => $this->statusFor($costumer)]);
 
             return [$costumers, $statuses];
