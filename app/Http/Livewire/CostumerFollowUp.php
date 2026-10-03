@@ -767,7 +767,7 @@ class CostumerFollowUp extends Component
 
             return [
                 'all' => Costumer::count(),
-                'not_contacted' => $this->statusQuery('not_contacted')->count(),
+              //  'not_contacted' => $this->statusQuery('not_contacted')->count(),//
                 'contacted' => $this->statusQuery('contacted')->count(),
                 'responded' => $this->statusQuery('responded')->count(),
                 'to_follow_up' => $this->statusQuery('to_follow_up')->count(),
