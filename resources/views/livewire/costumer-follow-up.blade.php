@@ -229,9 +229,9 @@
                             @foreach ($chartPoints as $point)
                                 <g wire:click="selectDate('{{ $point['date'] }}')" style="cursor: pointer;">
                                     {{-- Zone de sélection --}}
-                                    <rect x="{{ $point['x'] - 28 }}" y="10" width="56" height="165" rx="4" 
-                                          fill="{{ $point['is_selected'] ? 'rgba(126, 22, 21, 0.08)' : 'transparent' }}" 
-                                          stroke="{{ $point['is_selected'] ? '#7e1615' : 'transparent' }}" 
+                                    <rect x="{{ $point['x'] - 28 }}" y="10" width="56" height="165" rx="4"
+                                          fill="{{ $point['is_selected'] ? 'rgba(126, 22, 21, 0.08)' : 'transparent' }}"
+                                          stroke="{{ $point['is_selected'] ? '#7e1615' : 'transparent' }}"
                                           stroke-width="{{ $point['is_selected'] ? '1' : '0' }}">
                                         <title>{{ $point['full_date'] }} : {{ $point['done'] }} réalisé(s) / {{ $point['scheduled'] }} prévu(s)</title>
                                     </rect>
@@ -240,8 +240,8 @@
                                     <circle cx="{{ $point['x'] }}" cy="{{ $point['y_scheduled'] }}" r="3.5" fill="#f0ad4e" stroke="#fff" stroke-width="1.5" />
 
                                     {{-- Point réalisés --}}
-                                    <circle cx="{{ $point['x'] }}" cy="{{ $point['y_done'] }}" r="{{ $point['is_selected'] ? '6' : '4.5' }}" 
-                                            fill="#7e1615" 
+                                    <circle cx="{{ $point['x'] }}" cy="{{ $point['y_done'] }}" r="{{ $point['is_selected'] ? '6' : '4.5' }}"
+                                            fill="#7e1615"
                                             stroke="#fff" stroke-width="{{ $point['is_selected'] ? '2.5' : '1.5' }}" />
 
                                     {{-- Valeur réalisée au dessus du point --}}
@@ -250,8 +250,8 @@
                                     </text>
 
                                     {{-- Label du jour sur l'axe X --}}
-                                    <text x="{{ $point['x'] }}" y="162" text-anchor="middle" font-size="11" 
-                                          font-weight="{{ $point['is_selected'] ? 'bold' : 'normal' }}" 
+                                    <text x="{{ $point['x'] }}" y="162" text-anchor="middle" font-size="11"
+                                          font-weight="{{ $point['is_selected'] ? 'bold' : 'normal' }}"
                                           fill="{{ $point['is_selected'] ? '#7e1615' : ($point['is_today'] ? '#212529' : '#6c757d') }}">
                                         {{ $point['label'] }}
                                     </text>
