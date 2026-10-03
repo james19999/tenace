@@ -548,10 +548,7 @@ class CostumerFollowUp extends Component
             return $query->whereDoesntHave('contactHistories')
                 ->whereDoesntHave('contactPreference', fn ($preference) => $preference
                     ->whereNotNull('next_follow_up_at')->where('next_follow_up_at', '<=', now()))
-                ->whereDoesntHave('latestOrder', fn ($order) => $order->whereRaw(
-                    'DATE_ADD(COALESCE(orders.date_order, orders.created_at), INTERVAL '.(int) $this->defaultFollowUpDays.' DAY) <= ?',
-                    [now()]
-                ))
+                ->whereNotExists(fn ($dueOrder) => $this->constrainLatestOrderDue($dueOrder))
                 ->whereDoesntHave('contactPreference', fn ($preference) => $preference->whereNotNull('do_not_contact_at'));
         }
 
@@ -612,10 +609,7 @@ class CostumerFollowUp extends Component
                     ->orWhere(function ($orderDue) {
                         $orderDue->whereDoesntHave('contactHistories')
                             ->whereDoesntHave('contactPreference', fn ($preference) => $preference->whereNotNull('next_follow_up_at'))
-                            ->whereHas('latestOrder', fn ($order) => $order->whereRaw(
-                                'DATE_ADD(COALESCE(orders.date_order, orders.created_at), INTERVAL '.(int) $this->defaultFollowUpDays.' DAY) <= ?',
-                                [now()]
-                            ));
+                            ->whereExists(fn ($dueOrder) => $this->constrainLatestOrderDue($dueOrder));
                     });
             });
         }
@@ -637,6 +631,29 @@ class CostumerFollowUp extends Component
         }
 
         return $query;
+    }
+
+    /**
+     * Match the legacy VARCHAR orders.costumer_id to the numeric customer ID
+     * without casting the indexed orders column. This lets MySQL use
+     * orders_costumer_id_id_follow_up_idx instead of materializing every
+     * customer's latest order for each follow-up count.
+     */
+    protected function constrainLatestOrderDue(\Illuminate\Database\Query\Builder $query): \Illuminate\Database\Query\Builder
+    {
+        $now = now();
+        $days = (int) $this->defaultFollowUpDays;
+
+        return $query->selectRaw('1')
+            ->from('orders as follow_up_due_orders')
+            ->whereRaw('follow_up_due_orders.costumer_id = CAST(costumers.id AS CHAR)')
+            ->whereRaw(
+                'follow_up_due_orders.id = (SELECT MAX(latest_follow_up_order.id) FROM orders AS latest_follow_up_order WHERE latest_follow_up_order.costumer_id = follow_up_due_orders.costumer_id)'
+            )
+            ->whereRaw(
+                'DATE_ADD(COALESCE(follow_up_due_orders.date_order, follow_up_due_orders.created_at), INTERVAL '.$days.' DAY) <= ?',
+                [$now]
+            );
     }
 
     protected function searchQuery(Builder $query): Builder
