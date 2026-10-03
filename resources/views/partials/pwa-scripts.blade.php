@@ -165,6 +165,28 @@
     </div>
 </div>
 
+<!-- Banner iOS Install Guide -->
+<div id="pwa-ios-banner" class="pwa-toast-banner" role="dialog" aria-labelledby="pwa-ios-title" style="flex-direction: column; align-items: stretch;">
+    <button type="button" class="pwa-toast-close" id="pwa-btn-close-ios" aria-label="Fermer">&times;</button>
+    <div style="display:flex; align-items:flex-start; gap:14px;">
+        <img src="{{ asset('assets/images/tena.png') }}" alt="TENACE Icon" class="pwa-app-icon" />
+        <div class="pwa-toast-content">
+            <h4 id="pwa-ios-title" class="pwa-toast-title">Installer l'application TENACE</h4>
+            <p class="pwa-toast-desc" style="margin-bottom:10px;">Pour installer sur votre iPhone&nbsp;:</p>
+            <ol style="font-size:13px; color:#334155; padding-left:18px; margin:0 0 12px 0; line-height:1.7;">
+                <li>Appuyez sur <strong style="white-space:nowrap;">
+                    <svg style="vertical-align:middle;margin:0 2px;" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#7e1615" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M4 12v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8"/><polyline points="16 6 12 2 8 6"/><line x1="12" y1="2" x2="12" y2="15"/></svg>
+                    Partager</strong> en bas de Safari</li>
+                <li>Faites défiler et appuyez sur <strong>« Sur l'écran d'accueil »</strong></li>
+                <li>Appuyez sur <strong>Ajouter</strong> en haut à droite</li>
+            </ol>
+            <div class="pwa-toast-actions">
+                <button type="button" id="pwa-btn-dismiss-ios" class="pwa-btn-secondary">Fermer</button>
+            </div>
+        </div>
+    </div>
+</div>
+
 <!-- Banner Mise à jour PWA -->
 <div id="pwa-update-banner" class="pwa-toast-banner" role="alert" aria-live="assertive">
     <div class="pwa-icon-badge">
@@ -197,6 +219,30 @@
         if (window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone === true) {
             localStorage.setItem('pwa_installed', 'true');
         }
+
+        // 2. Détection iOS (Safari sur iPhone/iPad)
+        const isIos = /iphone|ipad|ipod/i.test(navigator.userAgent);
+        const isInStandaloneMode = window.navigator.standalone === true;
+        const iosBanner = document.getElementById('pwa-ios-banner');
+        const btnCloseIos = document.getElementById('pwa-btn-close-ios');
+        const btnDismissIos = document.getElementById('pwa-btn-dismiss-ios');
+
+        function hideIosBanner() {
+            if (iosBanner) iosBanner.style.display = 'none';
+            sessionStorage.setItem('pwa_ios_dismissed', 'true');
+        }
+
+        if (isIos && !isInStandaloneMode && !isPwaInstalled()) {
+            if (sessionStorage.getItem('pwa_ios_dismissed') !== 'true') {
+                // Petit délai pour laisser la page se charger
+                setTimeout(() => {
+                    if (iosBanner) iosBanner.style.display = 'flex';
+                }, 2500);
+            }
+        }
+
+        if (btnCloseIos) btnCloseIos.addEventListener('click', hideIosBanner);
+        if (btnDismissIos) btnDismissIos.addEventListener('click', hideIosBanner);
 
         let deferredPrompt = null;
         const installBanner = document.getElementById('pwa-install-banner');
