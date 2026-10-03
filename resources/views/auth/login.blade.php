@@ -17,7 +17,7 @@
 
     <link rel="stylesheet" href="{{ asset('cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.1/css/all.min.css') }}">
 
-
+    @include('partials.pwa-head')
 </head>
 
 <body >
@@ -92,7 +92,7 @@
         });
     </script>
 
-
+    @include('partials.pwa-scripts')
 </body>
 
 

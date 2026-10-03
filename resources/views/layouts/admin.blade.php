@@ -29,7 +29,7 @@
 
     @livewireStyles
 
-
+    @include('partials.pwa-head')
 
 </head>
 
@@ -187,9 +187,7 @@
         }
     </script>
 
-
-
-
+    @include('partials.pwa-scripts')
 </body>
 
 

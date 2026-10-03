@@ -375,7 +375,9 @@
                 </tbody>
             </table>
         </div>
-        <div class="card-body">{{ $costumers->links() }}</div>
+        <div class="card-body d-flex justify-content-center" style="max-width:100%; overflow-x:auto;">
+            {{ $costumers->onEachSide(1)->links() }}
+        </div>
     </div>
 
     @if ($showContactModal && $selectedCostumer)
