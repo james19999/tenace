@@ -22,6 +22,7 @@
                         <label for="">Sélectionnez le mois
 
                             <select name="month" id="" class="form-control">
+                                <option value="" @selected(empty($month))>Tous les mois ({{ now()->year }})</option>
                                 @foreach($montharray as $key => $value)
                                     <option value="{{ $key }}" class="form-control"
 
@@ -77,17 +78,11 @@
                          <td style="color: black ">{{ $costumer->adresse ?? '-' }} </td>
                          <td style="color: black ">
                             @if ($loop->first)
-                            <span @style([
-                                'color: #7e1615',
-                                'font-weight: bold',
-                            ])>
-                            {{ $costumer->orders_count }} Commandes /  Montant total : {{ $costumer->orders_sum_total }} </td>
-
-                        </span>
-                        @else
-                        {{ $costumer->orders_count }} Commandes / Montant total : {{ $costumer->orders_sum_total }} </td>
-
-                        @endif
+                                <span class="badge badge-warning mr-1">Top 1</span>
+                            @endif
+                            <strong>{{ $costumer->orders_count }}</strong> commande(s) &bull;
+                            <strong class="text-success">{{ number_format($costumer->orders_sum_total ?? 0, 0, ',', ' ') }} F CFA</strong>
+                         </td>
 
 
 

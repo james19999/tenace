@@ -4,9 +4,11 @@ namespace App\Http\Controllers\Costumers;
 
 use Carbon\Carbon;
 use App\Models\Costumer;
+use App\Models\Orders\Order;
 use Illuminate\Http\Request;
 use App\Http\Controllers\Controller;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\DB;
 
 
 class CostumerController extends Controller
@@ -137,16 +139,35 @@ class CostumerController extends Controller
         $month = (int) $request->input('month');
         $month = $month >= 1 && $month <= 12 ? $month : null;
 
-        $costumers = Costumer::withCount('orders')
-                ->withSum('orders', 'total')
-                ->orderByDesc('orders_sum_total')
-                ->when($month, function ($query) use ($month) {
-                    return $query->whereMonth('created_at', $month);
-                })
-                ->whereYear('created_at', Carbon::now()->year)
-                ->limit($limit)
-                ->get();
-                return view('costumer.top_costumer', compact('costumers', 'montharray', 'limit', 'month'));
+        $topOrders = Order::query()
+            ->select('costumer_id')
+            ->selectRaw('COUNT(*) as orders_count')
+            ->selectRaw('SUM(total) as orders_sum_total')
+            ->whereNotNull('costumer_id')
+            ->where('costumer_id', '!=', '')
+            ->whereYear(DB::raw('COALESCE(orders.date_order, orders.created_at)'), Carbon::now()->year)
+            ->when($month, function ($q) use ($month) {
+                return $q->whereMonth(DB::raw('COALESCE(orders.date_order, orders.created_at)'), $month);
+            })
+            ->groupBy('costumer_id')
+            ->orderByDesc('orders_sum_total')
+            ->limit($limit)
+            ->get();
+
+        $customerIds = $topOrders->pluck('costumer_id')->map(fn ($id) => (int) $id)->filter()->values();
+        $customersById = Costumer::whereIn('id', $customerIds)->get()->keyBy('id');
+
+        $costumers = $topOrders->map(function ($top) use ($customersById) {
+            $c = $customersById->get((int) $top->costumer_id);
+            if (! $c) {
+                return null;
+            }
+            $c->orders_count = (int) $top->orders_count;
+            $c->orders_sum_total = (float) $top->orders_sum_total;
+            return $c;
+        })->filter()->values();
+
+        return view('costumer.top_costumer', compact('costumers', 'montharray', 'limit', 'month'));
 
     }
     public function viewcostumer($id)
