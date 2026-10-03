@@ -11,6 +11,7 @@ use App\Models\Orders\Order;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Carbon;
 use Livewire\Component;
 use Livewire\WithPagination;
@@ -61,13 +62,18 @@ class CostumerFollowUp extends Component
     public $defaultFollowUpDays = 14;
     public $maxFollowUps = 3;
     public $defaultCountryCallingCode = '+228';
+    public $selectedDate;
+    public $followUpScope = 'today';
 
-    protected $queryString = ['search', 'statusFilter'];
+    protected $queryString = ['search', 'statusFilter', 'selectedDate', 'followUpScope'];
 
     protected $listeners = ['showFeedbackDetails' => 'openFeedbackDetails'];
 
     public function mount(): void
     {
+        if (!$this->selectedDate) {
+            $this->selectedDate = now()->format('Y-m-d');
+        }
         $this->contactedAt = now()->format('Y-m-d\TH:i');
         $this->loadSettings();
     }
@@ -79,6 +85,46 @@ class CostumerFollowUp extends Component
 
     public function updatedStatusFilter(): void
     {
+        $this->resetPage();
+    }
+
+    public function updatedSelectedDate(): void
+    {
+        $this->resetPage();
+    }
+
+    public function updatedFollowUpScope(): void
+    {
+        $this->resetPage();
+    }
+
+    public function setFollowUpScope(string $scope): void
+    {
+        $this->followUpScope = $scope;
+        $this->resetPage();
+    }
+
+    public function selectDate(string $date): void
+    {
+        $this->selectedDate = $date;
+        $this->resetPage();
+    }
+
+    public function previousDay(): void
+    {
+        $this->selectedDate = Carbon::parse($this->selectedDate ?: now())->subDay()->format('Y-m-d');
+        $this->resetPage();
+    }
+
+    public function nextDay(): void
+    {
+        $this->selectedDate = Carbon::parse($this->selectedDate ?: now())->addDay()->format('Y-m-d');
+        $this->resetPage();
+    }
+
+    public function goToToday(): void
+    {
+        $this->selectedDate = now()->format('Y-m-d');
         $this->resetPage();
     }
 
@@ -808,9 +854,111 @@ class CostumerFollowUp extends Component
     {
         Cache::forget($this->followUpCountsCacheKey());
         Cache::forget('customer-follow-up-due-orders:'.$this->dueOrdersCutoff());
+        if ($this->selectedDate) {
+            Cache::forget('customer-follow-up-daily:'.$this->selectedDate.':'.$this->defaultFollowUpDays.':'.$this->maxFollowUps);
+        }
+        Cache::forget('customer-follow-up-daily:'.now()->format('Y-m-d').':'.$this->defaultFollowUpDays.':'.$this->maxFollowUps);
         $versionKey = 'customer-follow-up-list-version';
         Cache::add($versionKey, 1);
         Cache::increment($versionKey);
+    }
+
+    public function loadDailyActivityStats(): array
+    {
+        $date = $this->selectedDate ?: now()->format('Y-m-d');
+        $cacheKey = 'customer-follow-up-daily:'.$date.':'.$this->defaultFollowUpDays.':'.$this->maxFollowUps;
+
+        return Cache::remember($cacheKey, now()->addMinutes(2), function () use ($date) {
+            $parsedDate = Carbon::parse($date);
+            $startOfDay = $parsedDate->copy()->startOfDay();
+            $endOfDay = $parsedDate->copy()->endOfDay();
+
+            // 1. Contacts effectués à la date sélectionnée
+            $doneCount = CostumerContactHistory::whereBetween('contacted_at', [$startOfDay, $endOfDay])->count();
+
+            // 2. Clients prévus à la date sélectionnée
+            $prefIds = CostumerContactPreference::whereDate('next_follow_up_at', $date)
+                ->whereNull('do_not_contact_at')
+                ->pluck('costumer_id');
+
+            $histIds = CostumerContactHistory::whereDate('follow_up_at', $date)
+                ->pluck('costumer_id');
+
+            $orderTargetDate = $parsedDate->copy()->subDays((int) $this->defaultFollowUpDays)->format('Y-m-d');
+            $orderIds = Order::whereDate(DB::raw('COALESCE(date_order, created_at)'), $orderTargetDate)
+                ->whereNotNull('costumer_id')
+                ->where('costumer_id', '!=', '')
+                ->pluck('costumer_id');
+
+            $todayCustomerIds = $prefIds->merge($histIds)->merge($orderIds)
+                ->map(fn ($id) => (int) $id)
+                ->unique()
+                ->filter()
+                ->values()
+                ->all();
+
+            $scheduledCount = count($todayCustomerIds);
+
+            // 3. Contacts en retard (prévus avant le jour sélectionné)
+            $overduePrefIds = CostumerContactPreference::where('next_follow_up_at', '<', $startOfDay)
+                ->whereNull('do_not_contact_at')
+                ->pluck('costumer_id');
+
+            $overdueHistIds = CostumerContactHistory::where('follow_up_at', '<', $startOfDay)
+                ->pluck('costumer_id');
+
+            $dueOrderIds = $this->dueCustomerIdsFromOrders();
+
+            $overdueCustomerIds = $overduePrefIds->merge($overdueHistIds)->merge($dueOrderIds)
+                ->map(fn ($id) => (int) $id)
+                ->diff($todayCustomerIds)
+                ->unique()
+                ->filter()
+                ->values()
+                ->all();
+
+            $overdueCount = count($overdueCustomerIds);
+
+            // 4. Pourcentage d'avancement du jour
+            $progressRate = $scheduledCount > 0
+                ? min(100, (int) round(($doneCount / $scheduledCount) * 100))
+                : ($doneCount > 0 ? 100 : 0);
+
+            // 5. Historique sur 7 jours jusqu'à la date sélectionnée pour la courbe
+            $chartStart = $parsedDate->copy()->subDays(6)->startOfDay();
+            $historyCounts = CostumerContactHistory::whereBetween('contacted_at', [$chartStart, $endOfDay])
+                ->selectRaw('DATE(contacted_at) as dt, COUNT(*) as aggregate')
+                ->groupBy('dt')
+                ->pluck('aggregate', 'dt');
+
+            $chartDays = [];
+            for ($i = 6; $i >= 0; $i--) {
+                $cur = $parsedDate->copy()->subDays($i);
+                $curDateStr = $cur->format('Y-m-d');
+                $cDone = (int) ($historyCounts->get($curDateStr, 0));
+
+                $chartDays[] = [
+                    'date' => $curDateStr,
+                    'label' => ucfirst($cur->locale('fr')->isoFormat('ddd D')),
+                    'is_selected' => $curDateStr === $date,
+                    'is_today' => $curDateStr === now()->format('Y-m-d'),
+                    'done' => $cDone,
+                ];
+            }
+
+            return [
+                'date' => $date,
+                'formattedDate' => ucfirst($parsedDate->locale('fr')->isoFormat('dddd D MMMM YYYY')),
+                'isToday' => $date === now()->format('Y-m-d'),
+                'doneCount' => $doneCount,
+                'scheduledCount' => $scheduledCount,
+                'overdueCount' => $overdueCount,
+                'progressRate' => $progressRate,
+                'todayCustomerIds' => $todayCustomerIds,
+                'overdueCustomerIds' => $overdueCustomerIds,
+                'chartDays' => $chartDays,
+            ];
+        });
     }
 
     protected function loadFollowUpCounts(): array
@@ -850,23 +998,43 @@ class CostumerFollowUp extends Component
         });
     }
 
-    protected function loadFollowUpPage(): array
+    protected function loadFollowUpPage(array $dailyStats): array
     {
         $version = Cache::get('customer-follow-up-list-version', 1);
         $cacheKey = 'customer-follow-up-page:'.$version.':'.hash('sha256', serialize([
             $this->search,
             $this->statusFilter,
+            $this->selectedDate,
+            $this->followUpScope,
             (int) $this->page,
             $this->defaultFollowUpDays,
             $this->maxFollowUps,
         ]));
 
-        return Cache::remember($cacheKey, now()->addMinutes(2), function () {
+        return Cache::remember($cacheKey, now()->addMinutes(2), function () use ($dailyStats) {
             $query = Costumer::query();
 
             $this->searchQuery($query);
 
-            if ($this->statusFilter !== 'all') {
+            if ($this->statusFilter === 'to_follow_up') {
+                if ($this->followUpScope === 'today') {
+                    $ids = $dailyStats['todayCustomerIds'];
+                    if (empty($ids)) {
+                        $query->whereRaw('0 = 1');
+                    } else {
+                        $query->whereIn('costumers.id', $ids);
+                    }
+                } elseif ($this->followUpScope === 'overdue') {
+                    $ids = $dailyStats['overdueCustomerIds'];
+                    if (empty($ids)) {
+                        $query->whereRaw('0 = 1');
+                    } else {
+                        $query->whereIn('costumers.id', $ids);
+                    }
+                } else {
+                    $this->statusQuery('to_follow_up', $query);
+                }
+            } elseif ($this->statusFilter !== 'all') {
                 $this->statusQuery($this->statusFilter, $query);
             }
 
@@ -911,7 +1079,8 @@ class CostumerFollowUp extends Component
     public function render()
     {
         $counts = $this->loadFollowUpCounts();
-        [$costumers, $statuses] = $this->loadFollowUpPage();
+        $dailyStats = $this->loadDailyActivityStats();
+        [$costumers, $statuses] = $this->loadFollowUpPage($dailyStats);
 
         $selectedCostumer = null;
         if ($this->selectedCostumerId) {
@@ -928,6 +1097,7 @@ class CostumerFollowUp extends Component
         return view('livewire.costumer-follow-up', [
             'costumers' => $costumers,
             'counts' => $counts,
+            'dailyStats' => $dailyStats,
             'statuses' => $statuses,
             'history' => $this->showHistoryModal && $this->selectedCostumerId
                 ? CostumerContactHistory::with(['user', 'messageTemplate'])->where('costumer_id', $this->selectedCostumerId)->orderByDesc('contacted_at')->get()

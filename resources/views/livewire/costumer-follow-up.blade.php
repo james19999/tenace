@@ -43,7 +43,22 @@
         @endforeach
     </div>
 
+    {{-- Pilotage Journalier & Courbe d'Activité --}}
     @php
+        $chartDays = $dailyStats['chartDays'] ?? [];
+        $maxDoneVal = max(1, ...array_map(fn ($d) => $d['done'] ?? 0, $chartDays));
+        $chartPoints = collect($chartDays)->values()->map(fn ($d, $i) => [
+            'x' => 30 + ($i * 50),
+            'y' => 125 - ((($d['done'] ?? 0) / $maxDoneVal) * 85),
+            'done' => $d['done'] ?? 0,
+            'label' => $d['label'] ?? '',
+            'date' => $d['date'] ?? '',
+            'is_selected' => $d['is_selected'] ?? false,
+            'is_today' => $d['is_today'] ?? false,
+        ]);
+        $chartLine = $chartPoints->map(fn ($p) => $p['x'].','.$p['y'])->implode(' ');
+        $chartArea = 'M '.$chartPoints->first()['x'].' 135 L '.$chartLine.' L '.$chartPoints->last()['x'].' 135 Z';
+
         $feedbackCounts = $counts['feedback'] ?? ['positive' => 0, 'neutral' => 0, 'negative' => 0];
         $feedbackTotal = array_sum($feedbackCounts);
         $sentimentValues = [
@@ -52,50 +67,108 @@
             'negative' => (int) ($feedbackCounts['negative'] ?? 0),
         ];
         $feedbackMax = max($sentimentValues ?: [0]);
-        $chartScale = max(1, $feedbackMax);
-        $chartPoints = collect($sentimentValues)->values()->map(fn ($value, $index) => [
-            'x' => 48 + ($index * 132),
-            'y' => 126 - (($value / $chartScale) * 96),
-            'value' => $value,
-        ]);
-        $chartLine = $chartPoints->map(fn ($point) => $point['x'].','.$point['y'])->implode(' ');
-        $chartArea = 'M '.$chartPoints->first()['x'].' 126 L '.$chartLine.' L '.$chartPoints->last()['x'].' 126 Z';
     @endphp
+
     <div class="card shadow my-3">
-        <div class="card-header bg-white d-flex justify-content-between align-items-center flex-wrap">
-            <h5 class="text-uppercase text-muted mb-0 card-title">Avis des clients</h5>
-            <span class="text-muted">{{ $feedbackTotal }} réponse(s) enregistrée(s)</span>
+        <div class="card-header bg-white d-flex justify-content-between align-items-center flex-wrap" style="gap: 10px;">
+            <div class="d-flex align-items-center flex-wrap" style="gap: 8px;">
+                <h5 class="text-uppercase text-muted mb-0 card-title">Activité des relances</h5>
+                @if ($dailyStats['isToday'])
+                    <span class="badge badge-success px-2 py-1">Aujourd'hui</span>
+                @else
+                    <span class="badge badge-info px-2 py-1">Historique</span>
+                @endif
+                <span class="font-weight-bold ml-1 text-dark">{{ $dailyStats['formattedDate'] }}</span>
+            </div>
+            <div class="d-flex align-items-center flex-wrap" style="gap: 6px;">
+                <div class="btn-group btn-group-sm" role="group">
+                    <button type="button" class="btn btn-outline-secondary" wire:click="previousDay" title="Jour précédent">
+                        <span class="material-icons" style="font-size: 16px; vertical-align: middle;">chevron_left</span>
+                    </button>
+                    <button type="button" class="btn {{ $dailyStats['isToday'] ? 'btn-primary' : 'btn-outline-primary' }}" wire:click="goToToday">
+                        Aujourd'hui
+                    </button>
+                    <button type="button" class="btn btn-outline-secondary" wire:click="nextDay" title="Jour suivant">
+                        <span class="material-icons" style="font-size: 16px; vertical-align: middle;">chevron_right</span>
+                    </button>
+                </div>
+                <input type="date" class="form-control form-control-sm" style="width: 140px; display: inline-block;" wire:model="selectedDate" title="Choisir une date">
+            </div>
         </div>
         <div class="card-body">
+            {{-- 4 Cartes KPI du jour --}}
+            <div class="row mb-3">
+                <div class="col-6 col-md-3 mb-2">
+                    <div class="p-2 border rounded bg-light text-center h-100" wire:click="setFollowUpScope('today')" style="cursor: pointer;">
+                        <small class="text-uppercase text-muted font-weight-bold d-block">À contacter ce jour</small>
+                        <span class="h3 font-weight-bold text-primary mb-0">{{ $dailyStats['scheduledCount'] }}</span>
+                        <small class="d-block text-muted">Prévus pour cette date</small>
+                    </div>
+                </div>
+                <div class="col-6 col-md-3 mb-2">
+                    <div class="p-2 border rounded bg-light text-center h-100">
+                        <small class="text-uppercase text-muted font-weight-bold d-block">Contacts réalisés</small>
+                        <span class="h3 font-weight-bold text-success mb-0">{{ $dailyStats['doneCount'] }}</span>
+                        <small class="d-block text-muted">Effectués à cette date</small>
+                    </div>
+                </div>
+                <div class="col-6 col-md-3 mb-2">
+                    <div class="p-2 border rounded bg-light text-center h-100" wire:click="setFollowUpScope('overdue')" style="cursor: pointer;">
+                        <small class="text-uppercase text-muted font-weight-bold d-block">Contacts en retard</small>
+                        <span class="h3 font-weight-bold {{ $dailyStats['overdueCount'] > 0 ? 'text-danger' : 'text-muted' }} mb-0">{{ $dailyStats['overdueCount'] }}</span>
+                        <small class="d-block text-muted">Échus avant cette date</small>
+                    </div>
+                </div>
+                <div class="col-6 col-md-3 mb-2">
+                    <div class="p-2 border rounded bg-light text-center h-100">
+                        <small class="text-uppercase text-muted font-weight-bold d-block">Avancement du jour</small>
+                        <span class="h3 font-weight-bold text-info mb-0">{{ $dailyStats['progressRate'] }}%</span>
+                        <div class="progress mt-1" style="height: 6px;">
+                            <div class="progress-bar bg-info" style="width: {{ $dailyStats['progressRate'] }}%"></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
             <div class="row align-items-center">
-                <div class="col-12 col-lg-5 mb-4 mb-lg-0">
+                {{-- Courbe des 7 derniers jours jusqu'à la date --}}
+                <div class="col-12 col-lg-7 mb-3 mb-lg-0">
+                    <div class="d-flex justify-content-between align-items-center mb-1">
+                        <span class="small font-weight-bold text-muted">Courbe des contacts réalisés (7 derniers jours)</span>
+                        <small class="text-muted">Cliquez sur un jour pour l'activer</small>
+                    </div>
                     <div class="border rounded p-2 bg-light">
-                        <svg viewBox="0 0 360 180" role="img" aria-label="Courbe des avis positifs, neutres et négatifs" style="display:block;width:100%;height:auto;min-height:170px">
-                            <line x1="34" y1="30" x2="34" y2="126" stroke="#dee2e6" />
-                            <line x1="34" y1="126" x2="344" y2="126" stroke="#dee2e6" />
-                            <line x1="34" y1="78" x2="344" y2="78" stroke="#e9ecef" stroke-dasharray="4 4" />
-                            <path d="{{ $chartArea }}" fill="rgba(0,123,255,.10)" />
-                            <polyline points="{{ $chartLine }}" fill="none" stroke="#007bff" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" />
-                            @foreach ($chartPoints as $index => $point)
-                                <circle cx="{{ $point['x'] }}" cy="{{ $point['y'] }}" r="5" fill="{{ ['#28a745', '#6c757d', '#dc3545'][$index] }}" stroke="#fff" stroke-width="2" />
-                                <text x="{{ $point['x'] }}" y="{{ max(18, $point['y'] - 10) }}" text-anchor="middle" font-size="12" fill="#495057">{{ $point['value'] }}</text>
+                        <svg viewBox="0 0 360 180" role="img" aria-label="Courbe d'activité des contacts" style="display:block;width:100%;height:auto;min-height:165px">
+                            <line x1="20" y1="30" x2="20" y2="135" stroke="#dee2e6" />
+                            <line x1="20" y1="135" x2="345" y2="135" stroke="#dee2e6" />
+                            <line x1="20" y1="82" x2="345" y2="82" stroke="#e9ecef" stroke-dasharray="4 4" />
+                            <path d="{{ $chartArea }}" fill="rgba(126, 22, 21, 0.08)" />
+                            <polyline points="{{ $chartLine }}" fill="none" stroke="#7e1615" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" />
+                            @foreach ($chartPoints as $point)
+                                <g wire:click="selectDate('{{ $point['date'] }}')" style="cursor: pointer;">
+                                    <circle cx="{{ $point['x'] }}" cy="{{ $point['y'] }}" r="{{ $point['is_selected'] ? '7' : '5' }}" fill="{{ $point['is_selected'] ? '#7e1615' : '#007bff' }}" stroke="#fff" stroke-width="{{ $point['is_selected'] ? '3' : '2' }}" />
+                                    <text x="{{ $point['x'] }}" y="{{ max(18, $point['y'] - 10) }}" text-anchor="middle" font-size="11" font-weight="{{ $point['is_selected'] ? 'bold' : 'normal' }}" fill="{{ $point['is_selected'] ? '#7e1615' : '#495057' }}">{{ $point['done'] }}</text>
+                                    <text x="{{ $point['x'] }}" y="153" text-anchor="middle" font-size="10" font-weight="{{ $point['is_selected'] ? 'bold' : 'normal' }}" fill="{{ $point['is_selected'] ? '#7e1615' : '#6c757d' }}">{{ $point['label'] }}</text>
+                                </g>
                             @endforeach
-                            <text x="48" y="153" text-anchor="middle" font-size="11" fill="#28a745">Positifs</text>
-                            <text x="180" y="153" text-anchor="middle" font-size="11" fill="#6c757d">Neutres</text>
-                            <text x="312" y="153" text-anchor="middle" font-size="11" fill="#dc3545">Négatifs</text>
                         </svg>
                     </div>
                 </div>
-                <div class="col-12 col-lg-7">
+
+                {{-- Avis clients / retours --}}
+                <div class="col-12 col-lg-5">
+                    <div class="d-flex justify-content-between align-items-center mb-2">
+                        <span class="small font-weight-bold text-muted">Avis recueillis ({{ $feedbackTotal }})</span>
+                    </div>
                     @foreach (['positive' => ['Positifs', 'success'], 'neutral' => ['Neutres', 'secondary'], 'negative' => ['Négatifs', 'danger']] as $sentimentKey => [$sentimentLabel, $sentimentColor])
                         @php $sentimentCount = $feedbackCounts[$sentimentKey] ?? 0; @endphp
-                        <button type="button" class="btn btn-link text-left text-decoration-none p-0 d-block w-100 mb-3" wire:click="openFeedbackDetails('{{ $sentimentKey }}')" aria-label="Voir les avis {{ strtolower($sentimentLabel) }}">
-                            <span class="d-flex justify-content-between mb-1"><span>{{ $sentimentLabel }}</span><strong>{{ $sentimentCount }}</strong></span>
-                            <span class="progress" style="height: 14px"><span class="progress-bar bg-{{ $sentimentColor }}" role="progressbar" style="width: {{ $feedbackMax ? round($sentimentCount / $feedbackMax * 100) : 0 }}%" aria-valuenow="{{ $sentimentCount }}" aria-valuemin="0" aria-valuemax="{{ $feedbackMax }}"></span></span>
+                        <button type="button" class="btn btn-link text-left text-decoration-none p-0 d-block w-100 mb-2" wire:click="openFeedbackDetails('{{ $sentimentKey }}')" aria-label="Voir les avis {{ strtolower($sentimentLabel) }}">
+                            <span class="d-flex justify-content-between mb-1 small"><span>{{ $sentimentLabel }}</span><strong>{{ $sentimentCount }}</strong></span>
+                            <span class="progress" style="height: 10px"><span class="progress-bar bg-{{ $sentimentColor }}" role="progressbar" style="width: {{ $feedbackMax ? round($sentimentCount / $feedbackMax * 100) : 0 }}%"></span></span>
                         </button>
                     @endforeach
                     @if (($feedbackCounts['unclassified'] ?? 0) > 0)
-                        <small class="text-muted">{{ $feedbackCounts['unclassified'] }} réponse(s) sans tonalité renseignée.</small>
+                        <small class="text-muted d-block mt-1">{{ $feedbackCounts['unclassified'] }} avis sans tonalité renseignée.</small>
                     @endif
                 </div>
             </div>
@@ -287,6 +360,24 @@
                     </select>
                 </div>
             </div>
+
+            @if ($statusFilter === 'to_follow_up')
+                <div class="mt-3 pt-2 border-top d-flex align-items-center flex-wrap" style="gap: 8px;">
+                    <span class="small font-weight-bold text-muted mr-1">Périmètre :</span>
+                    <button type="button" wire:click="setFollowUpScope('today')" class="btn btn-sm {{ $followUpScope === 'today' ? 'btn-primary' : 'btn-outline-primary' }}">
+                        <span class="material-icons mr-1" style="font-size: 15px; vertical-align: middle;">today</span>
+                        Du jour ({{ $dailyStats['scheduledCount'] }})
+                    </button>
+                    <button type="button" wire:click="setFollowUpScope('overdue')" class="btn btn-sm {{ $followUpScope === 'overdue' ? 'btn-danger' : 'btn-outline-danger' }}">
+                        <span class="material-icons mr-1" style="font-size: 15px; vertical-align: middle;">warning</span>
+                        En retard ({{ $dailyStats['overdueCount'] }})
+                    </button>
+                    <button type="button" wire:click="setFollowUpScope('all')" class="btn btn-sm {{ $followUpScope === 'all' ? 'btn-secondary' : 'btn-outline-secondary' }}">
+                        <span class="material-icons mr-1" style="font-size: 15px; vertical-align: middle;">all_inclusive</span>
+                        Toutes les relances ({{ $counts['to_follow_up'] }})
+                    </button>
+                </div>
+            @endif
         </div>
         <div class="table-responsive">
             <table class="table table-hover mb-0">
