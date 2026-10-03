@@ -151,13 +151,51 @@ class CostumerController extends Controller
     }
     public function viewcostumer($id)
     {
-        //
-                //
-                $costumers= Costumer::where('id',$id)->withCount('orders')
-                ->withSum('orders','total')
-                ->first();
+        $costumers = Costumer::where('id', $id)
+            ->withCount('orders')
+            ->withSum('orders', 'total')
+            ->with([
+                'orders' => fn ($q) => $q->orderByDesc('id'),
+                'orders.orderItems.product',
+            ])
+            ->firstOrFail();
 
-        return view('costumer.view_costomer',compact('costumers'));
+        $purchasedProducts = collect();
+        foreach ($costumers->orders as $order) {
+            foreach ($order->orderItems as $item) {
+                $productId = $item->product_id ?? ('item_'.$item->id);
+                $productName = $item->product->name ?? 'Produit personnalisé';
+                $productImg = $item->product->img ?? null;
+                $unitPrice = $item->price ?? ($item->product->price ?? 0);
+                $lineTotal = $unitPrice * $item->quantity;
+
+                if (!$purchasedProducts->has($productId)) {
+                    $purchasedProducts->put($productId, [
+                        'product_id' => $item->product_id,
+                        'name' => $productName,
+                        'img' => $productImg,
+                        'unit_price' => $unitPrice,
+                        'total_quantity' => 0,
+                        'total_amount' => 0,
+                        'orders_count' => 0,
+                        'last_purchased_at' => $order->created_at,
+                    ]);
+                }
+
+                $curr = $purchasedProducts->get($productId);
+                $curr['total_quantity'] += (int) $item->quantity;
+                $curr['total_amount'] += (float) $lineTotal;
+                $curr['orders_count'] += 1;
+                if ($order->created_at && (! $curr['last_purchased_at'] || $order->created_at > $curr['last_purchased_at'])) {
+                    $curr['last_purchased_at'] = $order->created_at;
+                }
+                $purchasedProducts->put($productId, $curr);
+            }
+        }
+
+        $purchasedProducts = $purchasedProducts->sortByDesc('total_quantity')->values();
+
+        return view('costumer.view_costomer', compact('costumers', 'purchasedProducts'));
     }
 
     /**
