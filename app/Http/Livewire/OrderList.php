@@ -41,6 +41,11 @@ public $typeOrderId;
         $this->selectedDate = now()->toDateString();
     }
 
+    public function updatedSelectedDate()
+    {
+        $this->resetPage();
+    }
+
     public function openAssignModal($orderId)
 {
     $order = Order::findOrFail($orderId);
@@ -263,8 +268,7 @@ public function deleteOrder()
             ->selectRaw('COUNT(*) as total_orders')
             ->groupByRaw('DATE(date_order)')
             ->orderBy('date')
-            ->where('status','ordered')
-            ->where('type','PR')
+            ->where('status', 'ordered')
             ->get();
 
 
@@ -278,7 +282,8 @@ public function deleteOrder()
             ->with([
                 'costumer',
                 'createduser',
-                'user'
+                'user',
+                'orderItems.product',
             ])
             ->whereDate('date_order', $this->selectedDate)
             ->orderBy('date_order')
@@ -295,8 +300,7 @@ public function deleteOrder()
 
         $selectedDateCount = Order::query()
             ->whereDate('date_order', $this->selectedDate)
-              ->where('status','ordered')
-            ->where('type','PR')
+            ->where('status', 'ordered')
             ->count();
 
 
