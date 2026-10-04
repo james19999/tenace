@@ -117,6 +117,9 @@ class DashboarController extends Controller
         $Orderdelivered = Order::where('status', 'delivered')
         ->whereDate('created_at',Carbon::today())
         ->count();
+        $Ordercanceled = Order::where('status', 'canceled')
+        ->whereDate('created_at',Carbon::today())
+        ->count();
         $Orderall = Order::
         whereDate('created_at',Carbon::today())->
         count();
@@ -149,7 +152,7 @@ class DashboarController extends Controller
             $totalfond=$this->totalfond();
             $totalepargn=$this->totalepargne();
 
-        return view('dashboard.dashboard',compact('rupture', 'totalepargn', 'totalpubs', 'totalimpre', 'totalfond', 'totalCommandes','expensive','totalOrdersThisWeek','chart1','chart2', 'chart3','chart4', 'orders','Ordered', 'Orderdelivered','Orderall', 'OrderdeAmount'));
+        return view('dashboard.dashboard',compact('rupture', 'totalepargn', 'totalpubs', 'totalimpre', 'totalfond', 'totalCommandes','expensive','totalOrdersThisWeek','chart1','chart2', 'chart3','chart4', 'orders','Ordered', 'Orderdelivered', 'Ordercanceled', 'Orderall', 'OrderdeAmount'));
      }
 
 
@@ -316,7 +319,7 @@ class DashboarController extends Controller
         }
 
         $request->validate([
-            'user_type' => ['required', 'in:ADMINUSER,CALLCENTER,VDS,MNG,LVS,PT,CSA,User'],
+            'user_type' => ['required', 'in:ADMINUSER,CALLCENTER,VDS,MNG,SCR,LVS,PT,CSA,User'],
         ]);
 
         $user = User::findOrFail($id);

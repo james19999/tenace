@@ -63,12 +63,14 @@
                         <div class="form-group">
                         <label for="password-confirm">Type:</label>
 
-                         <select name="user_type" id="" class="form-control">
-                             <option value="LVS">livreur</option>
+                         <select name="user_type" id="" class="form-control" required>
+                             <option value="LVS">Livreur</option>
                              <option value="PT">Partenaire</option>
                              <option value="VDS">Vendeur</option>
                              <option value="CSA">Caissier</option>
-                             <option value="MNG">Manageur & Secrétaire</option>
+                             <option value="MNG">Manager</option>
+                             <option value="SCR">Secrétaire</option>
+                             <option value="CALLCENTER">SAV</option>
                              <option value="ADMINUSER">Administrateur</option>
                          </select>
                         </div>

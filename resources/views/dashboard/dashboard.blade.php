@@ -4,72 +4,59 @@
 @section('content')
 
     <div class="row">
-        @if (Auth::user()->user_type == 'ADMINUSER')
-            <div class="col-12 col-sm-6 col-md-6 col-lg-3">
-                <div class="card shadow">
-                    <div class="card-body">
-                        <div class="row">
-                            <div class="col">
-                                <h5 class="text-uppercase text-muted mb-0 card-title">Total des commandes </h5><span
-                                    style="font-size: 130%" class="h1 font-weight-bold mb-0">{{ $OrderdeAmount }} XOF</span>
-                            </div>
-                            <div class="col-auto col">
-                                <div>
-                                    <button class="btn btn-transparent-primary btn-lg btn-circle">
-
-                                        <img src="{{ asset('assets/images/money.png') }}" width="40" height="40"
-                                            alt="" srcset="">
-
-                                    </button>
-
-
+        @if (in_array(Auth::user()->user_type, ['ADMINUSER', 'MNG', 'SCR']))
+            @if (Auth::user()->user_type == 'ADMINUSER')
+                <div class="col-12 col-sm-6 col-md-6 col-lg-3">
+                    <div class="card shadow">
+                        <div class="card-body">
+                            <div class="row">
+                                <div class="col">
+                                    <h5 class="text-uppercase text-muted mb-0 card-title">Total des commandes </h5><span
+                                        style="font-size: 130%" class="h1 font-weight-bold mb-0">{{ $OrderdeAmount }} XOF</span>
+                                </div>
+                                <div class="col-auto col">
+                                    <div>
+                                        <button class="btn btn-transparent-primary btn-lg btn-circle">
+                                            <img src="{{ asset('assets/images/money.png') }}" width="40" height="40"
+                                                alt="" srcset="">
+                                        </button>
+                                    </div>
                                 </div>
                             </div>
                         </div>
-                        {{-- <p class="mt-3 mb-0 text-sm">
-
-                    <span class="text-nowrap">this month</span>
-                    <span class="text-success float-right ml-2"> <i class="fa fa-arrow-up"></i>
-                        8%</span>
-                </p> --}}
                     </div>
                 </div>
-            </div>
-            <div class="col-12 col-sm-6 col-md-6 col-lg-3">
-                <div class="card shadow">
-                    <div class="card-body">
-                        <div class="row">
-                            <div class="col">
-                                <h5 class="text-uppercase text-muted mb-0 card-title">Total des commandes</h5><span
-                                    style="font-size: 130%" class="h1 font-weight-bold mb-0">{{ $Orderall }}</span>
-                            </div>
-                            <div class="col-auto col">
-                                <div>
-                                    <button class="btn btn-transparent-primary btn-lg btn-circle">
+            @endif
 
-                                        <img src="{{ asset('assets/images/ord.png') }}" width="40" height="40"
-                                            alt="" srcset="">
-
-                                    </button>
+            @if (in_array(Auth::user()->user_type, ['ADMINUSER', 'MNG']))
+                <div class="col-12 col-sm-6 col-md-6 col-lg-3">
+                    <div class="card shadow">
+                        <div class="card-body">
+                            <div class="row">
+                                <div class="col">
+                                    <h5 class="text-uppercase text-muted mb-0 card-title">Total des commandes</h5><span
+                                        style="font-size: 130%" class="h1 font-weight-bold mb-0">{{ $Orderall }}</span>
+                                </div>
+                                <div class="col-auto col">
+                                    <div>
+                                        <button class="btn btn-transparent-primary btn-lg btn-circle">
+                                            <img src="{{ asset('assets/images/ord.png') }}" width="40" height="40"
+                                                alt="" srcset="">
+                                        </button>
+                                    </div>
                                 </div>
                             </div>
                         </div>
-                        {{-- <p class="mt-3 mb-0 text-sm">
-
-                    <span class="text-nowrap ">since last month</span>
-                    <span class="text-success float-right ml-2">
-                        <i class="fa fa-arrow-up"></i>
-                        3.48%</span>
-                </p> --}}
                     </div>
                 </div>
-            </div>
+            @endif
+
             <div class="col-12 col-sm-6 col-md-6 col-lg-3">
                 <div class="card shadow">
                     <div class="card-body">
                         <div class="row">
                             <div class="col">
-                                <h5 class="text-uppercase text-muted mb-0 card-title">Commades en cours</h5><span
+                                <h5 class="text-uppercase text-muted mb-0 card-title">Commandes en cours</h5><span
                                     style="font-size: 130%" class="h1 font-weight-bold mb-0">{{ $Ordered }}</span>
                             </div>
                             <div class="col-auto col">
@@ -77,16 +64,10 @@
                                     <button class="btn btn-transparent-primary btn-lg btn-circle">
                                         <img src="{{ asset('assets/images/ords.png') }}" width="40" height="40"
                                             alt="" srcset="">
-
                                     </button>
                                 </div>
                             </div>
                         </div>
-                        {{-- <p class="mt-3 mb-0 text-sm">
-                    <span class="text-nowrap">since last month</span>
-                    <span class="text-danger float-right ml-2"> <i class="fa fa-arrow-down"></i>
-                        3.48%</span>
-                </p> --}}
                     </div>
                 </div>
             </div>
@@ -95,7 +76,7 @@
                     <div class="card-body">
                         <div class="row">
                             <div class="col">
-                                <h5 class="text-uppercase text-muted mb-0 card-title">Commades livrées</h5><span
+                                <h5 class="text-uppercase text-muted mb-0 card-title">Commandes livrées</h5><span
                                     style="font-size: 130%" class="h1 font-weight-bold mb-0">{{ $Orderdelivered }}</span>
                             </div>
                             <div class="col-auto col">
@@ -107,16 +88,31 @@
                                 </div>
                             </div>
                         </div>
-                        {{-- <p class="mt-3 mb-0 text-sm">
-                    <span class="text-nowrap">since last month</span>
-                    <span class="text-danger float-right ml-2"> <i class="fa fa-arrow-down"></i>
-                        3.48%</span>
-                </p> --}}
+                    </div>
+                </div>
+            </div>
+            <div class="col-12 col-sm-6 col-md-6 col-lg-3">
+                <div class="card shadow">
+                    <div class="card-body">
+                        <div class="row">
+                            <div class="col">
+                                <h5 class="text-uppercase text-muted mb-0 card-title">Commandes annulées</h5><span
+                                    style="font-size: 130%" class="h1 font-weight-bold mb-0 text-danger">{{ $Ordercanceled }}</span>
+                            </div>
+                            <div class="col-auto col">
+                                <div>
+                                    <button class="btn btn-transparent-danger btn-lg btn-circle">
+                                        <span class="material-icons text-danger" style="font-size:32px;vertical-align:middle;">cancel</span>
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
                     </div>
                 </div>
             </div>
 
 
+            @if (Auth::user()->user_type == 'ADMINUSER')
             <div class="col-12 col-sm-6 col-md-6 col-lg-3">
                 <div class="card shadow">
                     <div class="card-body">
@@ -161,13 +157,6 @@
                                 </div>
                             </div>
                         </div>
-                        {{-- <p class="mt-3 mb-0 text-sm">
-
-                    <span class="text-nowrap ">since last month</span>
-                    <span class="text-success float-right ml-2">
-                        <i class="fa fa-arrow-up"></i>
-                        3.48%</span>
-                </p> --}}
                     </div>
                 </div>
             </div>
@@ -190,14 +179,10 @@
                                 </div>
                             </div>
                         </div>
-                        {{-- <p class="mt-3 mb-0 text-sm">
-                    <span class="text-nowrap">since last month</span>
-                    <span class="text-danger float-right ml-2"> <i class="fa fa-arrow-down"></i>
-                        3.48%</span>
-                </p> --}}
                     </div>
                 </div>
             </div>
+            @endif
 
             <div class="col-12 col-sm-6 col-md-6 col-lg-3">
                 <a href="{{ route('rupture') }}">
@@ -224,6 +209,7 @@
                 </a>
             </div>
 
+            @if (Auth::user()->user_type == 'ADMINUSER')
             <div class="col-12 col-sm-6 col-md-6 col-lg-3">
                 <a href="{{ route('pub-list') }}">
 
@@ -367,6 +353,7 @@
                     </div>
                 </div>
             </div>
+            @endif
 
             <div class="col-lg-12">
                 <div class="card shadow">
@@ -418,7 +405,7 @@
                                             <td style="color: black " class=" pull-right">
 
                                                 <div class="btn-group btn-group-justified">
-                                                    @if (Auth::user()->user_type == 'ADMINUSER')
+                                                    @if (in_array(Auth::user()->user_type, ['ADMINUSER', 'MNG', 'SCR']))
                                                         <a href="{{ route('ordershow', $order) }}" style="color: white"
                                                             type="button" class="btn btn-success">
                                                             <i class="material-icons f-16">visibility</i>Details</a>
@@ -453,6 +440,7 @@
         @endif
 
 
+        @if (Auth::user()->user_type == 'ADMINUSER')
         {!! $chart1->renderChartJsLibrary() !!}
 
         {!! $chart1->renderJs() !!}
@@ -465,6 +453,7 @@
 
         {!! $chart4->renderChartJsLibrary() !!}
         {!! $chart4->renderJs() !!}
+        @endif
 
     </div>
 

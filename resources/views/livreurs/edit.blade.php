@@ -65,14 +65,15 @@
                         <div class="form-group">
                         <label for="password-confirm">Type:</label>
 
-                         <select name="user_type" id="" class="form-control">
-
-                             <option value="LVS">livreur</option>
-                             <option value="PT">Partenaire</option>
-                             <option value="VDS">Vendeur</option>
-                             <option value="CSA">Caissier</option>
-                             <option value="MNG">Manageur & Secrétaire</option>
-                             <option value="ADMINUSER">Administrateur</option>
+                         <select name="user_type" id="" class="form-control" required>
+                             <option value="LVS" {{ $user->user_type == 'LVS' ? 'selected' : '' }}>Livreur</option>
+                             <option value="PT" {{ $user->user_type == 'PT' ? 'selected' : '' }}>Partenaire</option>
+                             <option value="VDS" {{ $user->user_type == 'VDS' ? 'selected' : '' }}>Vendeur</option>
+                             <option value="CSA" {{ $user->user_type == 'CSA' ? 'selected' : '' }}>Caissier</option>
+                             <option value="MNG" {{ $user->user_type == 'MNG' ? 'selected' : '' }}>Manager</option>
+                             <option value="SCR" {{ $user->user_type == 'SCR' ? 'selected' : '' }}>Secrétaire</option>
+                             <option value="CALLCENTER" {{ $user->user_type == 'CALLCENTER' ? 'selected' : '' }}>SAV</option>
+                             <option value="ADMINUSER" {{ $user->user_type == 'ADMINUSER' ? 'selected' : '' }}>Administrateur</option>
                          </select>
                         </div>
 

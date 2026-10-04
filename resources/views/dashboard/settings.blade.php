@@ -214,12 +214,13 @@
                                     @php
                                         $roleLabels = [
                                             'ADMINUSER'   => ['label' => 'Admin',          'class' => 'badge-danger'],
+                                            'MNG'         => ['label' => 'Manager',        'class' => 'badge-warning text-dark'],
+                                            'SCR'         => ['label' => 'Secrétaire',     'class' => 'badge-info'],
                                             'CALLCENTER'  => ['label' => 'SAV',            'class' => 'badge-primary'],
                                             'VDS'         => ['label' => 'Vendeur',        'class' => 'badge-success'],
-                                            'MNG'         => ['label' => 'Manager',        'class' => 'badge-warning text-dark'],
                                             'LVS'         => ['label' => 'Livreur',        'class' => 'badge-info'],
                                             'PT'          => ['label' => 'Partenaire',     'class' => 'badge-secondary'],
-                                            'CSA'         => ['label' => 'CSA',            'class' => 'badge-dark'],
+                                            'CSA'         => ['label' => 'Caissier',       'class' => 'badge-dark'],
                                             'User'        => ['label' => 'Utilisateur',    'class' => 'badge-light border'],
                                         ];
                                         $badge = $roleLabels[$u->user_type] ?? ['label' => $u->user_type, 'class' => 'badge-secondary'];
