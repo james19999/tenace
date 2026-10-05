@@ -40,7 +40,7 @@
 
                     <img src="{{ asset('assets/images/tena.png') }}" height="50" alt="Moss Logo" class="logo justify-content-center d-flex mx-auto mb-3">
                     @endforelse
-                    <form    method="POST" action="{{ route('login') }}" class="p-3" >
+                    <form id="login-form" method="POST" action="{{ route('login') }}" class="p-3">
                          @csrf
                         <div class="form-group">
                             <input  type="email" class="form-control @error('email') is-invalid @enderror" name="email" value="{{ old('email') }}" placeholder="Email"required autocomplete="email" autofocus>
@@ -64,8 +64,9 @@
                             <label class="form-check-label" for="exampleCheck1">Voir le mot de passe</label>
                         </div>
 
-                        <button class="btn btn-primary btn-block my-4">
-                            Connectez-vous
+                        <button id="login-submit" type="submit" class="btn btn-primary btn-block my-4">
+                            <span id="login-spinner" class="spinner-border spinner-border-sm mr-2 d-none" role="status" aria-hidden="true"></span>
+                            <span id="login-submit-label">Connectez-vous</span>
                         </button>
                         <hr style="padding-top: 8px">
                         <a href="https://digital-services-home.com/" style="color: black" class="d-block text-center">@ DIGITAL SERVCICES</a>
@@ -89,6 +90,30 @@
         showPasswordCheckbox.addEventListener('change', function() {
             // If the checkbox is checked, show the password; otherwise, hide it
             passwordInput.type = this.checked ? 'text' : 'password';
+        });
+
+        const loginForm = document.getElementById('login-form');
+        const loginButton = document.getElementById('login-submit');
+        const loginSpinner = document.getElementById('login-spinner');
+        const loginButtonLabel = document.getElementById('login-submit-label');
+
+        loginForm.addEventListener('submit', function (event) {
+            event.preventDefault();
+
+            if (loginButton.dataset.submitting === 'true') {
+                return;
+            }
+
+            loginButton.dataset.submitting = 'true';
+            loginButton.disabled = true;
+            loginSpinner.classList.remove('d-none');
+            loginSpinner.style.display = 'inline-block';
+            loginButtonLabel.textContent = 'Connexion en cours...';
+
+            // Keep the loading state visible before navigating to the login request.
+            window.setTimeout(function () {
+                HTMLFormElement.prototype.submit.call(loginForm);
+            }, 450);
         });
     </script>
 

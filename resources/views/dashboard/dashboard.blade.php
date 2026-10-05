@@ -781,11 +781,8 @@
         @if (Auth::user()->user_type == 'ADMINUSER')
             {!! $chart1->renderChartJsLibrary() !!}
             {!! $chart1->renderJs() !!}
-            {!! $chart2->renderChartJsLibrary() !!}
             {!! $chart2->renderJs() !!}
-            {!! $chart3->renderChartJsLibrary() !!}
             {!! $chart3->renderJs() !!}
-            {!! $chart4->renderChartJsLibrary() !!}
             {!! $chart4->renderJs() !!}
         @endif
 

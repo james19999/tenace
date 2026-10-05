@@ -32,127 +32,132 @@ class DashboarController extends Controller
     }
      public function dashboard () {
 
-        $orders = Order::orderby('created_at', 'DESC')
-        ->whereDate('created_at',Carbon::today())
-        ->where('brouillon',1)
-        ->get();
+        $orders = Order::with(['costumer', 'user'])
+            ->orderby('created_at', 'DESC')
+            ->whereDate('created_at', Carbon::today())
+            ->where('brouillon', 1)
+            ->get();
 
-        $chart_options = [
-            'chart_title' => 'Rapport mensuels',
-            'report_type' => 'group_by_date',
-            'model' => 'App\Models\Orders\Order',
-            'group_by_field' => 'created_at',
-            'group_by_period' => 'month',
-            'chart_type' => 'bar',
-            'aggregate_function' => 'sum',
-            'aggregate_field' => 'total',
-            'where_raw' => "status='delivered' ",
-        ];
+        $isAdmin = Auth::check() && Auth::user()->user_type === 'ADMINUSER';
 
-        $chart1 = new LaravelChart($chart_options);
+        if ($isAdmin) {
+            $chart_options = [
+                'chart_title' => 'Rapport mensuels',
+                'report_type' => 'group_by_date',
+                'model' => 'App\Models\Orders\Order',
+                'group_by_field' => 'created_at',
+                'group_by_period' => 'month',
+                'chart_type' => 'bar',
+                'aggregate_function' => 'sum',
+                'aggregate_field' => 'total',
+                'where_raw' => "status='delivered' ",
+            ];
 
+            $chart1 = new LaravelChart($chart_options);
 
+            $settings1 = [
+                'chart_title'           => 'Clients',
+                'chart_type'            => 'pie',
+                'report_type'           => 'group_by_date',
+                'model'                 => 'App\Models\Costumer',
+                'group_by_field'        => 'created_at',
+                'group_by_period'       => 'day',
+                'aggregate_function'    => 'count',
+                'filter_field'          => 'created_at',
+                'filter_days'           => '30',
+                // 'where_raw' => "usertype='user' ",
+            ];
 
-        $settings1 = [
-            'chart_title'           => 'Clients',
-            'chart_type'            => 'pie',
-            'report_type'           => 'group_by_date',
-            'model'                 => 'App\Models\Costumer',
-            'group_by_field'        => 'created_at',
-            'group_by_period'       => 'day',
-            'aggregate_function'    => 'count',
-            'filter_field'          => 'created_at',
-            'filter_days'           => '30',
-            // 'where_raw' => "usertype='user' ",
+            $chart2 = new LaravelChart($settings1);
 
+            $charts = [
+                'chart_title' => 'Rapport périodique',
+                'chart_type' => 'line',
+                'report_type' => 'group_by_date',
+                'model' => 'App\Models\Orders\Order',
+                'group_by_field' => 'created_at',
+                'group_by_period' => 'day',
+                'aggregate_function' => 'sum',
+                'aggregate_field' => 'total',
+                'where_raw' => "status='delivered' ",
+                'filter_field' => 'created_at',
+                'filter_days' => 30, // show only transactions for last 30 days
+                'filter_period' => 'week', // show only transactions for this week
+            ];
+            $chart3 = new LaravelChart($charts);
 
-        ];
+            $chart_options_annuel = [
+                'chart_title' => 'Rapport annuel',
+                'report_type' => 'group_by_date',
+                'model' => 'App\Models\Orders\Order',
+                'group_by_field' => 'created_at',
+                'group_by_period' => 'year',
+                'chart_type' => 'bar',
+                'aggregate_function' => 'sum',
+                'aggregate_field' => 'total',
+                'where_raw' => "status='delivered' ",
+            ];
 
-        $chart2 = new LaravelChart($settings1);
+            $chart4 = new LaravelChart($chart_options_annuel);
 
+            $startOfWeek = Carbon::now()->startOfWeek();
 
+            $totalOrdersThisWeek = Order::where('created_at', '>=', $startOfWeek)
+                ->where('status', 'delivered')
+                ->sum('total');
 
+            $anneeEnCours = now()->year;
 
+            $totalCommandes = Order::whereYear('created_at', $anneeEnCours)
+                ->where('status', 'delivered')
+                ->sum('total');
 
-        $charts = [
-            'chart_title' => 'Rapport périodique',
-            'chart_type' => 'line',
-            'report_type' => 'group_by_date',
-            'model' => 'App\Models\Orders\Order',
-
-
-            'group_by_field' => 'created_at',
-            'group_by_period' => 'day',
-
-            'aggregate_function' => 'sum',
-            'aggregate_field' => 'total',
-
-            'where_raw' => "status='delivered' ",
-
-
-            'filter_field' => 'created_at',
-            'filter_days' => 30, // show only transactions for last 30 days
-            'filter_period' => 'week', // show only transactions for this week
-        ];
-        $chart3 = new LaravelChart($charts);
-
-
-        $chart_options_annuel = [
-            'chart_title' => 'Rapport annuel',
-            'report_type' => 'group_by_date',
-            'model' => 'App\Models\Orders\Order',
-            'group_by_field' => 'created_at',
-            'group_by_period' => 'year',
-            'chart_type' => 'bar',
-            'aggregate_function' => 'sum',
-            'aggregate_field' => 'total',
-            'where_raw' => "status='delivered' ",
-        ];
-
-        $chart4 = new LaravelChart($chart_options_annuel);
+            $totalpubs = $this->totalpub();
+            $totalimpre = $this->totalimprevu();
+            $totalfond = $this->totalfond();
+            $totalepargn = $this->totalepargne();
+        } else {
+            $chart1 = null;
+            $chart2 = null;
+            $chart3 = null;
+            $chart4 = null;
+            $totalOrdersThisWeek = 0;
+            $totalCommandes = 0;
+            $totalpubs = 0;
+            $totalimpre = 0;
+            $totalfond = 0;
+            $totalepargn = 0;
+        }
 
         $Ordered = Order::where('status', 'ordered')
-        ->whereDate('created_at',Carbon::today())
-        ->count();
+            ->whereDate('created_at', Carbon::today())
+            ->count();
         $Orderdelivered = Order::where('status', 'delivered')
-        ->whereDate('created_at',Carbon::today())
-        ->count();
+            ->whereDate('created_at', Carbon::today())
+            ->count();
         $Ordercanceled = Order::where('status', 'canceled')
-        ->whereDate('created_at',Carbon::today())
-        ->count();
-        $Orderall = Order::
-        whereDate('created_at',Carbon::today())->
-        count();
+            ->whereDate('created_at', Carbon::today())
+            ->count();
+        $Orderall = Order::whereDate('created_at', Carbon::today())
+            ->count();
         $OrderdeAmount = Order::where('status', 'delivered')
-        ->whereDate('created_at',Carbon::today())
-        ->sum('total');
-
-        $startOfWeek = Carbon::now()->startOfWeek();
-
-        $totalOrdersThisWeek = Order::where('created_at', '>=', $startOfWeek)
-         ->
-         where('status', 'delivered')
-        ->sum('total');
-
-
-        $anneeEnCours = now()->year;
-
-        $expensive=Expensive::whereYear('created_at', $anneeEnCours)->sum('amount');
-
-        $totalCommandes = Order::whereYear('created_at', $anneeEnCours)
-            ->where('status', 'delivered')
+            ->whereDate('created_at', Carbon::today())
             ->sum('total');
-            $rupture = Product::where('qts_seuil', '>=', DB::raw('qt_initial'))
+
+        $expensive = Expensive::whereYear('created_at', now()->year)->sum('amount');
+
+        $rupture = Product::where('qts_seuil', '>=', DB::raw('qt_initial'))
             ->orWhere(function ($query) {
                 $query->where('qt_initial', 0);
             })
             ->count();
-            $totalpubs=$this->totalpub();
-            $totalimpre=$this->totalimprevu();
-            $totalfond=$this->totalfond();
-            $totalepargn=$this->totalepargne();
 
-        return view('dashboard.dashboard',compact('rupture', 'totalepargn', 'totalpubs', 'totalimpre', 'totalfond', 'totalCommandes','expensive','totalOrdersThisWeek','chart1','chart2', 'chart3','chart4', 'orders','Ordered', 'Orderdelivered', 'Ordercanceled', 'Orderall', 'OrderdeAmount'));
+        return view('dashboard.dashboard', compact(
+            'rupture', 'totalepargn', 'totalpubs', 'totalimpre', 'totalfond',
+            'totalCommandes', 'expensive', 'totalOrdersThisWeek', 'chart1',
+            'chart2', 'chart3', 'chart4', 'orders', 'Ordered',
+            'Orderdelivered', 'Ordercanceled', 'Orderall', 'OrderdeAmount'
+        ));
      }
 
 
