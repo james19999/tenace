@@ -61,10 +61,10 @@
 
                         <div class="form-group form-check">
                             <input type="checkbox" class="form-check-input" id="showPassword">
-                            <label class="form-check-label" for="exampleCheck1">Voir le mot de passe</label>
+                            <label class="form-check-label" for="showPassword" style="cursor: pointer;">Voir le mot de passe</label>
                         </div>
 
-                        <button id="login-submit" type="submit" class="btn btn-primary btn-block my-4">
+                        <button id="login-submit" type="submit" class="btn btn-primary btn-block my-4 d-flex align-items-center justify-content-center" style="min-height: 44px; font-weight: 600;">
                             <span id="login-spinner" class="spinner-border spinner-border-sm mr-2 d-none" role="status" aria-hidden="true"></span>
                             <span id="login-submit-label">Connectez-vous</span>
                         </button>
@@ -98,22 +98,35 @@
         const loginButtonLabel = document.getElementById('login-submit-label');
 
         loginForm.addEventListener('submit', function (event) {
-            event.preventDefault();
-
-            if (loginButton.dataset.submitting === 'true') {
+            // Laisser la validation native HTML5 s'exécuter si un champ est vide
+            if (loginForm.checkValidity && !loginForm.checkValidity()) {
                 return;
             }
 
+            // Éviter les doubles clics / soumissions multiples
+            if (loginButton.dataset.submitting === 'true') {
+                event.preventDefault();
+                return;
+            }
             loginButton.dataset.submitting = 'true';
-            loginButton.disabled = true;
+
+            // Afficher le spinner et mettre à jour le libellé
             loginSpinner.classList.remove('d-none');
-            loginSpinner.style.display = 'inline-block';
             loginButtonLabel.textContent = 'Connexion en cours...';
 
-            // Keep the loading state visible before navigating to the login request.
-            window.setTimeout(function () {
-                HTMLFormElement.prototype.submit.call(loginForm);
-            }, 450);
+            // Bloquer les clics supplémentaires sans désactiver immédiatement le bouton
+            // (désactiver le bouton de manière synchrone annule la soumission dans certains navigateurs)
+            loginButton.style.pointerEvents = 'none';
+            loginButton.classList.add('disabled');
+        });
+
+        // Réinitialiser l'état du bouton si la page est restaurée depuis le cache du navigateur (bfcache / bouton retour)
+        window.addEventListener('pageshow', function () {
+            loginButton.dataset.submitting = 'false';
+            loginButton.style.pointerEvents = '';
+            loginButton.classList.remove('disabled');
+            loginSpinner.classList.add('d-none');
+            loginButtonLabel.textContent = 'Connectez-vous';
         });
     </script>
 
