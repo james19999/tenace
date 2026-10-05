@@ -264,11 +264,12 @@ public function deleteOrder()
 
         $dates = Order::query()
             ->whereNotNull('date_order')
+            ->where('type', 'PR')
+            ->where('status', 'ordered')
             ->selectRaw('DATE(date_order) as date')
             ->selectRaw('COUNT(*) as total_orders')
             ->groupByRaw('DATE(date_order)')
             ->orderBy('date')
-            ->where('status', 'ordered')
             ->get();
 
 
@@ -286,9 +287,9 @@ public function deleteOrder()
                 'orderItems.product',
             ])
             ->whereDate('date_order', $this->selectedDate)
+            ->where('type', 'PR')
+            ->where('status', 'ordered')
             ->orderBy('date_order')
-              ->where('status','ordered')
-            // ->where('type','PR')
             ->paginate(10);
 
 
@@ -300,6 +301,7 @@ public function deleteOrder()
 
         $selectedDateCount = Order::query()
             ->whereDate('date_order', $this->selectedDate)
+            ->where('type', 'PR')
             ->where('status', 'ordered')
             ->count();
 
@@ -312,6 +314,7 @@ public function deleteOrder()
         return view('livewire.order-list', [
             'dates' => $dates,
             'orders' => $orders,
+            'selectedDate' => $this->selectedDate,
             'selectedDateCount' => $selectedDateCount,
             'livreurs' => $livreurs,
         ])        ->extends('layouts.admin')
