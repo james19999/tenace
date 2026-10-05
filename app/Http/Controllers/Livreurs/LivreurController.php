@@ -233,11 +233,21 @@ class LivreurController extends Controller
 
   public function auth_user_livrable($id){
 
-    $orders =Order::where('user_id',Auth::user()->id)
-    ->where('status_order',true)
-    // ->whereDate('created_at',Carbon::today())
-    ->get();
-     return view('livreurs.aut_livre_list',compact('orders'));
+    $orders = Order::where('user_id', Auth::user()->id)
+        ->where(function ($q) {
+            // Commande en cours (prise par le livreur, pas encore terminée)
+            $q->where('status_order', true)
+              // OU commandes livrées / annulées aujourd'hui
+              ->orWhere(function ($q2) {
+                  $q2->whereIn('status', ['delivered', 'canceled'])
+                     ->whereDate('updated_at', Carbon::today());
+              });
+        })
+        ->with('costumer')
+        ->latest('updated_at')
+        ->get();
+
+     return view('livreurs.aut_livre_list', compact('orders'));
   }
 
 

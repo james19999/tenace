@@ -22,18 +22,13 @@ class CheckController extends Controller
 {
 
     public function brouillons () {
-        $auth =Auth::user();
+        $auth = Auth::user();
 
-         $brouillon ="";
-         if ($auth->user_type=="ADMINUSER" || Auth::user()->user_type=="VDS" || Auth::user()->user_type=="MNG") {
-             $brouillon=1;
-         } else {
-            # code...
-            $brouillon=0;
-         }
+        if (in_array($auth->user_type, ['ADMINUSER', 'MNG', 'SCR', 'VDS', 'CSA'], true)) {
+            return 1;
+        }
 
-         return $brouillon;
-
+        return 0;
     }
 
     public function palce_order(Request $request) {
@@ -115,25 +110,22 @@ class CheckController extends Controller
                           $orderItem->save();
                       }
 
-                        if (Auth::user()->user_type=="ADMINUSER" || Auth::user()->user_type=="MNG") {
+                        if (in_array(Auth::user()->user_type, ['ADMINUSER', 'MNG', 'SCR', 'VDS', 'CSA'], true)) {
                               if ($request->type=="PU") {
-                                # code...
-
-                                foreach ($users as $key => $user) {
-
-                                    try {
-                            Mail::to($user->email)->send(new TenaCos($order));
-                        } catch (\Exception $e) {
-                            Log::error("Erreur d’envoi à {$user->email} : " . $e->getMessage());
-                        }
-
-                                //  Mail::to($user->email)->send(new TenaCos($order));
-
-                                }
-                                # code...
+                                 foreach ($users as $key => $user) {
+                                     try {
+                                         Mail::to($user->email)->send(new TenaCos($order));
+                                     } catch (\Exception $e) {
+                                         Log::error("Erreur d’envoi à {$user->email} : " . $e->getMessage());
+                                     }
+                                 }
                               }
                         } else {
-                            Mail::to('crepinawity@gmail.com')->send(new ParthnerMail(URL::signedRoute('brouillons')));
+                            try {
+                                Mail::to('crepinawity@gmail.com')->send(new ParthnerMail(URL::signedRoute('brouillons')));
+                            } catch (\Throwable $e) {
+                                Log::error("Erreur d'envoi email partenaire : " . $e->getMessage());
+                            }
                         }
 
                      Cart::instance('cart')->destroy();
@@ -191,7 +183,7 @@ class CheckController extends Controller
 
 
 
-                        if (Auth::user()->user_type=="ADMINUSER" || Auth::user()->user_type=="MNG") {
+                        if (in_array(Auth::user()->user_type, ['ADMINUSER', 'MNG', 'SCR', 'VDS', 'CSA'], true)) {
                               if ($request->type=="PU") {
                                 # code...
 
@@ -209,7 +201,11 @@ class CheckController extends Controller
                                 # code...
                               }
                         } else {
-                            Mail::to('crepinawity@gmail.com')->send(new ParthnerMail(URL::signedRoute('brouillons')));
+                            try {
+                                Mail::to('crepinawity@gmail.com')->send(new ParthnerMail(URL::signedRoute('brouillons')));
+                            } catch (\Throwable $e) {
+                                Log::error("Erreur d'envoi email partenaire : " . $e->getMessage());
+                            }
                         }
 
            Cart::instance('cart')->destroy();

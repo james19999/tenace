@@ -194,7 +194,11 @@ class OrderController extends Controller
 
             $livreur = $orders->user_id ? User::find($orders->user_id) : null;
             if ($livreur && filter_var($livreur->email, FILTER_VALIDATE_EMAIL)) {
-                Mail::to($livreur->email)->send(new TenaCos($orders));
+                try {
+                    Mail::to($livreur->email)->send(new TenaCos($orders));
+                } catch (\Throwable $e) {
+                    \Illuminate\Support\Facades\Log::error("Erreur d'envoi email livreur : " . $e->getMessage());
+                }
             }
 
             return redirect()->back()->with('success', 'commande relancé');

@@ -65,7 +65,7 @@
                         </div>
 
                         <button id="login-submit" type="submit" class="btn btn-primary btn-block my-4 d-flex align-items-center justify-content-center" style="min-height: 44px; font-weight: 600;">
-                            <span id="login-spinner" class="spinner-border spinner-border-sm mr-2 d-none" role="status" aria-hidden="true"></span>
+                            <span id="login-spinner" class="spinner-border spinner-border-sm mr-2" style="display: none;" role="status" aria-hidden="true"></span>
                             <span id="login-submit-label">Connectez-vous</span>
                         </button>
                         <hr style="padding-top: 8px">
@@ -97,36 +97,50 @@
         const loginSpinner = document.getElementById('login-spinner');
         const loginButtonLabel = document.getElementById('login-submit-label');
 
+        function startLoadingState() {
+            loginSpinner.style.setProperty('display', 'inline-block', 'important');
+            loginButtonLabel.textContent = 'Connexion en cours...';
+            loginButton.style.pointerEvents = 'none';
+            loginButton.classList.add('disabled');
+        }
+
+        function resetLoadingState() {
+            loginButton.dataset.submitting = 'false';
+            loginButton.style.pointerEvents = '';
+            loginButton.classList.remove('disabled');
+            loginSpinner.style.setProperty('display', 'none', 'important');
+            loginButtonLabel.textContent = 'Connectez-vous';
+        }
+
         loginForm.addEventListener('submit', function (event) {
-            // Laisser la validation native HTML5 s'exécuter si un champ est vide
+            // Si des champs requis sont vides, laisser le navigateur afficher l'infobulle native
             if (loginForm.checkValidity && !loginForm.checkValidity()) {
+                if (loginForm.reportValidity) {
+                    loginForm.reportValidity();
+                }
                 return;
             }
 
-            // Éviter les doubles clics / soumissions multiples
             if (loginButton.dataset.submitting === 'true') {
                 event.preventDefault();
                 return;
             }
+
+            event.preventDefault();
             loginButton.dataset.submitting = 'true';
 
-            // Afficher le spinner et mettre à jour le libellé
-            loginSpinner.classList.remove('d-none');
-            loginButtonLabel.textContent = 'Connexion en cours...';
+            // Afficher immédiatement le spinner
+            startLoadingState();
 
-            // Bloquer les clics supplémentaires sans désactiver immédiatement le bouton
-            // (désactiver le bouton de manière synchrone annule la soumission dans certains navigateurs)
-            loginButton.style.pointerEvents = 'none';
-            loginButton.classList.add('disabled');
+            // Laisser le temps au navigateur de dessiner le spinner avant la redirection/requête
+            setTimeout(function () {
+                HTMLFormElement.prototype.submit.call(loginForm);
+            }, 500);
         });
 
-        // Réinitialiser l'état du bouton si la page est restaurée depuis le cache du navigateur (bfcache / bouton retour)
+        // En cas de retour en arrière navigateur (bfcache)
         window.addEventListener('pageshow', function () {
-            loginButton.dataset.submitting = 'false';
-            loginButton.style.pointerEvents = '';
-            loginButton.classList.remove('disabled');
-            loginSpinner.classList.add('d-none');
-            loginButtonLabel.textContent = 'Connectez-vous';
+            resetLoadingState();
         });
     </script>
 

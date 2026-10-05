@@ -179,7 +179,7 @@ Route::middleware(['auth'])->group(function () {
     // -------------------------------------------------------------------------
     // 7. CLIENTS, COMPTABILITÉ & STOCKS (ADMINUSER, MNG, CALLCENTER/VDS pour fiche client)
     // -------------------------------------------------------------------------
-    Route::middleware(['role:ADMINUSER,MNG,VDS,PT,CALLCENTER'])->group(function () {
+    Route::middleware(['role:ADMINUSER,MNG,SCR,VDS,PT,CSA,CALLCENTER'])->group(function () {
         Route::get('view/costumer/{id}', [CostumerController::class, 'viewcostumer'])->name('view-costumers');
         Route::get('costumer/search', [CostumerController::class, 'search'])->name('costumer.search');
     });
