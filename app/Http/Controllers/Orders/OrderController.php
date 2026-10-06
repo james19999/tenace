@@ -183,6 +183,7 @@ class OrderController extends Controller
 
             if (!empty($validated['user_take'])) {
                 $orders->user_id = $validated['user_take'];
+                $orders->assigned_at = now();
             }
 
             if (array_key_exists('adresse', $validated)) {
@@ -282,6 +283,7 @@ class OrderController extends Controller
             if ($orders->status_order == 0 || $orders->status_order == 1) {
                 $orders->status_order = true;
                 $orders->user_id = $request->user_report;
+                $orders->assigned_at = now();
                 $orders->status = "ordered";
                 $orders->time = $request->time;
                 $orders->created_at = $request->date_report;

@@ -153,13 +153,15 @@ class LivreurController extends Controller
 
     public function livrable() {
 
-        $orders=Order::where('status_order',0)
-              ->where('status','ordered')
-              ->latest()
-              ->whereDate('created_at',Carbon::today())
-              ->where('brouillon',1)
-              ->where('type','PU')
-              ->get();
+        $orders = Order::with('costumer')
+            ->where('status', 'ordered')
+            ->where('brouillon', 1)
+            ->where('type', 'PU')
+            ->where('status_order', false)
+            ->whereDate('created_at', Carbon::today())
+            ->latest()
+            ->get();
+
         return view('livreurs.livrable',compact('orders'));
     }
 
@@ -263,6 +265,7 @@ class LivreurController extends Controller
 
               if($order->count()==0){
                   $orders->user_id=Auth::user()->id;
+                  $orders->assigned_at=now();
                   $orders->status_order=true;
                   $orders->take=true;
                   $orders->save();

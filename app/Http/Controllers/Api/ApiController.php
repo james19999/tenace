@@ -144,6 +144,7 @@ class ApiController extends Controller
 
                   if($order->count()==0){
                       $orders->user_id=Auth::user()->id;
+                      $orders->assigned_at=now();
                       $orders->status_order=true;
                       $orders->take=true;
                       $orders->save();

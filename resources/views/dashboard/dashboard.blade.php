@@ -372,6 +372,7 @@
                 <div class="card shadow">
                     <div class="card-body">
                         <h4 class="card-title mb-4">Commandes</h4>
+                        <p class="small text-muted">Les commandes attribuées encore en cours restent visibles jusqu’à leur livraison ou leur annulation.</p>
                         <div class="table-responsive">
                             <table id="example" class="table table-hover w-130">
                                 <thead class="thead-light">
@@ -379,6 +380,7 @@
                                         <th style="width: 20%">N°</th>
                                         <th style="width: 20%">Nom/Téléphone (Client)</th>
                                         <th style="width: 20%">Nom/Téléphone (Livreur)</th>
+                                        <th>Date d’attribution</th>
                                         <th style="width: 20%">Sous total</th>
                                         <th style="width: 20%">Remise</th>
                                         <th style="width: 20%">Total</th>
@@ -398,6 +400,7 @@
                                                 {{ $order->costumer->phone ?? '-' }}</td>
                                             <td style="color: black ">{{ $order->user->name ?? 'Non' }}|
                                                 {{ $order->user->phone ?? '' }}</td>
+                                            <td style="color: black">{{ $order->assigned_at ? $order->assigned_at->format('d/m/Y H:i') : '—' }}</td>
 
                                             <td style="color: black ">{{ $order->subtotal }} F</td>
                                             <td style="color: black ">{{ $order->remis }} % </td>
@@ -435,6 +438,7 @@
                                         <th style="width: 20%">N°</th>
                                         <th style="width: 20%">Nom/Téléphone (Client)</th>
                                         <th style="width: 20%">Nom/Téléphone (Livreur)</th>
+                                        <th>Date d’attribution</th>
                                         <th style="width: 20%">Sous total</th>
                                         <th style="width: 20%">Remise</th>
                                         <th style="width: 20%">Total</th>
@@ -558,6 +562,7 @@
                 <div class="card shadow">
                     <div class="card-body">
                         <h4 class="card-title mb-4">Commandes</h4>
+                        <p class="small text-muted">Les commandes attribuées encore en cours restent visibles jusqu’à leur livraison ou leur annulation.</p>
                         <div class="table-responsive">
                             <table id="example" class="table table-hover w-130">
                                 <thead class="thead-light">
@@ -565,6 +570,7 @@
                                         <th style="width: 20%">N°</th>
                                         <th style="width: 20%">Nom/Téléphone (Client)</th>
                                         <th style="width: 20%">Nom/Téléphone (Livreur)</th>
+                                        <th>Date d’attribution</th>
                                         <th style="width: 20%">Sous total</th>
                                         <th style="width: 20%">Remise</th>
                                         <th style="width: 20%">Total</th>
@@ -583,6 +589,7 @@
                                                 {{ $order->costumer->phone ?? '-' }}</td>
                                             <td style="color: black ">{{ $order->user->name ?? 'Non' }}|
                                                 {{ $order->user->phone ?? '' }}</td>
+                                            <td style="color: black">{{ $order->assigned_at ? $order->assigned_at->format('d/m/Y H:i') : '—' }}</td>
                                             <td style="color: black ">{{ $order->subtotal }} F</td>
                                             <td style="color: black ">{{ $order->remis }} % </td>
                                             <td style="color: black ">{{ $order->total }} F </td>
@@ -610,6 +617,7 @@
                                         <th style="width: 20%">N°</th>
                                         <th style="width: 20%">Nom/Téléphone (Client)</th>
                                         <th style="width: 20%">Nom/Téléphone (Livreur)</th>
+                                        <th>Date d’attribution</th>
                                         <th style="width: 20%">Sous total</th>
                                         <th style="width: 20%">Remise</th>
                                         <th style="width: 20%">Total</th>
@@ -710,6 +718,7 @@
                 <div class="card shadow">
                     <div class="card-body">
                         <h4 class="card-title mb-4">Commandes</h4>
+                        <p class="small text-muted">Les commandes attribuées encore en cours restent visibles jusqu’à leur livraison ou leur annulation.</p>
                         <div class="table-responsive">
                             <table id="example" class="table table-hover w-130">
                                 <thead class="thead-light">
@@ -717,6 +726,7 @@
                                         <th style="width: 20%">N°</th>
                                         <th style="width: 20%">Nom/Téléphone (Client)</th>
                                         <th style="width: 20%">Nom/Téléphone (Livreur)</th>
+                                        <th>Date d’attribution</th>
                                         <th style="width: 20%">Sous total</th>
                                         <th style="width: 20%">Remise</th>
                                         <th style="width: 20%">Total</th>
@@ -735,6 +745,7 @@
                                                 {{ $order->costumer->phone ?? '-' }}</td>
                                             <td style="color: black ">{{ $order->user->name ?? 'Non' }}|
                                                 {{ $order->user->phone ?? '' }}</td>
+                                            <td style="color: black">{{ $order->assigned_at ? $order->assigned_at->format('d/m/Y H:i') : '—' }}</td>
                                             <td style="color: black ">{{ $order->subtotal }} F</td>
                                             <td style="color: black ">{{ $order->remis }} % </td>
                                             <td style="color: black ">{{ $order->total }} F </td>
@@ -762,6 +773,7 @@
                                         <th style="width: 20%">N°</th>
                                         <th style="width: 20%">Nom/Téléphone (Client)</th>
                                         <th style="width: 20%">Nom/Téléphone (Livreur)</th>
+                                        <th>Date d’attribution</th>
                                         <th style="width: 20%">Sous total</th>
                                         <th style="width: 20%">Remise</th>
                                         <th style="width: 20%">Total</th>

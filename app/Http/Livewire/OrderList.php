@@ -94,6 +94,7 @@ public function assignOrder()
         'user_id' => $livreur->id,
         'status_order'=>true,
         'take' => true,
+        'assigned_at' => now(),
     ]);
 
     $this->showAssignModal = false;

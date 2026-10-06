@@ -33,9 +33,14 @@ class DashboarController extends Controller
      public function dashboard () {
 
         $orders = Order::with(['costumer', 'user'])
-            ->orderby('created_at', 'DESC')
-            ->whereDate('created_at', Carbon::today())
             ->where('brouillon', 1)
+            ->where(function ($query) {
+                $query->whereDate('created_at', Carbon::today())
+                    // Keep assigned work visible until the courier completes or cancels it.
+                    ->orWhere('status_order', true);
+            })
+            ->orderByDesc('assigned_at')
+            ->orderByDesc('updated_at')
             ->get();
 
         $isAdmin = Auth::check() && Auth::user()->user_type === 'ADMINUSER';
@@ -130,7 +135,19 @@ class DashboarController extends Controller
         }
 
         $Ordered = Order::where('status', 'ordered')
-            ->whereDate('created_at', Carbon::today())
+            ->where(function ($query) {
+                $query->whereDate('created_at', Carbon::today())
+                    ->orWhere(function ($assignedToday) {
+                        $assignedToday->where('status_order', true)
+                            ->where(function ($date) {
+                                $date->whereDate('assigned_at', Carbon::today())
+                                    ->orWhere(function ($legacy) {
+                                        $legacy->whereNull('assigned_at')
+                                            ->whereDate('updated_at', Carbon::today());
+                                    });
+                            });
+                    });
+            })
             ->count();
         $Orderdelivered = Order::where('status', 'delivered')
             ->whereDate('created_at', Carbon::today())
@@ -138,7 +155,19 @@ class DashboarController extends Controller
         $Ordercanceled = Order::where('status', 'canceled')
             ->whereDate('created_at', Carbon::today())
             ->count();
-        $Orderall = Order::whereDate('created_at', Carbon::today())
+        $Orderall = Order::where(function ($query) {
+            $query->whereDate('created_at', Carbon::today())
+                ->orWhere(function ($assignedToday) {
+                    $assignedToday->where('status_order', true)
+                        ->where(function ($date) {
+                            $date->whereDate('assigned_at', Carbon::today())
+                                ->orWhere(function ($legacy) {
+                                    $legacy->whereNull('assigned_at')
+                                        ->whereDate('updated_at', Carbon::today());
+                                });
+                        });
+                });
+        })
             ->count();
         $OrderdeAmount = Order::where('status', 'delivered')
             ->whereDate('created_at', Carbon::today())

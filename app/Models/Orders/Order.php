@@ -12,6 +12,10 @@ class Order extends Model
 {
     use HasFactory;
 
+    protected $casts = [
+        'assigned_at' => 'datetime',
+    ];
+
     protected $fillable=[
         'user_id',
         'costumer_id',
