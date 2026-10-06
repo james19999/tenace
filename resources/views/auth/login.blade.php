@@ -27,6 +27,15 @@
             @if (session()->has('messages'))
             <div class="alert alert-success">{{ session('messages') }}</div>
            @endif
+            @if (session()->has('session_expired'))
+            <div class="alert alert-warning d-flex align-items-center gap-2" role="alert" style="font-weight:600;">
+                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" fill="none" viewBox="0 0 24 24"
+                     stroke="currentColor" stroke-width="2" style="flex-shrink:0;">
+                    <circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/>
+                </svg>
+                {{ session('session_expired') }}
+            </div>
+            @endif
             <div  style="background-color: #7e1615" class="row h-100">
                 <div class="col-10 col-sm-8 col-md-6 col-lg-4 col-xl-3 m-auto px-3 pt-5 pb-4 card shadow m-3">
                     @php

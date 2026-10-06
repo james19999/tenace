@@ -166,10 +166,15 @@
                     </a>
                 </li>
                 <li>
-                    <a href="{{ route('costumer.follow-up') }}" class="">
+                    <a href="#serviceClientMenu" class="" data-toggle="collapse">
+                        <span class="caret material-icons">arrow_right</span>
                         <span class="icon material-icons">support_agent</span>
                         <span class="text">SAV</span>
                     </a>
+                    <ul class="collapse" id="serviceClientMenu">
+                        <li><a href="{{ route('costumer.follow-up') }}"><span class="icon material-icons">remove</span><span class="text">Suivi des contacts</span></a></li>
+                        <li><a href="{{ route('service-cases.index') }}"><span class="icon material-icons">remove</span><span class="text">Réclamations et accompagnement</span></a></li>
+                    </ul>
                 </li>
                 <li>
                     <a href="{{ route('parthners') }}" class="">
@@ -565,6 +570,12 @@
                         <span class="text">SAV</span>
                     </a>
                 </li>
+                <li>
+                    <a href="{{ route('service-cases.index') }}" class="">
+                        <span class="icon material-icons">support_agent</span>
+                        <span class="text">Réclamations et accompagnement</span>
+                    </a>
+                </li>
             @else
                 <li>
                     <a href="{{ route('Admin') }}" class="active">
@@ -572,6 +583,14 @@
                         <span class="text">Dashboard</span>
                     </a>
                 </li>
+                @if (in_array(Auth::user()->user_type, ['MNG', 'SCR'], true))
+                    <li>
+                        <a href="{{ route('service-cases.index') }}" class="">
+                            <span class="icon material-icons">support_agent</span>
+                            <span class="text">Réclamations et accompagnement</span>
+                        </a>
+                    </li>
+                @endif
                 <li>
                     <a href="{{ route('authlivrable', Auth::user()->id) }}" class="">
                         <span class="icon material-icons">shopping_cart

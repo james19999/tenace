@@ -10,6 +10,9 @@
     <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
 
     <link rel="stylesheet" href="{{ asset('assets/css/style.css') }}">
+    @if (request()->routeIs('service-cases.*'))
+        <link rel="stylesheet" href="{{ asset('assets/css/customer-service-cases.css') }}?v=20261006.3">
+    @endif
 
     <link rel="shortcut icon" href="{{ asset('assets/images/tena.png') }}" type="image/png">
     <link rel="icon" href="{{ asset('assets/images/tena.png') }}" type="image/png">

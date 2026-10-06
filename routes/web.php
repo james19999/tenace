@@ -2,6 +2,7 @@
 
 use App\Http\Livewire\OrderList;
 use App\Http\Livewire\CostumerFollowUp;
+use App\Http\Livewire\CustomerServiceCases;
 use App\Http\Livewire\OrderFilter;
 use App\Http\Livewire\RepportOrder;
 use Illuminate\Support\Facades\Auth;
@@ -27,6 +28,7 @@ use App\Http\Controllers\Orders\OrderController;
 use App\Http\Controllers\Admins\DashboarController;
 use App\Http\Controllers\Livreurs\LivreurController;
 use App\Http\Controllers\Costumers\CostumerController;
+use App\Http\Controllers\CustomerServiceCaseAttachmentController;
 use App\Http\Controllers\Expensive\ExpensiveController;
 use App\Http\Controllers\Brouillons\BrouillonController;
 use App\Http\Controllers\TypeExpensive\TypeExpensiveController;
@@ -110,6 +112,13 @@ Route::middleware(['auth'])->group(function () {
     // -------------------------------------------------------------------------
     Route::middleware(['role:ADMINUSER,CALLCENTER'])->group(function () {
         Route::get('costumer/follow-up', CostumerFollowUp::class)->name('costumer.follow-up');
+    });
+
+    // Dossiers du service client : agents SAV et encadrement autorisés.
+    Route::middleware(['role:ADMINUSER,MNG,SCR,CALLCENTER'])->group(function () {
+        Route::get('service-client/cases', CustomerServiceCases::class)->name('service-cases.index');
+        Route::get('service-client/cases/{caseId}', CustomerServiceCases::class)->whereNumber('caseId')->name('service-cases.show');
+        Route::get('service-client/attachments/{attachment}', [CustomerServiceCaseAttachmentController::class, 'download'])->name('service-cases.attachments.download');
     });
 
     // -------------------------------------------------------------------------

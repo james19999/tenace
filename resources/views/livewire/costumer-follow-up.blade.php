@@ -439,6 +439,7 @@
                             @if ($feedback->costumer)
                                 <a class="btn btn-sm btn-outline-info" href="{{ route('view-costumers', $feedback->costumer->id) }}">Voir la fiche</a>
                                 <button class="btn btn-sm btn-outline-secondary" wire:click="openHistory({{ $feedback->costumer->id }})">Voir l’historique</button>
+                                <a class="btn btn-sm btn-outline-danger" href="{{ route('service-cases.index', ['customer' => $feedback->costumer->id]) }}">Créer un dossier SAV</a>
                             @endif
                         </div>
                     @empty
@@ -560,6 +561,7 @@
                             <td>{{ $latest ? ['whatsapp' => 'WhatsApp', 'sms' => 'SMS', 'call' => 'Appel', 'other' => 'Autre'][$latest->channel] : '—' }}</td>
                             <td class="text-nowrap">
                                 <a class="btn btn-sm btn-outline-info" href="{{ route('view-costumers', $costumer->id) }}">Fiche</a>
+                                <a class="btn btn-sm btn-outline-danger" href="{{ route('service-cases.index', ['customer' => $costumer->id]) }}">Créer un dossier</a>
                                 @if ($status === 'do_not_contact')
                                     <button class="btn btn-sm btn-success" wire:click="allowContactAgain({{ $costumer->id }})">Réactiver</button>
                                 @elseif ($status === 'review_required')
