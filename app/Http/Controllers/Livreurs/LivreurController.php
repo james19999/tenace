@@ -77,7 +77,7 @@ class LivreurController extends Controller
     //     ->sum('total');
 
        $orde=Order::where('user_id',$id)->where('status','delivered')
-        ->whereDate('created_at',Carbon::today())
+        ->whereDate('updated_at',Carbon::today())
         ->get();
 
       return view('livreurs.show',compact('user','orde'));
@@ -231,13 +231,13 @@ class LivreurController extends Controller
   }
 
 
-  public function auth_user_livrable($id){
+  public function auth_user_livrable($id = null){
 
-    $orders = Order::where('user_id', Auth::user()->id)
+    // orders.user_id is stored as VARCHAR. Compare it to a string and include
+    // assigned, still-ordered work even if an older assignment missed the flag.
+    $orders = Order::where('user_id', (string) Auth::id())
         ->where(function ($q) {
-            // Commande en cours (prise par le livreur, pas encore terminée)
-            $q->where('status_order', true)
-              // OU commandes livrées / annulées aujourd'hui
+            $q->where('status', 'ordered')
               ->orWhere(function ($q2) {
                   $q2->whereIn('status', ['delivered', 'canceled'])
                      ->whereDate('updated_at', Carbon::today());

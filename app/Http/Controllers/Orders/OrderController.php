@@ -377,7 +377,9 @@ class OrderController extends Controller
         $startOfWeek = Carbon::now()->startOfWeek(); // Début de la semaine (Lundi)
         $endOfWeek = Carbon::now()->endOfWeek();
         $results = DB::table('orders')
-            ->join('users', 'orders.user_id', '=', 'users.id')
+            ->join('users', function ($join) {
+                $join->whereRaw('orders.user_id = CAST(users.id AS CHAR)');
+            })
             ->select(
                 'users.id',
                 'users.name',
@@ -398,7 +400,9 @@ class OrderController extends Controller
         $endOfWeek = Carbon::now()->endOfWeek();    // Fin de la semaine (dimanche)
 
         return DB::table('orders')
-            ->join('users', 'orders.user_id', '=', 'users.id')
+            ->join('users', function ($join) {
+                $join->whereRaw('orders.user_id = CAST(users.id AS CHAR)');
+            })
             ->select(
                 'users.id',
                 'users.name',
@@ -465,7 +469,9 @@ class OrderController extends Controller
         $year = $year ?? now()->year;
 
         return DB::table('orders')
-            ->join('users', 'orders.user_id', '=', 'users.id')
+            ->join('users', function ($join) {
+                $join->whereRaw('orders.user_id = CAST(users.id AS CHAR)');
+            })
             ->select(
                 'users.id',
                 'users.name',

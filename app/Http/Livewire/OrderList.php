@@ -93,6 +93,7 @@ public function assignOrder()
     $order->update([
         'user_id' => $livreur->id,
         'status_order'=>true,
+        'take' => true,
     ]);
 
     $this->showAssignModal = false;
