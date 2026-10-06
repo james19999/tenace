@@ -160,8 +160,12 @@ Route::middleware(['auth'])->group(function () {
         Route::get('repport/order', [OrderController::class, 'order_repport'])->name('repport-order');
         Route::get('costumer/achat/order', [OrderController::class, 'OrderFilter'])->name('achat');
 
-        Route::get('show/deliveries', [OrderController::class, 'showDeliveries'])->name('show-deliveries');
         Route::get('ranking/ranking', [OrderController::class, 'ranking'])->name('ranking');
+    });
+
+    // Weekly delivery overview is also the delivery driver's ranking page.
+    Route::middleware(['role:ADMINUSER,MNG,SCR,VDS,PT,CSA,LVS'])->group(function () {
+        Route::get('show/deliveries', [OrderController::class, 'showDeliveries'])->name('show-deliveries');
     });
 
     // -------------------------------------------------------------------------
