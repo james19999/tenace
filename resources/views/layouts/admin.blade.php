@@ -11,7 +11,7 @@
 
     <link rel="stylesheet" href="{{ asset('assets/css/style.css') }}">
     @if (request()->routeIs('service-cases.*'))
-        <link rel="stylesheet" href="{{ asset('assets/css/customer-service-cases.css') }}?v=20261007.1">
+        <link rel="stylesheet" href="{{ asset('assets/css/customer-service-cases.css') }}?v=20261007.3">
     @endif
 
     <link rel="shortcut icon" href="{{ asset('assets/images/tena.png') }}" type="image/png">

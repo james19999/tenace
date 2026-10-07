@@ -51,6 +51,7 @@ class CustomerServiceCases extends Component
     public $showCloseForm = false;
     public $showAssignForm = false;
     public $showPriorityForm = false;
+    public $showNotifications = false;
 
     public $customerSearch = '';
     public $selectedCustomerId = '';
@@ -284,7 +285,7 @@ class CustomerServiceCases extends Component
 
         $this->validate($rules);
 
-        if ($this->canManage() && $this->newAssigneeId && ! User::whereKey($this->newAssigneeId)->where('active', 1)->whereIn('user_type', ['CALLCENTER', 'MNG', 'SCR', 'ADMINUSER'])->exists()) {
+        if ($this->canAssignCases() && $this->newAssigneeId && ! User::whereKey($this->newAssigneeId)->where('active', 1)->whereIn('user_type', ['CALLCENTER', 'MNG', 'SCR', 'ADMINUSER'])->exists()) {
             $this->addError('newAssigneeId', 'Choisissez un membre actif du service client.');
             return;
         }
@@ -296,7 +297,7 @@ class CustomerServiceCases extends Component
             }
         }
 
-        $assigneeId = $this->canManage() && $this->newAssigneeId ? (int) $this->newAssigneeId : Auth::id();
+        $assigneeId = $this->canAssignCases() && $this->newAssigneeId ? (int) $this->newAssigneeId : Auth::id();
         $case = DB::transaction(function () use ($assigneeId) {
             $customer = $this->createCustomer
                 ? $this->findOrCreateCustomer()
@@ -331,6 +332,15 @@ class CustomerServiceCases extends Component
                 'internal' => true, 'occurred_at' => now(),
             ]);
 
+            if ((int) $case->assigned_to !== (int) Auth::id()) {
+                $assigneeName = User::whereKey($case->assigned_to)->value('name') ?: 'un membre du service client';
+                $case->activities()->create([
+                    'user_id' => Auth::id(), 'activity_type' => 'assignment',
+                    'body' => 'Dossier attribué à '.$assigneeName.' lors de sa création.',
+                    'internal' => true, 'occurred_at' => now(),
+                ]);
+            }
+
             if ($case->case_type === 'personalized_support') {
                 $plan = CustomerServiceSupportPlan::create([
                     'case_id' => $case->id,
@@ -349,6 +359,12 @@ class CustomerServiceCases extends Component
         });
 
         $this->notifyCaseAudience($case, 'created', 'Un nouveau dossier '.$case->case_number.' a été créé pour '.$case->customer->name.'.', ['ADMINUSER', 'MNG', 'SCR']);
+        if ((int) $case->assigned_to !== (int) Auth::id()) {
+            $assignee = User::where('active', 1)->find($case->assigned_to);
+            if ($assignee && $assignee->user_type === 'CALLCENTER') {
+                $assignee->notify(new CustomerServiceCaseNotification($case, 'assigned', 'Le dossier '.$case->case_number.' vous a été attribué.'));
+            }
+        }
 
         $this->closeAllModals();
         $this->resetCreateForm();
@@ -727,6 +743,11 @@ class CustomerServiceCases extends Component
         $notification->markAsRead();
     }
 
+    public function toggleNotifications(): void
+    {
+        $this->showNotifications = ! $this->showNotifications;
+    }
+
     protected function resetCreateForm(): void
     {
         $this->reset([
@@ -744,6 +765,11 @@ class CustomerServiceCases extends Component
     protected function canManage(): bool
     {
         return Auth::user()->hasRole(['ADMINUSER', 'MNG', 'SCR']);
+    }
+
+    protected function canAssignCases(): bool
+    {
+        return $this->canManage();
     }
 
     protected function canCreate(): bool
@@ -890,8 +916,10 @@ class CustomerServiceCases extends Component
             'products' => Product::orderBy('name')->get(['id', 'name']),
             'assignees' => User::whereIn('user_type', ['CALLCENTER', 'MNG', 'SCR', 'ADMINUSER'])->where('active', 1)->orderBy('name')->get(['id', 'name', 'user_type']),
             'canManageCases' => $this->canManage(),
+            'canAssignCases' => $this->canAssignCases(),
             'customerSelected' => $this->selectedCustomerId ? Costumer::find($this->selectedCustomerId) : null,
-            'serviceNotifications' => ! $case ? Auth::user()->unreadNotifications()->where('type', CustomerServiceCaseNotification::class)->latest()->limit(5)->get() : collect(),
+            'serviceNotifications' => Auth::user()->unreadNotifications()->where('type', CustomerServiceCaseNotification::class)->latest()->limit(6)->get(),
+            'serviceNotificationCount' => Auth::user()->unreadNotifications()->where('type', CustomerServiceCaseNotification::class)->count(),
         ])->extends('layouts.admin')->section('content');
     }
 }

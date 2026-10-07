@@ -185,10 +185,6 @@
         </div>
     @endif
 
-    @if (!$case && $serviceNotifications->isNotEmpty())
-        <section class="sc-notification-panel"><div class="sc-notification-title"><span class="material-icons">notifications_active</span><div><strong>Notifications du service client</strong><small>{{ $serviceNotifications->count() }} alerte(s) non lue(s)</small></div></div><div class="sc-notification-list">@foreach($serviceNotifications as $notification)<article><span class="material-icons">{{ str_contains($notification->data['reminder_type'] ?? '', 'due') || str_contains($notification->data['reminder_type'] ?? '', 'overdue') ? 'event' : 'folder_shared' }}</span><p>{{ $notification->data['message'] ?? 'Mise à jour d’un dossier client.' }}<small>{{ $notification->created_at->diffForHumans() }}</small></p><a href="{{ $notification->data['url'] ?? route('service-cases.index') }}">Ouvrir</a><button type="button" wire:click="markNotificationRead('{{ $notification->id }}')" aria-label="Marquer comme lu"><span class="material-icons">done</span></button></article>@endforeach</div></section>
-    @endif
-
     @if (!$case)
         <section class="sc-hero">
             <div class="sc-hero-copy">
@@ -196,9 +192,12 @@
                 <h1>Réclamations et accompagnement</h1>
                 <p>Chaque demande a un responsable, une prochaine étape et un historique clair.</p>
             </div>
-            @if ($canCreateCases = in_array(Auth::user()->user_type, ['ADMINUSER', 'MNG', 'SCR', 'CALLCENTER'], true))
-                <button type="button" class="btn sc-primary-btn" wire:click="openCreateModal"><span class="material-icons">add</span>Nouveau dossier</button>
-            @endif
+            <div class="sc-hero-actions">
+                @include('livewire.partials.service-case-notifications')
+                @if ($canCreateCases = in_array(Auth::user()->user_type, ['ADMINUSER', 'MNG', 'SCR', 'CALLCENTER'], true))
+                    <button type="button" class="btn sc-primary-btn" wire:click="openCreateModal"><span class="material-icons">add</span>Nouveau dossier</button>
+                @endif
+            </div>
         </section>
 
         <div class="sc-metrics">
@@ -312,7 +311,7 @@
                             <div class="sc-form-section"><div class="sc-section-title"><span>02</span><div><strong>Demande et priorité</strong><small>Décrivez le problème ou le besoin avec des faits utiles.</small></div></div>
                                 <div class="sc-grid-2"><div><label class="sc-label">Nature du dossier <b>*</b></label><select class="form-control" wire:model="newCaseType"><option value="complaint">Réclamation</option><option value="dissatisfied">Cliente insatisfaite</option><option value="personalized_support">Accompagnement personnalisé</option><option value="information">Demande d’information avec suivi</option></select></div><div><label class="sc-label">Priorité <b>*</b></label><select class="form-control" wire:model="newPriority"><option value="low">Faible</option><option value="normal">Normale</option><option value="high">Élevée</option><option value="urgent">Urgente</option></select></div></div>
                                 <label class="sc-label mt-3">Description <b>*</b></label><textarea class="form-control sc-textarea" wire:model.defer="newDescription" rows="4" placeholder="Expliquez le problème, le besoin exprimé et les faits connus…"></textarea>@error('newDescription')<small class="text-danger">{{ $message }}</small>@enderror
-                                <div class="sc-grid-2 mt-3"><div><label class="sc-label">Responsable</label><select class="form-control" wire:model="newAssigneeId" @if(! $canManageCases) disabled @endif>@foreach($assignees as $person)<option value="{{ $person->id }}">{{ $person->name }}</option>@endforeach</select>@error('newAssigneeId')<small class="text-danger">{{ $message }}</small>@enderror @if(! $canManageCases)<small class="sc-help">Le dossier vous sera attribué.</small>@endif</div><div><label class="sc-label">Prochain suivi</label><input class="form-control" type="datetime-local" wire:model.defer="newNextFollowUpAt"></div></div>
+                                <div class="sc-grid-2 mt-3"><div><label class="sc-label">Responsable</label><select class="form-control" wire:model="newAssigneeId" @if(! $canAssignCases) disabled @endif>@foreach($assignees as $person)<option value="{{ $person->id }}">{{ $person->name }}</option>@endforeach</select>@error('newAssigneeId')<small class="text-danger">{{ $message }}</small>@enderror @if(! $canAssignCases)<small class="sc-help">Le dossier vous sera attribué.</small>@endif</div><div><label class="sc-label">Prochain suivi</label><input class="form-control" type="datetime-local" wire:model.defer="newNextFollowUpAt"></div></div>
                                 <div class="mt-3"><label class="sc-label">Photos ou documents <small>(JPG, PNG, WebP, PDF — 10 Mo max par fichier, 5 fichiers)</small></label><input type="file" class="form-control-file sc-file-input" wire:model="uploads" multiple accept=".jpg,.jpeg,.png,.webp,.pdf"><div wire:loading wire:target="uploads" class="sc-uploading">Téléversement en cours…</div>@error('uploads.*')<small class="text-danger d-block">{{ $message }}</small>@enderror</div>
                             </div>
                             @if($newCaseType === 'personalized_support')
@@ -332,7 +331,7 @@
     @else
         <section class="sc-detail-top">
             <div><a class="sc-back-link" href="{{ route('service-cases.index') }}"><span class="material-icons">arrow_back</span>Retour aux dossiers</a><div class="sc-detail-heading"><span class="sc-case-number">{{ $case->case_number }}</span><span class="sc-status {{ $statusClasses[$case->status] ?? '' }}">{{ $statusLabels[$case->status] ?? $case->status }}</span><span class="sc-priority {{ $priorityClasses[$case->priority] ?? '' }}">{{ $priorityLabels[$case->priority] ?? $case->priority }}</span></div><h1>{{ $case->customer->name }}</h1><p>{{ $typeLabels[$case->case_type] ?? $case->case_type }} <span>·</span> créé le {{ $case->created_at->format('d/m/Y à H:i') }}</p></div>
-            <div class="sc-detail-actions">@if($canManageCases)<button type="button" class="btn sc-secondary-btn" wire:click="openAssignForm"><span class="material-icons">person_add_alt</span>Attribuer</button><button type="button" class="btn sc-secondary-btn" wire:click="openPriorityForm"><span class="material-icons">low_priority</span>Priorité</button>@endif<button type="button" class="btn sc-primary-btn" wire:click="openActivityModal"><span class="material-icons">add_comment</span>Ajouter une intervention</button></div>
+            <div class="sc-detail-actions">@include('livewire.partials.service-case-notifications') @if($canManageCases)<button type="button" class="btn sc-secondary-btn" wire:click="openAssignForm"><span class="material-icons">person_add_alt</span>Attribuer</button><button type="button" class="btn sc-secondary-btn" wire:click="openPriorityForm"><span class="material-icons">low_priority</span>Priorité</button>@endif<button type="button" class="btn sc-primary-btn" wire:click="openActivityModal"><span class="material-icons">add_comment</span>Ajouter une intervention</button></div>
         </section>
 
         <div class="sc-detail-layout">
