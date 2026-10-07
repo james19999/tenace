@@ -1,5 +1,5 @@
 <li class="nav-item icon sc-global-notification" wire:poll.60s>
-    <button type="button" wire:click="toggle" aria-label="Notifications du service client" aria-expanded="{{ $open ? 'true' : 'false' }}">
+    <button type="button" class="{{ $notificationCount > 0 ? 'has-unread' : '' }}" wire:click="toggle" aria-label="Notifications du service client" aria-expanded="{{ $open ? 'true' : 'false' }}">
         <span class="material-icons">notifications</span>
         @if($notificationCount > 0)
             <span class="sc-global-notification-badge is-unread">{{ $notificationCount > 99 ? '99+' : $notificationCount }}</span>
@@ -15,7 +15,7 @@
             </header>
             @forelse($notifications as $notification)
                 <article>
-                    <a href="{{ $notification->data['url'] ?? route('service-cases.index') }}">
+                    <a href="{{ $notification->data['url'] ?? route('service-cases.index') }}" wire:click.prevent="openNotification('{{ $notification->id }}')">
                         <span class="sc-global-notification-icon"><span class="material-icons">{{ str_contains($notification->data['reminder_type'] ?? '', 'due') || str_contains($notification->data['reminder_type'] ?? '', 'overdue') ? 'event' : 'folder_shared' }}</span></span>
                         <span class="sc-global-notification-copy"><strong>{{ $notification->data['message'] ?? 'Mise à jour d’un dossier client.' }}</strong><small>@if(!empty($notification->data['case_number'])){{ $notification->data['case_number'] }} · @endif{{ $notification->created_at->diffForHumans() }}</small></span>
                     </a>

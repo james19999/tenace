@@ -66,6 +66,7 @@ class CustomerServiceCases extends Component
     public $newDescription = '';
     public $newPriority = 'normal';
     public $newAssigneeId = '';
+    public $newAssigneeSearch = '';
     public $newNextFollowUpAt = '';
     public $supportNeed = '';
     public $supportObjectives = '';
@@ -83,6 +84,7 @@ class CustomerServiceCases extends Component
     public $closureReason = '';
     public $nextFollowUpAt = '';
     public $assignedTo = '';
+    public $assigneeSearch = '';
     public $milestoneObservation = '';
     public $completingMilestoneId = '';
     public $milestoneDates = [];
@@ -94,6 +96,7 @@ class CustomerServiceCases extends Component
         $this->caseId = $caseId;
         $this->selectedCustomerId = (string) request()->query('customer', '');
         $this->newAssigneeId = Auth::id();
+        $this->newAssigneeSearch = Auth::user()->name;
         $this->supportStartDate = now()->format('Y-m-d');
         $this->newNextFollowUpAt = now()->addDays(1)->format('Y-m-d\TH:i');
         if ($caseId) {
@@ -208,6 +211,48 @@ class CustomerServiceCases extends Component
         $this->showPriorityForm = false;
     }
 
+    public function updatedAssigneeSearch(): void
+    {
+        $this->assignedTo = '';
+        $this->resetValidation('assignedTo');
+    }
+
+    public function updatedNewAssigneeSearch(): void
+    {
+        $this->newAssigneeId = '';
+        $this->resetValidation('newAssigneeId');
+    }
+
+    public function selectAssignee(int $userId): void
+    {
+        abort_unless($this->canManage(), 403);
+        $user = $this->availableAssignees()->findOrFail($userId);
+        $this->assignedTo = (string) $user->id;
+        $this->assigneeSearch = $user->name;
+        $this->resetValidation('assignedTo');
+    }
+
+    public function selectNewAssignee(int $userId): void
+    {
+        abort_unless($this->canAssignCases(), 403);
+        $user = $this->availableAssignees()->findOrFail($userId);
+        $this->newAssigneeId = (string) $user->id;
+        $this->newAssigneeSearch = $user->name;
+        $this->resetValidation('newAssigneeId');
+    }
+
+    public function changeAssignee(): void
+    {
+        $this->assignedTo = '';
+        $this->assigneeSearch = '';
+    }
+
+    public function changeNewAssignee(): void
+    {
+        $this->newAssigneeId = '';
+        $this->newAssigneeSearch = '';
+    }
+
     public function updatedCustomerSearch(): void
     {
         $this->selectedCustomerId = '';
@@ -260,6 +305,10 @@ class CustomerServiceCases extends Component
             'uploads' => ['array', 'max:5'],
             'uploads.*' => ['file', 'mimes:jpg,jpeg,png,webp,pdf', 'max:10240'],
         ];
+
+        if ($this->canAssignCases()) {
+            $rules['newAssigneeId'] = ['required', 'exists:users,id'];
+        }
 
         if ($this->createCustomer) {
             $rules += [
@@ -457,6 +506,7 @@ class CustomerServiceCases extends Component
         abort_unless($this->canManage(), 403);
         $case = $this->authorizedCase((int) $this->caseId);
         $this->assignedTo = (string) ($case->assigned_to ?: '');
+        $this->assigneeSearch = $case->assignee?->name ?: '';
         $this->closeAllModals();
         $this->showAssignForm = true;
     }
@@ -507,7 +557,7 @@ class CustomerServiceCases extends Component
         abort_unless($this->canManage(), 403);
         $case = $this->authorizedCase((int) $this->caseId);
         $this->validate(['assignedTo' => ['required', 'exists:users,id']]);
-        $user = User::whereIn('user_type', ['CALLCENTER', 'MNG', 'SCR', 'ADMINUSER'])->where('active', 1)->findOrFail($this->assignedTo);
+        $user = $this->availableAssignees()->findOrFail($this->assignedTo);
         $previous = $case->assignee?->name ?: 'Non attribué';
         $case->assigned_to = $user->id;
         $case->save();
@@ -745,6 +795,7 @@ class CustomerServiceCases extends Component
         $this->newCaseType = 'complaint';
         $this->newPriority = 'normal';
         $this->newAssigneeId = Auth::id();
+        $this->newAssigneeSearch = Auth::user()->name;
         $this->newNextFollowUpAt = now()->addDays(1)->format('Y-m-d\TH:i');
         $this->supportStartDate = now()->format('Y-m-d');
         $this->milestoneDays = [3, 7, 15, 30];
@@ -758,6 +809,27 @@ class CustomerServiceCases extends Component
     protected function canAssignCases(): bool
     {
         return $this->canManage();
+    }
+
+    protected function availableAssignees(): Builder
+    {
+        return User::query()
+            ->whereIn('user_type', ['CALLCENTER', 'MNG', 'SCR', 'ADMINUSER'])
+            ->where('active', 1);
+    }
+
+    protected function assigneeSuggestions(string $search, $selectedId)
+    {
+        $search = trim($search);
+        if ($search === '' || $selectedId) {
+            return collect();
+        }
+
+        return $this->availableAssignees()
+            ->where('name', 'like', '%'.$search.'%')
+            ->orderBy('name')
+            ->limit(8)
+            ->get(['id', 'name', 'user_type']);
     }
 
     protected function canCreate(): bool
@@ -903,6 +975,8 @@ class CustomerServiceCases extends Component
             'customerOrders' => $this->selectedCustomerOrders(),
             'products' => Product::orderBy('name')->get(['id', 'name']),
             'assignees' => User::whereIn('user_type', ['CALLCENTER', 'MNG', 'SCR', 'ADMINUSER'])->where('active', 1)->orderBy('name')->get(['id', 'name', 'user_type']),
+            'assigneeSuggestions' => $this->assigneeSuggestions($this->assigneeSearch, $this->assignedTo),
+            'newAssigneeSuggestions' => $this->assigneeSuggestions($this->newAssigneeSearch, $this->newAssigneeId),
             'canManageCases' => $this->canManage(),
             'canAssignCases' => $this->canAssignCases(),
             'customerSelected' => $this->selectedCustomerId ? Costumer::find($this->selectedCustomerId) : null,

@@ -24,6 +24,21 @@ class CustomerServiceNotifications extends Component
             ->markAsRead();
     }
 
+    public function openNotification(string $notificationId): void
+    {
+        $notification = Auth::user()->unreadNotifications()
+            ->where('type', CustomerServiceCaseNotification::class)
+            ->whereKey($notificationId)
+            ->firstOrFail();
+
+        $caseId = $notification->data['case_id'] ?? null;
+        $notification->markAsRead();
+
+        $this->redirect($caseId
+            ? route('service-cases.show', $caseId)
+            : route('service-cases.index'));
+    }
+
     public function render()
     {
         $unread = Auth::user()->unreadNotifications()

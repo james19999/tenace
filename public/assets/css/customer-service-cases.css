@@ -1024,3 +1024,8 @@ body.sc-modal-open {
         justify-self: end;
     }
 }
+/* Searchable assignee fields used by case creation and reassignment. */
+.service-cases .sc-assignee-results{max-height:190px;overflow-y:auto;box-shadow:0 8px 20px rgba(35,35,48,.07)}
+.service-cases .sc-assignee-results button{min-height:52px}
+.service-cases .sc-selected-assignee{min-height:54px;margin-top:0}
+.service-cases .sc-assignee-results button:focus{outline:2px solid rgba(126,22,21,.25);outline-offset:-2px}

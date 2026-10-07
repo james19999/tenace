@@ -461,6 +461,27 @@
                     </a>
                 </li>
                 <li>
+                    <a href="#mngServiceClientMenu" class="" data-toggle="collapse">
+                        <span class="caret material-icons">arrow_right</span>
+                        <span class="icon material-icons">support_agent</span>
+                        <span class="text">SAV</span>
+                    </a>
+                    <ul class="collapse" id="mngServiceClientMenu">
+                        <li>
+                            <a href="{{ route('costumer.follow-up') }}" class="">
+                                <span class="icon material-icons">remove</span>
+                                <span class="text">Suivi des contacts</span>
+                            </a>
+                        </li>
+                        <li>
+                            <a href="{{ route('service-cases.index') }}" class="">
+                                <span class="icon material-icons">remove</span>
+                                <span class="text">Réclamations</span>
+                            </a>
+                        </li>
+                    </ul>
+                </li>
+                <li>
                     <a href="#mngComptaCollapse" class="" data-toggle="collapse">
                         <span class="caret material-icons">arrow_right</span>
                         <span class="icon material-icons">money</span>
