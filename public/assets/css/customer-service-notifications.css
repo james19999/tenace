@@ -35,6 +35,27 @@
     font-weight: 800;
     line-height: 1;
 }
+.sc-global-notification-badge.is-unread {
+    transform-origin: center;
+    animation: sc-notification-badge-pulse 1.15s ease-in-out infinite;
+}
+@keyframes sc-notification-badge-pulse {
+    0%, 100% {
+        opacity: 1;
+        transform: scale(1);
+        box-shadow: 0 0 0 0 rgba(223, 73, 62, .48);
+    }
+    50% {
+        opacity: .72;
+        transform: scale(1.18);
+        box-shadow: 0 0 0 5px rgba(223, 73, 62, 0);
+    }
+}
+@media (prefers-reduced-motion: reduce) {
+    .sc-global-notification-badge.is-unread {
+        animation: none;
+    }
+}
 .sc-global-notification-menu {
     position: absolute;
     top: 54px;

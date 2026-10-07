@@ -2,7 +2,7 @@
     <button type="button" wire:click="toggle" aria-label="Notifications du service client" aria-expanded="{{ $open ? 'true' : 'false' }}">
         <span class="material-icons">notifications</span>
         @if($notificationCount > 0)
-            <span class="sc-global-notification-badge">{{ $notificationCount > 99 ? '99+' : $notificationCount }}</span>
+            <span class="sc-global-notification-badge is-unread">{{ $notificationCount > 99 ? '99+' : $notificationCount }}</span>
         @endif
     </button>
 
