@@ -122,7 +122,7 @@
                                                     <button style="padding-bottom: 12%" class="btn btn-sm btn-danger"><i
                                                             class="material-icons">delete</i>Supprimer</button>
                                                 </form>
-                                            @elseif (Auth::user()->user_type == 'MNG' || Auth::user()->user_type == 'CSA')
+                                            @elseif (in_array(Auth::user()->user_type, ['MNG', 'SCR', 'CSA'], true))
                                                 <a href="{{ route('ordershow', $order) }}" style="color: white"
                                                     type="button" class="btn btn-success">
                                                     <i class="material-icons f-16">visibility</i>Details</a>

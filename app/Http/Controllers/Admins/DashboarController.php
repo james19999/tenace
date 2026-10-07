@@ -36,8 +36,19 @@ class DashboarController extends Controller
             ->where('brouillon', 1)
             ->where(function ($query) {
                 $query->whereDate('created_at', Carbon::today())
-                    // Keep assigned work visible until the courier completes or cancels it.
-                    ->orWhere('status_order', true);
+                    // Show older orders on the dashboard only on the day they are assigned.
+                    // Undelivered orders remain in order management for a later reassignment.
+                    ->orWhere(function ($assignedToday) {
+                        $assignedToday->where('status', 'ordered')
+                            ->where('status_order', true)
+                            ->where(function ($date) {
+                                $date->whereDate('assigned_at', Carbon::today())
+                                    ->orWhere(function ($legacy) {
+                                        $legacy->whereNull('assigned_at')
+                                            ->whereDate('updated_at', Carbon::today());
+                                    });
+                            });
+                    });
             })
             ->orderByDesc('assigned_at')
             ->orderByDesc('updated_at')

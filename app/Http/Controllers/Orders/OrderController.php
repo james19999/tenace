@@ -262,12 +262,14 @@ class OrderController extends Controller
     public  function check_type($id)
     {
 
-        $order = Order::where('id', $id)->first();
+        $order = Order::findOrFail($id);
 
-        if ($order->type == "PR") {
+        if ($order->type === "PR") {
             $order->type = "PU";
-        } else if ($order->type = "PU") {
+        } elseif ($order->type === "PU") {
             $order->type = "PR";
+        } else {
+            return back()->with('error', 'Le type de cette commande ne peut pas être modifié.');
         }
         $order->save();
         return back();

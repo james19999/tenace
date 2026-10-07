@@ -372,7 +372,7 @@
                 <div class="card shadow">
                     <div class="card-body">
                         <h4 class="card-title mb-4">Commandes</h4>
-                        <p class="small text-muted">Les commandes attribuées encore en cours restent visibles jusqu’à leur livraison ou leur annulation.</p>
+                        <p class="small text-muted">Les commandes attribuées aujourd’hui restent visibles ici. Si une commande reste en cours après la journée, elle réapparaîtra au dashboard lors de sa prochaine attribution.</p>
                         <div class="table-responsive">
                             <table id="example" class="table table-hover w-130">
                                 <thead class="thead-light">
@@ -562,7 +562,7 @@
                 <div class="card shadow">
                     <div class="card-body">
                         <h4 class="card-title mb-4">Commandes</h4>
-                        <p class="small text-muted">Les commandes attribuées encore en cours restent visibles jusqu’à leur livraison ou leur annulation.</p>
+                        <p class="small text-muted">Les commandes attribuées aujourd’hui restent visibles ici. Si une commande reste en cours après la journée, elle réapparaîtra au dashboard lors de sa prochaine attribution.</p>
                         <div class="table-responsive">
                             <table id="example" class="table table-hover w-130">
                                 <thead class="thead-light">
@@ -718,7 +718,7 @@
                 <div class="card shadow">
                     <div class="card-body">
                         <h4 class="card-title mb-4">Commandes</h4>
-                        <p class="small text-muted">Les commandes attribuées encore en cours restent visibles jusqu’à leur livraison ou leur annulation.</p>
+                        <p class="small text-muted">Les commandes attribuées aujourd’hui restent visibles ici. Si une commande reste en cours après la journée, elle réapparaîtra au dashboard lors de sa prochaine attribution.</p>
                         <div class="table-responsive">
                             <table id="example" class="table table-hover w-130">
                                 <thead class="thead-light">
