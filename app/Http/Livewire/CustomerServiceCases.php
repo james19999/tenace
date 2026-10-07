@@ -30,6 +30,8 @@ class CustomerServiceCases extends Component
     use WithFileUploads;
     use WithPagination;
 
+    protected const ACTIVITIES_PER_PAGE = 5;
+
     protected $paginationTheme = 'bootstrap';
     protected $queryString = ['search', 'statusFilter', 'typeFilter', 'priorityFilter', 'dateFrom', 'dateTo', 'dashboardFrom', 'dashboardTo', 'dashboardAssignee'];
 
@@ -179,7 +181,10 @@ class CustomerServiceCases extends Component
     public function openActivityModal(): void
     {
         $case = $this->authorizedCase((int) $this->caseId);
-        abort_if($case->status === 'closed', 403);
+        if ($case->status === 'closed') {
+            session()->flash('serviceCaseWarning', 'Ce dossier est clôturé : aucune nouvelle intervention ne peut être ajoutée.');
+            return;
+        }
         $this->closeAllModals();
         $this->showActivityForm = true;
     }
@@ -423,7 +428,11 @@ class CustomerServiceCases extends Component
     public function saveActivity(): void
     {
         $case = $this->authorizedCase((int) $this->caseId);
-        abort_if(in_array($case->status, ['closed'], true), 403);
+        if ($case->status === 'closed') {
+            $this->closeAllModals();
+            session()->flash('serviceCaseWarning', 'Ce dossier est clôturé : aucune nouvelle intervention ne peut être ajoutée.');
+            return;
+        }
         $this->validate([
             'activityType' => ['required', Rule::in(['internal_note', 'communication'])],
             'activityChannel' => ['required_if:activityType,communication', 'nullable', Rule::in(['whatsapp', 'call', 'sms', 'email', 'visit', 'other'])],
@@ -445,6 +454,8 @@ class CustomerServiceCases extends Component
         $this->activityType = 'internal_note';
         $this->activityChannel = '';
         $this->closeAllModals();
+        $activityCount = $case->activities()->count();
+        $this->setPage((int) ceil($activityCount / self::ACTIVITIES_PER_PAGE), 'activitiesPage');
         session()->flash('serviceCaseMessage', 'L’intervention a été ajoutée à l’historique.');
     }
 
@@ -559,17 +570,31 @@ class CustomerServiceCases extends Component
         $this->validate(['assignedTo' => ['required', 'exists:users,id']]);
         $user = $this->availableAssignees()->findOrFail($this->assignedTo);
         $previous = $case->assignee?->name ?: 'Non attribué';
+        $oldStatus = $case->status;
         $case->assigned_to = $user->id;
+        if ($oldStatus === 'new') {
+            $case->status = 'analysis';
+        }
         $case->save();
         $case->activities()->create([
             'user_id' => Auth::id(), 'activity_type' => 'assignment', 'body' => 'Dossier attribué à '.$user->name.' (précédemment : '.$previous.').',
             'internal' => true, 'occurred_at' => now(),
         ]);
+        if ($oldStatus === 'new') {
+            $case->activities()->create([
+                'user_id' => Auth::id(), 'activity_type' => 'status_change',
+                'old_status' => 'new', 'new_status' => 'analysis',
+                'body' => 'Le dossier est passé automatiquement en cours d’analyse après son attribution à '.$user->name.'.',
+                'internal' => true, 'occurred_at' => now(),
+            ]);
+        }
         if ($user->id !== Auth::id()) {
             $user->notify(new CustomerServiceCaseNotification($case, 'assigned', 'Le dossier '.$case->case_number.' vous a été attribué par '.Auth::user()->name.'.'));
         }
         $this->closeAllModals();
-        session()->flash('serviceCaseMessage', 'Le dossier a été attribué à '.$user->name.'.');
+        session()->flash('serviceCaseMessage', $oldStatus === 'new'
+            ? 'Le dossier a été attribué à '.$user->name.' et démarré en cours d’analyse.'
+            : 'Le dossier a été attribué à '.$user->name.'.');
     }
 
     public function closeCase(): void
@@ -674,7 +699,7 @@ class CustomerServiceCases extends Component
     {
         $query = CustomerServiceCase::query()->with([
             'customer', 'product', 'order.orderItems.product', 'assignee', 'creator',
-            'activities.user', 'activities.attachments.uploader', 'attachments.uploader',
+            'attachments.uploader',
             'supportPlan.milestones.completedBy',
         ])->whereKey($id);
         if (! $this->canManage()) {
@@ -908,6 +933,9 @@ class CustomerServiceCases extends Component
     public function render()
     {
         $case = $this->caseId ? $this->authorizedCase((int) $this->caseId) : null;
+        $activities = $case
+            ? $case->activities()->with(['user', 'attachments.uploader'])->paginate(self::ACTIVITIES_PER_PAGE, ['*'], 'activitiesPage')
+            : null;
         if ($case && $case->supportPlan) {
             $this->supportObjectives = $case->supportPlan->final_review ?: $this->supportObjectives;
         }
@@ -966,6 +994,7 @@ class CustomerServiceCases extends Component
 
         return view('livewire.customer-service-cases', [
             'case' => $case,
+            'activities' => $activities,
             'caseContactLinks' => $this->caseContactLinks($case),
             'availableTransitions' => $case ? $this->allowedTransitions($case->status) : [],
             'caseRows' => $caseRows,

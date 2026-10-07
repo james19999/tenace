@@ -184,6 +184,12 @@
             <button type="button" class="close" data-dismiss="alert" aria-label="Fermer"><span aria-hidden="true">&times;</span></button>
         </div>
     @endif
+    @if (session()->has('serviceCaseWarning'))
+        <div class="alert sc-flash sc-flash-warning alert-dismissible fade show" role="alert">
+            <span class="material-icons">info</span><span>{{ session('serviceCaseWarning') }}</span>
+            <button type="button" class="close" data-dismiss="alert" aria-label="Fermer"><span aria-hidden="true">&times;</span></button>
+        </div>
+    @endif
 
     @if (!$case)
         <section class="sc-hero">
@@ -412,13 +418,6 @@
                     <section class="sc-detail-card"><div class="sc-card-heading"><div><span class="sc-eyebrow">RETOUR APRÈS TRAITEMENT</span><h2>Satisfaction de la cliente</h2></div>@if($case->customer_satisfaction)<span class="sc-satisfaction-score">{{ $case->customer_satisfaction }} / 5</span>@endif</div>@if($case->customer_satisfaction)<p class="sc-result-text">{{ $case->satisfaction_comment ?: 'Aucun commentaire complémentaire.' }}</p>@else<form wire:submit.prevent="saveSatisfaction"><label class="sc-label">Note communiquée par la cliente <b>*</b></label><div class="sc-rating-options">@foreach([1=>'Très insatisfaite',2=>'Insatisfaite',3=>'Mitigée',4=>'Satisfaite',5=>'Très satisfaite'] as $score=>$label)<label><input type="radio" wire:model="satisfactionRating" value="{{ $score }}"><span><strong>{{ $score }}/5</strong><small>{{ $label }}</small></span></label>@endforeach</div>@error('satisfactionRating')<small class="text-danger d-block">{{ $message }}</small>@enderror<label class="sc-label mt-3">Commentaire de la cliente <small>(facultatif)</small></label><textarea class="form-control" rows="2" wire:model.defer="satisfactionComment" placeholder="Résumé de son retour"></textarea>@error('satisfactionComment')<small class="text-danger">{{ $message }}</small>@enderror<button class="btn sc-secondary-btn mt-3" type="submit">Enregistrer son retour</button></form>@endif</section>
                 @endif
 
-                <section class="sc-detail-card"><div class="sc-card-heading"><div><span class="sc-eyebrow">JOURNAL NON EFFAÇABLE</span><h2>Historique des interventions</h2></div><span class="sc-history-count">{{ $case->activities->count() }} entrée(s)</span></div>
-                    <div class="sc-timeline">@forelse($case->activities as $activity)<article class="sc-timeline-item"><span class="sc-timeline-icon {{ $activity->activity_type === 'status_change' ? 'is-status' : ($activity->activity_type === 'communication' ? 'is-communication' : '') }}"><span class="material-icons">{{ ['created' => 'fiber_new', 'status_change' => 'sync_alt', 'priority_change' => 'low_priority', 'communication' => 'forum', 'internal_note' => 'sticky_note_2', 'follow_up_scheduled' => 'event', 'assignment' => 'person_add_alt', 'milestone' => 'flag', 'satisfaction' => 'sentiment_satisfied_alt', 'support_review' => 'fact_check'][$activity->activity_type] ?? 'history' }}</span></span><div class="sc-timeline-content"><div class="sc-timeline-head"><strong>{{ $activity->actor_name ?: ($activity->user?->name ?: 'Système') }}</strong><span>{{ $activity->occurred_at->format('d/m/Y à H:i') }}</span></div><div class="sc-activity-kind">{{ $activity->activity_type === 'communication' ? 'Échange client · '.(['whatsapp'=>'WhatsApp','call'=>'Appel téléphonique','sms'=>'SMS','email'=>'E-mail','visit'=>'Visite physique','other'=>'Autre'][$activity->channel] ?? $activity->channel) : (['created'=>'Création du dossier','status_change'=>'Changement de statut','priority_change'=>'Changement de priorité','internal_note'=>'Note interne','follow_up_scheduled'=>'Programmation du suivi','assignment'=>'Affectation','milestone'=>'Étape d’accompagnement','support_review'=>'Bilan d’accompagnement','satisfaction'=>'Satisfaction après traitement'][$activity->activity_type] ?? 'Intervention') }}</div>
-                                @if($activity->old_status && $activity->new_status)<div class="sc-status-transition"><span>{{ $statusLabels[$activity->old_status] ?? $activity->old_status }}</span><span class="material-icons">arrow_forward</span><strong>{{ $statusLabels[$activity->new_status] ?? $activity->new_status }}</strong></div>@endif
-                                @if($activity->body)<p>{{ $activity->body }}</p>@endif
-                                @if($activity->attachments->isNotEmpty())<div class="sc-attachments">@foreach($activity->attachments as $attachment)<a href="{{ route('service-cases.attachments.download', $attachment->id) }}"><span class="material-icons">{{ str_contains($attachment->mime_type ?: '', 'pdf') ? 'picture_as_pdf' : 'image' }}</span>{{ $attachment->original_name }}</a>@endforeach</div>@endif
-                            </div></article>@empty<div class="sc-empty-compact">Aucune intervention n’a encore été enregistrée.</div>@endforelse</div>
-                </section>
             </main>
 
             <aside class="sc-detail-aside">
@@ -428,6 +427,41 @@
                 @if($case->attachments->isNotEmpty())<section class="sc-detail-card"><span class="sc-eyebrow">PIÈCES JOINTES</span><div class="sc-attachments sc-attachments-aside">@foreach($case->attachments as $attachment)<a href="{{ route('service-cases.attachments.download', $attachment->id) }}"><span class="material-icons">{{ str_contains($attachment->mime_type ?: '', 'pdf') ? 'picture_as_pdf' : 'image' }}</span><span>{{ $attachment->original_name }}<small>{{ number_format($attachment->size / 1024, 0) }} Ko · Télécharger</small></span></a>@endforeach</div></section>@endif
             </aside>
         </div>
+
+        <section class="sc-detail-card sc-history-card">
+            <div class="sc-card-heading">
+                <div><span class="sc-eyebrow">JOURNAL NON EFFAÇABLE</span><h2>Historique des interventions</h2></div>
+                <span class="sc-history-count">{{ $activities->total() }} entrée(s)</span>
+            </div>
+            <div class="sc-timeline">
+                @forelse($activities as $activity)
+                    <article class="sc-timeline-item">
+                        <span class="sc-timeline-icon {{ $activity->activity_type === 'status_change' ? 'is-status' : ($activity->activity_type === 'communication' ? 'is-communication' : '') }}">
+                            <span class="material-icons">{{ ['created' => 'fiber_new', 'status_change' => 'sync_alt', 'priority_change' => 'low_priority', 'communication' => 'forum', 'internal_note' => 'sticky_note_2', 'follow_up_scheduled' => 'event', 'assignment' => 'person_add_alt', 'milestone' => 'flag', 'satisfaction' => 'sentiment_satisfied_alt', 'support_review' => 'fact_check'][$activity->activity_type] ?? 'history' }}</span>
+                        </span>
+                        <div class="sc-timeline-content">
+                            <div class="sc-timeline-head"><strong>{{ $activity->actor_name ?: ($activity->user?->name ?: 'Système') }}</strong><span>{{ $activity->occurred_at->format('d/m/Y à H:i') }}</span></div>
+                            <div class="sc-activity-kind">{{ $activity->activity_type === 'communication' ? 'Échange client · '.(['whatsapp'=>'WhatsApp','call'=>'Appel téléphonique','sms'=>'SMS','email'=>'E-mail','visit'=>'Visite physique','other'=>'Autre'][$activity->channel] ?? $activity->channel) : (['created'=>'Création du dossier','status_change'=>'Changement de statut','priority_change'=>'Changement de priorité','internal_note'=>'Note interne','follow_up_scheduled'=>'Programmation du suivi','assignment'=>'Affectation','milestone'=>'Étape d’accompagnement','support_review'=>'Bilan d’accompagnement','satisfaction'=>'Satisfaction après traitement'][$activity->activity_type] ?? 'Intervention') }}</div>
+                            @if($activity->old_status && $activity->new_status)
+                                <div class="sc-status-transition"><span>{{ $statusLabels[$activity->old_status] ?? $activity->old_status }}</span><span class="material-icons">arrow_forward</span><strong>{{ $statusLabels[$activity->new_status] ?? $activity->new_status }}</strong></div>
+                            @endif
+                            @if($activity->body)<p>{{ $activity->body }}</p>@endif
+                            @if($activity->attachments->isNotEmpty())
+                                <div class="sc-attachments">@foreach($activity->attachments as $attachment)<a href="{{ route('service-cases.attachments.download', $attachment->id) }}"><span class="material-icons">{{ str_contains($attachment->mime_type ?: '', 'pdf') ? 'picture_as_pdf' : 'image' }}</span>{{ $attachment->original_name }}</a>@endforeach</div>
+                            @endif
+                        </div>
+                    </article>
+                @empty
+                    <div class="sc-empty-compact">Aucune intervention n’a encore été enregistrée.</div>
+                @endforelse
+            </div>
+            @if($activities->total() > 0)
+                <div class="sc-history-footer">
+                    <small>Affichage de {{ $activities->firstItem() }} à {{ $activities->lastItem() }} sur {{ $activities->total() }} interventions</small>
+                    @if($activities->hasPages())<div class="sc-history-pagination">{{ $activities->links() }}</div>@endif
+                </div>
+            @endif
+        </section>
 
         @if($showActivityForm)
             <div class="sc-modal-backdrop" wire:click.self="closeAllModals">

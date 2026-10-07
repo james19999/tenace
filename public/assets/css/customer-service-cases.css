@@ -1029,3 +1029,13 @@ body.sc-modal-open {
 .service-cases .sc-assignee-results button{min-height:52px}
 .service-cases .sc-selected-assignee{min-height:54px;margin-top:0}
 .service-cases .sc-assignee-results button:focus{outline:2px solid rgba(126,22,21,.25);outline-offset:-2px}
+.service-cases .sc-history-card{width:100%;margin-top:17px}
+.service-cases .sc-history-pagination{display:flex;justify-content:flex-end;margin-top:12px;padding-top:14px;border-top:1px solid #eeeef2}
+.service-cases .sc-history-pagination nav{margin:0}
+.service-cases .sc-history-pagination .pagination{margin:0;flex-wrap:wrap;gap:3px}
+.service-cases .sc-history-footer{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-top:14px;padding-top:13px;border-top:1px solid #eeeef2}
+.service-cases .sc-history-footer>small{color:#858691;font-size:11px}
+.service-cases .sc-history-footer .sc-history-pagination{margin:0;padding:0;border:0}
+@media(max-width:575px){.service-cases .sc-history-footer{align-items:flex-start;flex-direction:column}.service-cases .sc-history-pagination{justify-content:flex-start}}
+.service-cases .sc-flash-warning{color:#77561c;background:#fff8e7;border-color:#f0dfb6}
+.service-cases .sc-flash-warning .material-icons{color:#a87a1f}
