@@ -516,6 +516,10 @@ class CustomerServiceCases extends Component
     {
         abort_unless($this->canManage(), 403);
         $case = $this->authorizedCase((int) $this->caseId);
+        if ($case->status === 'closed') {
+            session()->flash('serviceCaseWarning', 'Ce dossier est clôturé : son responsable ne peut plus être modifié.');
+            return;
+        }
         $this->assignedTo = (string) ($case->assigned_to ?: '');
         $this->assigneeSearch = $case->assignee?->name ?: '';
         $this->closeAllModals();
@@ -526,6 +530,10 @@ class CustomerServiceCases extends Component
     {
         abort_unless($this->canManage(), 403);
         $case = $this->authorizedCase((int) $this->caseId);
+        if ($case->status === 'closed') {
+            session()->flash('serviceCaseWarning', 'Ce dossier est clôturé : sa priorité ne peut plus être modifiée.');
+            return;
+        }
         $this->newPriority = $case->priority;
         $this->statusComment = '';
         $this->closeAllModals();
@@ -546,6 +554,11 @@ class CustomerServiceCases extends Component
     {
         abort_unless($this->canManage(), 403);
         $case = $this->authorizedCase((int) $this->caseId);
+        if ($case->status === 'closed') {
+            $this->closeAllModals();
+            session()->flash('serviceCaseWarning', 'Ce dossier est clôturé : sa priorité ne peut plus être modifiée.');
+            return;
+        }
         $this->validate([
             'newPriority' => ['required', Rule::in(['low', 'normal', 'high', 'urgent'])],
             'statusComment' => ['required', 'string', 'min:3', 'max:2000'],
@@ -567,6 +580,11 @@ class CustomerServiceCases extends Component
     {
         abort_unless($this->canManage(), 403);
         $case = $this->authorizedCase((int) $this->caseId);
+        if ($case->status === 'closed') {
+            $this->closeAllModals();
+            session()->flash('serviceCaseWarning', 'Ce dossier est clôturé : son responsable ne peut plus être modifié.');
+            return;
+        }
         $this->validate(['assignedTo' => ['required', 'exists:users,id']]);
         $user = $this->availableAssignees()->findOrFail($this->assignedTo);
         $previous = $case->assignee?->name ?: 'Non attribué';
