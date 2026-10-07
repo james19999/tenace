@@ -192,12 +192,9 @@
                 <h1>Réclamations et accompagnement</h1>
                 <p>Chaque demande a un responsable, une prochaine étape et un historique clair.</p>
             </div>
-            <div class="sc-hero-actions">
-                @include('livewire.partials.service-case-notifications')
-                @if ($canCreateCases = in_array(Auth::user()->user_type, ['ADMINUSER', 'MNG', 'SCR', 'CALLCENTER'], true))
-                    <button type="button" class="btn sc-primary-btn" wire:click="openCreateModal"><span class="material-icons">add</span>Nouveau dossier</button>
-                @endif
-            </div>
+            @if ($canCreateCases = in_array(Auth::user()->user_type, ['ADMINUSER', 'MNG', 'SCR', 'CALLCENTER'], true))
+                <button type="button" class="btn sc-primary-btn" wire:click="openCreateModal"><span class="material-icons">add</span>Nouveau dossier</button>
+            @endif
         </section>
 
         <div class="sc-metrics">
@@ -331,7 +328,7 @@
     @else
         <section class="sc-detail-top">
             <div><a class="sc-back-link" href="{{ route('service-cases.index') }}"><span class="material-icons">arrow_back</span>Retour aux dossiers</a><div class="sc-detail-heading"><span class="sc-case-number">{{ $case->case_number }}</span><span class="sc-status {{ $statusClasses[$case->status] ?? '' }}">{{ $statusLabels[$case->status] ?? $case->status }}</span><span class="sc-priority {{ $priorityClasses[$case->priority] ?? '' }}">{{ $priorityLabels[$case->priority] ?? $case->priority }}</span></div><h1>{{ $case->customer->name }}</h1><p>{{ $typeLabels[$case->case_type] ?? $case->case_type }} <span>·</span> créé le {{ $case->created_at->format('d/m/Y à H:i') }}</p></div>
-            <div class="sc-detail-actions">@include('livewire.partials.service-case-notifications') @if($canManageCases)<button type="button" class="btn sc-secondary-btn" wire:click="openAssignForm"><span class="material-icons">person_add_alt</span>Attribuer</button><button type="button" class="btn sc-secondary-btn" wire:click="openPriorityForm"><span class="material-icons">low_priority</span>Priorité</button>@endif<button type="button" class="btn sc-primary-btn" wire:click="openActivityModal"><span class="material-icons">add_comment</span>Ajouter une intervention</button></div>
+            <div class="sc-detail-actions">@if($canManageCases)<button type="button" class="btn sc-secondary-btn" wire:click="openAssignForm"><span class="material-icons">person_add_alt</span>Attribuer</button><button type="button" class="btn sc-secondary-btn" wire:click="openPriorityForm"><span class="material-icons">low_priority</span>Priorité</button>@endif<button type="button" class="btn sc-primary-btn" wire:click="openActivityModal"><span class="material-icons">add_comment</span>Ajouter une intervention</button></div>
         </section>
 
         <div class="sc-detail-layout">

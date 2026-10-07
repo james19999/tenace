@@ -31,6 +31,10 @@
 
             {{--  @livewire('delivery-alert')  --}}
 
+            @if (Auth::user()->hasRole(['ADMINUSER', 'MNG', 'SCR', 'CALLCENTER']))
+                @livewire('customer-service-notifications')
+            @endif
+
             <!-- Messages Dropdown Menu -->
             <li class="nav-item dropdown with-caret  ">
                 <a class="nav-link" data-toggle="dropdown" href="#">

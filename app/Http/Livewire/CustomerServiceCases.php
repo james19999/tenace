@@ -51,7 +51,6 @@ class CustomerServiceCases extends Component
     public $showCloseForm = false;
     public $showAssignForm = false;
     public $showPriorityForm = false;
-    public $showNotifications = false;
 
     public $customerSearch = '';
     public $selectedCustomerId = '';
@@ -737,17 +736,6 @@ class CustomerServiceCases extends Component
         }
     }
 
-    public function markNotificationRead(string $notificationId): void
-    {
-        $notification = Auth::user()->unreadNotifications()->whereKey($notificationId)->firstOrFail();
-        $notification->markAsRead();
-    }
-
-    public function toggleNotifications(): void
-    {
-        $this->showNotifications = ! $this->showNotifications;
-    }
-
     protected function resetCreateForm(): void
     {
         $this->reset([
@@ -918,8 +906,6 @@ class CustomerServiceCases extends Component
             'canManageCases' => $this->canManage(),
             'canAssignCases' => $this->canAssignCases(),
             'customerSelected' => $this->selectedCustomerId ? Costumer::find($this->selectedCustomerId) : null,
-            'serviceNotifications' => Auth::user()->unreadNotifications()->where('type', CustomerServiceCaseNotification::class)->latest()->limit(6)->get(),
-            'serviceNotificationCount' => Auth::user()->unreadNotifications()->where('type', CustomerServiceCaseNotification::class)->count(),
         ])->extends('layouts.admin')->section('content');
     }
 }

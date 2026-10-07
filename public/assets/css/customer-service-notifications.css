@@ -1,0 +1,319 @@
+.right-area header .navbar-nav > li.sc-global-notification {
+    position: relative;
+    z-index: 20;
+    overflow: visible;
+}
+.right-area header .navbar-nav > li.sc-global-notification > button {
+    position: relative;
+    display: inline-flex;
+    width: 54px;
+    min-width: 54px;
+    align-items: center;
+    justify-content: center;
+    padding: 0 !important;
+    color: #fff;
+}
+.right-area header .navbar-nav > li.sc-global-notification > button:hover,
+.right-area header .navbar-nav > li.sc-global-notification > button[aria-expanded="true"] {
+    background: #393a77;
+}
+.sc-global-notification-badge {
+    position: absolute;
+    top: 8px;
+    right: 7px;
+    display: flex;
+    min-width: 18px;
+    height: 18px;
+    align-items: center;
+    justify-content: center;
+    padding: 0 4px;
+    border: 2px solid var(--primary, #263e91);
+    border-radius: 20px;
+    background: #df493e;
+    color: #fff;
+    font-size: 9px;
+    font-weight: 800;
+    line-height: 1;
+}
+.sc-global-notification-menu {
+    position: absolute;
+    top: 54px;
+    right: 0;
+    z-index: 2000;
+    width: min(370px, calc(100vw - 24px));
+    max-height: min(68vh, 460px);
+    overflow-y: auto;
+    border: 1px solid #e6e5eb;
+    border-radius: 0 0 11px 11px;
+    background: #fff;
+    box-shadow: 0 14px 40px rgba(28, 26, 42, .2);
+    color: #343540;
+}
+.sc-global-notification-menu > header {
+    position: sticky;
+    top: 0;
+    z-index: 1;
+    display: flex;
+    height: auto !important;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+    padding: 12px 14px;
+    border-bottom: 1px solid #ededf1;
+    background: #fff;
+}
+.sc-global-notification-menu > header strong {
+    color: #30313b;
+    font-size: 12px;
+}
+.sc-global-notification-menu > header span {
+    color: #858691;
+    font-size: 10px;
+}
+.sc-global-notification-menu article {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    min-height: 0;
+    height: auto !important;
+    padding: 10px 12px;
+    border-bottom: 1px solid #f0f0f3;
+}
+.sc-global-notification-menu article:last-child {
+    border-bottom: 0;
+}
+.sc-global-notification-menu article > a {
+    display: flex;
+    min-width: 0;
+    flex: 1;
+    align-items: flex-start;
+    gap: 8px;
+    color: #555762 !important;
+    text-align: left !important;
+    text-decoration: none;
+    line-height: 1.4 !important;
+}
+.sc-global-notification-menu article > a:hover {
+    background: transparent !important;
+    color: #7e1615 !important;
+}
+.sc-global-notification-menu article > a > .material-icons {
+    flex: 0 0 auto;
+    color: #7e1615;
+    font-size: 17px;
+}
+.sc-global-notification-menu article > a > span:last-child {
+    display: flex;
+    min-width: 0;
+    flex-direction: column;
+    gap: 4px;
+}
+.sc-global-notification-menu article strong {
+    color: #50515b;
+    font-size: 10px;
+    font-weight: 600;
+    line-height: 1.4;
+}
+.sc-global-notification-menu article small {
+    color: #9697a0;
+    font-size: 9px;
+}
+.sc-global-notification-menu article > button {
+    display: flex;
+    width: 27px;
+    height: 27px !important;
+    min-width: 27px;
+    flex: 0 0 auto;
+    align-items: center;
+    justify-content: center;
+    padding: 0 !important;
+    border: 0;
+    border-radius: 50%;
+    background: #f3f3f6;
+    color: #6c6d77;
+}
+.sc-global-notification-menu article > button:hover {
+    background: #eaf4ed;
+    color: #337354;
+}
+.sc-global-notification-menu article > button .material-icons {
+    font-size: 16px;
+}
+.sc-global-notification-empty {
+    margin: 0;
+    padding: 18px 14px;
+    color: #898a94;
+    font-size: 11px;
+    text-align: center;
+}
+
+/* Override the header's fixed 54px direct-child height for the opened panel. */
+.right-area header .navbar-nav > li.sc-global-notification > .sc-global-notification-menu {
+    display: block;
+    height: auto !important;
+    min-height: 0 !important;
+    box-sizing: border-box;
+    border-radius: 0 0 14px 14px;
+    animation: sc-notification-drop-in .16s ease-out;
+}
+.right-area header .navbar-nav > li.sc-global-notification {
+    height: 54px;
+}
+.right-area header .navbar-nav > li.sc-global-notification > .sc-global-notification-menu {
+    width: min(390px, calc(100vw - 24px));
+    max-height: min(72vh, 480px);
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    scrollbar-width: thin;
+    scrollbar-color: #d7c4c3 transparent;
+    border: 1px solid #e9e2e2;
+    box-shadow: 0 18px 48px rgba(31, 26, 35, .22), 0 3px 10px rgba(31, 26, 35, .08);
+}
+.sc-global-notification-menu > .sc-global-notification-head {
+    min-height: 66px;
+    padding: 12px 14px;
+    box-shadow: 0 3px 8px rgba(40, 34, 40, .035);
+}
+.sc-global-notification-title-icon {
+    display: flex;
+    width: 34px;
+    height: 34px;
+    flex: 0 0 34px;
+    align-items: center;
+    justify-content: center;
+    border-radius: 10px;
+    background: #f7e9e8;
+    color: #7e1615;
+}
+.sc-global-notification-title-icon .material-icons {
+    font-size: 19px;
+}
+.sc-global-notification-title {
+    display: flex;
+    flex: 1;
+    flex-direction: column;
+    gap: 2px;
+}
+.sc-global-notification-title strong {
+    color: #30313b;
+    font-size: 12px;
+}
+.sc-global-notification-title small {
+    color: #898a94;
+    font-size: 9px;
+}
+.sc-global-notification-unread {
+    padding: 5px 8px;
+    border-radius: 20px;
+    background: #f7eeee;
+    color: #7e1615 !important;
+    font-size: 9px !important;
+    font-weight: 750;
+    white-space: nowrap;
+}
+.sc-global-notification-menu article {
+    min-height: 68px;
+    padding: 10px 12px;
+    transition: background-color .15s ease;
+}
+.sc-global-notification-menu article:hover {
+    background: #fcf8f8;
+}
+.sc-global-notification-menu article > a {
+    align-items: center;
+    min-height: 46px;
+}
+.sc-global-notification-menu article > a:hover {
+    background: transparent !important;
+}
+.sc-global-notification-icon {
+    display: flex;
+    width: 33px;
+    height: 33px;
+    flex: 0 0 33px;
+    align-items: center;
+    justify-content: center;
+    border-radius: 50%;
+    background: #f5f3f5;
+    color: #7e1615;
+}
+.sc-global-notification-icon .material-icons {
+    font-size: 17px;
+}
+.sc-global-notification-menu article > a > .sc-global-notification-copy {
+    gap: 5px;
+}
+.sc-global-notification-menu article strong {
+    display: -webkit-box;
+    overflow: hidden;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 2;
+    overflow-wrap: anywhere;
+}
+.sc-global-notification-menu article small {
+    font-size: 9px;
+}
+.sc-global-notification-menu article > button {
+    transition: background-color .15s ease, color .15s ease;
+}
+.sc-global-notification-empty {
+    display: flex;
+    min-height: 145px;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 5px;
+    padding: 18px;
+}
+.sc-global-notification-empty > .material-icons {
+    margin-bottom: 3px;
+    color: #b2a1a1;
+    font-size: 26px;
+}
+.sc-global-notification-empty strong {
+    color: #4d4f59;
+    font-size: 11px;
+}
+.sc-global-notification-empty > span:last-child {
+    color: #92939d;
+    font-size: 10px;
+}
+.sc-global-notification-footer {
+    display: flex;
+    height: auto !important;
+    align-items: center;
+    justify-content: space-between;
+    padding: 11px 14px;
+    border-top: 1px solid #ededf1;
+    background: #faf9fa;
+    color: #7e1615 !important;
+    font-size: 10px;
+    font-weight: 750;
+    text-decoration: none !important;
+    position: sticky;
+    bottom: 0;
+}
+.sc-global-notification-footer:hover {
+    background: #f7eeee !important;
+}
+.sc-global-notification-footer .material-icons {
+    font-size: 16px;
+}
+@keyframes sc-notification-drop-in {
+    from { opacity: 0; transform: translateY(-5px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+@media (max-width: 575px) {
+    .right-area header .navbar-nav > li.sc-global-notification > .sc-global-notification-menu {
+        position: fixed;
+        top: 54px;
+        right: 10px;
+        left: 10px;
+        width: auto;
+        max-height: calc(100vh - 70px);
+        border-radius: 0 0 14px 14px;
+    }
+    .sc-global-notification-unread {
+        padding: 5px 7px;
+    }
+}
