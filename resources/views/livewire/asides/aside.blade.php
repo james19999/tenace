@@ -173,7 +173,7 @@
                     </a>
                     <ul class="collapse" id="serviceClientMenu">
                         <li><a href="{{ route('costumer.follow-up') }}"><span class="icon material-icons">remove</span><span class="text">Suivi des contacts</span></a></li>
-                        <li><a href="{{ route('service-cases.index') }}"><span class="icon material-icons">remove</span><span class="text">Réclamations et accompagnement</span></a></li>
+                        <li><a href="{{ route('service-cases.index') }}"><span class="icon material-icons">remove</span><span class="text">Réclamations</span></a></li>
                     </ul>
                 </li>
                 <li>
@@ -573,7 +573,7 @@
                 <li>
                     <a href="{{ route('service-cases.index') }}" class="">
                         <span class="icon material-icons">support_agent</span>
-                        <span class="text">Réclamations et accompagnement</span>
+                        <span class="text">Réclamations</span>
                     </a>
                 </li>
             @else
@@ -587,7 +587,7 @@
                     <li>
                         <a href="{{ route('service-cases.index') }}" class="">
                             <span class="icon material-icons">support_agent</span>
-                            <span class="text">Réclamations et accompagnement</span>
+                            <span class="text">Réclamations</span>
                         </a>
                     </li>
                 @endif

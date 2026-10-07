@@ -701,7 +701,10 @@ class CustomerServiceCases extends Component
             $search = '%'.trim($this->search).'%';
             $query->where(function (Builder $builder) use ($search) {
                 $builder->where('case_number', 'like', $search)
-                    ->orWhereHas('customer', fn (Builder $customer) => $customer->where('name', 'like', $search)->orWhere('phone', 'like', $search));
+                    ->orWhereHas('customer', fn (Builder $customer) => $customer
+                        ->where('name', 'like', $search)
+                        ->orWhere('phone', 'like', $search)
+                        ->orWhere('email', 'like', $search));
             });
         }
         if ($this->statusFilter === 'open') {
@@ -812,7 +815,7 @@ class CustomerServiceCases extends Component
             $dashboard['satisfied_rate'] = (clone $rated)->count() ? round((clone $rated)->where('customer_satisfaction', '>=', 4)->count() / (clone $rated)->count() * 100) : null;
             $dashboard['by_assignee'] = (clone $base)->select('assigned_to')->selectRaw('COUNT(*) as case_count')
                 ->with('assignee:id,name')->groupBy('assigned_to')->orderByDesc('case_count')->limit(5)->get();
-            $caseRows = $base->orderByRaw("CASE WHEN status = 'closed' THEN 1 ELSE 0 END")
+            $caseRows = $this->visibleCases()->orderByRaw("CASE WHEN status = 'closed' THEN 1 ELSE 0 END")
                 ->orderByRaw("CASE WHEN next_follow_up_at IS NOT NULL AND next_follow_up_at < ? AND status NOT IN ('closed','resolved') THEN 0 ELSE 1 END", [now()])
                 ->orderByRaw("FIELD(priority, 'urgent', 'high', 'normal', 'low')")
                 ->orderByDesc('updated_at')->paginate(15);

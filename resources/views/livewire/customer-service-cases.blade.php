@@ -144,13 +144,20 @@
         }
         @media(max-width: 600px) {
             .service-cases .sc-modal-backdrop {
-                padding: 0 !important;
-                align-items: flex-end !important;
+                padding: 8px !important;
+                align-items: center !important;
+                justify-content: center !important;
             }
             .service-cases .sc-modal {
-                width: 100% !important;
-                max-height: 94vh !important;
-                border-radius: 16px 16px 0 0 !important;
+                width: calc(100vw - 16px) !important;
+                height: min(92vh, 860px) !important;
+                max-height: 92vh !important;
+                border-radius: 14px !important;
+                margin: auto !important;
+            }
+            .service-cases .sc-modal.sc-modal-narrow {
+                height: auto !important;
+                max-height: 92vh !important;
             }
             .service-cases .sc-modal-head {
                 padding: 16px 18px 12px !important;
@@ -232,42 +239,42 @@
                 <div class="sc-result-count">{{ $caseRows->total() }} dossier(s)</div>
             </div>
             <div class="sc-filters">
-                <label class="sc-search"><span class="material-icons">search</span><input type="search" wire:model.debounce.400ms="search" placeholder="N° dossier, nom ou téléphone"></label>
-                <select class="form-control" wire:model="statusFilter" aria-label="Filtrer par statut">
+                <label class="sc-search"><span class="material-icons">search</span><input type="search" wire:model.debounce.400ms="search" placeholder="N° dossier, nom, téléphone ou e-mail"></label>
+                <label class="sc-filter-field"><span>Statut</span><select class="form-control" wire:model="statusFilter" aria-label="Filtrer par statut">
                     <option value="open">Dossiers ouverts</option><option value="overdue">Suivis en retard</option><option value="">Tous les statuts</option><option value="completed">Résolus et clôturés</option>
                     @foreach ($statusLabels as $value => $label)<option value="{{ $value }}">{{ $label }}</option>@endforeach
-                </select>
-                <select class="form-control" wire:model="typeFilter" aria-label="Filtrer par type">
+                </select></label>
+                <label class="sc-filter-field"><span>Type de dossier</span><select class="form-control" wire:model="typeFilter" aria-label="Filtrer par type">
                     <option value="">Tous les types</option>@foreach ($typeLabels as $value => $label)<option value="{{ $value }}">{{ $label }}</option>@endforeach
-                </select>
-                <select class="form-control" wire:model="priorityFilter" aria-label="Filtrer par priorité">
+                </select></label>
+                <label class="sc-filter-field"><span>Priorité</span><select class="form-control" wire:model="priorityFilter" aria-label="Filtrer par priorité">
                     <option value="">Toutes les priorités</option>@foreach ($priorityLabels as $value => $label)<option value="{{ $value }}">{{ $label }}</option>@endforeach
-                </select>
+                </select></label>
                 @if ($canManageCases)
-                    <select class="form-control" wire:model="assigneeFilter" aria-label="Filtrer par responsable"><option value="">Tous les responsables</option>@foreach ($assignees as $person)<option value="{{ $person->id }}">{{ $person->name }}</option>@endforeach</select>
+                    <label class="sc-filter-field"><span>Responsable</span><select class="form-control" wire:model="assigneeFilter" aria-label="Filtrer par responsable"><option value="">Tous les responsables</option>@foreach ($assignees as $person)<option value="{{ $person->id }}">{{ $person->name }}</option>@endforeach</select></label>
                 @endif
-                <input class="form-control sc-date-filter" type="date" wire:model="dateFrom" aria-label="Créé à partir du">
-                <input class="form-control sc-date-filter" type="date" wire:model="dateTo" aria-label="Créé jusqu’au">
+                <label class="sc-filter-field sc-date-field"><span>Créé à partir du</span><input class="form-control sc-date-filter" type="date" wire:model="dateFrom" aria-label="Créé à partir du"></label>
+                <label class="sc-filter-field sc-date-field"><span>Créé jusqu’au</span><input class="form-control sc-date-filter" type="date" wire:model="dateTo" aria-label="Créé jusqu’au"></label>
             </div>
 
             <div class="table-responsive sc-table-wrap">
                 <table class="table sc-table mb-0">
-                    <thead><tr><th>Dossier / cliente</th><th>Nature</th><th>Produit</th><th>Responsable</th><th>Priorité</th><th>Statut</th><th>Prochain suivi</th><th></th></tr></thead>
+                    <thead><tr><th>Dossier / cliente</th><th>Nature</th><th>Produit</th><th>Responsable</th><th>Priorité</th><th>Statut</th><th>Prochain suivi</th><th>Actions</th></tr></thead>
                     <tbody>
                         @forelse ($caseRows as $row)
                             @php $isOverdue = $row->next_follow_up_at && $row->next_follow_up_at->isPast() && !in_array($row->status, ['resolved', 'closed'], true); @endphp
-                            <tr class="{{ $isOverdue ? 'sc-row-overdue' : '' }}">
-                                <td><a class="sc-case-link" href="{{ route('service-cases.show', $row->id) }}">{{ $row->case_number }}</a><span class="sc-customer-name">{{ $row->customer->name }}</span><span class="sc-customer-phone">{{ $row->customer->phone }}</span></td>
-                                <td><span class="sc-type-dot"></span>{{ $typeLabels[$row->case_type] ?? $row->case_type }}</td>
-                                <td>{{ $row->product?->name ?: '—' }}</td>
-                                <td>{{ $row->assignee?->name ?: 'À attribuer' }}</td>
-                                <td><span class="sc-priority {{ $priorityClasses[$row->priority] ?? '' }}">{{ $priorityLabels[$row->priority] ?? $row->priority }}</span></td>
-                                <td><span class="sc-status {{ $statusClasses[$row->status] ?? '' }}">{{ $statusLabels[$row->status] ?? $row->status }}</span></td>
-                                <td class="{{ $isOverdue ? 'sc-overdue-date' : '' }}">{{ $row->next_follow_up_at?->format('d/m/Y H:i') ?: 'Non programmé' }} @if($isOverdue)<small>En retard</small>@endif</td>
-                                <td><a class="sc-open-link" href="{{ route('service-cases.show', $row->id) }}" aria-label="Ouvrir le dossier"><span class="material-icons">arrow_forward</span></a></td>
+                            <tr class="sc-case-row {{ $isOverdue ? 'sc-row-overdue' : '' }}">
+                                <td data-label="Dossier / cliente"><a class="sc-case-link" href="{{ route('service-cases.show', $row->id) }}">{{ $row->case_number }}</a><span class="sc-customer-name">{{ $row->customer->name }}</span><span class="sc-customer-phone">{{ $row->customer->phone }}</span></td>
+                                <td data-label="Nature"><span class="sc-type-dot"></span>{{ $typeLabels[$row->case_type] ?? $row->case_type }}</td>
+                                <td data-label="Produit">{{ $row->product?->name ?: '—' }}</td>
+                                <td data-label="Responsable">{{ $row->assignee?->name ?: 'À attribuer' }}</td>
+                                <td data-label="Priorité"><span class="sc-priority {{ $priorityClasses[$row->priority] ?? '' }}">{{ $priorityLabels[$row->priority] ?? $row->priority }}</span></td>
+                                <td data-label="Statut"><span class="sc-status {{ $statusClasses[$row->status] ?? '' }}">{{ $statusLabels[$row->status] ?? $row->status }}</span></td>
+                                <td data-label="Prochain suivi" class="{{ $isOverdue ? 'sc-overdue-date' : '' }}">{{ $row->next_follow_up_at?->format('d/m/Y H:i') ?: 'Non programmé' }} @if($isOverdue)<small>En retard</small>@endif</td>
+                                <td data-label="Actions"><a class="sc-open-link" href="{{ route('service-cases.show', $row->id) }}" aria-label="Ouvrir le dossier"><span class="material-icons">arrow_forward</span></a></td>
                             </tr>
                         @empty
-                            <tr><td colspan="8"><div class="sc-empty"><span class="material-icons">folder_off</span><strong>Aucun dossier trouvé</strong><span>Modifiez les filtres ou créez un nouveau dossier.</span></div></td></tr>
+                            <tr class="sc-empty-row"><td colspan="8"><div class="sc-empty"><span class="material-icons">folder_off</span><strong>Aucun dossier trouvé</strong><span>Modifiez les filtres ou créez un nouveau dossier.</span></div></td></tr>
                         @endforelse
                     </tbody>
                 </table>
@@ -353,8 +360,40 @@
                 <section class="sc-detail-card"><span class="sc-eyebrow">DESCRIPTION INITIALE</span><p class="sc-description">{{ $case->description }}</p></section>
 
                 @if($case->supportPlan)
-                    <section class="sc-detail-card"><div class="sc-card-heading"><div><span class="sc-eyebrow">PROGRAMME PERSONNALISÉ</span><h2>Étapes d’accompagnement</h2></div><span class="sc-plan-start">Début {{ $case->supportPlan->started_at->format('d/m/Y') }}</span></div><div class="sc-plan-summary"><strong>Besoin exprimé</strong><p>{{ $case->supportPlan->customer_need }}</p>@if($case->supportPlan->objectives)<strong>Objectifs</strong><p>{{ $case->supportPlan->objectives }}</p>@endif</div>
-                        <div class="sc-milestone-list">@forelse($case->supportPlan->milestones as $milestone)<article class="sc-milestone {{ $milestone->completed_at ? 'is-complete' : ($milestone->due_at->isPast() ? 'is-late' : '') }}"><span class="sc-milestone-marker">@if($milestone->completed_at)<span class="material-icons">check</span>@else{{ $loop->iteration }}@endif</span><div class="sc-milestone-info"><strong>{{ $milestone->day_offset ? 'Suivi J+'.$milestone->day_offset : 'Suivi personnalisé' }}</strong><small>{{ $milestone->due_at->format('d/m/Y à H:i') }} @if($milestone->completed_at) · réalisé le {{ $milestone->completed_at->format('d/m/Y') }} @elseif($milestone->due_at->isPast()) · En retard @endif</small>@if($milestone->observation)<p>{{ $milestone->observation }}</p>@endif</div>@if(!$milestone->completed_at && $case->status !== 'closed')<button class="btn sc-milestone-action" type="button" onclick="document.getElementById('milestone-date-{{ $milestone->id }}')?.classList.toggle('d-none')">Modifier date</button><button class="btn sc-milestone-action" type="button" onclick="document.getElementById('milestone-note-{{ $milestone->id }}')?.classList.toggle('d-none')">Enregistrer l’étape</button>@endif</article>@if(!$milestone->completed_at && $case->status !== 'closed')<form id="milestone-date-{{ $milestone->id }}" class="sc-milestone-form d-none" wire:submit.prevent="updateMilestoneDate({{ $milestone->id }})"><input class="form-control" type="datetime-local" wire:model.defer="milestoneDates.{{ $milestone->id }}" required>@error('milestoneDates.'.$milestone->id)<small class="text-danger">{{ $message }}</small>@enderror<button class="btn sc-primary-btn btn-sm">Enregistrer la date</button></form><form id="milestone-note-{{ $milestone->id }}" class="sc-milestone-form d-none" wire:submit.prevent="completeMilestone({{ $milestone->id }})"><input class="form-control" wire:model.defer="milestoneObservation" placeholder="Observation de cette étape" required><button class="btn sc-primary-btn btn-sm">Valider l’étape</button></form>@endif @empty<div class="sc-empty-compact">Aucune échéance programmée.</div>@endforelse</div>
+                    <section class="sc-detail-card sc-support-plan-card">
+                        <div class="sc-card-heading sc-support-plan-heading">
+                            <div><span class="sc-eyebrow">PROGRAMME PERSONNALISÉ</span><h2>Étapes d’accompagnement</h2></div>
+                            <span class="sc-plan-start"><span class="material-icons">event_available</span><span><small>Début du programme</small><strong>{{ $case->supportPlan->started_at->format('d/m/Y') }}</strong></span></span>
+                        </div>
+                        <div class="sc-plan-summary">
+                            <article><span>Besoin de la cliente</span><p>{{ $case->supportPlan->customer_need }}</p></article>
+                            @if($case->supportPlan->objectives)<article><span>Objectifs</span><p>{{ $case->supportPlan->objectives }}</p></article>@endif
+                        </div>
+                        <div class="sc-milestone-list">
+                            @forelse($case->supportPlan->milestones as $milestone)
+                                <article class="sc-milestone {{ $milestone->completed_at ? 'is-complete' : ($milestone->due_at->isPast() ? 'is-late' : '') }}">
+                                    <span class="sc-milestone-marker">@if($milestone->completed_at)<span class="material-icons">check</span>@else{{ $loop->iteration }}@endif</span>
+                                    <div class="sc-milestone-info">
+                                        <strong>{{ $milestone->day_offset ? 'Suivi J+'.$milestone->day_offset : 'Suivi personnalisé' }}</strong>
+                                        <small><span class="material-icons">schedule</span>{{ $milestone->due_at->format('d/m/Y à H:i') }}</small>
+                                        @if($milestone->completed_at)<span class="sc-milestone-state">Réalisé le {{ $milestone->completed_at->format('d/m/Y') }}</span>@elseif($milestone->due_at->isPast())<span class="sc-milestone-state is-late-label">En retard</span>@endif
+                                        @if($milestone->observation)<p>{{ $milestone->observation }}</p>@endif
+                                    </div>
+                                    @if(!$milestone->completed_at && $case->status !== 'closed')
+                                        <div class="sc-milestone-actions">
+                                            <button class="btn sc-milestone-action" type="button" onclick="document.getElementById('milestone-date-{{ $milestone->id }}')?.classList.toggle('d-none')">Modifier la date</button>
+                                            <button class="btn sc-milestone-action" type="button" onclick="document.getElementById('milestone-note-{{ $milestone->id }}')?.classList.toggle('d-none')">Enregistrer l’étape</button>
+                                        </div>
+                                    @endif
+                                </article>
+                                @if(!$milestone->completed_at && $case->status !== 'closed')
+                                    <form id="milestone-date-{{ $milestone->id }}" class="sc-milestone-form d-none" wire:submit.prevent="updateMilestoneDate({{ $milestone->id }})"><input class="form-control" type="datetime-local" wire:model.defer="milestoneDates.{{ $milestone->id }}" required>@error('milestoneDates.'.$milestone->id)<small class="text-danger">{{ $message }}</small>@enderror<button class="btn sc-primary-btn btn-sm">Enregistrer la date</button></form>
+                                    <form id="milestone-note-{{ $milestone->id }}" class="sc-milestone-form d-none" wire:submit.prevent="completeMilestone({{ $milestone->id }})"><input class="form-control" wire:model.defer="milestoneObservation" placeholder="Observation de cette étape" required><button class="btn sc-primary-btn btn-sm">Valider l’étape</button></form>
+                                @endif
+                            @empty
+                                <div class="sc-empty-compact">Aucune échéance programmée.</div>
+                            @endforelse
+                        </div>
                         @if($canManageCases)<div class="sc-support-review"><label class="sc-label">Bilan final de l’accompagnement</label><textarea class="form-control" rows="3" wire:model.defer="supportObjectives" placeholder="Synthèse des résultats et recommandations…"></textarea><button class="btn sc-secondary-btn mt-2" wire:click="saveSupportReview">Enregistrer le bilan</button></div>@endif
                     </section>
                 @endif
