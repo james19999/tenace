@@ -787,3 +787,60 @@ body.sc-modal-open {
         font-size: 9px;
     }
 }
+
+.sc-contact-launch {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+    margin-top: 11px;
+    padding: 10px 11px;
+    border: 1px solid #ececf0;
+    border-radius: 8px;
+    background: #fafafd;
+}
+.sc-contact-launch > span {
+    min-width: 0;
+    color: #666873;
+    font-size: 10px;
+    overflow-wrap: anywhere;
+}
+.sc-contact-launch-button {
+    display: inline-flex;
+    flex: 0 0 auto;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    border: 1px solid #d8e8dc;
+    border-radius: 7px;
+    background: #edf6ef;
+    color: #28633f;
+    font-size: 10px;
+    font-weight: 750;
+    white-space: nowrap;
+}
+.sc-contact-launch-button:hover {
+    border-color: #b9d5c0;
+    background: #e3f0e6;
+    color: #1e5333;
+}
+.sc-contact-launch-button .material-icons {
+    font-size: 16px;
+}
+.sc-contact-unavailable {
+    display: block;
+    margin-top: 7px;
+    color: #9a6c10;
+    font-size: 10px;
+}
+@media (max-width: 575px) {
+    .sc-contact-launch {
+        align-items: stretch;
+        flex-direction: column;
+    }
+    .sc-contact-launch-button {
+        width: 100%;
+        min-height: 39px;
+        white-space: normal;
+    }
+}

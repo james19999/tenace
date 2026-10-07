@@ -420,7 +420,44 @@
         </div>
 
         @if($showActivityForm)
-            <div class="sc-modal-backdrop" wire:click.self="closeAllModals"><section class="sc-modal sc-modal-narrow" role="dialog" aria-modal="true"><header class="sc-modal-head"><div><span class="sc-eyebrow">DOSSIER {{ $case->case_number }}</span><h2>Ajouter une intervention</h2></div><button type="button" class="sc-icon-button" wire:click="closeAllModals"><span class="material-icons">close</span></button></header><form wire:submit.prevent="saveActivity"><div class="sc-modal-body"><div class="sc-activity-toggle"><label><input type="radio" wire:model="activityType" value="internal_note"><span><span class="material-icons">sticky_note_2</span>Note interne</span></label><label><input type="radio" wire:model="activityType" value="communication"><span><span class="material-icons">forum</span>Échange client</span></label></div>@if($activityType === 'communication')<label class="sc-label mt-3">Canal de communication <b>*</b></label><select class="form-control" wire:model="activityChannel"><option value="">Choisir un canal</option><option value="whatsapp">WhatsApp</option><option value="call">Appel téléphonique</option><option value="sms">SMS</option><option value="email">E-mail</option><option value="visit">Visite physique</option><option value="other">Autre</option></select>@error('activityChannel')<small class="text-danger">{{ $message }}</small>@enderror @endif<label class="sc-label mt-3">{{ $activityType === 'communication' ? 'Résumé de l’échange' : 'Observation pour l’équipe' }} <b>*</b></label><textarea class="form-control" rows="5" wire:model.defer="activityBody" placeholder="Décrivez les points abordés, la réponse ou la prochaine action…"></textarea>@error('activityBody')<small class="text-danger">{{ $message }}</small>@enderror<label class="sc-label mt-3">Joindre des documents <small>(5 fichiers max)</small></label><input type="file" class="form-control-file sc-file-input" wire:model="uploads" multiple accept=".jpg,.jpeg,.png,.webp,.pdf">@error('uploads.*')<small class="text-danger d-block">{{ $message }}</small>@enderror</div><footer class="sc-modal-foot"><button type="button" class="btn sc-secondary-btn" wire:click="closeAllModals">Annuler</button><button class="btn sc-primary-btn" type="submit" wire:loading.attr="disabled" wire:target="saveActivity"><span class="material-icons">save</span>Enregistrer</button></footer></form></section></div>
+            <div class="sc-modal-backdrop" wire:click.self="closeAllModals">
+                <section class="sc-modal sc-modal-narrow" role="dialog" aria-modal="true">
+                    <header class="sc-modal-head"><div><span class="sc-eyebrow">DOSSIER {{ $case->case_number }}</span><h2>Ajouter une intervention</h2></div><button type="button" class="sc-icon-button" wire:click="closeAllModals"><span class="material-icons">close</span></button></header>
+                    <form wire:submit.prevent="saveActivity">
+                        <div class="sc-modal-body">
+                            <div class="sc-activity-toggle">
+                                <label><input type="radio" wire:model="activityType" value="internal_note"><span><span class="material-icons">sticky_note_2</span>Note interne</span></label>
+                                <label><input type="radio" wire:model="activityType" value="communication"><span><span class="material-icons">forum</span>Échange client</span></label>
+                            </div>
+                            @if($activityType === 'communication')
+                                <label class="sc-label mt-3">Canal de communication <b>*</b></label>
+                                <select class="form-control" wire:model="activityChannel"><option value="">Choisir un canal</option><option value="whatsapp">WhatsApp</option><option value="call">Appel téléphonique</option><option value="sms">SMS</option><option value="email">E-mail</option><option value="visit">Visite physique</option><option value="other">Autre</option></select>
+                                @error('activityChannel')<small class="text-danger">{{ $message }}</small>@enderror
+                                @if(!empty($caseContactLinks[$activityChannel] ?? null))
+                                    <div class="sc-contact-launch">
+                                        <span>Contacter {{ $case->customer->name }}</span>
+                                        <a class="btn sc-contact-launch-button" href="{{ $caseContactLinks[$activityChannel] }}" @if($activityChannel === 'whatsapp') target="_blank" rel="noopener noreferrer" @endif>
+                                            <span class="material-icons">{{ ['whatsapp' => 'forum', 'call' => 'call', 'sms' => 'sms', 'email' => 'mail'][$activityChannel] ?? 'open_in_new' }}</span>
+                                            {{ ['whatsapp' => 'Ouvrir WhatsApp', 'call' => 'Appeler la cliente', 'sms' => 'Ouvrir les SMS', 'email' => 'Envoyer un e-mail'][$activityChannel] ?? 'Contacter' }}
+                                        </a>
+                                    </div>
+                                @elseif(in_array($activityChannel, ['whatsapp', 'call', 'sms'], true))
+                                    <small class="sc-contact-unavailable">Aucun numéro de téléphone n’est renseigné pour cette cliente.</small>
+                                @elseif($activityChannel === 'email')
+                                    <small class="sc-contact-unavailable">Aucune adresse e-mail n’est renseignée pour cette cliente.</small>
+                                @endif
+                            @endif
+                            <label class="sc-label mt-3">{{ $activityType === 'communication' ? 'Résumé de l’échange' : 'Observation pour l’équipe' }} <b>*</b></label>
+                            <textarea class="form-control" rows="5" wire:model.defer="activityBody" placeholder="Décrivez les points abordés, la réponse ou la prochaine action…"></textarea>
+                            @error('activityBody')<small class="text-danger">{{ $message }}</small>@enderror
+                            <label class="sc-label mt-3">Joindre des documents <small>(5 fichiers max)</small></label>
+                            <input type="file" class="form-control-file sc-file-input" wire:model="uploads" multiple accept=".jpg,.jpeg,.png,.webp,.pdf">
+                            @error('uploads.*')<small class="text-danger d-block">{{ $message }}</small>@enderror
+                        </div>
+                        <footer class="sc-modal-foot"><button type="button" class="btn sc-secondary-btn" wire:click="closeAllModals">Annuler</button><button class="btn sc-primary-btn" type="submit" wire:loading.attr="disabled" wire:target="saveActivity"><span class="material-icons">save</span>Enregistrer l’intervention</button></footer>
+                    </form>
+                </section>
+            </div>
         @endif
 
         @if($showResolveForm)

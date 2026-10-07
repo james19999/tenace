@@ -3,6 +3,7 @@
 namespace App\Http\Livewire;
 
 use App\Models\Costumer;
+use App\Models\CostumerContactSetting;
 use App\Models\CustomerServiceCase;
 use App\Models\CustomerServiceCaseActivity;
 use App\Models\CustomerServiceCaseAttachment;
@@ -617,6 +618,62 @@ class CustomerServiceCases extends Component
         return $query->firstOrFail();
     }
 
+    protected function caseContactLinks(?CustomerServiceCase $case): array
+    {
+        if (! $case || ! $case->customer) {
+            return [];
+        }
+
+        $customer = $case->customer;
+        $rawPhone = trim((string) $customer->phone);
+        $digits = preg_replace('/\D+/', '', $rawPhone);
+        if ($digits === '') {
+            return [];
+        }
+
+        if (str_starts_with($rawPhone, '00')) {
+            $phone = substr($digits, 2);
+        } elseif (str_starts_with($rawPhone, '+')) {
+            $phone = $digits;
+        } else {
+            $knownCallingCodes = [
+                '1', '7', '20', '27', '33', '34', '39', '44', '49', '52', '55', '60', '61', '62', '63', '64', '65', '66',
+                '81', '82', '84', '86', '90', '91', '92', '93', '94', '95', '98',
+                '211', '212', '213', '216', '218', '220', '221', '222', '223', '224', '225', '226', '227', '228', '229',
+                '230', '231', '232', '233', '234', '235', '236', '237', '238', '239', '240', '241', '242', '243', '244',
+                '245', '246', '248', '249', '250', '251', '252', '253', '254', '255', '256', '257', '258', '260', '261',
+                '262', '263', '264', '265', '266', '267', '268', '269',
+            ];
+            usort($knownCallingCodes, fn ($left, $right) => strlen($right) <=> strlen($left));
+            $hasStoredInternationalCode = strlen($digits) >= 11 && collect($knownCallingCodes)
+                ->contains(fn ($code) => str_starts_with($digits, $code));
+            if ($hasStoredInternationalCode) {
+                $phone = $digits;
+            } else {
+            $callingCode = $customer->contactPreference?->calling_code
+                ?: CostumerContactSetting::query()->value('default_country_calling_code')
+                ?: '+228';
+            $callingCode = preg_replace('/\D+/', '', (string) $callingCode);
+            $phone = $callingCode !== '' && ! str_starts_with($digits, $callingCode)
+                ? $callingCode.$digits
+                : $digits;
+            }
+        }
+
+        $message = 'Bonjour '.$customer->name.', nous vous contactons au sujet de votre dossier '.$case->case_number;
+        if ($case->product?->name) {
+            $message .= ' concernant '.$case->product->name;
+        }
+        $message .= '. Nous sommes disponibles pour vous accompagner. TENACE COSMETIQUE';
+
+        return [
+            'whatsapp' => 'https://wa.me/'.$phone.'?text='.rawurlencode($message),
+            'call' => 'tel:+'.$phone,
+            'sms' => 'sms:+'.$phone.'?body='.rawurlencode($message),
+            'email' => $customer->email ? 'mailto:'.$customer->email.'?body='.rawurlencode($message) : null,
+        ];
+    }
+
     protected function findOrCreateCustomer(): Costumer
     {
         $digits = preg_replace('/\D+/', '', $this->newCustomerPhone);
@@ -823,6 +880,7 @@ class CustomerServiceCases extends Component
 
         return view('livewire.customer-service-cases', [
             'case' => $case,
+            'caseContactLinks' => $this->caseContactLinks($case),
             'availableTransitions' => $case ? $this->allowedTransitions($case->status) : [],
             'caseRows' => $caseRows,
             'counts' => $counts,
