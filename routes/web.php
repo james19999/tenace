@@ -120,6 +120,9 @@ Route::middleware(['auth'])->group(function () {
     Route::middleware(['role:ADMINUSER,MNG,SCR,CALLCENTER'])->group(function () {
         Route::get('service-client/loyalty', CustomerLoyalty::class)->name('customer-loyalty.index');
     });
+    Route::middleware(['role:ADMINUSER'])->group(function () {
+        Route::get('service-client/loyalty/rules', CustomerLoyalty::class)->name('customer-loyalty.rules');
+    });
 
     // Dossiers du service client : agents SAV et encadrement autorisés.
     Route::middleware(['role:ADMINUSER,MNG,SCR,CALLCENTER'])->group(function () {

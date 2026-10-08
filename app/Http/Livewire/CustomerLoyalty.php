@@ -32,8 +32,11 @@ class CustomerLoyalty extends Component
     public string $productFilter = '';
     public bool $showRules = false;
     public bool $showReferralForm = false;
+    public bool $rulesPage = false;
     public string $referrerCustomerId = '';
     public string $referredCustomerId = '';
+    public string $referrerSearch = '';
+    public string $referredSearch = '';
 
     public array $weights = [];
     public array $recencyDays = [];
@@ -64,6 +67,8 @@ class CustomerLoyalty extends Component
 
     public function mount(CustomerLoyaltyService $loyalty): void
     {
+        $this->rulesPage = request()->routeIs('customer-loyalty.rules');
+        abort_unless(! $this->rulesPage || $this->isAdmin(), 403);
         $this->fillRules($loyalty->rules());
     }
 
@@ -118,6 +123,47 @@ class CustomerLoyalty extends Component
     {
         abort_unless($this->isAdmin() || Auth::user()->hasRole(['MNG', 'SCR']), 403);
         $this->showReferralForm = ! $this->showReferralForm;
+    }
+
+    public function updatedReferrerSearch(): void
+    {
+        $this->referrerCustomerId = '';
+        $this->resetValidation('referrerCustomerId');
+    }
+
+    public function updatedReferredSearch(): void
+    {
+        $this->referredCustomerId = '';
+        $this->resetValidation('referredCustomerId');
+    }
+
+    public function selectReferralCustomer(string $field, int $customerId): void
+    {
+        abort_unless($this->isAdmin() || Auth::user()->hasRole(['MNG', 'SCR']), 403);
+        abort_unless(in_array($field, ['referrer', 'referred'], true), 404);
+
+        $customer = Costumer::query()->select(['id', 'name', 'phone', 'email'])->findOrFail($customerId);
+        if ($field === 'referrer') {
+            $this->referrerCustomerId = (string) $customer->id;
+            $this->referrerSearch = $customer->name;
+        } else {
+            $this->referredCustomerId = (string) $customer->id;
+            $this->referredSearch = $customer->name;
+        }
+    }
+
+    public function clearReferralCustomer(string $field): void
+    {
+        abort_unless($this->isAdmin() || Auth::user()->hasRole(['MNG', 'SCR']), 403);
+        abort_unless(in_array($field, ['referrer', 'referred'], true), 404);
+
+        if ($field === 'referrer') {
+            $this->referrerCustomerId = '';
+            $this->referrerSearch = '';
+        } else {
+            $this->referredCustomerId = '';
+            $this->referredSearch = '';
+        }
     }
 
     protected function fillRules(array $rules): void
@@ -333,13 +379,19 @@ class CustomerLoyalty extends Component
         ]);
         $loyalty->refreshCustomer((int) $this->referrerCustomerId);
         $loyalty->refreshCustomer((int) $this->referredCustomerId);
-        $this->reset(['referrerCustomerId', 'referredCustomerId']);
+        $this->reset(['referrerCustomerId', 'referredCustomerId', 'referrerSearch', 'referredSearch']);
         $this->showReferralForm = false;
         session()->flash('loyaltyMessage', 'La recommandation a été enregistrée.');
     }
 
     public function render()
     {
+        if ($this->rulesPage) {
+            return view('livewire.customer-loyalty-rules', [
+                'isAdmin' => $this->isAdmin(),
+            ])->extends('layouts.admin')->section('content');
+        }
+
         $query = CustomerLoyaltyProfile::query()->with('customer:id,name,phone,email');
         if ($this->search !== '') {
             $term = '%'.trim($this->search).'%';
@@ -356,6 +408,32 @@ class CustomerLoyalty extends Component
         if ($this->purchaseTo !== '') $query->whereRaw("JSON_UNQUOTE(JSON_EXTRACT(metrics, '$.last_purchase_at')) <= ?", [$this->purchaseTo]);
         if ($this->productFilter !== '') $query->whereHas('customer.orders.orderItems', fn ($items) => $items->where('product_id', $this->productFilter)->whereHas('order', fn ($orders) => $orders->where('status', 'delivered')));
         $profiles = $query->orderByDesc('score')->paginate(10);
+
+        $customerIds = $profiles->getCollection()->pluck('costumer_id');
+        $referralDetails = $customerIds->mapWithKeys(fn ($id) => [$id => ['count' => 0, 'names' => [], 'referred_by' => null]]);
+        if ($customerIds->isNotEmpty()) {
+            CustomerLoyaltyReferral::query()
+                ->with(['referrer:id,name', 'referred:id,name'])
+                ->whereIn('referrer_costumer_id', $customerIds)
+                ->orWhereIn('referred_costumer_id', $customerIds)
+                ->get()
+                ->each(function ($referral) use ($referralDetails) {
+                    if ($referralDetails->has($referral->referrer_costumer_id)) {
+                        $details = $referralDetails->get($referral->referrer_costumer_id);
+                        $details['count']++;
+                        if ($referral->referred) $details['names'][] = $referral->referred->name;
+                        $referralDetails->put($referral->referrer_costumer_id, $details);
+                    }
+                    if ($referralDetails->has($referral->referred_costumer_id)) {
+                        $details = $referralDetails->get($referral->referred_costumer_id);
+                        $details['referred_by'] = $referral->referrer?->name;
+                        $referralDetails->put($referral->referred_costumer_id, $details);
+                    }
+                });
+        }
+
+        $referrerMatches = $this->referralCustomerMatches($this->referrerSearch, $this->referrerCustomerId);
+        $referredMatches = $this->referralCustomerMatches($this->referredSearch, $this->referredCustomerId);
 
         [$categoryCounts, $segmentCounts, $metrics, $categoryPerformance] = Cache::remember('customer-loyalty-dashboard-summary', 60, function () {
             $categoryCounts = CustomerLoyaltyProfile::query()->select('category')->selectRaw('COUNT(*) as aggregate')->groupBy('category')->pluck('aggregate', 'category');
@@ -374,6 +452,9 @@ class CustomerLoyalty extends Component
 
         return view('livewire.customer-loyalty', [
             'profiles' => $profiles,
+            'referralDetails' => $referralDetails,
+            'referrerMatches' => $referrerMatches,
+            'referredMatches' => $referredMatches,
             'categoryCounts' => $categoryCounts,
             'segmentCounts' => $segmentCounts,
             'summary' => $metrics,
@@ -387,5 +468,26 @@ class CustomerLoyalty extends Component
                 'to_reactivate' => 'À réactiver', 'high_spend' => 'Fort montant dépensé', 'service_attention' => 'Suivi SAV requis', 'vip' => 'VIP',
             ], collect($this->customSegments)->mapWithKeys(fn ($segment, $index) => ['custom_'.$index => $segment['name']])->all()),
         ])->extends('layouts.admin')->section('content');
+    }
+
+    protected function referralCustomerMatches(string $term, string $selectedId)
+    {
+        $term = trim($term);
+        if (! $this->showReferralForm || $selectedId !== '' || mb_strlen($term) < 2) {
+            return collect();
+        }
+
+        $like = '%'.$term.'%';
+        return Costumer::query()
+            ->select(['id', 'name', 'phone', 'email'])
+            ->where(function ($query) use ($like, $term) {
+                $query->where('name', 'like', $like)
+                    ->orWhere('phone', 'like', $like)
+                    ->orWhere('email', 'like', $like);
+                if (ctype_digit($term)) $query->orWhere('id', (int) $term);
+            })
+            ->orderBy('name')
+            ->limit(8)
+            ->get();
     }
 }
