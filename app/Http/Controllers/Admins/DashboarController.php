@@ -9,12 +9,12 @@ use App\Models\Setting;
 use App\Traits\MyTrait;
 use App\Models\Expensive;
 use App\Models\Orders\Order;
+use App\Support\DashboardChart;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use App\Http\Controllers\Controller;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Auth;
-use LaravelDaily\LaravelCharts\Classes\LaravelChart;
 
 class DashboarController extends Controller
 {
@@ -32,20 +32,29 @@ class DashboarController extends Controller
     }
      public function dashboard () {
 
+        $todayStart = Carbon::today();
+        $tomorrow = $todayStart->copy()->addDay();
+
         $orders = Order::with(['costumer', 'user'])
             ->where('brouillon', 1)
-            ->where(function ($query) {
-                $query->whereDate('created_at', Carbon::today())
+            ->where(function ($query) use ($todayStart, $tomorrow) {
+                $query->where(function ($createdToday) use ($todayStart, $tomorrow) {
+                    $createdToday->where('created_at', '>=', $todayStart)
+                        ->where('created_at', '<', $tomorrow);
+                })
                     // Show older orders on the dashboard only on the day they are assigned.
                     // Undelivered orders remain in order management for a later reassignment.
-                    ->orWhere(function ($assignedToday) {
+                    ->orWhere(function ($assignedToday) use ($todayStart, $tomorrow) {
                         $assignedToday->where('status', 'ordered')
                             ->where('status_order', true)
-                            ->where(function ($date) {
-                                $date->whereDate('assigned_at', Carbon::today())
-                                    ->orWhere(function ($legacy) {
+                            ->where(function ($date) use ($todayStart, $tomorrow) {
+                                $date->where(function ($assignedAt) use ($todayStart, $tomorrow) {
+                                    $assignedAt->where('assigned_at', '>=', $todayStart)
+                                        ->where('assigned_at', '<', $tomorrow);
+                                })->orWhere(function ($legacy) use ($todayStart, $tomorrow) {
                                         $legacy->whereNull('assigned_at')
-                                            ->whereDate('updated_at', Carbon::today());
+                                            ->where('updated_at', '>=', $todayStart)
+                                            ->where('updated_at', '<', $tomorrow);
                                     });
                             });
                     });
@@ -69,7 +78,14 @@ class DashboarController extends Controller
                 'where_raw' => "status='delivered' ",
             ];
 
-            $chart1 = new LaravelChart($chart_options);
+            $chart1 = new DashboardChart($chart_options, $this->dashboardChartData(
+                Order::class,
+                'month',
+                'sum',
+                'total',
+                null,
+                'delivered'
+            ));
 
             $settings1 = [
                 'chart_title'           => 'Clients',
@@ -84,7 +100,13 @@ class DashboarController extends Controller
                 // 'where_raw' => "usertype='user' ",
             ];
 
-            $chart2 = new LaravelChart($settings1);
+            $chart2 = new DashboardChart($settings1, $this->dashboardChartData(
+                \App\Models\Costumer::class,
+                'day',
+                'count',
+                null,
+                30
+            ));
 
             $charts = [
                 'chart_title' => 'Rapport périodique',
@@ -100,7 +122,14 @@ class DashboarController extends Controller
                 'filter_days' => 30, // show only transactions for last 30 days
                 'filter_period' => 'week', // show only transactions for this week
             ];
-            $chart3 = new LaravelChart($charts);
+            $chart3 = new DashboardChart($charts, $this->dashboardChartData(
+                Order::class,
+                'day',
+                'sum',
+                'total',
+                30,
+                'delivered'
+            ));
 
             $chart_options_annuel = [
                 'chart_title' => 'Rapport annuel',
@@ -114,7 +143,14 @@ class DashboarController extends Controller
                 'where_raw' => "status='delivered' ",
             ];
 
-            $chart4 = new LaravelChart($chart_options_annuel);
+            $chart4 = new DashboardChart($chart_options_annuel, $this->dashboardChartData(
+                Order::class,
+                'year',
+                'sum',
+                'total',
+                null,
+                'delivered'
+            ));
 
             $startOfWeek = Carbon::now()->startOfWeek();
 
@@ -122,9 +158,11 @@ class DashboarController extends Controller
                 ->where('status', 'delivered')
                 ->sum('total');
 
-            $anneeEnCours = now()->year;
+            $anneeEnCours = now()->startOfYear();
+            $debutAnneeProchaine = $anneeEnCours->copy()->addYear();
 
-            $totalCommandes = Order::whereYear('created_at', $anneeEnCours)
+            $totalCommandes = Order::where('created_at', '>=', $anneeEnCours)
+                ->where('created_at', '<', $debutAnneeProchaine)
                 ->where('status', 'delivered')
                 ->sum('total');
 
@@ -145,46 +183,49 @@ class DashboarController extends Controller
             $totalepargn = 0;
         }
 
-        $Ordered = Order::where('status', 'ordered')
-            ->where(function ($query) {
-                $query->whereDate('created_at', Carbon::today())
-                    ->orWhere(function ($assignedToday) {
-                        $assignedToday->where('status_order', true)
-                            ->where(function ($date) {
-                                $date->whereDate('assigned_at', Carbon::today())
-                                    ->orWhere(function ($legacy) {
-                                        $legacy->whereNull('assigned_at')
-                                            ->whereDate('updated_at', Carbon::today());
-                                    });
-                            });
-                    });
-            })
-            ->count();
-        $Orderdelivered = Order::where('status', 'delivered')
-            ->whereDate('created_at', Carbon::today())
-            ->count();
-        $Ordercanceled = Order::where('status', 'canceled')
-            ->whereDate('created_at', Carbon::today())
-            ->count();
-        $Orderall = Order::where(function ($query) {
-            $query->whereDate('created_at', Carbon::today())
-                ->orWhere(function ($assignedToday) {
-                    $assignedToday->where('status_order', true)
-                        ->where(function ($date) {
-                            $date->whereDate('assigned_at', Carbon::today())
-                                ->orWhere(function ($legacy) {
-                                    $legacy->whereNull('assigned_at')
-                                        ->whereDate('updated_at', Carbon::today());
-                                });
-                        });
-                });
-        })
-            ->count();
-        $OrderdeAmount = Order::where('status', 'delivered')
-            ->whereDate('created_at', Carbon::today())
-            ->sum('total');
+        $createdTodaySql = '(created_at >= ? AND created_at < ?)';
+        $assignedTodaySql = '(status_order = ? AND ((assigned_at >= ? AND assigned_at < ?) OR (assigned_at IS NULL AND updated_at >= ? AND updated_at < ?)))';
+        $todayBindings = [$todayStart, $tomorrow];
+        $assignedTodayBindings = [true, $todayStart, $tomorrow, $todayStart, $tomorrow];
 
-        $expensive = Expensive::whereYear('created_at', now()->year)->sum('amount');
+        $todayOrderMetrics = Order::query()
+            ->selectRaw(
+                "SUM(CASE WHEN status = ? AND ({$createdTodaySql} OR {$assignedTodaySql}) THEN 1 ELSE 0 END) AS ordered_count",
+                array_merge(['ordered'], $todayBindings, $assignedTodayBindings)
+            )
+            ->selectRaw(
+                "SUM(CASE WHEN status = ? AND {$createdTodaySql} THEN 1 ELSE 0 END) AS delivered_count",
+                array_merge(['delivered'], $todayBindings)
+            )
+            ->selectRaw(
+                "SUM(CASE WHEN status = ? AND {$createdTodaySql} THEN 1 ELSE 0 END) AS canceled_count",
+                array_merge(['canceled'], $todayBindings)
+            )
+            ->selectRaw(
+                "SUM(CASE WHEN {$createdTodaySql} OR {$assignedTodaySql} THEN 1 ELSE 0 END) AS all_count",
+                array_merge($todayBindings, $assignedTodayBindings)
+            )
+            ->selectRaw(
+                "COALESCE(SUM(CASE WHEN status = ? AND {$createdTodaySql} THEN total ELSE 0 END), 0) AS delivered_amount",
+                array_merge(['delivered'], $todayBindings)
+            )
+            ->whereRaw(
+                "{$createdTodaySql} OR {$assignedTodaySql}",
+                array_merge($todayBindings, $assignedTodayBindings)
+            )
+            ->first();
+
+        $Ordered = (int) $todayOrderMetrics->ordered_count;
+        $Orderdelivered = (int) $todayOrderMetrics->delivered_count;
+        $Ordercanceled = (int) $todayOrderMetrics->canceled_count;
+        $Orderall = (int) $todayOrderMetrics->all_count;
+        $OrderdeAmount = $todayOrderMetrics->delivered_amount;
+
+        $startOfYear = now()->startOfYear();
+        $startOfNextYear = $startOfYear->copy()->addYear();
+        $expensive = Expensive::where('created_at', '>=', $startOfYear)
+            ->where('created_at', '<', $startOfNextYear)
+            ->sum('amount');
 
         $rupture = Product::where('qts_seuil', '>=', DB::raw('qt_initial'))
             ->orWhere(function ($query) {
@@ -199,6 +240,55 @@ class DashboarController extends Controller
             'Orderdelivered', 'Ordercanceled', 'Orderall', 'OrderdeAmount'
         ));
      }
+
+    /**
+     * Aggregate dashboard chart rows in MySQL instead of loading every source
+     * record into PHP as LaravelChart does.
+     */
+    private function dashboardChartData(
+        string $model,
+        string $period,
+        string $aggregate,
+        ?string $aggregateField = null,
+        ?int $filterDays = null,
+        ?string $status = null
+    ): array {
+        $formats = [
+            'day' => '%Y-%m-%d',
+            'month' => '%Y-%m',
+            'year' => '%Y',
+        ];
+
+        if (!isset($formats[$period])) {
+            throw new \InvalidArgumentException('Période de graphique non prise en charge.');
+        }
+
+        $query = $model::query()
+            ->selectRaw('DATE_FORMAT(`created_at`, ?) AS chart_period', [$formats[$period]])
+            ->whereNotNull('created_at');
+
+        if ($filterDays !== null) {
+            $query->where('created_at', '>=', now()->subDays($filterDays)->format('Y-m-d'));
+        }
+
+        if ($status !== null) {
+            $query->where('status', $status);
+        }
+
+        if ($aggregate === 'count') {
+            $query->selectRaw('COUNT(*) AS aggregate_value');
+        } elseif ($aggregate === 'sum' && $aggregateField !== null) {
+            $query->selectRaw('COALESCE(SUM(`' . $aggregateField . '`), 0) AS aggregate_value');
+        } else {
+            throw new \InvalidArgumentException('Agrégat de graphique non pris en charge.');
+        }
+
+        return $query
+            ->groupBy('chart_period')
+            ->orderBy('chart_period')
+            ->pluck('aggregate_value', 'chart_period')
+            ->all();
+    }
 
 
 
