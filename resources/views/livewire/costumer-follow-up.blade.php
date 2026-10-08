@@ -710,12 +710,37 @@
                             </div>
                             <div class="form-group">
                                 <label>Tonalité de l’avis</label>
-                                <select class="form-control" wire:model.defer="immediateSentiment">
+                                <select id="immediate-sentiment" class="form-control" wire:model.defer="immediateSentiment">
                                     <option value="positive">Positif</option>
                                     <option value="neutral">Neutre</option>
                                     <option value="negative">Négatif</option>
                                 </select>
                             </div>
+                            @if ($canCreateServiceCase)
+                                <div id="quick-service-case-option" class="border rounded p-3 mb-3 bg-light" style="display: none;">
+                                    <div class="form-check">
+                                        <input type="checkbox" class="form-check-input" id="create-service-case" wire:model.defer="createServiceCase">
+                                        <label class="form-check-label font-weight-bold" for="create-service-case">Créer aussi un dossier SAV à partir de cet avis</label>
+                                    </div>
+                                    <div id="quick-service-case-fields" class="mt-3" style="display: none;">
+                                        <div class="form-group mb-2">
+                                            <label for="quick-service-case-type">Type de dossier</label>
+                                            <select id="quick-service-case-type" class="form-control" wire:model.defer="quickServiceCaseType">
+                                                <option value="dissatisfied">Cliente insatisfaite</option>
+                                                <option value="complaint">Réclamation</option>
+                                            </select>
+                                            @error('quickServiceCaseType') <small class="text-danger">{{ $message }}</small> @enderror
+                                        </div>
+                                        <small class="text-muted d-block">La réponse de la cliente servira de description. Sa fiche et sa dernière commande seront liées automatiquement.</small>
+                                        @if ($selectedCostumer->latestOrder)
+                                            <small class="text-muted d-block mt-1">Commande {{ $selectedCostumer->latestOrder->code ?: '#'.$selectedCostumer->latestOrder->id }}@if($selectedCostumer->latestOrder->orderItems->first()), produit : {{ $selectedCostumer->latestOrder->orderItems->first()->product->name ?? 'indisponible' }}@endif</small>
+                                        @else
+                                            <small class="text-muted d-block mt-1">Aucune commande récente : le dossier sera lié à la cliente uniquement.</small>
+                                        @endif
+                                        @error('immediateResponse') <small class="text-danger d-block">Pour créer le dossier, saisis une réponse d’au moins 8 caractères.</small> @enderror
+                                    </div>
+                                </div>
+                            @endif
                             <div class="alert alert-info">La réponse sera enregistrée avec ce contact et aucune relance ne sera planifiée.</div>
                         </div>
                         <div id="scheduled-follow-up-fields" style="{{ $responseReceivedNow ? 'display: none;' : '' }}">
@@ -877,11 +902,25 @@
             if (!window.followUpResponseToggleBound) {
                 window.followUpResponseToggleBound = true;
                 document.addEventListener('change', function (event) {
-                    if (!event.target || event.target.id !== 'response-received-now') return;
-                    var responseFields = document.getElementById('immediate-response-fields');
-                    var followUpFields = document.getElementById('scheduled-follow-up-fields');
-                    if (responseFields) responseFields.style.display = event.target.checked ? '' : 'none';
-                    if (followUpFields) followUpFields.style.display = event.target.checked ? 'none' : '';
+                    if (!event.target) return;
+                    if (event.target.id === 'response-received-now') {
+                        var responseFields = document.getElementById('immediate-response-fields');
+                        var followUpFields = document.getElementById('scheduled-follow-up-fields');
+                        if (responseFields) responseFields.style.display = event.target.checked ? '' : 'none';
+                        if (followUpFields) followUpFields.style.display = event.target.checked ? 'none' : '';
+                    }
+
+                    if (event.target.id === 'response-received-now' || event.target.id === 'immediate-sentiment' || event.target.id === 'create-service-case') {
+                        var responded = document.getElementById('response-received-now');
+                        var sentiment = document.getElementById('immediate-sentiment');
+                        var option = document.getElementById('quick-service-case-option');
+                        var checkbox = document.getElementById('create-service-case');
+                        var fields = document.getElementById('quick-service-case-fields');
+                        var allowed = responded && responded.checked && sentiment && sentiment.value === 'negative';
+                        if (option) option.style.display = allowed ? '' : 'none';
+                        if (!allowed && checkbox) checkbox.checked = false;
+                        if (fields && checkbox) fields.style.display = allowed && checkbox.checked ? '' : 'none';
+                    }
                 });
             }
 
