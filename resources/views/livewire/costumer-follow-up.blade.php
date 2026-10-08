@@ -301,24 +301,31 @@
         </div>
         @if ($showSettings)
           <div class="card-body">
-            <div class="form-row align-items-end">
-                <div class="form-group col-md-3">
-                    <label>Délai avant relance (jours)</label>
+            <div class="form-row align-items-start">
+                <div class="form-group col-12 col-sm-6 col-lg">
+                    <label style="min-height: 40px;">Délai avant relance (jours)</label>
                     <input type="number" min="1" max="365" class="form-control" wire:model="defaultFollowUpDays">
                     @error('defaultFollowUpDays') <small class="text-danger">{{ $message }}</small> @enderror
                 </div>
-                <div class="form-group col-md-3">
-                    <label>Indicatif par défaut</label>
+                <div class="form-group col-12 col-sm-6 col-lg">
+                    <label style="min-height: 40px;">Début des relances automatiques</label>
+                    <input type="date" class="form-control" wire:model="followUpStartDate">
+                    <small class="form-text text-muted">Les commandes antérieures à cette date ne génèrent pas de relance automatique.</small>
+                    @error('followUpStartDate') <small class="text-danger">{{ $message }}</small> @enderror
+                </div>
+                <div class="form-group col-12 col-sm-6 col-lg">
+                    <label style="min-height: 40px;">Indicatif par défaut</label>
                     <input type="text" class="form-control" placeholder="+228" wire:model="defaultCountryCallingCode">
                     @error('defaultCountryCallingCode') <small class="text-danger">{{ $message }}</small> @enderror
                 </div>
-                <div class="form-group col-md-3">
-                    <label>Nombre maximal de relances</label>
+                <div class="form-group col-12 col-sm-6 col-lg">
+                    <label style="min-height: 40px;">Nombre maximal de relances</label>
                     <input type="number" min="1" max="20" class="form-control" wire:model="maxFollowUps">
                     @error('maxFollowUps') <small class="text-danger">{{ $message }}</small> @enderror
                 </div>
-                <div class="form-group col-md-3">
-                    <button class="btn btn-primary" wire:click="saveSettings">Enregistrer les paramètres</button>
+                <div class="form-group col-12 col-sm-6 col-lg">
+                    <label class="d-block" style="min-height: 40px;" aria-hidden="true">&nbsp;</label>
+                    <button class="btn btn-primary btn-block" wire:click="saveSettings">Enregistrer les paramètres</button>
                 </div>
             </div>
 
@@ -717,35 +724,44 @@
                                 </select>
                             </div>
                             @if ($canCreateServiceCase)
-                                <div id="quick-service-case-option" class="border rounded p-3 mb-3 bg-light" style="display: none;">
+                                <div id="quick-service-case-option" class="border rounded p-3 mb-3 bg-light" style="{{ $responseReceivedNow ? '' : 'display: none;' }}">
                                     <div class="form-check">
                                         <input type="checkbox" class="form-check-input" id="create-service-case" wire:model.defer="createServiceCase">
-                                        <label class="form-check-label font-weight-bold" for="create-service-case">Créer aussi un dossier SAV</label>
+                                        <label class="form-check-label font-weight-bold" for="create-service-case">Continuer vers la création d’un dossier SAV</label>
                                     </div>
-                                    <div id="quick-service-case-fields" class="mt-3" style="display: none;">
-                                        <div class="form-group mb-2">
-                                            <label for="quick-service-case-type">Type de dossier</label>
-                                            <select id="quick-service-case-type" class="form-control" wire:model.defer="quickServiceCaseType">
-                                                <option value="complaint">Réclamation</option>
-                                                <option value="dissatisfied">Cliente insatisfaite</option>
-                                                <option value="personalized_support">Accompagnement personnalisé</option>
-                                                <option value="information">Demande d’information</option>
-                                            </select>
-                                            @error('quickServiceCaseType') <small class="text-danger">{{ $message }}</small> @enderror
+                                    <small class="form-text text-muted mt-2">Le contact et la réponse seront d’abord enregistrés. Tu seras ensuite redirigé vers le formulaire complet, avec la cliente, sa dernière commande, le produit choisi et sa réponse préremplis.</small>
+                                    @if ($serviceCaseOrders->isNotEmpty())
+                                        <div class="form-row mt-3 mb-0">
+                                            <div class="form-group col-md-6">
+                                                <label for="quick-service-case-order">Commande concernée</label>
+                                                <select id="quick-service-case-order" class="form-control" wire:model="quickServiceCaseOrderId">
+                                                    @foreach ($serviceCaseOrders as $order)
+                                                        <option value="{{ $order->id }}">{{ $order->code ?: '#'.$order->id }} — {{ date('d/m/Y', strtotime($order->date_order ?: $order->created_at)) }} — {{ number_format((float) $order->total, 0, ',', ' ') }} FCFA</option>
+                                                    @endforeach
+                                                </select>
+                                                <small class="form-text text-muted">Les 20 commandes les plus récentes sont proposées, la dernière en premier.</small>
+                                                @error('quickServiceCaseOrderId') <small class="text-danger d-block">{{ $message }}</small> @enderror
+                                            </div>
+                                            <div class="form-group col-md-6">
+                                                <label for="quick-service-case-product">Produit à rattacher au dossier SAV</label>
+                                                @if ($selectedServiceCaseOrder && $selectedServiceCaseOrder->orderItems->isNotEmpty())
+                                                    <select id="quick-service-case-product" class="form-control" wire:model.defer="quickServiceCaseProductId">
+                                                        @foreach ($selectedServiceCaseOrder->orderItems->unique('product_id') as $orderItem)
+                                                            <option value="{{ $orderItem->product_id }}">{{ $orderItem->product->name ?? 'Produit supprimé' }} × {{ $orderItem->quantity }}</option>
+                                                        @endforeach
+                                                    </select>
+                                                    <small class="form-text text-muted">Le produit choisi sera présélectionné dans le dossier SAV.</small>
+                                                @else
+                                                    <div class="form-control text-muted">Aucun produit détaillé pour cette commande.</div>
+                                                @endif
+                                                @error('quickServiceCaseProductId') <small class="text-danger d-block">{{ $message }}</small> @enderror
+                                            </div>
                                         </div>
-                                        <div class="form-group mb-2">
-                                            <label for="quick-service-case-description">Description du dossier</label>
-                                            <textarea id="quick-service-case-description" class="form-control" rows="3" wire:model.defer="quickServiceCaseDescription" placeholder="Décris le problème ou le besoin de la cliente"></textarea>
-                                            @error('quickServiceCaseDescription') <small class="text-danger">{{ $message }}</small> @enderror
-                                        </div>
-                                        <small class="text-muted d-block">La réponse saisie ci-dessus sera proposée comme description. Tu peux la compléter ou la modifier.</small>
-                                        <small class="text-muted d-block mt-1">Pour un accompagnement personnalisé, les suivis J+3, J+7, J+15 et J+30 seront planifiés automatiquement.</small>
-                                        @if ($selectedCostumer->latestOrder)
-                                            <small class="text-muted d-block mt-1">Commande {{ $selectedCostumer->latestOrder->code ?: '#'.$selectedCostumer->latestOrder->id }}@if($selectedCostumer->latestOrder->orderItems->first()), produit : {{ $selectedCostumer->latestOrder->orderItems->first()->product->name ?? 'indisponible' }}@endif</small>
-                                        @else
-                                            <small class="text-muted d-block mt-1">Aucune commande récente : le dossier sera lié à la cliente uniquement.</small>
-                                        @endif
-                                    </div>
+                                    @elseif ($selectedCostumer->latestOrder)
+                                        <small class="form-text text-muted mt-2">La dernière commande ne contient pas de produit détaillé.</small>
+                                    @else
+                                        <small class="form-text text-muted mt-2">Aucune commande enregistrée pour cette cliente.</small>
+                                    @endif
                                 </div>
                             @endif
                             <div class="alert alert-info">La réponse sera enregistrée avec ce contact et aucune relance ne sera planifiée.</div>
@@ -767,7 +783,7 @@
                     </div>
                     <div class="modal-footer">
                         <button type="button" class="btn btn-secondary" wire:click="beginClosingModal('follow-up-contact-modal')">Annuler</button>
-                        <button class="btn btn-primary" wire:click="saveContact">Enregistrer dans l’historique</button>
+                        <button class="btn btn-primary" wire:click="saveContact">{{ $createServiceCase ? 'Enregistrer et ouvrir le dossier SAV' : 'Enregistrer dans l’historique' }}</button>
                     </div>
                 </div>
             </div>
@@ -952,18 +968,9 @@
                         var responded = document.getElementById('response-received-now');
                         var option = document.getElementById('quick-service-case-option');
                         var checkbox = document.getElementById('create-service-case');
-                        var fields = document.getElementById('quick-service-case-fields');
-                        var responseFields = document.getElementById('immediate-response-fields');
-                        var response = responseFields ? responseFields.querySelector('textarea') : null;
-                        var description = document.getElementById('quick-service-case-description');
                         var allowed = responded && responded.checked;
                         if (option) option.style.display = allowed ? '' : 'none';
                         if (!allowed && checkbox) checkbox.checked = false;
-                        if (event.target.id === 'create-service-case' && checkbox && checkbox.checked && description && !description.value.trim() && response) {
-                            description.value = response.value;
-                            description.dispatchEvent(new Event('input', { bubbles: true }));
-                        }
-                        if (fields && checkbox) fields.style.display = allowed && checkbox.checked ? '' : 'none';
                     }
 
                     if (event.target.id === 'response-create-service-case') {
