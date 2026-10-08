@@ -10,6 +10,8 @@ use App\Traits\MyTrait;
 use App\Traits\NewTrait;
 use App\Models\Orders\Order;
 use App\Models\CustomerServiceCase;
+use App\Models\CustomerServiceCaseArchiveAccessRequest;
+use App\Notifications\CustomerServiceCaseNotification;
 use Illuminate\Http\Request;
 use App\Http\Controllers\Controller;
 use Illuminate\Support\Facades\Auth;
@@ -285,7 +287,7 @@ class LivreurController extends Controller
 
   public function archive_list(Request $request){
     $archiveType = $request->query('type', 'orders');
-    abort_unless(in_array($archiveType, ['orders', 'cases'], true), 404);
+    abort_unless(in_array($archiveType, ['orders', 'cases', 'requests'], true), 404);
 
     $orders = $archiveType === 'orders' ? Order::where('take', true)->get() : collect();
     $cases = $archiveType === 'cases'
@@ -294,8 +296,76 @@ class LivreurController extends Controller
             ->latest('archived_at')
             ->paginate(15)
         : null;
+    $accessRequests = $archiveType === 'requests'
+        ? CustomerServiceCaseArchiveAccessRequest::with(['customerServiceCase.customer', 'requester'])
+            ->where('status', 'pending')
+            ->latest()
+            ->paginate(15)
+        : null;
 
-    return view('livreurs.archive', compact('orders', 'cases', 'archiveType'));
+    return view('livreurs.archive', compact('orders', 'cases', 'accessRequests', 'archiveType'));
+  }
+
+  public function approveCaseArchiveAccess(CustomerServiceCaseArchiveAccessRequest $accessRequest){
+    return $this->decideCaseArchiveAccess($accessRequest, 'approved');
+  }
+
+  public function rejectCaseArchiveAccess(CustomerServiceCaseArchiveAccessRequest $accessRequest){
+    return $this->decideCaseArchiveAccess($accessRequest, 'rejected');
+  }
+
+  protected function decideCaseArchiveAccess(CustomerServiceCaseArchiveAccessRequest $accessRequest, string $status){
+    abort_unless(Auth::user()->hasRole(['ADMINUSER']), 403);
+    abort_unless($accessRequest->status === 'pending', 404);
+
+    $accessRequest->load(['customerServiceCase.customer', 'requester']);
+    $case = $accessRequest->customerServiceCase;
+    $isCurrentArchive = $case->archived_at
+        && $accessRequest->archive_snapshot_at
+        && $accessRequest->archive_snapshot_at->equalTo($case->archived_at);
+
+    if (! $isCurrentArchive) {
+      $accessRequest->update([
+        'status' => 'rejected',
+        'decided_by' => Auth::id(),
+        'decision_note' => 'La période d’archivage a changé avant le traitement de la demande.',
+        'decided_at' => now(),
+      ]);
+
+      return redirect()->route('archivelist', ['type' => 'requests'])
+        ->with('error', 'Cette demande concerne une ancienne période d’archivage. Elle a été refusée.');
+    }
+
+    $accessRequest->update([
+      'status' => $status,
+      'decided_by' => Auth::id(),
+      'decided_at' => now(),
+    ]);
+
+    $approved = $status === 'approved';
+    $case->activities()->create([
+      'user_id' => Auth::id(),
+      'activity_type' => 'archive_access',
+      'body' => $approved
+        ? 'Accès aux archives autorisé pour '.$accessRequest->requester->name.'.'
+        : 'Demande d’accès aux archives refusée pour '.$accessRequest->requester->name.'.',
+      'internal' => true,
+      'occurred_at' => now(),
+    ]);
+
+    $accessRequest->requester->notify(new CustomerServiceCaseNotification(
+      $case,
+      $approved ? 'archive_access_approved' : 'archive_access_rejected',
+      $approved
+        ? 'Votre demande d’accès au dossier '.$case->case_number.' a été approuvée.'
+        : 'Votre demande d’accès au dossier '.$case->case_number.' a été refusée.',
+      url: $approved
+        ? route('service-cases.show', ['caseId' => $case->id, 'archiveView' => 1])
+        : route('service-cases.index', ['archiveView' => 1]),
+    ));
+
+    return redirect()->route('archivelist', ['type' => 'requests'])
+      ->with('messages', $approved ? 'L’accès au dossier a été accordé.' : 'La demande d’accès a été refusée.');
   }
 
   public function unlock ($id){

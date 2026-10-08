@@ -88,6 +88,8 @@ Route::middleware(['auth'])->group(function () {
         Route::get('unlock/brouillon/{id}', [BrouillonController::class, 'unlock_brouillon'])->name('unlockbrouillon');
         Route::get('/consultation', [DashboarController::class, 'consultation'])->name('consultation');
         Route::get('archive/list', [LivreurController::class, 'archive_list'])->name('archivelist');
+        Route::post('archive/case-access/{accessRequest}/approve', [LivreurController::class, 'approveCaseArchiveAccess'])->name('archive.case-access.approve');
+        Route::post('archive/case-access/{accessRequest}/reject', [LivreurController::class, 'rejectCaseArchiveAccess'])->name('archive.case-access.reject');
 
         // Trésorerie, Fonds & Retraits
         Route::get('pub/list', [PubController::class, 'index'])->name('pub-list');

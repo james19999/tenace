@@ -301,20 +301,34 @@
                     <thead><tr><th>Dossier / cliente</th><th>Nature</th><th>Produit</th><th>Responsable</th><th>Priorité</th><th>Statut</th><th>Prochain suivi</th><th>Actions</th></tr></thead>
                     <tbody>
                         @forelse ($caseRows as $row)
-                            @php $isOverdue = $row->next_follow_up_at && $row->next_follow_up_at->isPast() && !in_array($row->status, ['resolved', 'closed'], true); @endphp
+                            @php
+                                $isOverdue = $row->next_follow_up_at && $row->next_follow_up_at->isPast() && !in_array($row->status, ['resolved', 'closed'], true);
+                                $archiveAccessRequest = $archiveView && ! $isServiceAdmin
+                                    ? $row->archiveAccessRequests->first(fn ($access) => $access->archive_snapshot_at && $row->archived_at && $access->archive_snapshot_at->equalTo($row->archived_at))
+                                    : null;
+                                $canOpenArchivedCase = ! $archiveView || $isServiceAdmin || $archiveAccessRequest?->status === 'approved';
+                            @endphp
                             <tr class="sc-case-row {{ $isOverdue ? 'sc-row-overdue' : '' }}">
-                                <td data-label="Dossier / cliente"><a class="sc-case-link" href="{{ route('service-cases.show', $row->id) }}">{{ $row->case_number }}</a><span class="sc-customer-name">{{ $row->customer->name }}</span><span class="sc-customer-phone">{{ $row->customer->phone }}</span></td>
-                                <td data-label="Nature"><span class="sc-type-dot"></span>{{ $typeLabels[$row->case_type] ?? $row->case_type }}</td>
-                                <td data-label="Produit">{{ $row->product?->name ?: '—' }}</td>
-                                <td data-label="Responsable">{{ $row->assignee?->name ?: 'À attribuer' }}</td>
-                                <td data-label="Priorité"><span class="sc-priority {{ $priorityClasses[$row->priority] ?? '' }}">{{ $priorityLabels[$row->priority] ?? $row->priority }}</span></td>
-                                <td data-label="Statut"><span class="sc-status {{ $statusClasses[$row->status] ?? '' }}">{{ $statusLabels[$row->status] ?? $row->status }}</span></td>
-                                <td data-label="Prochain suivi" class="{{ $isOverdue ? 'sc-overdue-date' : '' }}">{{ $row->next_follow_up_at?->format('d/m/Y H:i') ?: 'Non programmé' }} @if($isOverdue)<small>En retard</small>@endif</td>
-                                <td data-label="Actions"><div class="sc-case-row-actions"><a class="sc-open-link" href="{{ route('service-cases.show', $row->id, false) }}{{ $archiveView ? '?archiveView=1' : '' }}" aria-label="Ouvrir le dossier"><span class="material-icons">arrow_forward</span></a>
-                                    @if($canManageCases && $archiveView)
+                                <td data-label="{{ $archiveView && ! $canOpenArchivedCase ? 'Dossier' : 'Dossier / cliente' }}">
+                                    @if($canOpenArchivedCase)<a class="sc-case-link" href="{{ route('service-cases.show', $row->id, false) }}{{ $archiveView ? '?archiveView=1' : '' }}">{{ $row->case_number }}</a>@else<strong class="sc-case-link">{{ $row->case_number }}</strong>@endif
+                                    @if(! $archiveView || $canOpenArchivedCase)<span class="sc-customer-name">{{ $row->customer->name }}</span><span class="sc-customer-phone">{{ $row->customer->phone }}</span>@elseif($archiveAccessRequest?->status === 'pending')<span class="sc-customer-phone">Accès en attente de validation</span>@else<span class="sc-customer-phone">Accès soumis à validation administrative</span>@endif
+                                </td>
+                                <td data-label="Nature">@if(! $archiveView || $canOpenArchivedCase)<span class="sc-type-dot"></span>{{ $typeLabels[$row->case_type] ?? $row->case_type }}@else—@endif</td>
+                                <td data-label="Produit">@if(! $archiveView || $canOpenArchivedCase){{ $row->product?->name ?: '—' }}@else—@endif</td>
+                                <td data-label="Responsable">@if(! $archiveView || $canOpenArchivedCase){{ $row->assignee?->name ?: 'À attribuer' }}@else—@endif</td>
+                                <td data-label="Priorité">@if(! $archiveView || $canOpenArchivedCase)<span class="sc-priority {{ $priorityClasses[$row->priority] ?? '' }}">{{ $priorityLabels[$row->priority] ?? $row->priority }}</span>@else—@endif</td>
+                                <td data-label="Statut">@if(! $archiveView || $canOpenArchivedCase)<span class="sc-status {{ $statusClasses[$row->status] ?? '' }}">{{ $statusLabels[$row->status] ?? $row->status }}</span>@else Accès requis @endif</td>
+                                <td data-label="Prochain suivi" class="{{ $isOverdue ? 'sc-overdue-date' : '' }}">@if(! $archiveView || $canOpenArchivedCase){{ $row->next_follow_up_at?->format('d/m/Y H:i') ?: 'Non programmé' }} @if($isOverdue)<small>En retard</small>@endif @else—@endif</td>
+                                <td data-label="Actions"><div class="sc-case-row-actions">
+                                    @if($canOpenArchivedCase)<a class="sc-open-link" href="{{ route('service-cases.show', $row->id, false) }}{{ $archiveView ? '?archiveView=1' : '' }}" aria-label="Consulter le dossier"><span class="material-icons">arrow_forward</span></a>@endif
+                                    @if($isServiceAdmin && $archiveView)
                                         <button type="button" class="sc-open-link sc-archive-action" wire:click="openRestoreConfirmation({{ $row->id }})" aria-label="Restaurer le dossier" title="Restaurer"><span class="material-icons">unarchive</span></button>
-                                    @elseif($canManageCases && $row->status === 'closed')
+                                    @elseif($canManageCases && ! $archiveView && $row->status === 'closed')
                                         <button type="button" class="sc-open-link sc-archive-action" wire:click="openArchiveConfirmation({{ $row->id }})" aria-label="Archiver le dossier" title="Archiver"><span class="material-icons">archive</span></button>
+                                    @endif
+                                    @if($archiveView && ! $isServiceAdmin && $archiveAccessRequest?->status !== 'approved')
+                                        @if($archiveAccessRequest?->status === 'pending')<button type="button" class="sc-open-link sc-archive-action" disabled title="Demande en attente" aria-label="Demande d’accès en attente"><span class="material-icons">hourglass_top</span></button>
+                                        @else<button type="button" class="sc-open-link sc-archive-action" wire:click="requestArchiveAccess({{ $row->id }})" aria-label="Demander l’accès" title="Demander l’accès"><span class="material-icons">lock_open</span></button>@endif
                                     @endif
                                 </div></td>
                             </tr>
@@ -396,7 +410,7 @@
                     @if($canManageCases && $case->status !== 'closed')<button type="button" class="btn sc-secondary-btn" wire:click="openAssignForm"><span class="material-icons">person_add_alt</span>Attribuer</button><button type="button" class="btn sc-secondary-btn" wire:click="openPriorityForm"><span class="material-icons">low_priority</span>Priorité</button>@endif
                     @if($case->status !== 'closed')<button type="button" class="btn sc-primary-btn" wire:click="openActivityModal"><span class="material-icons">add_comment</span>Ajouter une intervention</button>@endif
                     @if($canManageCases && $case->status === 'closed')<button type="button" class="btn sc-secondary-btn" wire:click="openArchiveConfirmation({{ $case->id }})"><span class="material-icons">archive</span>Archiver</button>@endif
-                @elseif($canManageCases)
+                @elseif($isServiceAdmin)
                     <button type="button" class="btn sc-secondary-btn" wire:click="openRestoreConfirmation({{ $case->id }})"><span class="material-icons">unarchive</span>Restaurer</button>
                 @endif
             </div>
@@ -491,11 +505,11 @@
                 @forelse($activities as $activity)
                     <article class="sc-timeline-item">
                         <span class="sc-timeline-icon {{ $activity->activity_type === 'status_change' ? 'is-status' : ($activity->activity_type === 'communication' ? 'is-communication' : '') }}">
-                            <span class="material-icons">{{ ['created' => 'fiber_new', 'status_change' => 'sync_alt', 'priority_change' => 'low_priority', 'communication' => 'forum', 'internal_note' => 'sticky_note_2', 'follow_up_scheduled' => 'event', 'assignment' => 'person_add_alt', 'milestone' => 'flag', 'satisfaction' => 'sentiment_satisfied_alt', 'support_review' => 'fact_check', 'archive' => 'inventory_2'][$activity->activity_type] ?? 'history' }}</span>
+                            <span class="material-icons">{{ ['created' => 'fiber_new', 'status_change' => 'sync_alt', 'priority_change' => 'low_priority', 'communication' => 'forum', 'internal_note' => 'sticky_note_2', 'follow_up_scheduled' => 'event', 'assignment' => 'person_add_alt', 'milestone' => 'flag', 'satisfaction' => 'sentiment_satisfied_alt', 'support_review' => 'fact_check', 'archive' => 'inventory_2', 'archive_access' => 'admin_panel_settings'][$activity->activity_type] ?? 'history' }}</span>
                         </span>
                         <div class="sc-timeline-content">
                             <div class="sc-timeline-head"><strong>{{ $activity->actor_name ?: ($activity->user?->name ?: 'Système') }}</strong><span>{{ $activity->occurred_at->format('d/m/Y à H:i') }}</span></div>
-                            <div class="sc-activity-kind">{{ $activity->activity_type === 'communication' ? 'Échange client · '.(['whatsapp'=>'WhatsApp','call'=>'Appel téléphonique','sms'=>'SMS','email'=>'E-mail','visit'=>'Visite physique','other'=>'Autre'][$activity->channel] ?? $activity->channel) : (['created'=>'Création du dossier','status_change'=>'Changement de statut','priority_change'=>'Changement de priorité','internal_note'=>'Note interne','follow_up_scheduled'=>'Programmation du suivi','assignment'=>'Affectation','milestone'=>'Étape d’accompagnement','support_review'=>'Bilan d’accompagnement','satisfaction'=>'Satisfaction après traitement','archive'=>'Archivage / restauration'][$activity->activity_type] ?? 'Intervention') }}</div>
+                            <div class="sc-activity-kind">{{ $activity->activity_type === 'communication' ? 'Échange client · '.(['whatsapp'=>'WhatsApp','call'=>'Appel téléphonique','sms'=>'SMS','email'=>'E-mail','visit'=>'Visite physique','other'=>'Autre'][$activity->channel] ?? $activity->channel) : (['created'=>'Création du dossier','status_change'=>'Changement de statut','priority_change'=>'Changement de priorité','internal_note'=>'Note interne','follow_up_scheduled'=>'Programmation du suivi','assignment'=>'Affectation','milestone'=>'Étape d’accompagnement','support_review'=>'Bilan d’accompagnement','satisfaction'=>'Satisfaction après traitement','archive'=>'Archivage / restauration','archive_access'=>'Demande d’accès aux archives'][$activity->activity_type] ?? 'Intervention') }}</div>
                             @if($activity->old_status && $activity->new_status)
                                 <div class="sc-status-transition"><span>{{ $statusLabels[$activity->old_status] ?? $activity->old_status }}</span><span class="material-icons">arrow_forward</span><strong>{{ $statusLabels[$activity->new_status] ?? $activity->new_status }}</strong></div>
                             @endif

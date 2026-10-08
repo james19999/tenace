@@ -17,6 +17,7 @@ class CustomerServiceCaseNotification extends Notification
         public ?string $reminderType = null,
         public ?string $reminderFor = null,
         public ?int $milestoneId = null,
+        public ?string $url = null,
     ) {}
 
     public function via($notifiable): array
@@ -35,7 +36,7 @@ class CustomerServiceCaseNotification extends Notification
             'reminder_type' => $this->reminderType,
             'reminder_for' => $this->reminderFor,
             'milestone_id' => $this->milestoneId,
-            'url' => route('service-cases.show', $this->case->id),
+            'url' => $this->url ?: route('service-cases.show', $this->case->id),
         ];
     }
 }

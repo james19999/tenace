@@ -5,6 +5,7 @@ namespace App\Http\Livewire;
 use App\Models\Costumer;
 use App\Models\CostumerContactSetting;
 use App\Models\CustomerServiceCase;
+use App\Models\CustomerServiceCaseArchiveAccessRequest;
 use App\Models\CustomerServiceCaseActivity;
 use App\Models\CustomerServiceCaseAttachment;
 use App\Models\CustomerServiceSupportMilestone;
@@ -704,7 +705,7 @@ class CustomerServiceCases extends Component
 
     public function openRestoreConfirmation(int $caseId): void
     {
-        abort_unless($this->canManage(), 403);
+        abort_unless(Auth::user()->hasRole(['ADMINUSER']), 403);
         $case = $this->authorizedCase($caseId, true);
         abort_unless($case->archived_at, 422, 'Ce dossier n’est pas archivé.');
 
@@ -715,7 +716,9 @@ class CustomerServiceCases extends Component
 
     public function confirmArchiveAction(): void
     {
-        abort_unless($this->canManage(), 403);
+        abort_unless($this->archiveOperation === 'restore'
+            ? Auth::user()->hasRole(['ADMINUSER'])
+            : $this->canManage(), 403);
         abort_unless(in_array($this->archiveOperation, ['archive', 'restore'], true), 422);
 
         $case = $this->authorizedCase((int) $this->archiveTargetId, true);
@@ -745,6 +748,55 @@ class CustomerServiceCases extends Component
         $this->archiveOperation = 'archive';
         $this->resetPage();
         session()->flash('serviceCaseMessage', $message);
+    }
+
+    public function requestArchiveAccess(int $caseId): void
+    {
+        abort_if(Auth::user()->hasRole(['ADMINUSER']), 403, 'L’administrateur a déjà accès aux archives.');
+
+        $case = CustomerServiceCase::whereNotNull('archived_at')->findOrFail($caseId);
+        $request = CustomerServiceCaseArchiveAccessRequest::firstOrNew([
+            'case_id' => $case->id,
+            'requester_id' => Auth::id(),
+            'archive_snapshot_at' => $case->archived_at,
+        ]);
+
+        if ($request->status === 'approved') {
+            session()->flash('serviceCaseMessage', 'Ton accès à ce dossier est déjà autorisé.');
+            return;
+        }
+        if ($request->status === 'pending') {
+            session()->flash('serviceCaseMessage', 'Ta demande d’accès est déjà en attente de validation.');
+            return;
+        }
+
+        $request->fill([
+            'status' => 'pending',
+            'request_note' => 'Demande d’accès à un dossier archivé.',
+            'decided_by' => null,
+            'decision_note' => null,
+            'decided_at' => null,
+        ])->save();
+
+        $case->activities()->create([
+            'user_id' => Auth::id(),
+            'activity_type' => 'archive_access',
+            'body' => 'Demande d’accès aux archives envoyée par '.Auth::user()->name.'.',
+            'internal' => true,
+            'occurred_at' => now(),
+        ]);
+
+        $admins = User::where('user_type', 'ADMINUSER')->where('active', 1)->get();
+        foreach ($admins as $admin) {
+            $admin->notify(new CustomerServiceCaseNotification(
+                $case,
+                'archive_access_requested',
+                Auth::user()->name.' demande l’accès au dossier archivé '.$case->case_number.'.',
+                url: route('archivelist', ['type' => 'requests']),
+            ));
+        }
+
+        session()->flash('serviceCaseMessage', 'Ta demande a été envoyée à l’administrateur pour validation.');
     }
 
     protected function responseSuggestions(): array
@@ -875,13 +927,28 @@ class CustomerServiceCases extends Component
             'attachments.uploader',
             'supportPlan.milestones.completedBy',
         ])->whereKey($id);
-        if (! $this->canManage()) {
-            $query->where('assigned_to', Auth::id());
-        }
         $case = $query->firstOrFail();
-        abort_if($case->archived_at && ! $allowArchived, 403, 'Ce dossier est archivé et consultable en lecture seule.');
+        if ($case->archived_at) {
+            abort_unless($allowArchived && $this->canViewArchivedCase($case), 403, 'Un administrateur doit d’abord autoriser l’accès à ce dossier archivé.');
+        } elseif (! $this->canManage()) {
+            abort_unless((int) $case->assigned_to === (int) Auth::id(), 403);
+        }
 
         return $case;
+    }
+
+    protected function canViewArchivedCase(CustomerServiceCase $case): bool
+    {
+        if (Auth::user()->hasRole(['ADMINUSER'])) {
+            return true;
+        }
+
+        return CustomerServiceCaseArchiveAccessRequest::query()
+            ->where('case_id', $case->id)
+            ->where('requester_id', Auth::id())
+            ->where('archive_snapshot_at', $case->archived_at)
+            ->where('status', 'approved')
+            ->exists();
     }
 
     protected function caseContactLinks(?CustomerServiceCase $case): array
@@ -1040,9 +1107,15 @@ class CustomerServiceCases extends Component
 
     protected function visibleCases(): Builder
     {
-        $query = $this->accessibleCases()->with(['customer', 'product', 'assignee']);
+        $query = ($this->archiveView ? CustomerServiceCase::query() : $this->accessibleCases())
+            ->with(['customer', 'product', 'assignee']);
         if ($this->archiveView) {
             $query->whereNotNull('archived_at');
+            if (! Auth::user()->hasRole(['ADMINUSER'])) {
+                $query->with(['archiveAccessRequests' => fn ($requests) => $requests
+                    ->where('requester_id', Auth::id())
+                    ->latest()]);
+            }
         } else {
             $query->whereNull('archived_at');
         }
@@ -1050,10 +1123,11 @@ class CustomerServiceCases extends Component
             $search = '%'.trim($this->search).'%';
             $query->where(function (Builder $builder) use ($search) {
                 $builder->where('case_number', 'like', $search)
-                    ->orWhereHas('customer', fn (Builder $customer) => $customer
-                        ->where('name', 'like', $search)
-                        ->orWhere('phone', 'like', $search)
-                        ->orWhere('email', 'like', $search));
+                    ->when(! $this->archiveView || Auth::user()->hasRole(['ADMINUSER']), fn (Builder $query) => $query
+                        ->orWhereHas('customer', fn (Builder $customer) => $customer
+                            ->where('name', 'like', $search)
+                            ->orWhere('phone', 'like', $search)
+                            ->orWhere('email', 'like', $search)));
             });
         }
         if ($this->statusFilter === 'open') {
@@ -1152,7 +1226,7 @@ class CustomerServiceCases extends Component
                 })->count();
             $counts['overdue'] = $caseFollowUpsOverdue + $overdueMilestones;
             $counts['resolved'] = (clone $allVisible)->whereIn('status', ['resolved', 'closed'])->count();
-            $counts['archived'] = (clone $allVisible)->whereNotNull('archived_at')->count();
+            $counts['archived'] = CustomerServiceCase::whereNotNull('archived_at')->count();
             $dashboard['closed'] = (clone $base)->where('status', 'closed')->count();
             $dashboardResolved = (clone $base)->whereIn('status', ['resolved', 'closed'])->count();
             $dashboard['resolved_rate'] = $dashboard['total'] ? round($dashboardResolved / $dashboard['total'] * 100) : 0;
@@ -1185,6 +1259,7 @@ class CustomerServiceCases extends Component
             'assigneeSuggestions' => $this->assigneeSuggestions($this->assigneeSearch, $this->assignedTo),
             'newAssigneeSuggestions' => $this->assigneeSuggestions($this->newAssigneeSearch, $this->newAssigneeId),
             'canManageCases' => $this->canManage(),
+            'isServiceAdmin' => Auth::user()->hasRole(['ADMINUSER']),
             'canAssignCases' => $this->canAssignCases(),
             'customerSelected' => $this->selectedCustomerId ? Costumer::find($this->selectedCustomerId) : null,
         ])->extends('layouts.admin')->section('content');

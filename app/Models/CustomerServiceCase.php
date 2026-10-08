@@ -33,4 +33,5 @@ class CustomerServiceCase extends Model
     public function activities(): HasMany { return $this->hasMany(CustomerServiceCaseActivity::class, 'case_id')->orderBy('occurred_at')->orderBy('id'); }
     public function attachments(): HasMany { return $this->hasMany(CustomerServiceCaseAttachment::class, 'case_id')->latest(); }
     public function supportPlan(): HasOne { return $this->hasOne(CustomerServiceSupportPlan::class, 'case_id'); }
+    public function archiveAccessRequests(): HasMany { return $this->hasMany(CustomerServiceCaseArchiveAccessRequest::class, 'case_id'); }
 }

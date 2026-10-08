@@ -13,11 +13,15 @@
             <ul class="nav nav-tabs mb-3" role="tablist">
                 <li class="nav-item"><a class="nav-link {{ $archiveType === 'orders' ? 'active' : '' }}" href="{{ route('archivelist', ['type' => 'orders']) }}">Commandes archivées</a></li>
                 <li class="nav-item"><a class="nav-link {{ $archiveType === 'cases' ? 'active' : '' }}" href="{{ route('archivelist', ['type' => 'cases']) }}">Dossiers SAV archivés</a></li>
+                <li class="nav-item"><a class="nav-link {{ $archiveType === 'requests' ? 'active' : '' }}" href="{{ route('archivelist', ['type' => 'requests']) }}">Demandes d’accès</a></li>
             </ul>
             @if (Session::has('messages'))
              <div class="alert alert-success">
                 <strong>{{ session('messages') }}</strong>
              </div>
+            @endif
+            @if (Session::has('error'))
+             <div class="alert alert-warning"><strong>{{ session('error') }}</strong></div>
             @endif
 
            @if($archiveType === 'cases')
@@ -43,6 +47,31 @@
                </table>
            </div>
            <div class="d-flex justify-content-end">{{ $cases->links() }}</div>
+           @elseif($archiveType === 'requests')
+           <div class="table-responsive">
+               <table class="table table-hover w-100">
+                   <thead class="thead-light"><tr><th>Dossier</th><th>Cliente</th><th>Demandeur</th><th>Date de demande</th><th>Actions</th></tr></thead>
+                   <tbody>
+                   @forelse($accessRequests as $accessRequest)
+                       <tr>
+                           <td><strong>{{ $accessRequest->customerServiceCase?->case_number ?? 'Dossier indisponible' }}</strong></td>
+                           <td>{{ $accessRequest->customerServiceCase?->customer?->name ?? '—' }}</td>
+                           <td>{{ $accessRequest->requester?->name ?? '—' }}</td>
+                           <td>{{ $accessRequest->created_at?->format('d/m/Y H:i') ?? '—' }}</td>
+                           <td>
+                               <div class="d-flex flex-wrap" style="gap: 6px">
+                                   <form method="POST" action="{{ route('archive.case-access.approve', $accessRequest) }}">@csrf<button type="submit" class="btn btn-sm btn-success">Autoriser</button></form>
+                                   <form method="POST" action="{{ route('archive.case-access.reject', $accessRequest) }}">@csrf<button type="submit" class="btn btn-sm btn-outline-danger">Refuser</button></form>
+                               </div>
+                           </td>
+                       </tr>
+                   @empty
+                       <tr><td colspan="5" class="text-center py-4">Aucune demande d’accès en attente.</td></tr>
+                   @endforelse
+                   </tbody>
+               </table>
+           </div>
+           <div class="d-flex justify-content-end">{{ $accessRequests->links() }}</div>
            @else
            <div class="table-responsive">
                <table id="example" class="table table-hover w-100">

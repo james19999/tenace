@@ -121,12 +121,13 @@ class CustomerServiceNotifications extends Component
             ->whereKey($notificationId)
             ->firstOrFail();
 
+        $url = $notification->data['url'] ?? null;
         $caseId = $notification->data['case_id'] ?? null;
         $notification->markAsRead();
 
-        $this->redirect($caseId
+        $this->redirect($url ?: ($caseId
             ? route('service-cases.show', $caseId)
-            : route('service-cases.index'));
+            : route('service-cases.index')));
     }
 
     public function render()
