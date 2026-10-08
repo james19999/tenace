@@ -77,6 +77,15 @@ class CustomerLoyalty extends Component
     public function updatingPurchaseTo(): void { $this->resetPage(); }
     public function updatingProductFilter(): void { $this->resetPage(); }
 
+    public function clearFilters(): void
+    {
+        $this->reset([
+            'search', 'categoryFilter', 'segmentFilter', 'minScore', 'minOrders',
+            'minSpend', 'purchaseFrom', 'purchaseTo', 'productFilter',
+        ]);
+        $this->resetPage();
+    }
+
     protected function isAdmin(): bool
     {
         return Auth::user()->hasRole(['ADMINUSER']);
@@ -346,7 +355,7 @@ class CustomerLoyalty extends Component
         if ($this->purchaseFrom !== '') $query->whereRaw("JSON_UNQUOTE(JSON_EXTRACT(metrics, '$.last_purchase_at')) >= ?", [$this->purchaseFrom]);
         if ($this->purchaseTo !== '') $query->whereRaw("JSON_UNQUOTE(JSON_EXTRACT(metrics, '$.last_purchase_at')) <= ?", [$this->purchaseTo]);
         if ($this->productFilter !== '') $query->whereHas('customer.orders.orderItems', fn ($items) => $items->where('product_id', $this->productFilter)->whereHas('order', fn ($orders) => $orders->where('status', 'delivered')));
-        $profiles = $query->orderByDesc('score')->paginate(15);
+        $profiles = $query->orderByDesc('score')->paginate(10);
 
         [$categoryCounts, $segmentCounts, $metrics, $categoryPerformance] = Cache::remember('customer-loyalty-dashboard-summary', 60, function () {
             $categoryCounts = CustomerLoyaltyProfile::query()->select('category')->selectRaw('COUNT(*) as aggregate')->groupBy('category')->pluck('aggregate', 'category');
