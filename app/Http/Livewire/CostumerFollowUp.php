@@ -241,55 +241,12 @@ class CostumerFollowUp extends Component
             }
 
             $customer = Costumer::findOrFail($this->selectedCostumerId);
-            $latestOrder = Order::with('orderItems')
-                ->where('costumer_id', (string) $customer->id)
-                ->orderByDesc('id')
-                ->first();
-            $case = CustomerServiceCase::create([
-                'case_number' => 'TMP-'.\Illuminate\Support\Str::random(24),
-                'costumer_id' => $customer->id,
-                'order_id' => $latestOrder?->id,
-                'product_id' => $latestOrder?->orderItems->first()?->product_id,
-                'case_type' => $this->quickServiceCaseType,
-                'purchase_date' => $latestOrder ? ($latestOrder->date_order ?: $latestOrder->created_at) : null,
-                'description' => trim($this->quickServiceCaseDescription),
-                'priority' => 'normal',
-                'status' => 'new',
-                'assigned_to' => Auth::id(),
-                'created_by' => Auth::id(),
-            ]);
-            $case->update(['case_number' => 'TEN-SC-'.now()->format('Y').'-'.str_pad((string) $case->id, 4, '0', STR_PAD_LEFT)]);
-            $case->activities()->create([
-                'user_id' => Auth::id(),
-                'activity_type' => 'created',
-                'body' => 'Dossier créé depuis le suivi des contacts.',
-                'internal' => true,
-                'occurred_at' => now(),
-            ]);
-            $case->activities()->create([
-                'user_id' => Auth::id(),
-                'activity_type' => 'communication',
-                'channel' => ['whatsapp' => 'whatsapp', 'sms' => 'sms', 'call' => 'call', 'other' => 'other'][$this->channel],
-                'body' => 'Réponse enregistrée dans le suivi des contacts'.($this->channel === 'other' && trim($this->channelDetail) !== '' ? ' — '.trim($this->channelDetail) : '').' : '.trim($this->immediateResponse),
-                'internal' => true,
-                'occurred_at' => now(),
-            ]);
-
-            if ($this->quickServiceCaseType === 'personalized_support') {
-                $plan = CustomerServiceSupportPlan::create([
-                    'case_id' => $case->id,
-                    'customer_need' => trim($this->quickServiceCaseDescription),
-                    'started_at' => now()->toDateString(),
-                ]);
-                foreach ([3, 7, 15, 30] as $day) {
-                    $plan->milestones()->create([
-                        'day_offset' => $day,
-                        'due_at' => now()->startOfDay()->addDays($day)->setTime(9, 0),
-                    ]);
-                }
-            }
-
-            return $case;
+            return $this->createQuickServiceCase(
+                $customer,
+                trim($this->immediateResponse),
+                $this->channel,
+                $this->channel === 'other' ? trim($this->channelDetail) : null
+            );
         });
 
         if ($serviceCase) {
@@ -313,6 +270,66 @@ class CostumerFollowUp extends Component
             : 'Contact enregistré dans l’historique.'));
     }
 
+    private function createQuickServiceCase(
+        Costumer $customer,
+        string $response,
+        string $channel,
+        ?string $channelDetail = null
+    ): CustomerServiceCase {
+        $latestOrder = Order::with('orderItems')
+            ->where('costumer_id', (string) $customer->id)
+            ->orderByDesc('id')
+            ->first();
+
+        $case = CustomerServiceCase::create([
+            'case_number' => 'TMP-'.\Illuminate\Support\Str::random(24),
+            'costumer_id' => $customer->id,
+            'order_id' => $latestOrder?->id,
+            'product_id' => $latestOrder?->orderItems->first()?->product_id,
+            'case_type' => $this->quickServiceCaseType,
+            'purchase_date' => $latestOrder ? ($latestOrder->date_order ?: $latestOrder->created_at) : null,
+            'description' => trim($this->quickServiceCaseDescription),
+            'priority' => 'normal',
+            'status' => 'new',
+            'assigned_to' => Auth::id(),
+            'created_by' => Auth::id(),
+        ]);
+        $case->update(['case_number' => 'TEN-SC-'.now()->format('Y').'-'.str_pad((string) $case->id, 4, '0', STR_PAD_LEFT)]);
+        $case->activities()->create([
+            'user_id' => Auth::id(),
+            'activity_type' => 'created',
+            'body' => 'Dossier créé depuis le suivi des contacts.',
+            'internal' => true,
+            'occurred_at' => now(),
+        ]);
+        $case->activities()->create([
+            'user_id' => Auth::id(),
+            'activity_type' => 'communication',
+            'channel' => $channel,
+            'body' => 'Réponse enregistrée dans le suivi des contacts'
+                .($channel === 'other' && $channelDetail ? ' — '.$channelDetail : '')
+                .' : '.$response,
+            'internal' => true,
+            'occurred_at' => now(),
+        ]);
+
+        if ($this->quickServiceCaseType === 'personalized_support') {
+            $plan = CustomerServiceSupportPlan::create([
+                'case_id' => $case->id,
+                'customer_need' => trim($this->quickServiceCaseDescription),
+                'started_at' => now()->toDateString(),
+            ]);
+            foreach ([3, 7, 15, 30] as $day) {
+                $plan->milestones()->create([
+                    'day_offset' => $day,
+                    'due_at' => now()->startOfDay()->addDays($day)->setTime(9, 0),
+                ]);
+            }
+        }
+
+        return $case;
+    }
+
     public function openResponseModal(int $historyId): void
     {
         $history = CostumerContactHistory::with('costumer')->findOrFail($historyId);
@@ -320,28 +337,76 @@ class CostumerFollowUp extends Component
         $this->selectedCostumerId = $history->costumer_id;
         $this->response = $history->response ?? '';
         $this->sentiment = $history->sentiment ?? 'neutral';
+        $this->createServiceCase = false;
+        $this->quickServiceCaseType = 'dissatisfied';
+        $this->quickServiceCaseDescription = '';
+        $this->resetValidation();
         $this->showResponseModal = true;
     }
 
     public function saveResponse(): void
     {
-        $this->validate([
-            'selectedHistoryId' => 'required|exists:costumer_contact_histories,id',
-            'response' => 'required|string|max:10000',
-            'sentiment' => 'required|in:positive,neutral,negative',
-        ]);
+        abort_unless(! $this->createServiceCase || $this->canCreateQuickServiceCase(), 403);
 
-        CostumerContactHistory::whereKey($this->selectedHistoryId)->update([
-            'response' => $this->response,
-            'sentiment' => $this->sentiment,
-            'responded_at' => now(),
-            'follow_up_at' => null,
-        ]);
-        CostumerContactPreference::where('costumer_id', $this->selectedCostumerId)
-            ->update(['next_follow_up_at' => null]);
+        if ($this->createServiceCase && trim($this->quickServiceCaseDescription) === '') {
+            $this->quickServiceCaseDescription = trim($this->response);
+        }
+
+        $rules = [
+            'selectedHistoryId' => 'required|exists:costumer_contact_histories,id',
+            'response' => 'required|string|'.($this->createServiceCase ? 'min:8|' : '').'max:10000',
+            'sentiment' => 'required|in:positive,neutral,negative',
+            'createServiceCase' => 'boolean',
+        ];
+        if ($this->createServiceCase) {
+            $rules['quickServiceCaseType'] = 'required|in:complaint,dissatisfied,personalized_support,information';
+            $rules['quickServiceCaseDescription'] = 'required|string|min:8|max:10000';
+        }
+        $this->validate($rules);
+
+        $history = CostumerContactHistory::with('costumer')->findOrFail($this->selectedHistoryId);
+        abort_unless((int) $history->costumer_id === (int) $this->selectedCostumerId, 404);
+
+        $serviceCase = DB::transaction(function () use ($history) {
+            $history->update([
+                'response' => $this->response,
+                'sentiment' => $this->sentiment,
+                'responded_at' => now(),
+                'follow_up_at' => null,
+            ]);
+            CostumerContactPreference::where('costumer_id', $history->costumer_id)
+                ->update(['next_follow_up_at' => null]);
+
+            if (! $this->createServiceCase) {
+                return null;
+            }
+
+            return $this->createQuickServiceCase(
+                $history->costumer,
+                trim($this->response),
+                $history->channel,
+                $history->channel_detail
+            );
+        });
+
+        if ($serviceCase) {
+            $recipients = User::whereIn('user_type', ['ADMINUSER', 'MNG', 'SCR'])->where('active', 1)->get();
+            foreach ($recipients->unique('id') as $recipient) {
+                if ((int) $recipient->id !== (int) Auth::id()) {
+                    $recipient->notify(new CustomerServiceCaseNotification(
+                        $serviceCase,
+                        'created',
+                        'Un nouveau dossier '.$serviceCase->case_number.' a été créé pour '.$serviceCase->customer->name.'.'
+                    ));
+                }
+            }
+        }
+
         $this->forgetFollowUpData();
         $this->dispatchBrowserEvent('animate-follow-up-modal-close', ['modal' => 'follow-up-response-modal', 'type' => 'response']);
-        session()->flash('messages', 'Réponse enregistrée. Le suivi de ce client est terminé.');
+        session()->flash('messages', $serviceCase
+            ? 'Réponse enregistrée et dossier SAV '.$serviceCase->case_number.' créé.'
+            : 'Réponse enregistrée. Le suivi de ce client est terminé.');
     }
 
     public function openHistory(int $costumerId): void
@@ -451,7 +516,7 @@ class CostumerFollowUp extends Component
             $this->reset(['selectedCostumerId', 'notes', 'selectedTemplateId', 'responseReceivedNow', 'immediateResponse', 'immediateSentiment', 'createServiceCase', 'quickServiceCaseType', 'quickServiceCaseDescription']);
         } elseif ($modal === 'response') {
             $this->showResponseModal = false;
-            $this->reset(['selectedHistoryId', 'selectedCostumerId', 'response', 'sentiment']);
+            $this->reset(['selectedHistoryId', 'selectedCostumerId', 'response', 'sentiment', 'createServiceCase', 'quickServiceCaseType', 'quickServiceCaseDescription']);
         } elseif ($modal === 'history') {
             $this->showHistoryModal = false;
             $this->reset(['selectedCostumerId']);
@@ -1231,7 +1296,7 @@ class CostumerFollowUp extends Component
         if ($this->selectedCostumerId) {
             $selectedCostumerQuery = Costumer::with('contactPreference');
             $selectedCostumer = $selectedCostumerQuery->find($this->selectedCostumerId);
-            if ($selectedCostumer && $this->showContactModal) {
+            if ($selectedCostumer && ($this->showContactModal || $this->showResponseModal)) {
                 $selectedCostumer->setRelation('latestOrder', Order::with('orderItems.product')
                     ->where('costumer_id', (string) $selectedCostumer->id)
                     ->orderByDesc('id')

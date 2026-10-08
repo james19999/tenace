@@ -9,6 +9,7 @@ use App\Models\Product;
 use App\Traits\MyTrait;
 use App\Traits\NewTrait;
 use App\Models\Orders\Order;
+use App\Models\CustomerServiceCase;
 use Illuminate\Http\Request;
 use App\Http\Controllers\Controller;
 use Illuminate\Support\Facades\Auth;
@@ -282,9 +283,19 @@ class LivreurController extends Controller
   }
 
 
-  public function archive_list(){
-    $orders=Order::where('take',true)->get();
-    return view('livreurs.archive',compact('orders'));
+  public function archive_list(Request $request){
+    $archiveType = $request->query('type', 'orders');
+    abort_unless(in_array($archiveType, ['orders', 'cases'], true), 404);
+
+    $orders = $archiveType === 'orders' ? Order::where('take', true)->get() : collect();
+    $cases = $archiveType === 'cases'
+        ? CustomerServiceCase::with(['customer', 'product', 'assignee'])
+            ->whereNotNull('archived_at')
+            ->latest('archived_at')
+            ->paginate(15)
+        : null;
+
+    return view('livreurs.archive', compact('orders', 'cases', 'archiveType'));
   }
 
   public function unlock ($id){

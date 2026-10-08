@@ -33,7 +33,7 @@ class CustomerServiceCases extends Component
     protected const ACTIVITIES_PER_PAGE = 5;
 
     protected $paginationTheme = 'bootstrap';
-    protected $queryString = ['search', 'statusFilter', 'typeFilter', 'priorityFilter', 'dateFrom', 'dateTo', 'dashboardFrom', 'dashboardTo', 'dashboardAssignee'];
+    protected $queryString = ['search', 'statusFilter', 'typeFilter', 'priorityFilter', 'dateFrom', 'dateTo', 'dashboardFrom', 'dashboardTo', 'dashboardAssignee', 'archiveView'];
 
     public $caseId;
     public $search = '';
@@ -46,6 +46,7 @@ class CustomerServiceCases extends Component
     public $dashboardFrom = '';
     public $dashboardTo = '';
     public $dashboardAssignee = '';
+    public $archiveView = false;
 
     public $showCreateModal = false;
     public $showActivityForm = false;
@@ -53,6 +54,9 @@ class CustomerServiceCases extends Component
     public $showCloseForm = false;
     public $showAssignForm = false;
     public $showPriorityForm = false;
+    public $showArchiveConfirm = false;
+    public $archiveTargetId = '';
+    public $archiveOperation = 'archive';
 
     public $customerSearch = '';
     public $selectedCustomerId = '';
@@ -101,8 +105,11 @@ class CustomerServiceCases extends Component
         $this->newAssigneeSearch = Auth::user()->name;
         $this->supportStartDate = now()->format('Y-m-d');
         $this->newNextFollowUpAt = now()->addDays(1)->format('Y-m-d\TH:i');
+        if ($this->archiveView && $this->statusFilter === 'open') {
+            $this->statusFilter = '';
+        }
         if ($caseId) {
-            $case = $this->authorizedCase($caseId);
+            $case = $this->authorizedCase($caseId, true);
             $this->nextFollowUpAt = $case->next_follow_up_at?->format('Y-m-d\TH:i') ?: now()->addDay()->format('Y-m-d\TH:i');
             foreach ($case->supportPlan?->milestones ?? [] as $milestone) {
                 $this->milestoneDates[$milestone->id] = $milestone->due_at->format('Y-m-d\TH:i');
@@ -128,6 +135,7 @@ class CustomerServiceCases extends Component
 
     public function showOpenCases(): void
     {
+        $this->archiveView = false;
         $this->statusFilter = 'open';
         $this->priorityFilter = '';
         $this->resetPage();
@@ -135,6 +143,7 @@ class CustomerServiceCases extends Component
 
     public function showUrgentCases(): void
     {
+        $this->archiveView = false;
         $this->statusFilter = 'open';
         $this->priorityFilter = 'urgent';
         $this->resetPage();
@@ -142,6 +151,7 @@ class CustomerServiceCases extends Component
 
     public function showOverdueCases(): void
     {
+        $this->archiveView = false;
         $this->statusFilter = 'overdue';
         $this->priorityFilter = '';
         $this->resetPage();
@@ -149,8 +159,23 @@ class CustomerServiceCases extends Component
 
     public function showCompletedCases(): void
     {
+        $this->archiveView = false;
         $this->statusFilter = 'completed';
         $this->priorityFilter = '';
+        $this->resetPage();
+    }
+
+    public function showActiveCases(): void
+    {
+        $this->archiveView = false;
+        $this->statusFilter = 'open';
+        $this->resetPage();
+    }
+
+    public function showArchivedCases(): void
+    {
+        $this->archiveView = true;
+        $this->statusFilter = '';
         $this->resetPage();
     }
 
@@ -217,6 +242,9 @@ class CustomerServiceCases extends Component
         $this->showCloseForm = false;
         $this->showAssignForm = false;
         $this->showPriorityForm = false;
+        $this->showArchiveConfirm = false;
+        $this->archiveTargetId = '';
+        $this->archiveOperation = 'archive';
     }
 
     public function updatedAssigneeSearch(): void
@@ -663,6 +691,62 @@ class CustomerServiceCases extends Component
         session()->flash('serviceCaseMessage', 'Le dossier a été clôturé.');
     }
 
+    public function openArchiveConfirmation(int $caseId): void
+    {
+        abort_unless($this->canManage(), 403);
+        $case = $this->authorizedCase($caseId);
+        abort_unless($case->status === 'closed', 422, 'Seuls les dossiers clôturés peuvent être archivés.');
+
+        $this->archiveTargetId = $case->id;
+        $this->archiveOperation = 'archive';
+        $this->showArchiveConfirm = true;
+    }
+
+    public function openRestoreConfirmation(int $caseId): void
+    {
+        abort_unless($this->canManage(), 403);
+        $case = $this->authorizedCase($caseId, true);
+        abort_unless($case->archived_at, 422, 'Ce dossier n’est pas archivé.');
+
+        $this->archiveTargetId = $case->id;
+        $this->archiveOperation = 'restore';
+        $this->showArchiveConfirm = true;
+    }
+
+    public function confirmArchiveAction(): void
+    {
+        abort_unless($this->canManage(), 403);
+        abort_unless(in_array($this->archiveOperation, ['archive', 'restore'], true), 422);
+
+        $case = $this->authorizedCase((int) $this->archiveTargetId, true);
+        if ($this->archiveOperation === 'archive') {
+            abort_unless($case->status === 'closed' && ! $case->archived_at, 422);
+            $case->archived_at = now();
+            $body = 'Dossier archivé par '.Auth::user()->name.'.';
+            $message = 'Le dossier a été déplacé dans les archives.';
+        } else {
+            abort_unless($case->archived_at, 422);
+            $case->archived_at = null;
+            $body = 'Dossier restauré depuis les archives par '.Auth::user()->name.'.';
+            $message = 'Le dossier a été restauré dans le registre.';
+        }
+
+        $case->save();
+        $case->activities()->create([
+            'user_id' => Auth::id(),
+            'activity_type' => 'archive',
+            'body' => $body,
+            'internal' => true,
+            'occurred_at' => now(),
+        ]);
+
+        $this->showArchiveConfirm = false;
+        $this->archiveTargetId = '';
+        $this->archiveOperation = 'archive';
+        $this->resetPage();
+        session()->flash('serviceCaseMessage', $message);
+    }
+
     protected function responseSuggestions(): array
     {
         $userId = Auth::id();
@@ -784,7 +868,7 @@ class CustomerServiceCases extends Component
         session()->flash('serviceCaseMessage', 'Le retour de la cliente a été enregistré.');
     }
 
-    protected function authorizedCase(int $id): CustomerServiceCase
+    protected function authorizedCase(int $id, bool $allowArchived = false): CustomerServiceCase
     {
         $query = CustomerServiceCase::query()->with([
             'customer', 'product', 'order.orderItems.product', 'assignee', 'creator',
@@ -794,7 +878,10 @@ class CustomerServiceCases extends Component
         if (! $this->canManage()) {
             $query->where('assigned_to', Auth::id());
         }
-        return $query->firstOrFail();
+        $case = $query->firstOrFail();
+        abort_if($case->archived_at && ! $allowArchived, 403, 'Ce dossier est archivé et consultable en lecture seule.');
+
+        return $case;
     }
 
     protected function caseContactLinks(?CustomerServiceCase $case): array
@@ -954,6 +1041,11 @@ class CustomerServiceCases extends Component
     protected function visibleCases(): Builder
     {
         $query = $this->accessibleCases()->with(['customer', 'product', 'assignee']);
+        if ($this->archiveView) {
+            $query->whereNotNull('archived_at');
+        } else {
+            $query->whereNull('archived_at');
+        }
         if (trim($this->search) !== '') {
             $search = '%'.trim($this->search).'%';
             $query->where(function (Builder $builder) use ($search) {
@@ -1016,7 +1108,7 @@ class CustomerServiceCases extends Component
 
     public function render()
     {
-        $case = $this->caseId ? $this->authorizedCase((int) $this->caseId) : null;
+        $case = $this->caseId ? $this->authorizedCase((int) $this->caseId, true) : null;
         $activities = $case
             ? $case->activities()->with(['user', 'attachments.uploader'])->paginate(self::ACTIVITIES_PER_PAGE, ['*'], 'activitiesPage')
             : null;
@@ -1032,7 +1124,7 @@ class CustomerServiceCases extends Component
         }
 
         $caseRows = null;
-        $counts = ['open' => 0, 'urgent' => 0, 'overdue' => 0, 'resolved' => 0];
+        $counts = ['open' => 0, 'urgent' => 0, 'overdue' => 0, 'resolved' => 0, 'archived' => 0];
         $dashboard = ['total' => 0, 'complaint' => 0, 'dissatisfied' => 0, 'support' => 0, 'information' => 0, 'closed' => 0, 'resolved_rate' => 0, 'average_resolution_hours' => null, 'average_satisfaction' => null, 'satisfied_rate' => null, 'ratings_count' => 0, 'by_assignee' => collect()];
         if (! $case) {
             $allVisible = $this->accessibleCases();
@@ -1060,6 +1152,7 @@ class CustomerServiceCases extends Component
                 })->count();
             $counts['overdue'] = $caseFollowUpsOverdue + $overdueMilestones;
             $counts['resolved'] = (clone $allVisible)->whereIn('status', ['resolved', 'closed'])->count();
+            $counts['archived'] = (clone $allVisible)->whereNotNull('archived_at')->count();
             $dashboard['closed'] = (clone $base)->where('status', 'closed')->count();
             $dashboardResolved = (clone $base)->whereIn('status', ['resolved', 'closed'])->count();
             $dashboard['resolved_rate'] = $dashboard['total'] ? round($dashboardResolved / $dashboard['total'] * 100) : 0;

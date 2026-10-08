@@ -780,7 +780,7 @@
                 <div class="modal-header"><h5 class="modal-title">Réponse du client</h5><button type="button" class="close" wire:click="beginClosingModal('follow-up-response-modal')" aria-label="Fermer"><span>&times;</span></button></div>
                 <div class="modal-body">
                     <label>Réponse ou avis</label>
-                    <textarea class="form-control" rows="5" wire:model="response"></textarea>
+                    <textarea id="follow-up-response-text" class="form-control" rows="5" wire:model="response"></textarea>
                     @error('response') <small class="text-danger">{{ $message }}</small> @enderror
                     <label class="mt-3">Tonalité de l’avis</label>
                     <select class="form-control" wire:model="sentiment">
@@ -788,8 +788,39 @@
                         <option value="neutral">Neutre</option>
                         <option value="negative">Négatif</option>
                     </select>
+                    @if ($canCreateServiceCase)
+                        <div class="border rounded p-3 mt-3 bg-light">
+                            <div class="form-check">
+                                <input type="checkbox" class="form-check-input" id="response-create-service-case" wire:model.defer="createServiceCase">
+                                <label class="form-check-label font-weight-bold" for="response-create-service-case">Créer aussi un dossier SAV</label>
+                            </div>
+                            <div id="response-quick-service-case-fields" class="mt-3" style="{{ $createServiceCase ? '' : 'display: none;' }}">
+                                <div class="form-group mb-2">
+                                    <label for="response-quick-service-case-type">Type de dossier</label>
+                                    <select id="response-quick-service-case-type" class="form-control" wire:model.defer="quickServiceCaseType">
+                                        <option value="complaint">Réclamation</option>
+                                        <option value="dissatisfied">Cliente insatisfaite</option>
+                                        <option value="personalized_support">Accompagnement personnalisé</option>
+                                        <option value="information">Demande d’information</option>
+                                    </select>
+                                    @error('quickServiceCaseType') <small class="text-danger">{{ $message }}</small> @enderror
+                                </div>
+                                <div class="form-group mb-2">
+                                    <label for="response-quick-service-case-description">Description du dossier</label>
+                                    <textarea id="response-quick-service-case-description" class="form-control" rows="3" wire:model.defer="quickServiceCaseDescription" placeholder="La réponse sera proposée comme description du dossier"></textarea>
+                                    @error('quickServiceCaseDescription') <small class="text-danger">{{ $message }}</small> @enderror
+                                </div>
+                                <small class="text-muted d-block">La réponse ci-dessus sera proposée automatiquement. Tu peux modifier la description avant l’enregistrement.</small>
+                                @if ($selectedCostumer && $selectedCostumer->latestOrder)
+                                    <small class="text-muted d-block mt-1">Dernière commande : {{ $selectedCostumer->latestOrder->code ?: '#'.$selectedCostumer->latestOrder->id }}@if($selectedCostumer->latestOrder->orderItems->first()), produit : {{ $selectedCostumer->latestOrder->orderItems->first()->product->name ?? 'indisponible' }}@endif</small>
+                                @elseif ($selectedCostumer)
+                                    <small class="text-muted d-block mt-1">Aucune commande récente : le dossier sera lié à la cliente uniquement.</small>
+                                @endif
+                            </div>
+                        </div>
+                    @endif
                 </div>
-                <div class="modal-footer"><button type="button" class="btn btn-secondary" wire:click="beginClosingModal('follow-up-response-modal')">Annuler</button><button class="btn btn-success" wire:click="saveResponse">Enregistrer la réponse</button></div>
+                <div class="modal-footer"><button type="button" class="btn btn-secondary" wire:click="beginClosingModal('follow-up-response-modal')">Annuler</button><button class="btn btn-success" wire:click="saveResponse">{{ $createServiceCase ? 'Enregistrer la réponse et créer le dossier' : 'Enregistrer la réponse' }}</button></div>
             </div></div>
         </div>
     @endif
@@ -933,6 +964,20 @@
                             description.dispatchEvent(new Event('input', { bubbles: true }));
                         }
                         if (fields && checkbox) fields.style.display = allowed && checkbox.checked ? '' : 'none';
+                    }
+
+                    if (event.target.id === 'response-create-service-case') {
+                        var responseCheckbox = document.getElementById('response-create-service-case');
+                        var responseCaseFields = document.getElementById('response-quick-service-case-fields');
+                        var responseDescription = document.getElementById('response-quick-service-case-description');
+                        var responseText = document.getElementById('follow-up-response-text');
+                        if (responseCaseFields && responseCheckbox) {
+                            responseCaseFields.style.display = responseCheckbox.checked ? '' : 'none';
+                        }
+                        if (responseCheckbox && responseCheckbox.checked && responseDescription && !responseDescription.value.trim() && responseText) {
+                            responseDescription.value = responseText.value;
+                            responseDescription.dispatchEvent(new Event('input', { bubbles: true }));
+                        }
                     }
                 });
             }

@@ -265,8 +265,16 @@
         </section>
 
         <section class="sc-panel">
+            <div class="sc-case-tabs" role="tablist" aria-label="Dossiers du service client">
+                <button type="button" class="{{ $archiveView ? '' : 'is-active' }}" wire:click="showActiveCases" role="tab" aria-selected="{{ $archiveView ? 'false' : 'true' }}">
+                    <span class="material-icons">folder_open</span>Dossiers
+                </button>
+                <button type="button" class="{{ $archiveView ? 'is-active' : '' }}" wire:click="showArchivedCases" role="tab" aria-selected="{{ $archiveView ? 'true' : 'false' }}">
+                    <span class="material-icons">inventory_2</span>Archives <span class="sc-case-tab-count">{{ number_format($counts['archived']) }}</span>
+                </button>
+            </div>
             <div class="sc-panel-heading">
-                <div><h2>Registre des dossiers</h2><p>Retrouvez rapidement une cliente ou une demande.</p></div>
+                <div><h2>{{ $archiveView ? 'Dossiers archivés' : 'Registre des dossiers' }}</h2><p>{{ $archiveView ? 'Les dossiers clôturés sont conservés ici et peuvent être restaurés.' : 'Retrouvez rapidement une cliente ou une demande.' }}</p></div>
                 <div class="sc-result-count">{{ $caseRows->total() }} dossier(s)</div>
             </div>
             <div class="sc-filters">
@@ -302,7 +310,13 @@
                                 <td data-label="Priorité"><span class="sc-priority {{ $priorityClasses[$row->priority] ?? '' }}">{{ $priorityLabels[$row->priority] ?? $row->priority }}</span></td>
                                 <td data-label="Statut"><span class="sc-status {{ $statusClasses[$row->status] ?? '' }}">{{ $statusLabels[$row->status] ?? $row->status }}</span></td>
                                 <td data-label="Prochain suivi" class="{{ $isOverdue ? 'sc-overdue-date' : '' }}">{{ $row->next_follow_up_at?->format('d/m/Y H:i') ?: 'Non programmé' }} @if($isOverdue)<small>En retard</small>@endif</td>
-                                <td data-label="Actions"><a class="sc-open-link" href="{{ route('service-cases.show', $row->id) }}" aria-label="Ouvrir le dossier"><span class="material-icons">arrow_forward</span></a></td>
+                                <td data-label="Actions"><div class="sc-case-row-actions"><a class="sc-open-link" href="{{ route('service-cases.show', $row->id, false) }}{{ $archiveView ? '?archiveView=1' : '' }}" aria-label="Ouvrir le dossier"><span class="material-icons">arrow_forward</span></a>
+                                    @if($canManageCases && $archiveView)
+                                        <button type="button" class="sc-open-link sc-archive-action" wire:click="openRestoreConfirmation({{ $row->id }})" aria-label="Restaurer le dossier" title="Restaurer"><span class="material-icons">unarchive</span></button>
+                                    @elseif($canManageCases && $row->status === 'closed')
+                                        <button type="button" class="sc-open-link sc-archive-action" wire:click="openArchiveConfirmation({{ $row->id }})" aria-label="Archiver le dossier" title="Archiver"><span class="material-icons">archive</span></button>
+                                    @endif
+                                </div></td>
                             </tr>
                         @empty
                             <tr class="sc-empty-row"><td colspan="8"><div class="sc-empty"><span class="material-icons">folder_off</span><strong>Aucun dossier trouvé</strong><span>Modifiez les filtres ou créez un nouveau dossier.</span></div></td></tr>
@@ -376,14 +390,22 @@
         @endif
     @else
         <section class="sc-detail-top">
-            <div><a class="sc-back-link" href="{{ route('service-cases.index') }}"><span class="material-icons">arrow_back</span>Retour aux dossiers</a><div class="sc-detail-heading"><span class="sc-case-number">{{ $case->case_number }}</span><span class="sc-status {{ $statusClasses[$case->status] ?? '' }}">{{ $statusLabels[$case->status] ?? $case->status }}</span><span class="sc-priority {{ $priorityClasses[$case->priority] ?? '' }}">{{ $priorityLabels[$case->priority] ?? $case->priority }}</span></div><h1>{{ $case->customer->name }}</h1><p>{{ $typeLabels[$case->case_type] ?? $case->case_type }} <span>·</span> créé le {{ $case->created_at->format('d/m/Y à H:i') }}</p></div>
-            <div class="sc-detail-actions">@if($canManageCases && $case->status !== 'closed')<button type="button" class="btn sc-secondary-btn" wire:click="openAssignForm"><span class="material-icons">person_add_alt</span>Attribuer</button><button type="button" class="btn sc-secondary-btn" wire:click="openPriorityForm"><span class="material-icons">low_priority</span>Priorité</button>@endif<button type="button" class="btn sc-primary-btn" wire:click="openActivityModal"><span class="material-icons">add_comment</span>Ajouter une intervention</button></div>
+            <div><a class="sc-back-link" href="{{ route('service-cases.index', $case->archived_at ? ['archiveView' => 1] : []) }}"><span class="material-icons">arrow_back</span>{{ $case->archived_at ? 'Retour aux archives' : 'Retour aux dossiers' }}</a><div class="sc-detail-heading"><span class="sc-case-number">{{ $case->case_number }}</span><span class="sc-status {{ $statusClasses[$case->status] ?? '' }}">{{ $statusLabels[$case->status] ?? $case->status }}</span><span class="sc-priority {{ $priorityClasses[$case->priority] ?? '' }}">{{ $priorityLabels[$case->priority] ?? $case->priority }}</span>@if($case->archived_at)<span class="sc-case-archived-label"><span class="material-icons">archive</span>Archivé le {{ $case->archived_at->format('d/m/Y') }}</span>@endif</div><h1>{{ $case->customer->name }}</h1><p>{{ $typeLabels[$case->case_type] ?? $case->case_type }} <span>·</span> créé le {{ $case->created_at->format('d/m/Y à H:i') }}</p></div>
+            <div class="sc-detail-actions">
+                @if(!$case->archived_at)
+                    @if($canManageCases && $case->status !== 'closed')<button type="button" class="btn sc-secondary-btn" wire:click="openAssignForm"><span class="material-icons">person_add_alt</span>Attribuer</button><button type="button" class="btn sc-secondary-btn" wire:click="openPriorityForm"><span class="material-icons">low_priority</span>Priorité</button>@endif
+                    @if($case->status !== 'closed')<button type="button" class="btn sc-primary-btn" wire:click="openActivityModal"><span class="material-icons">add_comment</span>Ajouter une intervention</button>@endif
+                    @if($canManageCases && $case->status === 'closed')<button type="button" class="btn sc-secondary-btn" wire:click="openArchiveConfirmation({{ $case->id }})"><span class="material-icons">archive</span>Archiver</button>@endif
+                @elseif($canManageCases)
+                    <button type="button" class="btn sc-secondary-btn" wire:click="openRestoreConfirmation({{ $case->id }})"><span class="material-icons">unarchive</span>Restaurer</button>
+                @endif
+            </div>
         </section>
 
         <div class="sc-detail-layout">
             <main class="sc-detail-main">
                 <section class="sc-detail-card"><div class="sc-card-heading"><div><span class="sc-eyebrow">SUIVI DU DOSSIER</span><h2>Prochaine étape</h2></div>@if($case->next_follow_up_at && $case->status !== 'closed')<span class="sc-next-date {{ $case->next_follow_up_at->isPast() && !in_array($case->status,['resolved','closed'],true) ? 'is-overdue' : '' }}"><span class="material-icons">event</span>{{ $case->next_follow_up_at->format('d/m/Y à H:i') }}</span>@endif</div>
-                    @if(!in_array($case->status, ['resolved','closed'], true))
+                    @if(!$case->archived_at && !in_array($case->status, ['resolved','closed'], true))
                         <div class="sc-workflow-actions">
                             <button wire:click="openActivityModal" type="button"><span class="material-icons">forum</span><strong>Enregistrer un échange</strong><small>WhatsApp, appel, SMS, e-mail…</small></button>
                             <button wire:click="openResolveModal" type="button"><span class="material-icons">published_with_changes</span><strong>Mettre à jour le statut</strong><small>Tracer la prochaine étape</small></button>
@@ -398,7 +420,7 @@
                         @if($case->status === 'new')<div class="sc-status-shortcut"><button class="btn sc-soft-btn" wire:click="startAnalysis">Commencer l’analyse</button></div>@endif
                     @else
                         <div class="sc-resolution-banner"><span class="material-icons">verified</span><div><strong>{{ $case->status === 'closed' ? 'Dossier clôturé' : 'Résolution proposée' }}</strong><p>{{ $case->resolution ?: 'La solution et le résultat du traitement sont conservés ci-dessous.' }}</p></div></div>
-                        @if($case->status === 'resolved' && $canManageCases)<button class="btn sc-primary-btn mt-3" wire:click="openCloseModal"><span class="material-icons">lock</span>Clôturer le dossier</button>@endif
+                        @if(!$case->archived_at && $case->status === 'resolved' && $canManageCases)<button class="btn sc-primary-btn mt-3" wire:click="openCloseModal"><span class="material-icons">lock</span>Clôturer le dossier</button>@endif
                     @endif
                 </section>
 
@@ -469,11 +491,11 @@
                 @forelse($activities as $activity)
                     <article class="sc-timeline-item">
                         <span class="sc-timeline-icon {{ $activity->activity_type === 'status_change' ? 'is-status' : ($activity->activity_type === 'communication' ? 'is-communication' : '') }}">
-                            <span class="material-icons">{{ ['created' => 'fiber_new', 'status_change' => 'sync_alt', 'priority_change' => 'low_priority', 'communication' => 'forum', 'internal_note' => 'sticky_note_2', 'follow_up_scheduled' => 'event', 'assignment' => 'person_add_alt', 'milestone' => 'flag', 'satisfaction' => 'sentiment_satisfied_alt', 'support_review' => 'fact_check'][$activity->activity_type] ?? 'history' }}</span>
+                            <span class="material-icons">{{ ['created' => 'fiber_new', 'status_change' => 'sync_alt', 'priority_change' => 'low_priority', 'communication' => 'forum', 'internal_note' => 'sticky_note_2', 'follow_up_scheduled' => 'event', 'assignment' => 'person_add_alt', 'milestone' => 'flag', 'satisfaction' => 'sentiment_satisfied_alt', 'support_review' => 'fact_check', 'archive' => 'inventory_2'][$activity->activity_type] ?? 'history' }}</span>
                         </span>
                         <div class="sc-timeline-content">
                             <div class="sc-timeline-head"><strong>{{ $activity->actor_name ?: ($activity->user?->name ?: 'Système') }}</strong><span>{{ $activity->occurred_at->format('d/m/Y à H:i') }}</span></div>
-                            <div class="sc-activity-kind">{{ $activity->activity_type === 'communication' ? 'Échange client · '.(['whatsapp'=>'WhatsApp','call'=>'Appel téléphonique','sms'=>'SMS','email'=>'E-mail','visit'=>'Visite physique','other'=>'Autre'][$activity->channel] ?? $activity->channel) : (['created'=>'Création du dossier','status_change'=>'Changement de statut','priority_change'=>'Changement de priorité','internal_note'=>'Note interne','follow_up_scheduled'=>'Programmation du suivi','assignment'=>'Affectation','milestone'=>'Étape d’accompagnement','support_review'=>'Bilan d’accompagnement','satisfaction'=>'Satisfaction après traitement'][$activity->activity_type] ?? 'Intervention') }}</div>
+                            <div class="sc-activity-kind">{{ $activity->activity_type === 'communication' ? 'Échange client · '.(['whatsapp'=>'WhatsApp','call'=>'Appel téléphonique','sms'=>'SMS','email'=>'E-mail','visit'=>'Visite physique','other'=>'Autre'][$activity->channel] ?? $activity->channel) : (['created'=>'Création du dossier','status_change'=>'Changement de statut','priority_change'=>'Changement de priorité','internal_note'=>'Note interne','follow_up_scheduled'=>'Programmation du suivi','assignment'=>'Affectation','milestone'=>'Étape d’accompagnement','support_review'=>'Bilan d’accompagnement','satisfaction'=>'Satisfaction après traitement','archive'=>'Archivage / restauration'][$activity->activity_type] ?? 'Intervention') }}</div>
                             @if($activity->old_status && $activity->new_status)
                                 <div class="sc-status-transition"><span>{{ $statusLabels[$activity->old_status] ?? $activity->old_status }}</span><span class="material-icons">arrow_forward</span><strong>{{ $statusLabels[$activity->new_status] ?? $activity->new_status }}</strong></div>
                             @endif
@@ -609,6 +631,22 @@
         @if($showCloseForm)
             <div class="sc-modal-backdrop" wire:click.self="closeAllModals"><section class="sc-modal sc-modal-narrow" role="dialog" aria-modal="true"><header class="sc-modal-head"><div><span class="sc-eyebrow">VALIDATION RESPONSABLE</span><h2>Clôturer le dossier</h2></div><button type="button" class="sc-icon-button" wire:click="closeAllModals"><span class="material-icons">close</span></button></header><div class="sc-modal-body"><label class="sc-label">Résultat du traitement <small>(facultatif)</small></label><textarea class="form-control" rows="3" wire:model.defer="resolutionResult"></textarea>@error('resolutionResult')<small class="text-danger">{{ $message }}</small>@enderror @if(!empty($responseSuggestions['resolutionResult']))<div class="sc-response-suggestions"><small>Résultats déjà utilisés</small>@foreach($responseSuggestions['resolutionResult'] as $suggestion)<button type="button" wire:click="useResponseSuggestion('resolutionResult', @js($suggestion))">{{ \Illuminate\Support\Str::limit($suggestion, 90) }}</button>@endforeach</div>@endif<label class="sc-label mt-3">Justification de clôture <small>(facultatif)</small></label><textarea class="form-control" rows="4" wire:model.defer="closureReason" placeholder="Ex. cliente satisfaite, solution confirmée le…"></textarea>@error('closureReason')<small class="text-danger">{{ $message }}</small>@enderror @if(!empty($responseSuggestions['closureReason']))<div class="sc-response-suggestions"><small>Justifications déjà utilisées</small>@foreach($responseSuggestions['closureReason'] as $suggestion)<button type="button" wire:click="useResponseSuggestion('closureReason', @js($suggestion))">{{ \Illuminate\Support\Str::limit($suggestion, 90) }}</button>@endforeach</div>@endif</div><footer class="sc-modal-foot"><button type="button" class="btn sc-secondary-btn" wire:click="closeAllModals">Annuler</button><button type="button" class="btn sc-primary-btn" wire:click="closeCase"><span class="material-icons">lock</span>Confirmer la clôture</button></footer></section></div>
         @endif
+
+    @endif
+
+    @if($showArchiveConfirm)
+            <div class="sc-modal-backdrop" wire:click.self="closeAllModals">
+                <section class="sc-modal sc-modal-narrow" role="dialog" aria-modal="true" aria-labelledby="sc-archive-confirm-title">
+                    <header class="sc-modal-head">
+                        <div><span class="sc-eyebrow">{{ $archiveOperation === 'archive' ? 'CONSERVATION DU DOSSIER' : 'RETOUR AU REGISTRE' }}</span><h2 id="sc-archive-confirm-title">{{ $archiveOperation === 'archive' ? 'Archiver ce dossier ?' : 'Restaurer ce dossier ?' }}</h2></div>
+                        <button type="button" class="sc-icon-button" wire:click="closeAllModals" aria-label="Fermer"><span class="material-icons">close</span></button>
+                    </header>
+                    <div class="sc-modal-body">
+                        <div class="sc-archive-confirm-note"><span class="material-icons">{{ $archiveOperation === 'archive' ? 'inventory_2' : 'unarchive' }}</span><p>{{ $archiveOperation === 'archive' ? 'Le dossier clôturé sera déplacé dans l’onglet Archives. Son historique et ses pièces jointes seront conservés.' : 'Le dossier sera retiré des archives et réapparaîtra dans le registre des dossiers clôturés.' }}</p></div>
+                    </div>
+                    <footer class="sc-modal-foot"><button type="button" class="btn sc-secondary-btn" wire:click="closeAllModals">Annuler</button><button type="button" class="btn sc-primary-btn" wire:click="confirmArchiveAction" wire:loading.attr="disabled" wire:target="confirmArchiveAction"><span class="material-icons">{{ $archiveOperation === 'archive' ? 'archive' : 'unarchive' }}</span>{{ $archiveOperation === 'archive' ? 'Archiver le dossier' : 'Restaurer le dossier' }}</button></footer>
+                </section>
+            </div>
     @endif
 
 

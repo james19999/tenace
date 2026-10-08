@@ -10,13 +10,40 @@
     </div>
    <div class="card shadow">
        <div class="card-body ">
+            <ul class="nav nav-tabs mb-3" role="tablist">
+                <li class="nav-item"><a class="nav-link {{ $archiveType === 'orders' ? 'active' : '' }}" href="{{ route('archivelist', ['type' => 'orders']) }}">Commandes archivées</a></li>
+                <li class="nav-item"><a class="nav-link {{ $archiveType === 'cases' ? 'active' : '' }}" href="{{ route('archivelist', ['type' => 'cases']) }}">Dossiers SAV archivés</a></li>
+            </ul>
             @if (Session::has('messages'))
              <div class="alert alert-success">
                 <strong>{{ session('messages') }}</strong>
              </div>
             @endif
 
-
+           @if($archiveType === 'cases')
+           <div class="table-responsive">
+               <table class="table table-hover w-100">
+                   <thead class="thead-light"><tr><th>N° dossier</th><th>Cliente</th><th>Type</th><th>Produit</th><th>Responsable</th><th>Clôturé le</th><th>Archivé le</th><th>Action</th></tr></thead>
+                   <tbody>
+                   @forelse($cases as $case)
+                       <tr>
+                           <td><strong>{{ $case->case_number }}</strong></td>
+                           <td>{{ $case->customer?->name ?? '—' }}<br><small>{{ $case->customer?->phone ?? '' }}</small></td>
+                           <td>{{ ['complaint' => 'Réclamation', 'dissatisfied' => 'Insatisfaction', 'personalized_support' => 'Accompagnement', 'information' => 'Demande d’information'][$case->case_type] ?? $case->case_type }}</td>
+                           <td>{{ $case->product?->name ?? '—' }}</td>
+                           <td>{{ $case->assignee?->name ?? '—' }}</td>
+                           <td>{{ $case->closed_at?->format('d/m/Y H:i') ?? '—' }}</td>
+                           <td>{{ $case->archived_at?->format('d/m/Y H:i') ?? '—' }}</td>
+                           <td><a class="btn btn-sm btn-primary" href="{{ route('service-cases.show', ['caseId' => $case->id, 'archiveView' => 1]) }}">Consulter</a></td>
+                       </tr>
+                   @empty
+                       <tr><td colspan="8" class="text-center py-4">Aucun dossier SAV archivé.</td></tr>
+                   @endforelse
+                   </tbody>
+               </table>
+           </div>
+           <div class="d-flex justify-content-end">{{ $cases->links() }}</div>
+           @else
            <div class="table-responsive">
                <table id="example" class="table table-hover w-100">
                    <thead class="thead-light">
@@ -91,6 +118,7 @@
                    </tfoot>
                </table>
            </div>
+           @endif
        </div>
    </div>
 </div>

@@ -14,6 +14,7 @@ class CustomerServiceCase extends Model
         'case_number', 'costumer_id', 'order_id', 'product_id', 'case_type', 'purchase_date',
         'description', 'priority', 'status', 'assigned_to', 'created_by', 'next_follow_up_at',
         'resolution', 'resolution_result', 'customer_satisfaction', 'satisfaction_comment', 'closure_reason', 'resolved_at', 'closed_at',
+        'archived_at',
     ];
 
     protected $casts = [
@@ -21,6 +22,7 @@ class CustomerServiceCase extends Model
         'next_follow_up_at' => 'datetime',
         'resolved_at' => 'datetime',
         'closed_at' => 'datetime',
+        'archived_at' => 'datetime',
     ];
 
     public function customer(): BelongsTo { return $this->belongsTo(Costumer::class, 'costumer_id'); }
