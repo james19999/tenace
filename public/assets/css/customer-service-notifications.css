@@ -341,11 +341,110 @@
 .sc-global-notification-footer .material-icons {
     font-size: 16px;
 }
+.sc-global-notification > audio {
+    display: none;
+}
+.sc-notification-push {
+    position: fixed;
+    top: 72px;
+    right: 22px;
+    z-index: 100000;
+    display: flex;
+    width: min(390px, calc(100vw - 28px));
+    flex-direction: column;
+    gap: 9px;
+    pointer-events: none;
+}
+.sc-notification-toast {
+    position: relative;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 13px 38px 13px 14px;
+    border: 1px solid #eadcdb;
+    border-left: 4px solid #811d1a;
+    border-radius: 12px;
+    background: #fff;
+    box-shadow: 0 12px 34px rgba(36, 28, 32, .2);
+    opacity: 0;
+    transform: translateX(18px);
+    transition: opacity .24s ease, transform .24s ease;
+    pointer-events: auto;
+}
+.sc-notification-toast.is-visible {
+    opacity: 1;
+    transform: translateX(0);
+}
+.sc-notification-toast-link {
+    display: flex;
+    min-width: 0;
+    align-items: center;
+    gap: 11px;
+    color: #34343d !important;
+    text-decoration: none !important;
+}
+.sc-notification-toast-link:hover {
+    color: #811d1a !important;
+}
+.sc-notification-toast-icon {
+    display: flex;
+    width: 36px;
+    height: 36px;
+    flex: 0 0 36px;
+    align-items: center;
+    justify-content: center;
+    border-radius: 50%;
+    background: #f7e9e8;
+    color: #811d1a;
+}
+.sc-notification-toast-copy {
+    display: flex;
+    min-width: 0;
+    flex-direction: column;
+    gap: 3px;
+}
+.sc-notification-toast-copy strong {
+    color: #811d1a;
+    font-size: 11px;
+    font-weight: 800;
+}
+.sc-notification-toast-copy > span {
+    display: -webkit-box;
+    overflow: hidden;
+    color: #5d5e68;
+    font-size: 12px;
+    line-height: 1.4;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 2;
+}
+.sc-notification-toast-close {
+    position: absolute;
+    top: 7px;
+    right: 9px;
+    width: 24px;
+    height: 24px;
+    border: 0;
+    border-radius: 50%;
+    background: transparent;
+    color: #888892;
+    font-size: 20px;
+    line-height: 1;
+}
+.sc-notification-toast-close:hover {
+    background: #f3eeee;
+    color: #811d1a;
+}
 @keyframes sc-notification-drop-in {
     from { opacity: 0; transform: translateY(-5px); }
     to { opacity: 1; transform: translateY(0); }
 }
 @media (max-width: 575px) {
+    .sc-notification-push {
+        top: 62px;
+        right: 10px;
+        left: 10px;
+        width: auto;
+    }
     .right-area header .navbar-nav > li.sc-global-notification > .sc-global-notification-menu {
         position: fixed;
         top: 54px;

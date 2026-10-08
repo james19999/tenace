@@ -537,7 +537,56 @@
         @endif
 
         @if($showResolveForm)
-            <div class="sc-modal-backdrop" wire:click.self="closeAllModals"><section class="sc-modal sc-modal-narrow" role="dialog" aria-modal="true"><header class="sc-modal-head"><div><span class="sc-eyebrow">MISE À JOUR</span><h2>{{ $newStatus === 'resolved' ? 'Proposer une résolution' : 'Faire avancer le dossier' }}</h2></div><button type="button" class="sc-icon-button" wire:click="closeAllModals"><span class="material-icons">close</span></button></header><div class="sc-modal-body"><label class="sc-label">Nouveau statut <b>*</b></label><select class="form-control" wire:model="newStatus"><option value="">Choisir le statut</option>@foreach($availableTransitions as $transition)<option value="{{ $transition }}">{{ $statusLabels[$transition] ?? $transition }}</option>@endforeach</select>@error('newStatus')<small class="text-danger">{{ $message }}</small>@enderror<label class="sc-label mt-3">Commentaire obligatoire <b>*</b></label><textarea class="form-control" rows="3" wire:model.defer="statusComment" placeholder="Pourquoi le dossier passe-t-il à ce statut ?"></textarea>@error('statusComment')<small class="text-danger">{{ $message }}</small>@enderror @if(!empty($responseSuggestions['statusComment']))<div class="sc-response-suggestions"><small>Réutiliser une réponse</small>@foreach($responseSuggestions['statusComment'] as $suggestion)<button type="button" wire:click="useResponseSuggestion('statusComment', @js($suggestion))">{{ \Illuminate\Support\Str::limit($suggestion, 90) }}</button>@endforeach</div>@endif @if($newStatus === 'resolved')<div class="sc-resolve-fields"><label class="sc-label mt-3">Solution apportée <b>*</b></label><textarea class="form-control" rows="3" wire:model.defer="resolution" placeholder="Ce qui a été proposé ou réalisé"></textarea>@error('resolution')<small class="text-danger">{{ $message }}</small>@enderror @if(!empty($responseSuggestions['resolution']))<div class="sc-response-suggestions"><small>Solutions déjà utilisées</small>@foreach($responseSuggestions['resolution'] as $suggestion)<button type="button" wire:click="useResponseSuggestion('resolution', @js($suggestion))">{{ \Illuminate\Support\Str::limit($suggestion, 90) }}</button>@endforeach</div>@endif<label class="sc-label mt-3">Résultat obtenu <b>*</b></label><textarea class="form-control" rows="3" wire:model.defer="resolutionResult" placeholder="Retour de la cliente et résultat concret"></textarea>@error('resolutionResult')<small class="text-danger">{{ $message }}</small>@enderror @if(!empty($responseSuggestions['resolutionResult']))<div class="sc-response-suggestions"><small>Résultats déjà utilisés</small>@foreach($responseSuggestions['resolutionResult'] as $suggestion)<button type="button" wire:click="useResponseSuggestion('resolutionResult', @js($suggestion))">{{ \Illuminate\Support\Str::limit($suggestion, 90) }}</button>@endforeach</div>@endif<div class="sc-inline-notice"><span class="material-icons">verified_user</span>La clôture finale restera réservée à un responsable et exigera une justification.</div></div>@endif</div><footer class="sc-modal-foot"><button type="button" class="btn sc-secondary-btn" wire:click="closeAllModals">Annuler</button><button type="button" class="btn sc-primary-btn" wire:click="changeStatus('{{ $newStatus }}')" wire:loading.attr="disabled"><span class="material-icons">save</span>Enregistrer la mise à jour</button></footer></section></div>
+            <div class="sc-modal-backdrop" wire:click.self="closeAllModals">
+                <section class="sc-modal sc-modal-narrow" role="dialog" aria-modal="true">
+                    <header class="sc-modal-head">
+                        <div><span class="sc-eyebrow">MISE À JOUR</span><h2>{{ $newStatus === 'closed' ? 'Clôturer le dossier' : ($newStatus === 'resolved' ? 'Proposer une résolution' : 'Faire avancer le dossier') }}</h2></div>
+                        <button type="button" class="sc-icon-button" wire:click="closeAllModals"><span class="material-icons">close</span></button>
+                    </header>
+                    <div class="sc-modal-body">
+                        <label class="sc-label">Nouveau statut <b>*</b></label>
+                        <select class="form-control" wire:model="newStatus">
+                            <option value="">Choisir le statut</option>
+                            @foreach($availableTransitions as $transition)<option value="{{ $transition }}">{{ $statusLabels[$transition] ?? $transition }}</option>@endforeach
+                        </select>
+                        @error('newStatus')<small class="text-danger">{{ $message }}</small>@enderror
+
+                        <label class="sc-label mt-3">Commentaire {{ $newStatus === 'closed' ? '(facultatif)' : 'obligatoire *' }}</label>
+                        <textarea class="form-control" rows="3" wire:model.defer="statusComment" placeholder="Pourquoi le dossier passe-t-il à ce statut ?"></textarea>
+                        @error('statusComment')<small class="text-danger">{{ $message }}</small>@enderror
+                        @if(!empty($responseSuggestions['statusComment']))
+                            <div class="sc-response-suggestions"><small>Réutiliser une réponse</small>@foreach($responseSuggestions['statusComment'] as $suggestion)<button type="button" wire:click="useResponseSuggestion('statusComment', @js($suggestion))">{{ \Illuminate\Support\Str::limit($suggestion, 90) }}</button>@endforeach</div>
+                        @endif
+
+                        @if($newStatus === 'resolved')
+                            <div class="sc-resolve-fields">
+                                <label class="sc-label mt-3">Solution apportée <b>*</b></label>
+                                <textarea class="form-control" rows="3" wire:model.defer="resolution" placeholder="Ce qui a été proposé ou réalisé"></textarea>
+                                @error('resolution')<small class="text-danger">{{ $message }}</small>@enderror
+                                @if(!empty($responseSuggestions['resolution']))<div class="sc-response-suggestions"><small>Solutions déjà utilisées</small>@foreach($responseSuggestions['resolution'] as $suggestion)<button type="button" wire:click="useResponseSuggestion('resolution', @js($suggestion))">{{ \Illuminate\Support\Str::limit($suggestion, 90) }}</button>@endforeach</div>@endif
+                                <label class="sc-label mt-3">Résultat obtenu <b>*</b></label>
+                                <textarea class="form-control" rows="3" wire:model.defer="resolutionResult" placeholder="Retour de la cliente et résultat concret"></textarea>
+                                @error('resolutionResult')<small class="text-danger">{{ $message }}</small>@enderror
+                                @if(!empty($responseSuggestions['resolutionResult']))<div class="sc-response-suggestions"><small>Résultats déjà utilisés</small>@foreach($responseSuggestions['resolutionResult'] as $suggestion)<button type="button" wire:click="useResponseSuggestion('resolutionResult', @js($suggestion))">{{ \Illuminate\Support\Str::limit($suggestion, 90) }}</button>@endforeach</div>@endif
+                                <div class="sc-inline-notice"><span class="material-icons">verified_user</span>La validation de la résolution est réservée à un responsable.</div>
+                            </div>
+                        @elseif($newStatus === 'closed')
+                            <label class="sc-label mt-3">Résultat du traitement <small>(facultatif)</small></label>
+                            <textarea class="form-control" rows="3" wire:model.defer="resolutionResult"></textarea>
+                            @error('resolutionResult')<small class="text-danger">{{ $message }}</small>@enderror
+                            @if(!empty($responseSuggestions['resolutionResult']))<div class="sc-response-suggestions"><small>Résultats déjà utilisés</small>@foreach($responseSuggestions['resolutionResult'] as $suggestion)<button type="button" wire:click="useResponseSuggestion('resolutionResult', @js($suggestion))">{{ \Illuminate\Support\Str::limit($suggestion, 90) }}</button>@endforeach</div>@endif
+                            <label class="sc-label mt-3">Justification de clôture <small>(facultatif)</small></label>
+                            <textarea class="form-control" rows="3" wire:model.defer="closureReason" placeholder="Tu peux préciser le motif de clôture"></textarea>
+                            @error('closureReason')<small class="text-danger">{{ $message }}</small>@enderror
+                            @if(!empty($responseSuggestions['closureReason']))<div class="sc-response-suggestions"><small>Justifications déjà utilisées</small>@foreach($responseSuggestions['closureReason'] as $suggestion)<button type="button" wire:click="useResponseSuggestion('closureReason', @js($suggestion))">{{ \Illuminate\Support\Str::limit($suggestion, 90) }}</button>@endforeach</div>@endif
+                        @endif
+                    </div>
+                    <footer class="sc-modal-foot">
+                        <button type="button" class="btn sc-secondary-btn" wire:click="closeAllModals">Annuler</button>
+                        <button type="button" class="btn sc-primary-btn" wire:click="changeStatus('{{ $newStatus }}')" wire:loading.attr="disabled"><span class="material-icons">save</span>{{ $newStatus === 'closed' ? 'Confirmer la clôture' : 'Enregistrer la mise à jour' }}</button>
+                    </footer>
+                </section>
+            </div>
         @endif
 
         @if($showAssignForm)

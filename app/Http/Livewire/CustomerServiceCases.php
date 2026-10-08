@@ -194,6 +194,9 @@ class CustomerServiceCases extends Component
         $case = $this->authorizedCase((int) $this->caseId);
         abort_if(in_array($case->status, ['closed', 'resolved'], true), 403);
         $this->closeAllModals();
+        $this->newStatus = '';
+        $this->reset(['statusComment', 'resolution', 'resolutionResult', 'closureReason']);
+        $this->resetValidation();
         $this->showResolveForm = true;
     }
 
@@ -462,13 +465,16 @@ class CustomerServiceCases extends Component
     public function changeStatus(string $status): void
     {
         $case = $this->authorizedCase((int) $this->caseId);
-        abort_if(in_array($case->status, ['closed', 'resolved'], true), 403);
+        abort_if($case->status === 'closed', 403);
         $allowed = $this->allowedTransitions($case->status);
+        abort_if(in_array($status, ['resolved', 'closed'], true) && ! $this->canManage(), 403);
+
         $this->validate([
             'newStatus' => ['required', Rule::in($allowed)],
-            'statusComment' => ['required', 'string', 'min:3', 'max:5000'],
+            'statusComment' => [$status === 'closed' ? 'nullable' : 'required', 'string', 'min:3', 'max:5000'],
             'resolution' => [$status === 'resolved' ? 'required' : 'nullable', 'string', 'min:4', 'max:10000'],
             'resolutionResult' => [$status === 'resolved' ? 'required' : 'nullable', 'string', 'min:4', 'max:10000'],
+            'closureReason' => ['nullable', 'string', 'max:5000'],
         ]);
         abort_unless($status === $this->newStatus, 422);
         abort_if($status === 'resolved' && ! $this->canManage(), 403, 'La validation de la résolution est réservée à un responsable.');
@@ -479,16 +485,24 @@ class CustomerServiceCases extends Component
             $case->resolution = trim($this->resolution);
             $case->resolution_result = trim($this->resolutionResult);
             $case->resolved_at = now();
+        } elseif ($status === 'closed') {
+            $case->closure_reason = trim((string) $this->closureReason) ?: $case->closure_reason;
+            $case->resolution_result = trim((string) $this->resolutionResult) ?: $case->resolution_result;
+            $case->closed_at = now();
         }
         $case->save();
         $case->activities()->create([
             'user_id' => Auth::id(), 'activity_type' => 'status_change', 'old_status' => $oldStatus,
-            'new_status' => $status, 'body' => trim($this->statusComment), 'internal' => true, 'occurred_at' => now(),
+            'new_status' => $status,
+            'body' => trim((string) $this->closureReason) ?: trim((string) $this->statusComment) ?: ($status === 'closed' ? 'Dossier clôturé.' : null),
+            'internal' => true, 'occurred_at' => now(),
         ]);
         if ($status === 'resolved') {
             $this->notifyCaseAudience($case, 'resolved', 'Le dossier '.$case->case_number.' a été marqué comme résolu et attend sa clôture.', ['ADMINUSER', 'MNG', 'SCR']);
+        } elseif ($status === 'closed') {
+            $this->notifyCaseAudience($case, 'closed', 'Le dossier '.$case->case_number.' a été clôturé.', ['ADMINUSER', 'MNG', 'SCR']);
         }
-        $this->reset(['statusComment', 'resolution', 'resolutionResult']);
+        $this->reset(['statusComment', 'resolution', 'resolutionResult', 'closureReason']);
         $this->closeAllModals();
         session()->flash('serviceCaseMessage', 'Le statut du dossier a été mis à jour.');
     }
@@ -989,18 +1003,13 @@ class CustomerServiceCases extends Component
 
     protected function allowedTransitions(string $status): array
     {
-        $transitions = [
-            'new' => ['analysis'],
-            'analysis' => ['waiting_customer', 'waiting_internal', 'support_in_progress', 'to_follow', 'resolved'],
-            'waiting_customer' => ['analysis', 'waiting_internal', 'support_in_progress', 'to_follow', 'resolved'],
-            'waiting_internal' => ['analysis', 'waiting_customer', 'support_in_progress', 'to_follow', 'resolved'],
-            'support_in_progress' => ['analysis', 'waiting_customer', 'waiting_internal', 'to_follow', 'resolved'],
-            'to_follow' => ['analysis', 'waiting_customer', 'waiting_internal', 'support_in_progress', 'resolved'],
-        ];
-
-        $allowed = $transitions[$status] ?? [];
+        $statuses = ['new', 'analysis', 'waiting_customer', 'waiting_internal', 'support_in_progress', 'to_follow', 'resolved', 'closed'];
+        if ($status === 'resolved') {
+            return $this->canManage() ? ['closed'] : [];
+        }
+        $allowed = array_values(array_diff($statuses, [$status]));
         if (! $this->canManage()) {
-            $allowed = array_values(array_diff($allowed, ['resolved']));
+            $allowed = array_values(array_diff($allowed, ['resolved', 'closed']));
         }
         return $allowed;
     }
