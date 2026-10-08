@@ -795,6 +795,8 @@ class CostumerFollowUp extends Component
                 ->select('costumer_id')
                 ->whereNotNull('costumer_id')
                 ->where('costumer_id', '!=', '')
+                ->whereNotIn('costumer_id', CostumerContactPreference::query()
+                    ->selectRaw('CAST(costumer_id AS CHAR)')->whereNotNull('do_not_contact_at'))
                 ->groupBy('costumer_id')
                 ->havingRaw('MAX(COALESCE(date_order, created_at)) >= ?', [$startDate.' 00:00:00'])
                 ->havingRaw('MAX(COALESCE(date_order, created_at)) <= ?', [$cutoff])
@@ -1087,6 +1089,8 @@ class CostumerFollowUp extends Component
                 ->pluck('costumer_id');
 
             $histIds = CostumerContactHistory::whereDate('follow_up_at', $date)
+                ->whereNotIn('costumer_id', CostumerContactPreference::query()
+                    ->select('costumer_id')->whereNotNull('do_not_contact_at'))
                 ->pluck('costumer_id');
 
             $orderTargetDate = $parsedDate->copy()->subDays((int) $this->defaultFollowUpDays)->format('Y-m-d');
@@ -1095,6 +1099,8 @@ class CostumerFollowUp extends Component
                 $orderIds = Order::whereDate(DB::raw('COALESCE(date_order, created_at)'), $orderTargetDate)
                     ->whereNotNull('costumer_id')
                     ->where('costumer_id', '!=', '')
+                    ->whereNotIn('costumer_id', CostumerContactPreference::query()
+                        ->select('costumer_id')->whereNotNull('do_not_contact_at'))
                     ->pluck('costumer_id');
             }
 
@@ -1117,6 +1123,8 @@ class CostumerFollowUp extends Component
                 ->pluck('costumer_id');
 
             $overdueHistIds = CostumerContactHistory::where('follow_up_at', '<', $startOfDay)
+                ->whereNotIn('costumer_id', CostumerContactPreference::query()
+                    ->select('costumer_id')->whereNotNull('do_not_contact_at'))
                 ->pluck('costumer_id');
 
             $dueOrderIds = $this->dueCustomerIdsFromOrders();
@@ -1150,6 +1158,8 @@ class CostumerFollowUp extends Component
                 ->groupBy('dt');
 
             $histDays = CostumerContactHistory::whereBetween('follow_up_at', [$chartStart, $endOfDay])
+                ->whereNotIn('costumer_id', CostumerContactPreference::query()
+                    ->select('costumer_id')->whereNotNull('do_not_contact_at'))
                 ->selectRaw('DATE(follow_up_at) as dt, costumer_id')
                 ->get()
                 ->groupBy('dt');
@@ -1162,6 +1172,8 @@ class CostumerFollowUp extends Component
             $orderDays = Order::whereBetween(DB::raw('COALESCE(date_order, created_at)'), [$orderStart, $orderEnd])
                 ->whereNotNull('costumer_id')
                 ->where('costumer_id', '!=', '')
+                ->whereNotIn('costumer_id', CostumerContactPreference::query()
+                    ->select('costumer_id')->whereNotNull('do_not_contact_at'))
                 ->selectRaw('DATE(COALESCE(date_order, created_at)) as dt, costumer_id')
                 ->get()
                 ->groupBy('dt');
