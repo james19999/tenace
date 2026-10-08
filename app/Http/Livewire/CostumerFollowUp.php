@@ -1132,10 +1132,42 @@ class CostumerFollowUp extends Component
             $overdueCustomerIds = $overduePrefIds->merge($overdueHistIds)->merge($dueOrderIds)
                 ->map(fn ($id) => (int) $id)
                 ->diff($todayCustomerIds)
+                ->diff($doneCustomerIds)
                 ->unique()
                 ->filter()
-                ->values()
-                ->all();
+                ->values();
+
+            if ($overdueCustomerIds->isNotEmpty()) {
+                // Ignore stale history/order dates when a newer follow-up is scheduled.
+                $futureScheduledIds = CostumerContactPreference::whereIn('costumer_id', $overdueCustomerIds)
+                    ->where('next_follow_up_at', '>=', $startOfDay)
+                    ->pluck('costumer_id')
+                    ->map(fn ($id) => (int) $id);
+
+                // A reply or a stopped follow-up closes the old overdue task.
+                $nonActionableIds = Costumer::query()
+                    ->whereIn('costumers.id', $overdueCustomerIds)
+                    ->where(function ($query) {
+                        $query->whereHas('contactPreference', fn ($preference) => $preference->whereNotNull('do_not_contact_at'))
+                            ->orWhere(function ($resolved) {
+                                $resolved->whereDoesntHave('contactPreference', fn ($preference) => $preference->whereNotNull('next_follow_up_at'))
+                                    ->where(function ($latestHistory) {
+                                        $this->whereLatestContactHistory($latestHistory, fn ($history) => $history->where(function ($terminal) {
+                                            $terminal->whereNotNull('responded_at')->orWhere('follow_up_decision', 'stop');
+                                        }));
+                                    });
+                            });
+                    })
+                    ->pluck('costumers.id')
+                    ->map(fn ($id) => (int) $id);
+
+                $overdueCustomerIds = $overdueCustomerIds
+                    ->diff($futureScheduledIds)
+                    ->diff($nonActionableIds)
+                    ->values();
+            }
+
+            $overdueCustomerIds = $overdueCustomerIds->all();
 
             $overdueCount = count($overdueCustomerIds);
 
