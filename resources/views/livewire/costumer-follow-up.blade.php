@@ -720,24 +720,31 @@
                                 <div id="quick-service-case-option" class="border rounded p-3 mb-3 bg-light" style="display: none;">
                                     <div class="form-check">
                                         <input type="checkbox" class="form-check-input" id="create-service-case" wire:model.defer="createServiceCase">
-                                        <label class="form-check-label font-weight-bold" for="create-service-case">Créer aussi un dossier SAV à partir de cet avis</label>
+                                        <label class="form-check-label font-weight-bold" for="create-service-case">Créer aussi un dossier SAV</label>
                                     </div>
                                     <div id="quick-service-case-fields" class="mt-3" style="display: none;">
                                         <div class="form-group mb-2">
                                             <label for="quick-service-case-type">Type de dossier</label>
                                             <select id="quick-service-case-type" class="form-control" wire:model.defer="quickServiceCaseType">
-                                                <option value="dissatisfied">Cliente insatisfaite</option>
                                                 <option value="complaint">Réclamation</option>
+                                                <option value="dissatisfied">Cliente insatisfaite</option>
+                                                <option value="personalized_support">Accompagnement personnalisé</option>
+                                                <option value="information">Demande d’information</option>
                                             </select>
                                             @error('quickServiceCaseType') <small class="text-danger">{{ $message }}</small> @enderror
                                         </div>
-                                        <small class="text-muted d-block">La réponse de la cliente servira de description. Sa fiche et sa dernière commande seront liées automatiquement.</small>
+                                        <div class="form-group mb-2">
+                                            <label for="quick-service-case-description">Description du dossier</label>
+                                            <textarea id="quick-service-case-description" class="form-control" rows="3" wire:model.defer="quickServiceCaseDescription" placeholder="Décris le problème ou le besoin de la cliente"></textarea>
+                                            @error('quickServiceCaseDescription') <small class="text-danger">{{ $message }}</small> @enderror
+                                        </div>
+                                        <small class="text-muted d-block">La réponse saisie ci-dessus sera proposée comme description. Tu peux la compléter ou la modifier.</small>
+                                        <small class="text-muted d-block mt-1">Pour un accompagnement personnalisé, les suivis J+3, J+7, J+15 et J+30 seront planifiés automatiquement.</small>
                                         @if ($selectedCostumer->latestOrder)
                                             <small class="text-muted d-block mt-1">Commande {{ $selectedCostumer->latestOrder->code ?: '#'.$selectedCostumer->latestOrder->id }}@if($selectedCostumer->latestOrder->orderItems->first()), produit : {{ $selectedCostumer->latestOrder->orderItems->first()->product->name ?? 'indisponible' }}@endif</small>
                                         @else
                                             <small class="text-muted d-block mt-1">Aucune commande récente : le dossier sera lié à la cliente uniquement.</small>
                                         @endif
-                                        @error('immediateResponse') <small class="text-danger d-block">Pour créer le dossier, saisis une réponse d’au moins 8 caractères.</small> @enderror
                                     </div>
                                 </div>
                             @endif
@@ -912,13 +919,19 @@
 
                     if (event.target.id === 'response-received-now' || event.target.id === 'immediate-sentiment' || event.target.id === 'create-service-case') {
                         var responded = document.getElementById('response-received-now');
-                        var sentiment = document.getElementById('immediate-sentiment');
                         var option = document.getElementById('quick-service-case-option');
                         var checkbox = document.getElementById('create-service-case');
                         var fields = document.getElementById('quick-service-case-fields');
-                        var allowed = responded && responded.checked && sentiment && sentiment.value === 'negative';
+                        var responseFields = document.getElementById('immediate-response-fields');
+                        var response = responseFields ? responseFields.querySelector('textarea') : null;
+                        var description = document.getElementById('quick-service-case-description');
+                        var allowed = responded && responded.checked;
                         if (option) option.style.display = allowed ? '' : 'none';
                         if (!allowed && checkbox) checkbox.checked = false;
+                        if (event.target.id === 'create-service-case' && checkbox && checkbox.checked && description && !description.value.trim() && response) {
+                            description.value = response.value;
+                            description.dispatchEvent(new Event('input', { bubbles: true }));
+                        }
                         if (fields && checkbox) fields.style.display = allowed && checkbox.checked ? '' : 'none';
                     }
                 });

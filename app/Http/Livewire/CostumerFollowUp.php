@@ -8,6 +8,7 @@ use App\Models\CostumerContactMessageTemplate;
 use App\Models\CostumerContactPreference;
 use App\Models\CostumerContactSetting;
 use App\Models\CustomerServiceCase;
+use App\Models\CustomerServiceSupportPlan;
 use App\Models\Orders\Order;
 use App\Models\User;
 use App\Notifications\CustomerServiceCaseNotification;
@@ -55,6 +56,7 @@ class CostumerFollowUp extends Component
     public $immediateSentiment = 'neutral';
     public $createServiceCase = false;
     public $quickServiceCaseType = 'dissatisfied';
+    public $quickServiceCaseDescription = '';
     public $response = '';
     public $sentiment = 'neutral';
     public $individualCallingCode = '+228';
@@ -147,13 +149,6 @@ class CostumerFollowUp extends Component
         }
     }
 
-    public function updatedImmediateSentiment($value): void
-    {
-        if ($value !== 'negative') {
-            $this->createServiceCase = false;
-        }
-    }
-
     public function openContactModal(int $costumerId, string $type = 'initial'): void
     {
         $costumer = Costumer::with('contactPreference')->findOrFail($costumerId);
@@ -174,6 +169,7 @@ class CostumerFollowUp extends Component
         $this->immediateSentiment = 'neutral';
         $this->createServiceCase = false;
         $this->quickServiceCaseType = 'dissatisfied';
+        $this->quickServiceCaseDescription = '';
         $this->showContactModal = true;
     }
 
@@ -194,9 +190,12 @@ class CostumerFollowUp extends Component
         ];
         if ($this->createServiceCase) {
             abort_unless($this->canCreateQuickServiceCase(), 403);
-            abort_unless($this->responseReceivedNow && $this->immediateSentiment === 'negative', 422);
-            $rules['quickServiceCaseType'] = 'required|in:complaint,dissatisfied';
-            $rules['immediateResponse'] = 'required|string|min:8|max:10000';
+            abort_unless($this->responseReceivedNow, 422);
+            if (trim($this->quickServiceCaseDescription) === '') {
+                $this->quickServiceCaseDescription = trim($this->immediateResponse);
+            }
+            $rules['quickServiceCaseType'] = 'required|in:complaint,dissatisfied,personalized_support,information';
+            $rules['quickServiceCaseDescription'] = 'required|string|min:8|max:10000';
         }
         if ($this->responseReceivedNow) {
             $rules['immediateResponse'] = 'required|string|'.($this->createServiceCase ? 'min:8|' : '').'max:10000';
@@ -253,7 +252,7 @@ class CostumerFollowUp extends Component
                 'product_id' => $latestOrder?->orderItems->first()?->product_id,
                 'case_type' => $this->quickServiceCaseType,
                 'purchase_date' => $latestOrder ? ($latestOrder->date_order ?: $latestOrder->created_at) : null,
-                'description' => trim($this->immediateResponse),
+                'description' => trim($this->quickServiceCaseDescription),
                 'priority' => 'normal',
                 'status' => 'new',
                 'assigned_to' => Auth::id(),
@@ -263,7 +262,7 @@ class CostumerFollowUp extends Component
             $case->activities()->create([
                 'user_id' => Auth::id(),
                 'activity_type' => 'created',
-                'body' => 'Dossier créé depuis le suivi des contacts après un avis négatif.',
+                'body' => 'Dossier créé depuis le suivi des contacts.',
                 'internal' => true,
                 'occurred_at' => now(),
             ]);
@@ -271,10 +270,24 @@ class CostumerFollowUp extends Component
                 'user_id' => Auth::id(),
                 'activity_type' => 'communication',
                 'channel' => ['whatsapp' => 'whatsapp', 'sms' => 'sms', 'call' => 'call', 'other' => 'other'][$this->channel],
-                'body' => 'Avis négatif enregistré dans le suivi des contacts : '.trim($this->immediateResponse),
+                'body' => 'Réponse enregistrée dans le suivi des contacts'.($this->channel === 'other' && trim($this->channelDetail) !== '' ? ' — '.trim($this->channelDetail) : '').' : '.trim($this->immediateResponse),
                 'internal' => true,
                 'occurred_at' => now(),
             ]);
+
+            if ($this->quickServiceCaseType === 'personalized_support') {
+                $plan = CustomerServiceSupportPlan::create([
+                    'case_id' => $case->id,
+                    'customer_need' => trim($this->quickServiceCaseDescription),
+                    'started_at' => now()->toDateString(),
+                ]);
+                foreach ([3, 7, 15, 30] as $day) {
+                    $plan->milestones()->create([
+                        'day_offset' => $day,
+                        'due_at' => now()->startOfDay()->addDays($day)->setTime(9, 0),
+                    ]);
+                }
+            }
 
             return $case;
         });
@@ -286,7 +299,7 @@ class CostumerFollowUp extends Component
                     $recipient->notify(new CustomerServiceCaseNotification(
                         $serviceCase,
                         'created',
-                        'Un nouveau dossier '.$serviceCase->case_number.' a été créé après un avis négatif de '.$serviceCase->customer->name.'.'
+                        'Un nouveau dossier '.$serviceCase->case_number.' a été créé pour '.$serviceCase->customer->name.'.'
                     ));
                 }
             }
@@ -435,7 +448,7 @@ class CostumerFollowUp extends Component
     {
         if ($modal === 'contact') {
             $this->showContactModal = false;
-            $this->reset(['selectedCostumerId', 'notes', 'selectedTemplateId', 'responseReceivedNow', 'immediateResponse', 'immediateSentiment', 'createServiceCase', 'quickServiceCaseType']);
+            $this->reset(['selectedCostumerId', 'notes', 'selectedTemplateId', 'responseReceivedNow', 'immediateResponse', 'immediateSentiment', 'createServiceCase', 'quickServiceCaseType', 'quickServiceCaseDescription']);
         } elseif ($modal === 'response') {
             $this->showResponseModal = false;
             $this->reset(['selectedHistoryId', 'selectedCostumerId', 'response', 'sentiment']);
