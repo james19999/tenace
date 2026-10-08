@@ -12,6 +12,19 @@ class Order extends Model
 {
     use HasFactory;
 
+    protected static function booted(): void
+    {
+        static::saved(function (self $order): void {
+            if (($order->wasRecentlyCreated || $order->wasChanged(['status', 'total', 'costumer_id', 'date_order'])) && is_numeric($order->costumer_id)) {
+                try {
+                    app(\App\Services\CustomerLoyaltyService::class)->refreshCustomer((int) $order->costumer_id);
+                } catch (\Throwable $exception) {
+                    report($exception);
+                }
+            }
+        });
+    }
+
     protected $casts = [
         'assigned_at' => 'datetime',
     ];

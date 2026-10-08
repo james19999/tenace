@@ -169,14 +169,15 @@
                     </a>
                 </li>
                 <li>
-                    <a href="#serviceClientMenu" class="{{ $active('costumer.follow-up', 'service-cases.*') }}" data-toggle="collapse">
+                    <a href="#serviceClientMenu" class="{{ $active('costumer.follow-up', 'service-cases.*', 'customer-loyalty.*') }}" data-toggle="collapse">
                         <span class="caret material-icons">arrow_right</span>
                         <span class="icon material-icons">support_agent</span>
                         <span class="text">SAV</span>
                     </a>
-                    <ul class="collapse {{ $active('costumer.follow-up', 'service-cases.*') ? 'show' : '' }}" id="serviceClientMenu">
+                    <ul class="collapse {{ $active('costumer.follow-up', 'service-cases.*', 'customer-loyalty.*') ? 'show' : '' }}" id="serviceClientMenu">
                         <li><a class="{{ $active('costumer.follow-up') }}" href="{{ route('costumer.follow-up') }}"><span class="icon material-icons">remove</span><span class="text">Suivi des contacts</span></a></li>
                         <li><a class="{{ $active('service-cases.index') }}" href="{{ route('service-cases.index') }}"><span class="icon material-icons">remove</span><span class="text">Réclamations</span></a></li>
+                        <li><a class="{{ $active('customer-loyalty.index') }}" href="{{ route('customer-loyalty.index') }}"><span class="icon material-icons">remove</span><span class="text">Fidélisation</span></a></li>
                     </ul>
                 </li>
                 <li>
@@ -464,16 +465,22 @@
                     </a>
                 </li>
                 <li>
-                    <a href="#mngServiceClientMenu" class="{{ $active('service-cases.*') }}" data-toggle="collapse">
+                    <a href="#mngServiceClientMenu" class="{{ $active('service-cases.*', 'customer-loyalty.*') }}" data-toggle="collapse">
                         <span class="caret material-icons">arrow_right</span>
                         <span class="icon material-icons">support_agent</span>
                         <span class="text">SAV</span>
                     </a>
-                    <ul class="collapse {{ $active('service-cases.*') ? 'show' : '' }}" id="mngServiceClientMenu">
+                    <ul class="collapse {{ $active('service-cases.*', 'customer-loyalty.*') ? 'show' : '' }}" id="mngServiceClientMenu">
                         <li>
                             <a href="{{ route('service-cases.index') }}" class="{{ $active('service-cases.index') }}">
                                 <span class="icon material-icons">remove</span>
                                 <span class="text">Réclamations</span>
+                            </a>
+                        </li>
+                        <li>
+                            <a href="{{ route('customer-loyalty.index') }}" class="{{ $active('customer-loyalty.index') }}">
+                                <span class="icon material-icons">remove</span>
+                                <span class="text">Fidélisation</span>
                             </a>
                         </li>
                     </ul>
@@ -587,6 +594,12 @@
                         <span class="text">Réclamations</span>
                     </a>
                 </li>
+                <li>
+                    <a href="{{ route('customer-loyalty.index') }}" class="{{ $active('customer-loyalty.index') }}">
+                        <span class="icon material-icons">loyalty</span>
+                        <span class="text">Fidélisation</span>
+                    </a>
+                </li>
             @elseif (Auth::user()->user_type == 'CALLCENTER')
                 <li>
                     <a href="{{ route('costumer.follow-up') }}" class="{{ $active('costumer.follow-up') }}">
@@ -598,6 +611,12 @@
                     <a href="{{ route('service-cases.index') }}" class="{{ $active('service-cases.index') }}">
                         <span class="icon material-icons">support_agent</span>
                         <span class="text">Réclamations</span>
+                    </a>
+                </li>
+                <li>
+                    <a href="{{ route('customer-loyalty.index') }}" class="{{ $active('customer-loyalty.index') }}">
+                        <span class="icon material-icons">loyalty</span>
+                        <span class="text">Fidélisation</span>
                     </a>
                 </li>
             @else
@@ -612,6 +631,12 @@
                         <a href="{{ route('service-cases.index') }}" class="{{ $active('service-cases.index') }}">
                             <span class="icon material-icons">support_agent</span>
                             <span class="text">Réclamations</span>
+                        </a>
+                    </li>
+                    <li>
+                        <a href="{{ route('customer-loyalty.index') }}" class="{{ $active('customer-loyalty.index') }}">
+                            <span class="icon material-icons">loyalty</span>
+                            <span class="text">Fidélisation</span>
                         </a>
                     </li>
                 @endif

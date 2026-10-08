@@ -118,6 +118,55 @@
         </div>
     </div>
 
+    @if($loyaltyProfile)
+        @php
+            $loyaltyMetrics = $loyaltyProfile->metrics ?? [];
+            $loyaltyMaxScore = max(100, $loyaltyHistory->max('score') ?? 0);
+        @endphp
+        <section class="card shadow-sm border-0 mb-4">
+            <div class="card-header bg-white py-3 d-flex justify-content-between align-items-center flex-wrap">
+                <div><h5 class="mb-1 font-weight-bold text-dark"><i class="fas fa-heart text-danger mr-2"></i>Fidélité</h5><small class="text-muted">Analyse basée sur les commandes livrées, les retours et les dossiers SAV.</small></div>
+                <a href="{{ route('customer-loyalty.index', ['search' => $costumers->phone ?: $costumers->name]) }}" class="btn btn-outline-primary btn-sm">Voir la segmentation</a>
+            </div>
+            <div class="card-body">
+                <div class="row align-items-center">
+                    <div class="col-12 col-md-3 mb-3 mb-md-0 text-center">
+                        <div class="display-4 font-weight-bold text-primary">{{ $loyaltyProfile->score }}<small class="text-muted" style="font-size: 35%">/100</small></div>
+                        <span class="badge badge-pill badge-info px-3 py-2">{{ $loyaltyCategoryLabels[$loyaltyProfile->category] ?? $loyaltyProfile->category }}</span>
+                    </div>
+                    <div class="col-12 col-md-9">
+                        <div class="row text-center">
+                            <div class="col-6 col-lg-3 mb-3"><small class="text-muted d-block">Achats validés</small><strong>{{ number_format($loyaltyMetrics['orders_count'] ?? 0) }}</strong></div>
+                            <div class="col-6 col-lg-3 mb-3"><small class="text-muted d-block">Total dépensé</small><strong>{{ number_format($loyaltyMetrics['total_spent'] ?? 0, 0, ',', ' ') }} F</strong></div>
+                            <div class="col-6 col-lg-3 mb-3"><small class="text-muted d-block">Panier moyen</small><strong>{{ number_format($loyaltyMetrics['average_basket'] ?? 0, 0, ',', ' ') }} F</strong></div>
+                            <div class="col-6 col-lg-3 mb-3"><small class="text-muted d-block">Dernier achat</small><strong>{{ !empty($loyaltyMetrics['days_since_last_purchase']) || ($loyaltyMetrics['days_since_last_purchase'] ?? null) === 0 ? 'Il y a '.$loyaltyMetrics['days_since_last_purchase'].' j' : 'Aucun achat' }}</strong></div>
+                            <div class="col-6 col-lg-3"><small class="text-muted d-block">Fréquence moyenne</small><strong>{{ isset($loyaltyMetrics['average_purchase_gap_days']) ? number_format($loyaltyMetrics['average_purchase_gap_days'], 0, ',', ' ').' jours' : '—' }}</strong></div>
+                            <div class="col-6 col-lg-3"><small class="text-muted d-block">Régularité</small><strong>{{ ucfirst($loyaltyMetrics['regularity'] ?? '—') }}</strong></div>
+                            <div class="col-6 col-lg-3"><small class="text-muted d-block">Recommandations</small><strong>{{ number_format($loyaltyMetrics['referrals_count'] ?? 0) }}</strong></div>
+                            <div class="col-6 col-lg-3"><small class="text-muted d-block">Satisfaction SAV</small><strong>{{ isset($loyaltyMetrics['average_satisfaction']) ? number_format($loyaltyMetrics['average_satisfaction'], 1, ',', ' ').'/5' : '—' }}</strong></div>
+                        </div>
+                    </div>
+                </div>
+                @if(($loyaltyMetrics['open_service_cases_count'] ?? 0) > 0)
+                    <div class="alert alert-warning mt-3 mb-0"><strong>Attention SAV :</strong> {{ $loyaltyMetrics['open_service_cases_count'] }} dossier(s) non résolu(s), pris en compte dans le score de fidélité.</div>
+                @endif
+                <div class="mt-4 pt-3 border-top">
+                    <div class="d-flex justify-content-between align-items-center mb-2"><strong>Évolution du score</strong><small class="text-muted">Historique journalier</small></div>
+                    <div class="d-flex align-items-end" style="height:85px;gap:8px">
+                        @forelse($loyaltyHistory as $history)
+                            <div class="text-center flex-fill" title="{{ $history->snapshot_date->format('d/m/Y') }} · {{ $history->score }}/100">
+                                <div class="bg-primary rounded-top mx-auto" style="height:{{ max(5, (int) round($history->score / $loyaltyMaxScore * 62)) }}px;max-width:35px;opacity:.82"></div>
+                                <small class="text-muted" style="font-size:9px">{{ $history->snapshot_date->format('d/m') }}</small>
+                            </div>
+                        @empty
+                            <small class="text-muted">Le premier relevé du score sera conservé aujourd’hui.</small>
+                        @endforelse
+                    </div>
+                </div>
+            </div>
+        </section>
+    @endif
+
     <!-- Section 1: Synthèse des produits commandés -->
     <div class="card shadow-sm border-0 mb-4">
         <div class="card-header bg-white py-3 d-flex justify-content-between align-items-center flex-wrap">

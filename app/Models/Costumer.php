@@ -13,6 +13,17 @@ use Illuminate\Database\Eloquent\Relations\HasOne;
 class Costumer extends Model
 {
     use HasApiTokens, HasFactory, Notifiable;
+
+    protected static function booted(): void
+    {
+        static::created(function (self $customer): void {
+            try {
+                app(\App\Services\CustomerLoyaltyService::class)->initializeCustomer((int) $customer->id);
+            } catch (\Throwable $exception) {
+                report($exception);
+            }
+        });
+    }
     protected $guard = "companiecostumer";
     protected  $fillable=[
           'name',

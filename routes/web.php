@@ -3,6 +3,7 @@
 use App\Http\Livewire\OrderList;
 use App\Http\Livewire\CostumerFollowUp;
 use App\Http\Livewire\CustomerServiceCases;
+use App\Http\Livewire\CustomerLoyalty;
 use App\Http\Livewire\OrderFilter;
 use App\Http\Livewire\RepportOrder;
 use Illuminate\Support\Facades\Auth;
@@ -114,6 +115,10 @@ Route::middleware(['auth'])->group(function () {
     // -------------------------------------------------------------------------
     Route::middleware(['role:ADMINUSER,CALLCENTER'])->group(function () {
         Route::get('costumer/follow-up', CostumerFollowUp::class)->name('costumer.follow-up');
+    });
+
+    Route::middleware(['role:ADMINUSER,MNG,SCR,CALLCENTER'])->group(function () {
+        Route::get('service-client/loyalty', CustomerLoyalty::class)->name('customer-loyalty.index');
     });
 
     // Dossiers du service client : agents SAV et encadrement autorisés.

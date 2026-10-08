@@ -10,6 +10,19 @@ use Illuminate\Database\Eloquent\Relations\HasOne;
 
 class CustomerServiceCase extends Model
 {
+    protected static function booted(): void
+    {
+        static::saved(function (self $case): void {
+            if ($case->wasRecentlyCreated || $case->wasChanged(['status', 'customer_satisfaction'])) {
+                try {
+                    app(\App\Services\CustomerLoyaltyService::class)->refreshCustomer((int) $case->costumer_id);
+                } catch (\Throwable $exception) {
+                    report($exception);
+                }
+            }
+        });
+    }
+
     protected $fillable = [
         'case_number', 'costumer_id', 'order_id', 'product_id', 'case_type', 'purchase_date',
         'description', 'priority', 'status', 'assigned_to', 'created_by', 'next_follow_up_at',

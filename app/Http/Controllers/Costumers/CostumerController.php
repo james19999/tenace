@@ -5,10 +5,14 @@ namespace App\Http\Controllers\Costumers;
 use Carbon\Carbon;
 use App\Models\Costumer;
 use App\Models\Orders\Order;
+use App\Models\CustomerLoyaltyProfile;
+use App\Models\CustomerLoyaltyScoreHistory;
+use App\Services\CustomerLoyaltyService;
 use Illuminate\Http\Request;
 use App\Http\Controllers\Controller;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
+use Throwable;
 
 
 class CostumerController extends Controller
@@ -170,7 +174,7 @@ class CostumerController extends Controller
         return view('costumer.top_costumer', compact('costumers', 'montharray', 'limit', 'month'));
 
     }
-    public function viewcostumer($id)
+    public function viewcostumer($id, CustomerLoyaltyService $loyaltyService)
     {
         $costumers = Costumer::where('id', $id)
             ->withCount('orders')
@@ -216,7 +220,22 @@ class CostumerController extends Controller
 
         $purchasedProducts = $purchasedProducts->sortByDesc('total_quantity')->values();
 
-        return view('costumer.view_costomer', compact('costumers', 'purchasedProducts'));
+        $loyaltyProfile = null;
+        $loyaltyHistory = collect();
+        $loyaltyCategoryLabels = CustomerLoyaltyService::defaults()['category_labels'];
+        try {
+            $loyaltyProfile = CustomerLoyaltyProfile::where('costumer_id', $costumers->id)->first();
+            if (! $loyaltyProfile || ! $loyaltyProfile->calculated_at || $loyaltyProfile->calculated_at->lt(now()->subDay())) {
+                $loyaltyProfile = $loyaltyService->refreshCustomer((int) $costumers->id);
+            }
+            $loyaltyHistory = CustomerLoyaltyScoreHistory::where('costumer_id', $costumers->id)
+                ->latest('snapshot_date')->limit(12)->get()->sortBy('snapshot_date')->values();
+            $loyaltyCategoryLabels = $loyaltyService->rules()['category_labels'];
+        } catch (Throwable $exception) {
+            report($exception);
+        }
+
+        return view('costumer.view_costomer', compact('costumers', 'purchasedProducts', 'loyaltyProfile', 'loyaltyHistory', 'loyaltyCategoryLabels'));
     }
 
     /**

@@ -7,6 +7,19 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 class CostumerContactHistory extends Model
 {
+    protected static function booted(): void
+    {
+        static::saved(function (self $history): void {
+            if ($history->wasRecentlyCreated || $history->wasChanged(['sentiment', 'responded_at'])) {
+                try {
+                    app(\App\Services\CustomerLoyaltyService::class)->refreshCustomer((int) $history->costumer_id);
+                } catch (\Throwable $exception) {
+                    report($exception);
+                }
+            }
+        });
+    }
+
     protected $fillable = [
         'costumer_id',
         'user_id',
