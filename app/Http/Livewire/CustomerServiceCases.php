@@ -120,6 +120,28 @@ class CustomerServiceCases extends Component
             if ($customer) {
                 $this->showCreateModal = true;
                 $this->customerSearch = $customer->name.' — '.$customer->phone;
+                $prefill = session()->pull('customer_service_case_prefill', []);
+                if (in_array($prefill['type'] ?? '', ['complaint', 'dissatisfied', 'personalized_support', 'information'], true)) {
+                    $this->newCaseType = $prefill['type'];
+                }
+                if (! empty($prefill['description'])) {
+                    $this->newDescription = mb_substr(trim((string) $prefill['description']), 0, 10000);
+                }
+                if (! empty($prefill['order_id'])) {
+                    $order = Order::with('orderItems')
+                        ->whereKey($prefill['order_id'])
+                        ->where('costumer_id', (string) $customer->id)
+                        ->first();
+                    if ($order) {
+                        $this->newOrderId = (string) $order->id;
+                        $this->newPurchaseDate = Carbon::parse($order->date_order ?: $order->created_at)->format('Y-m-d');
+                        $productId = $prefill['product_id'] ?? null;
+                        $productIsInOrder = $productId && $order->orderItems->contains(fn ($item) => (int) $item->product_id === (int) $productId);
+                        $this->newProductId = (string) ($productIsInOrder ? $productId : optional($order->orderItems->first())->product_id);
+                    }
+                } elseif (! empty($prefill['purchase_date'])) {
+                    $this->newPurchaseDate = $prefill['purchase_date'];
+                }
             } else {
                 $this->selectedCustomerId = '';
             }

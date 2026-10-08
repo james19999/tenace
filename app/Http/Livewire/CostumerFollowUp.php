@@ -57,6 +57,8 @@ class CostumerFollowUp extends Component
     public $createServiceCase = false;
     public $quickServiceCaseType = 'dissatisfied';
     public $quickServiceCaseDescription = '';
+    public $quickServiceCaseOrderId = '';
+    public $quickServiceCaseProductId = '';
     public $response = '';
     public $sentiment = 'neutral';
     public $individualCallingCode = '+228';
@@ -68,6 +70,7 @@ class CostumerFollowUp extends Component
     public $editingTemplateId;
     public $defaultFollowUpDays = 14;
     public $maxFollowUps = 3;
+    public $followUpStartDate;
     public $defaultCountryCallingCode = '+228';
     public $selectedDate;
     public $followUpScope = 'today';
@@ -81,6 +84,7 @@ class CostumerFollowUp extends Component
         if (!$this->selectedDate) {
             $this->selectedDate = now()->format('Y-m-d');
         }
+        $this->followUpStartDate = now()->format('Y-m-d');
         $this->contactedAt = now()->format('Y-m-d\TH:i');
         $this->loadSettings();
     }
@@ -170,10 +174,26 @@ class CostumerFollowUp extends Component
         $this->createServiceCase = false;
         $this->quickServiceCaseType = 'dissatisfied';
         $this->quickServiceCaseDescription = '';
+        $latestOrder = Order::with('orderItems')
+            ->where('costumer_id', (string) $costumer->id)
+            ->orderByRaw('COALESCE(date_order, created_at) DESC')
+            ->orderByDesc('id')
+            ->first();
+        $this->quickServiceCaseOrderId = (string) ($latestOrder?->id ?? '');
+        $this->quickServiceCaseProductId = (string) optional($latestOrder?->orderItems->first())->product_id;
         $this->showContactModal = true;
     }
 
-    public function saveContact(): void
+    public function updatedQuickServiceCaseOrderId($orderId): void
+    {
+        $order = $orderId
+            ? Order::with('orderItems')->where('costumer_id', (string) $this->selectedCostumerId)->find($orderId)
+            : null;
+        $this->quickServiceCaseProductId = (string) optional($order?->orderItems->first())->product_id;
+        $this->resetValidation('quickServiceCaseProductId');
+    }
+
+    public function saveContact()
     {
         $rules = [
             'selectedCostumerId' => 'required|exists:costumers,id',
@@ -191,18 +211,31 @@ class CostumerFollowUp extends Component
         if ($this->createServiceCase) {
             abort_unless($this->canCreateQuickServiceCase(), 403);
             abort_unless($this->responseReceivedNow, 422);
-            if (trim($this->quickServiceCaseDescription) === '') {
-                $this->quickServiceCaseDescription = trim($this->immediateResponse);
-            }
             $rules['quickServiceCaseType'] = 'required|in:complaint,dissatisfied,personalized_support,information';
-            $rules['quickServiceCaseDescription'] = 'required|string|min:8|max:10000';
+            $rules['quickServiceCaseOrderId'] = 'nullable|integer|exists:orders,id';
+            $rules['quickServiceCaseProductId'] = 'nullable|integer|exists:products,id';
         }
         if ($this->responseReceivedNow) {
-            $rules['immediateResponse'] = 'required|string|'.($this->createServiceCase ? 'min:8|' : '').'max:10000';
+            $rules['immediateResponse'] = 'required|string|max:10000';
         } else {
             $rules['followUpAt'] = 'nullable|date|after:contactedAt';
         }
         $this->validate($rules);
+
+        $serviceCaseOrder = null;
+        if ($this->createServiceCase) {
+            $serviceCaseOrder = $this->quickServiceCaseOrderId
+                ? Order::with('orderItems')->where('costumer_id', (string) $this->selectedCostumerId)->find($this->quickServiceCaseOrderId)
+                : null;
+            if ($this->quickServiceCaseOrderId && ! $serviceCaseOrder) {
+                $this->addError('quickServiceCaseOrderId', 'Choisis une commande appartenant à cette cliente.');
+                return;
+            }
+            if ($this->quickServiceCaseProductId && ! $serviceCaseOrder?->orderItems->contains(fn ($item) => (int) $item->product_id === (int) $this->quickServiceCaseProductId)) {
+                $this->addError('quickServiceCaseProductId', 'Choisis un produit de la commande sélectionnée.');
+                return;
+            }
+        }
 
         abort_if(CostumerContactPreference::where('costumer_id', $this->selectedCostumerId)->whereNotNull('do_not_contact_at')->exists(), 403);
 
@@ -211,7 +244,7 @@ class CostumerFollowUp extends Component
             : '+'.$this->individualCallingCode;
 
         $followUpAt = $this->responseReceivedNow ? null : ($this->followUpAt ?: null);
-        $serviceCase = DB::transaction(function () use ($callingCode, $followUpAt) {
+        DB::transaction(function () use ($callingCode, $followUpAt) {
             CostumerContactPreference::updateOrCreate(
                 ['costumer_id' => $this->selectedCostumerId],
                 [
@@ -236,38 +269,30 @@ class CostumerFollowUp extends Component
                 'notes' => $this->notes ?: null,
             ]);
 
-            if (! $this->createServiceCase) {
-                return null;
-            }
-
-            $customer = Costumer::findOrFail($this->selectedCostumerId);
-            return $this->createQuickServiceCase(
-                $customer,
-                trim($this->immediateResponse),
-                $this->channel,
-                $this->channel === 'other' ? trim($this->channelDetail) : null
-            );
         });
 
-        if ($serviceCase) {
-            $recipients = User::whereIn('user_type', ['ADMINUSER', 'MNG', 'SCR'])->where('active', 1)->get();
-            foreach ($recipients->unique('id') as $recipient) {
-                if ((int) $recipient->id !== (int) Auth::id()) {
-                    $recipient->notify(new CustomerServiceCaseNotification(
-                        $serviceCase,
-                        'created',
-                        'Un nouveau dossier '.$serviceCase->case_number.' a été créé pour '.$serviceCase->customer->name.'.'
-                    ));
-                }
-            }
-        }
         $this->forgetFollowUpData();
+
+        if ($this->createServiceCase) {
+            $latestOrderItem = $this->quickServiceCaseProductId
+                ? $serviceCaseOrder?->orderItems->first(fn ($item) => (int) $item->product_id === (int) $this->quickServiceCaseProductId)
+                : null;
+            $latestOrderItem = $latestOrderItem ?? $serviceCaseOrder?->orderItems->first();
+            session()->put('customer_service_case_prefill', [
+                'type' => $this->quickServiceCaseType,
+                'description' => trim((string) $this->immediateResponse),
+                'order_id' => $serviceCaseOrder?->id,
+                'product_id' => $latestOrderItem?->product_id,
+                'purchase_date' => $serviceCaseOrder ? Carbon::parse($serviceCaseOrder->date_order ?: $serviceCaseOrder->created_at)->format('Y-m-d') : null,
+            ]);
+            session()->flash('messages', 'Contact et réponse enregistrés. Complète maintenant le dossier SAV.');
+            return redirect()->route('service-cases.index', ['customer' => $this->selectedCostumerId]);
+        }
+
         $this->dispatchBrowserEvent('animate-follow-up-modal-close', ['modal' => 'follow-up-contact-modal', 'type' => 'contact']);
-        session()->flash('messages', $serviceCase
-            ? 'Contact enregistré et dossier SAV '.$serviceCase->case_number.' créé.'
-            : ($this->responseReceivedNow
+        session()->flash('messages', $this->responseReceivedNow
             ? 'Contact et réponse enregistrés. Le suivi de ce client est terminé.'
-            : 'Contact enregistré dans l’historique.'));
+            : 'Contact enregistré dans l’historique.');
     }
 
     private function createQuickServiceCase(
@@ -513,7 +538,7 @@ class CostumerFollowUp extends Component
     {
         if ($modal === 'contact') {
             $this->showContactModal = false;
-            $this->reset(['selectedCostumerId', 'notes', 'selectedTemplateId', 'responseReceivedNow', 'immediateResponse', 'immediateSentiment', 'createServiceCase', 'quickServiceCaseType', 'quickServiceCaseDescription']);
+            $this->reset(['selectedCostumerId', 'notes', 'selectedTemplateId', 'responseReceivedNow', 'immediateResponse', 'immediateSentiment', 'createServiceCase', 'quickServiceCaseType', 'quickServiceCaseDescription', 'quickServiceCaseOrderId', 'quickServiceCaseProductId']);
         } elseif ($modal === 'response') {
             $this->showResponseModal = false;
             $this->reset(['selectedHistoryId', 'selectedCostumerId', 'response', 'sentiment', 'createServiceCase', 'quickServiceCaseType', 'quickServiceCaseDescription']);
@@ -678,11 +703,13 @@ class CostumerFollowUp extends Component
         $this->validate([
             'defaultFollowUpDays' => 'required|integer|min:1|max:365',
             'maxFollowUps' => 'required|integer|min:1|max:20',
+            'followUpStartDate' => 'required|date_format:Y-m-d',
             'defaultCountryCallingCode' => ['required', 'regex:/^\+?[0-9]{1,4}$/'],
         ]);
 
         CostumerContactSetting::query()->updateOrCreate(['id' => 1], [
             'default_follow_up_days' => $this->defaultFollowUpDays,
+            'follow_up_start_date' => $this->followUpStartDate,
             'max_follow_ups' => $this->maxFollowUps,
             'default_country_calling_code' => str_starts_with($this->defaultCountryCallingCode, '+')
                 ? $this->defaultCountryCallingCode
@@ -692,6 +719,8 @@ class CostumerFollowUp extends Component
         $this->defaultCountryCallingCode = str_starts_with($this->defaultCountryCallingCode, '+')
             ? $this->defaultCountryCallingCode
             : '+'.$this->defaultCountryCallingCode;
+
+        $this->forgetFollowUpData();
 
         session()->flash('messages', 'Les paramètres de relance ont été enregistrés.');
     }
@@ -703,6 +732,7 @@ class CostumerFollowUp extends Component
             $this->defaultFollowUpDays = $settings->default_follow_up_days;
             $this->defaultCountryCallingCode = $settings->default_country_calling_code;
             $this->maxFollowUps = $settings->max_follow_ups;
+            $this->followUpStartDate = $settings->follow_up_start_date ?: now()->format('Y-m-d');
         }
     }
 
@@ -723,7 +753,9 @@ class CostumerFollowUp extends Component
             $nextFollowUpAt = $latest->follow_up_at;
         } elseif (!$nextFollowUpAt && $costumer->latestOrder) {
             $orderDate = $costumer->latestOrder->date_order ?: $costumer->latestOrder->created_at;
-            $nextFollowUpAt = Carbon::parse($orderDate)->addDays((int) $this->defaultFollowUpDays);
+            if (Carbon::parse($orderDate)->toDateString() >= ($this->followUpStartDate ?: now()->format('Y-m-d'))) {
+                $nextFollowUpAt = Carbon::parse($orderDate)->addDays((int) $this->defaultFollowUpDays);
+            }
         }
         $isDue = $nextFollowUpAt && ($nextFollowUpAt->isPast() || $nextFollowUpAt->isToday());
         if (!$latest) {
@@ -755,14 +787,18 @@ class CostumerFollowUp extends Component
     protected function dueCustomerIdsFromOrders(): array
     {
         $cutoff = $this->dueOrdersCutoff();
-        $cacheKey = 'customer-follow-up-due-orders:'.$cutoff;
+        $startDate = $this->followUpStartDate ?: now()->format('Y-m-d');
+        $cacheKey = 'customer-follow-up-due-orders:'.$startDate.':'.$cutoff;
 
-        return Cache::remember($cacheKey, now()->addMinutes(5), function () use ($cutoff) {
+        return Cache::remember($cacheKey, now()->addMinutes(5), function () use ($cutoff, $startDate) {
             return Order::query()
                 ->select('costumer_id')
                 ->whereNotNull('costumer_id')
                 ->where('costumer_id', '!=', '')
+                ->whereNotIn('costumer_id', CostumerContactPreference::query()
+                    ->selectRaw('CAST(costumer_id AS CHAR)')->whereNotNull('do_not_contact_at'))
                 ->groupBy('costumer_id')
+                ->havingRaw('MAX(COALESCE(date_order, created_at)) >= ?', [$startDate.' 00:00:00'])
                 ->havingRaw('MAX(COALESCE(date_order, created_at)) <= ?', [$cutoff])
                 ->pluck('costumer_id')
                 ->map(fn ($id) => (int) $id)
@@ -1012,17 +1048,17 @@ class CostumerFollowUp extends Component
 
     protected function followUpCountsCacheKey(): string
     {
-        return 'customer-follow-up-counts:'.$this->defaultFollowUpDays.':'.$this->maxFollowUps;
+        return 'customer-follow-up-counts:'.$this->defaultFollowUpDays.':'.$this->maxFollowUps.':'.($this->followUpStartDate ?: now()->format('Y-m-d'));
     }
 
     protected function forgetFollowUpData(): void
     {
         Cache::forget($this->followUpCountsCacheKey());
-        Cache::forget('customer-follow-up-due-orders:'.$this->dueOrdersCutoff());
+        Cache::forget('customer-follow-up-due-orders:'.($this->followUpStartDate ?: now()->format('Y-m-d')).':'.$this->dueOrdersCutoff());
         if ($this->selectedDate) {
-            Cache::forget('customer-follow-up-daily:'.$this->selectedDate.':'.$this->defaultFollowUpDays.':'.$this->maxFollowUps);
+            Cache::forget('customer-follow-up-daily:'.$this->selectedDate.':'.$this->defaultFollowUpDays.':'.$this->maxFollowUps.':'.$this->followUpStartDate);
         }
-        Cache::forget('customer-follow-up-daily:'.now()->format('Y-m-d').':'.$this->defaultFollowUpDays.':'.$this->maxFollowUps);
+        Cache::forget('customer-follow-up-daily:'.now()->format('Y-m-d').':'.$this->defaultFollowUpDays.':'.$this->maxFollowUps.':'.$this->followUpStartDate);
         $versionKey = 'customer-follow-up-list-version';
         Cache::add($versionKey, 1);
         Cache::increment($versionKey);
@@ -1031,9 +1067,10 @@ class CostumerFollowUp extends Component
     public function loadDailyActivityStats(): array
     {
         $date = $this->selectedDate ?: now()->format('Y-m-d');
-        $cacheKey = 'customer-follow-up-daily:'.$date.':'.$this->defaultFollowUpDays.':'.$this->maxFollowUps;
+        $startDate = $this->followUpStartDate ?: now()->format('Y-m-d');
+        $cacheKey = 'customer-follow-up-daily:'.$date.':'.$this->defaultFollowUpDays.':'.$this->maxFollowUps.':'.$startDate;
 
-        return Cache::remember($cacheKey, now()->addMinutes(2), function () use ($date) {
+        return Cache::remember($cacheKey, now()->addMinutes(2), function () use ($date, $startDate) {
             $parsedDate = Carbon::parse($date);
             $startOfDay = $parsedDate->copy()->startOfDay();
             $endOfDay = $parsedDate->copy()->endOfDay();
@@ -1052,18 +1089,26 @@ class CostumerFollowUp extends Component
                 ->pluck('costumer_id');
 
             $histIds = CostumerContactHistory::whereDate('follow_up_at', $date)
+                ->whereNotIn('costumer_id', CostumerContactPreference::query()
+                    ->select('costumer_id')->whereNotNull('do_not_contact_at'))
                 ->pluck('costumer_id');
 
             $orderTargetDate = $parsedDate->copy()->subDays((int) $this->defaultFollowUpDays)->format('Y-m-d');
-            $orderIds = Order::whereDate(DB::raw('COALESCE(date_order, created_at)'), $orderTargetDate)
-                ->whereNotNull('costumer_id')
-                ->where('costumer_id', '!=', '')
-                ->pluck('costumer_id');
+            $orderIds = collect();
+            if ($orderTargetDate >= $startDate) {
+                $orderIds = Order::whereDate(DB::raw('COALESCE(date_order, created_at)'), $orderTargetDate)
+                    ->whereNotNull('costumer_id')
+                    ->where('costumer_id', '!=', '')
+                    ->whereNotIn('costumer_id', CostumerContactPreference::query()
+                        ->select('costumer_id')->whereNotNull('do_not_contact_at'))
+                    ->pluck('costumer_id');
+            }
 
             $todayCustomerIds = $prefIds->merge($histIds)->merge($orderIds)
                 ->map(fn ($id) => (int) $id)
                 ->unique()
                 ->filter()
+                ->diff($doneCustomerIds)
                 ->values()
                 ->all();
 
@@ -1078,6 +1123,8 @@ class CostumerFollowUp extends Component
                 ->pluck('costumer_id');
 
             $overdueHistIds = CostumerContactHistory::where('follow_up_at', '<', $startOfDay)
+                ->whereNotIn('costumer_id', CostumerContactPreference::query()
+                    ->select('costumer_id')->whereNotNull('do_not_contact_at'))
                 ->pluck('costumer_id');
 
             $dueOrderIds = $this->dueCustomerIdsFromOrders();
@@ -1085,10 +1132,42 @@ class CostumerFollowUp extends Component
             $overdueCustomerIds = $overduePrefIds->merge($overdueHistIds)->merge($dueOrderIds)
                 ->map(fn ($id) => (int) $id)
                 ->diff($todayCustomerIds)
+                ->diff($doneCustomerIds)
                 ->unique()
                 ->filter()
-                ->values()
-                ->all();
+                ->values();
+
+            if ($overdueCustomerIds->isNotEmpty()) {
+                // Ignore stale history/order dates when a newer follow-up is scheduled.
+                $futureScheduledIds = CostumerContactPreference::whereIn('costumer_id', $overdueCustomerIds)
+                    ->where('next_follow_up_at', '>=', $startOfDay)
+                    ->pluck('costumer_id')
+                    ->map(fn ($id) => (int) $id);
+
+                // A reply or a stopped follow-up closes the old overdue task.
+                $nonActionableIds = Costumer::query()
+                    ->whereIn('costumers.id', $overdueCustomerIds)
+                    ->where(function ($query) {
+                        $query->whereHas('contactPreference', fn ($preference) => $preference->whereNotNull('do_not_contact_at'))
+                            ->orWhere(function ($resolved) {
+                                $resolved->whereDoesntHave('contactPreference', fn ($preference) => $preference->whereNotNull('next_follow_up_at'))
+                                    ->where(function ($latestHistory) {
+                                        $this->whereLatestContactHistory($latestHistory, fn ($history) => $history->where(function ($terminal) {
+                                            $terminal->whereNotNull('responded_at')->orWhere('follow_up_decision', 'stop');
+                                        }));
+                                    });
+                            });
+                    })
+                    ->pluck('costumers.id')
+                    ->map(fn ($id) => (int) $id);
+
+                $overdueCustomerIds = $overdueCustomerIds
+                    ->diff($futureScheduledIds)
+                    ->diff($nonActionableIds)
+                    ->values();
+            }
+
+            $overdueCustomerIds = $overdueCustomerIds->all();
 
             $overdueCount = count($overdueCustomerIds);
 
@@ -1111,16 +1190,28 @@ class CostumerFollowUp extends Component
                 ->groupBy('dt');
 
             $histDays = CostumerContactHistory::whereBetween('follow_up_at', [$chartStart, $endOfDay])
+                ->whereNotIn('costumer_id', CostumerContactPreference::query()
+                    ->select('costumer_id')->whereNotNull('do_not_contact_at'))
                 ->selectRaw('DATE(follow_up_at) as dt, costumer_id')
                 ->get()
                 ->groupBy('dt');
 
             $orderStart = $chartStart->copy()->subDays((int) $this->defaultFollowUpDays)->startOfDay();
+            if ($orderStart->toDateString() < $startDate) {
+                $orderStart = Carbon::parse($startDate)->startOfDay();
+            }
             $orderEnd = $endOfDay->copy()->subDays((int) $this->defaultFollowUpDays)->endOfDay();
             $orderDays = Order::whereBetween(DB::raw('COALESCE(date_order, created_at)'), [$orderStart, $orderEnd])
                 ->whereNotNull('costumer_id')
                 ->where('costumer_id', '!=', '')
+                ->whereNotIn('costumer_id', CostumerContactPreference::query()
+                    ->select('costumer_id')->whereNotNull('do_not_contact_at'))
                 ->selectRaw('DATE(COALESCE(date_order, created_at)) as dt, costumer_id')
+                ->get()
+                ->groupBy('dt');
+
+            $doneIdsByDay = CostumerContactHistory::whereBetween('contacted_at', [$chartStart, $endOfDay])
+                ->selectRaw('DATE(contacted_at) as dt, costumer_id')
                 ->get()
                 ->groupBy('dt');
 
@@ -1134,8 +1225,9 @@ class CostumerFollowUp extends Component
                 $pIds = collect($prefDays->get($curDateStr, []))->pluck('costumer_id');
                 $hIds = collect($histDays->get($curDateStr, []))->pluck('costumer_id');
                 $oIds = collect($orderDays->get($orderTargetDate, []))->pluck('costumer_id');
+                $cDoneIds = collect($doneIdsByDay->get($curDateStr, []))->pluck('costumer_id')->map(fn ($id) => (int) $id);
 
-                $cRemaining = $pIds->merge($hIds)->merge($oIds)->unique()->filter()->count();
+                $cRemaining = $pIds->merge($hIds)->merge($oIds)->map(fn ($id) => (int) $id)->unique()->diff($cDoneIds)->filter()->count();
                 $cTotal = $cRemaining + $cDone;
                 $cRate = $cTotal > 0
                     ? min(100, (int) round(($cDone / $cTotal) * 100))
@@ -1219,6 +1311,7 @@ class CostumerFollowUp extends Component
             (int) $this->page,
             $this->defaultFollowUpDays,
             $this->maxFollowUps,
+            $this->followUpStartDate,
         ]));
 
         return Cache::remember($cacheKey, now()->addMinutes(2), function () use ($dailyStats) {
@@ -1299,10 +1392,20 @@ class CostumerFollowUp extends Component
             if ($selectedCostumer && ($this->showContactModal || $this->showResponseModal)) {
                 $selectedCostumer->setRelation('latestOrder', Order::with('orderItems.product')
                     ->where('costumer_id', (string) $selectedCostumer->id)
+                    ->orderByRaw('COALESCE(date_order, created_at) DESC')
                     ->orderByDesc('id')
                     ->first());
             }
         }
+        $serviceCaseOrders = $this->showContactModal && $selectedCostumer && $this->canCreateQuickServiceCase()
+            ? Order::with('orderItems.product')
+                ->where('costumer_id', (string) $selectedCostumer->id)
+                ->orderByRaw('COALESCE(date_order, created_at) DESC')
+                ->orderByDesc('id')
+                ->limit(20)
+                ->get()
+            : collect();
+        $selectedServiceCaseOrder = $serviceCaseOrders->firstWhere('id', (int) $this->quickServiceCaseOrderId);
 
         return view('livewire.costumer-follow-up', [
             'costumers' => $costumers,
@@ -1314,6 +1417,8 @@ class CostumerFollowUp extends Component
                 : collect(),
             'selectedCostumer' => $selectedCostumer,
             'canCreateServiceCase' => $this->canCreateQuickServiceCase(),
+            'serviceCaseOrders' => $serviceCaseOrders,
+            'selectedServiceCaseOrder' => $selectedServiceCaseOrder,
             'contactUrl' => $this->showContactModal && $selectedCostumer ? $this->contactUrl($selectedCostumer, $this->channel) : null,
             'messageTemplates' => CostumerContactMessageTemplate::where('active', true)->where('channel', $this->channel)->orderBy('name')->get(),
             'allMessageTemplates' => CostumerContactMessageTemplate::orderBy('channel')->orderBy('name')->get(),
