@@ -1,5 +1,5 @@
 <section class="loyalty-rules-card">
-            <div class="loyalty-section-heading"><div><span class="loyalty-eyebrow">ADMINISTRATION</span><h2>Règles de fidélité</h2><p>Configure les critères de classement. Les commandes et la satisfaction alimentent automatiquement le score des clientes.</p></div><a class="btn btn-light" href="{{ route('customer-loyalty.index') }}">Retour à la fidélité</a></div>
+            <div class="loyalty-section-heading"><div><span class="loyalty-eyebrow">ADMINISTRATION</span><h2>Règles de fidélité</h2><p>Configure les critères de classement. Les commandes et la satisfaction alimentent automatiquement le score des clientes.</p></div></div>
             <form id="loyalty-rules-form" wire:submit.prevent="saveRules">
                 <h3>Pondération du score <small>La somme doit faire 100.</small></h3>
                 <div class="loyalty-form-grid loyalty-weight-grid">
