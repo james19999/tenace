@@ -468,12 +468,6 @@
                     </a>
                     <ul class="collapse" id="mngServiceClientMenu">
                         <li>
-                            <a href="{{ route('costumer.follow-up') }}" class="">
-                                <span class="icon material-icons">remove</span>
-                                <span class="text">Suivi des contacts</span>
-                            </a>
-                        </li>
-                        <li>
                             <a href="{{ route('service-cases.index') }}" class="">
                                 <span class="icon material-icons">remove</span>
                                 <span class="text">Réclamations</span>
@@ -582,6 +576,12 @@
                     <a href="{{ route('ranking') }}" class="">
                         <span class="icon material-icons">grade</span>
                         <span class="text">Classement</span>
+                    </a>
+                </li>
+                <li>
+                    <a href="{{ route('service-cases.index') }}" class="">
+                        <span class="icon material-icons">support_agent</span>
+                        <span class="text">Réclamations</span>
                     </a>
                 </li>
             @elseif (Auth::user()->user_type == 'CALLCENTER')

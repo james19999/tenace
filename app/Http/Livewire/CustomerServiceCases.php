@@ -493,6 +493,14 @@ class CustomerServiceCases extends Component
         session()->flash('serviceCaseMessage', 'Le statut du dossier a été mis à jour.');
     }
 
+    public function useResponseSuggestion(string $field, string $value): void
+    {
+        abort_unless(in_array($field, ['statusComment', 'resolution', 'resolutionResult', 'closureReason'], true), 403);
+
+        $this->{$field} = $value;
+        $this->resetValidation($field);
+    }
+
     public function saveFollowUp(): void
     {
         $case = $this->authorizedCase((int) $this->caseId);
@@ -621,17 +629,66 @@ class CustomerServiceCases extends Component
         $case = $this->authorizedCase((int) $this->caseId);
         abort_unless($case->status === 'resolved', 422, 'Le dossier doit d’abord être marqué comme résolu.');
         $this->validate([
-            'closureReason' => ['required', 'string', 'min:5', 'max:5000'],
-            'resolutionResult' => ['required', 'string', 'min:4', 'max:10000'],
+            'closureReason' => ['nullable', 'string', 'max:5000'],
+            'resolutionResult' => ['nullable', 'string', 'max:10000'],
         ]);
-        $case->update(['status' => 'closed', 'closure_reason' => trim($this->closureReason), 'resolution_result' => trim($this->resolutionResult), 'closed_at' => now()]);
+        $closureReason = trim((string) $this->closureReason);
+        $resolutionResult = trim((string) $this->resolutionResult);
+        $case->update([
+            'status' => 'closed',
+            'closure_reason' => $closureReason !== '' ? $closureReason : $case->closure_reason,
+            'resolution_result' => $resolutionResult !== '' ? $resolutionResult : $case->resolution_result,
+            'closed_at' => now(),
+        ]);
         $case->activities()->create([
             'user_id' => Auth::id(), 'activity_type' => 'status_change', 'old_status' => 'resolved', 'new_status' => 'closed',
-            'body' => trim($this->closureReason), 'internal' => true, 'occurred_at' => now(),
+            'body' => $closureReason !== '' ? $closureReason : 'Dossier clôturé.', 'internal' => true, 'occurred_at' => now(),
         ]);
         $this->notifyCaseAudience($case, 'closed', 'Le dossier '.$case->case_number.' a été clôturé.', ['ADMINUSER', 'MNG', 'SCR']);
         $this->closeAllModals();
-        session()->flash('serviceCaseMessage', 'Le dossier a été clôturé avec sa justification.');
+        session()->flash('serviceCaseMessage', 'Le dossier a été clôturé.');
+    }
+
+    protected function responseSuggestions(): array
+    {
+        $userId = Auth::id();
+        if (! $userId) {
+            return ['statusComment' => [], 'resolution' => [], 'resolutionResult' => [], 'closureReason' => []];
+        }
+
+        $uniqueTexts = static function ($values): array {
+            return $values->map(fn ($value) => trim((string) $value))
+                ->filter(fn ($value) => $value !== '')
+                ->unique()
+                ->take(5)
+                ->values()
+                ->all();
+        };
+
+        $statusActivities = CustomerServiceCaseActivity::query()
+            ->where('user_id', $userId)
+            ->where('activity_type', 'status_change')
+            ->whereNotNull('body')
+            ->latest('occurred_at')
+            ->limit(40)
+            ->get(['body', 'new_status']);
+
+        $resolvedCases = CustomerServiceCase::query()
+            ->whereNotNull('resolution')
+            ->whereHas('activities', fn (Builder $query) => $query
+                ->where('user_id', $userId)
+                ->where('activity_type', 'status_change')
+                ->where('new_status', 'resolved'))
+            ->latest('resolved_at')
+            ->limit(30)
+            ->get(['resolution', 'resolution_result']);
+
+        return [
+            'statusComment' => $uniqueTexts($statusActivities->where('new_status', '!=', 'closed')->pluck('body')),
+            'resolution' => $uniqueTexts($resolvedCases->pluck('resolution')),
+            'resolutionResult' => $uniqueTexts($resolvedCases->pluck('resolution_result')),
+            'closureReason' => $uniqueTexts($statusActivities->where('new_status', 'closed')->pluck('body')),
+        ];
     }
 
     public function completeMilestone(int $milestoneId): void
@@ -1013,6 +1070,7 @@ class CustomerServiceCases extends Component
         return view('livewire.customer-service-cases', [
             'case' => $case,
             'activities' => $activities,
+            'responseSuggestions' => $case ? $this->responseSuggestions() : [],
             'caseContactLinks' => $this->caseContactLinks($case),
             'availableTransitions' => $case ? $this->allowedTransitions($case->status) : [],
             'caseRows' => $caseRows,
