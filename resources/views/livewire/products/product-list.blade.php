@@ -24,6 +24,9 @@
 
     <div class="card shadow">
         <div class="card-body ">
+            @if ($cartMessage)
+                <div class="alert alert-success" role="status">{{ $cartMessage }}</div>
+            @endif
             @if (Session::has('messages'))
                 <div class="alert alert-success">
                     <strong>{{ session('messages') }}</strong>

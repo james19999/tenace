@@ -42,22 +42,34 @@ class ProductCart extends Component
 
     public function destroy ($rowId){
         Cart::instance('cart')->remove($rowId);
-        return back()->with('messages','Produit supprimé');
+        $this->calculateTotal();
+        $this->cartUpdated();
     }
 
     public function increment($rowId){
         $produit=Cart::instance('cart')->get($rowId);
         $qty=$produit->qty+1;
         Cart::instance('cart')->update($rowId,$qty);
+        $this->calculateTotal();
+        $this->cartUpdated();
          }
 
 
     public function decrement($rowId){
 
         $produit=Cart::instance('cart')->get($rowId);
-        $qty=$produit->qty-1;
+        $qty=max(1, $produit->qty-1);
         Cart::instance('cart')->update($rowId,$qty);
+        $this->calculateTotal();
+        $this->cartUpdated();
       }
+
+    private function cartUpdated(): void
+    {
+        $count = (int) Cart::instance('cart')->count();
+        $this->emit('cartUpdated');
+        $this->dispatchBrowserEvent('cart-count-updated', ['count' => $count]);
+    }
 
        public function total() {
         session()->put('subtotal',Cart::instance('cart')->subtotal());

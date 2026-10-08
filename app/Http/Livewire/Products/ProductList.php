@@ -8,19 +8,27 @@ use Gloudemans\Shoppingcart\Facades\Cart;
 
 class ProductList extends Component
 {
+    public $cartMessage = '';
 
-    public function AddToCart($id,$name,$price) {
-        Cart::instance('cart')->add($id,$name,1,$price)->associate(Product::class);
+    public function AddToCart($id, $name, $price): void
+    {
+        Cart::instance('cart')->add($id, $name, 1, $price)->associate(Product::class);
+        $this->cartUpdated();
+    }
 
-         return redirect()->back()->with('messages','Produit ajouter');
+    public function AddToCartHighPrice($id, $name, $high_price): void
+    {
+        Cart::instance('cart')->add($id, $name, 1, $high_price)->associate(Product::class);
+        $this->cartUpdated();
+    }
 
-     }
-    public function AddToCartHighPrice($id,$name,$high_price) {
-        Cart::instance('cart')->add($id,$name,1,$high_price)->associate(Product::class);
-
-         return redirect()->back()->with('messages','Produit ajouter');
-
-     }
+    private function cartUpdated(): void
+    {
+        $this->cartMessage = 'Produit ajouté au panier.';
+        $count = (int) Cart::instance('cart')->count();
+        $this->emit('cartUpdated');
+        $this->dispatchBrowserEvent('cart-count-updated', ['count' => $count]);
+    }
 
      public function calcPrice(){
         $products = Product::all();
