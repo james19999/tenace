@@ -12,7 +12,7 @@
     <link rel="stylesheet" href="{{ asset('assets/css/style.css') }}">
     <link rel="stylesheet" href="{{ asset('assets/css/customer-service-notifications.css') }}?v=20261008.1">
     @if (request()->routeIs('service-cases.*'))
-        <link rel="stylesheet" href="{{ asset('assets/css/customer-service-cases.css') }}?v=20261009.1">
+        <link rel="stylesheet" href="{{ asset('assets/css/customer-service-cases.css') }}?v=20261009.3">
     @endif
     @if (request()->routeIs('customer-loyalty.*'))
         <link rel="stylesheet" href="{{ asset('assets/css/customer-loyalty.css') }}?v=20261009.1">
