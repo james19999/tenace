@@ -68,6 +68,7 @@ class CustomerServiceCases extends Component
     public $newCustomerAddress = '';
     public $newCaseType = 'complaint';
     public $newProductId = '';
+    public $newProductIds = [];
     public $newOrderId = '';
     public $newPurchaseDate = '';
     public $newDescription = '';
@@ -135,12 +136,31 @@ class CustomerServiceCases extends Component
                     if ($order) {
                         $this->newOrderId = (string) $order->id;
                         $this->newPurchaseDate = Carbon::parse($order->date_order ?: $order->created_at)->format('Y-m-d');
-                        $productId = $prefill['product_id'] ?? null;
-                        $productIsInOrder = $productId && $order->orderItems->contains(fn ($item) => (int) $item->product_id === (int) $productId);
-                        $this->newProductId = (string) ($productIsInOrder ? $productId : optional($order->orderItems->first())->product_id);
+                        if (array_key_exists('product_ids', $prefill)) {
+                            $this->newProductIds = collect($prefill['product_ids'])
+                                ->map(fn ($id) => (int) $id)
+                                ->intersect($order->orderItems->pluck('product_id')->map(fn ($id) => (int) $id))
+                                ->unique()->map(fn ($id) => (string) $id)->values()->all();
+                        } else {
+                            $productId = $prefill['product_id'] ?? null;
+                            $productIsInOrder = $productId && $order->orderItems->contains(fn ($item) => (int) $item->product_id === (int) $productId);
+                            $this->newProductIds = $productIsInOrder
+                                ? [(string) $productId]
+                                : $order->orderItems->pluck('product_id')->filter()->unique()->map(fn ($id) => (string) $id)->values()->all();
+                        }
+                        $this->newProductId = $this->newProductIds[0] ?? '';
                     }
                 } elseif (! empty($prefill['purchase_date'])) {
                     $this->newPurchaseDate = $prefill['purchase_date'];
+                } else {
+                    $order = Order::with('orderItems')->where('costumer_id', (string) $customer->id)
+                        ->orderByRaw('COALESCE(date_order, created_at) DESC')->orderByDesc('id')->first();
+                    if ($order) {
+                        $this->newOrderId = (string) $order->id;
+                        $this->newPurchaseDate = Carbon::parse($order->date_order ?: $order->created_at)->format('Y-m-d');
+                        $this->newProductIds = $order->orderItems->pluck('product_id')->filter()->unique()->map(fn ($id) => (string) $id)->values()->all();
+                        $this->newProductId = $this->newProductIds[0] ?? '';
+                    }
                 }
             } else {
                 $this->selectedCustomerId = '';
@@ -208,6 +228,7 @@ class CustomerServiceCases extends Component
         $this->customerSearch = $customer ? $customer->name.' — '.$customer->phone : '';
         $this->newOrderId = '';
         $this->newProductId = '';
+        $this->newProductIds = [];
         $this->newPurchaseDate = '';
     }
 
@@ -223,6 +244,7 @@ class CustomerServiceCases extends Component
         abort_unless($this->canCreate(), 403);
         $this->closeAllModals();
         $this->resetValidation();
+        $this->resetCreateForm();
         $this->showCreateModal = true;
     }
 
@@ -316,6 +338,10 @@ class CustomerServiceCases extends Component
     {
         $this->selectedCustomerId = '';
         $this->createCustomer = false;
+        $this->newOrderId = '';
+        $this->newProductId = '';
+        $this->newProductIds = [];
+        $this->newPurchaseDate = '';
     }
 
     public function chooseCustomer(int $customerId): void
@@ -324,15 +350,22 @@ class CustomerServiceCases extends Component
         $this->selectedCustomerId = (string) $customer->id;
         $this->customerSearch = $customer->name.' — '.$customer->phone;
         $this->createCustomer = false;
-        $this->newOrderId = '';
-        $this->newProductId = '';
-        $this->newPurchaseDate = '';
+        $order = Order::with('orderItems')->where('costumer_id', (string) $customer->id)
+            ->orderByRaw('COALESCE(date_order, created_at) DESC')->orderByDesc('id')->first();
+        $this->newOrderId = (string) ($order?->id ?? '');
+        $this->newPurchaseDate = $order ? Carbon::parse($order->date_order ?: $order->created_at)->format('Y-m-d') : '';
+        $this->newProductIds = $order?->orderItems->pluck('product_id')->filter()->unique()->map(fn ($id) => (string) $id)->values()->all() ?? [];
+        $this->newProductId = $this->newProductIds[0] ?? '';
     }
 
     public function startNewCustomer(): void
     {
         $this->selectedCustomerId = '';
         $this->createCustomer = true;
+        $this->newOrderId = '';
+        $this->newProductId = '';
+        $this->newProductIds = [];
+        $this->newPurchaseDate = '';
         $this->newCustomerName = trim($this->customerSearch);
         $this->newCustomerPhone = '';
         $this->newCustomerEmail = '';
@@ -344,7 +377,12 @@ class CustomerServiceCases extends Component
         $order = $value ? $this->selectedCustomerOrders()->firstWhere('id', (int) $value) : null;
         if ($order) {
             $this->newPurchaseDate = Carbon::parse($order->date_order ?: $order->created_at)->format('Y-m-d');
-            $this->newProductId = (string) optional($order->orderItems->first())->product_id;
+            $this->newProductIds = $order->orderItems->pluck('product_id')->filter()->unique()->map(fn ($id) => (string) $id)->values()->all();
+            $this->newProductId = $this->newProductIds[0] ?? '';
+        } else {
+            $this->newProductIds = [];
+            $this->newProductId = '';
+            $this->newPurchaseDate = '';
         }
     }
 
@@ -354,7 +392,8 @@ class CustomerServiceCases extends Component
 
         $rules = [
             'newCaseType' => ['required', Rule::in(['complaint', 'dissatisfied', 'personalized_support', 'information'])],
-            'newProductId' => ['nullable', 'exists:products,id'],
+            'newProductIds' => ['array', 'max:100'],
+            'newProductIds.*' => ['integer', 'distinct', 'exists:products,id'],
             'newOrderId' => ['nullable', 'exists:orders,id'],
             'newPurchaseDate' => ['nullable', 'date'],
             'newDescription' => ['required', 'string', 'min:8', 'max:10000'],
@@ -396,16 +435,17 @@ class CustomerServiceCases extends Component
             $this->addError('newAssigneeId', 'Choisissez un membre actif du service client.');
             return;
         }
-        if ($this->newOrderId && $this->newProductId) {
-            $orderContainsProduct = OrderItem::where('order_id', $this->newOrderId)->where('product_id', $this->newProductId)->exists();
-            if (! $orderContainsProduct) {
-                $this->addError('newProductId', 'Choisissez un produit de la commande sélectionnée.');
+        $selectedProductIds = collect($this->newProductIds)->map(fn ($id) => (int) $id)->unique()->values();
+        if ($this->newOrderId && $selectedProductIds->isNotEmpty()) {
+            $orderProductIds = OrderItem::where('order_id', $this->newOrderId)->pluck('product_id')->map(fn ($id) => (int) $id)->unique();
+            if ($selectedProductIds->diff($orderProductIds)->isNotEmpty()) {
+                $this->addError('newProductIds', 'Choisissez uniquement des produits de la commande sélectionnée.');
                 return;
             }
         }
 
         $assigneeId = $this->canAssignCases() && $this->newAssigneeId ? (int) $this->newAssigneeId : Auth::id();
-        $case = DB::transaction(function () use ($assigneeId) {
+        $case = DB::transaction(function () use ($assigneeId, $selectedProductIds) {
             $customer = $this->createCustomer
                 ? $this->findOrCreateCustomer()
                 : Costumer::findOrFail($this->selectedCustomerId);
@@ -422,7 +462,7 @@ class CustomerServiceCases extends Component
                 'case_number' => 'TMP-'.Str::random(24),
                 'costumer_id' => $customer->id,
                 'order_id' => $order?->id,
-                'product_id' => $this->newProductId ?: optional($order?->orderItems()->first())->product_id,
+                'product_id' => $selectedProductIds->first(),
                 'case_type' => $this->newCaseType,
                 'purchase_date' => $this->newPurchaseDate ?: ($order ? ($order->date_order ?: $order->created_at) : null),
                 'description' => trim($this->newDescription),
@@ -432,6 +472,7 @@ class CustomerServiceCases extends Component
                 'created_by' => Auth::id(),
                 'next_follow_up_at' => $this->newNextFollowUpAt ?: null,
             ]);
+            $case->products()->sync($selectedProductIds->all());
         $case->update(['case_number' => 'TEN-SC-'.now()->format('Y').'-'.str_pad((string) $case->id, 4, '0', STR_PAD_LEFT)]);
 
             $activity = $case->activities()->create([
@@ -945,7 +986,7 @@ class CustomerServiceCases extends Component
     protected function authorizedCase(int $id, bool $allowArchived = false): CustomerServiceCase
     {
         $query = CustomerServiceCase::query()->with([
-            'customer', 'product', 'order.orderItems.product', 'assignee', 'creator',
+            'customer', 'product', 'products', 'order.orderItems.product', 'assignee', 'creator',
             'attachments.uploader',
             'supportPlan.milestones.completedBy',
         ])->whereKey($id);
@@ -1016,8 +1057,12 @@ class CustomerServiceCases extends Component
         }
 
         $message = 'Bonjour '.$customer->name.', nous vous contactons au sujet de votre dossier '.$case->case_number;
-        if ($case->product?->name) {
-            $message .= ' concernant '.$case->product->name;
+        $productNames = $case->products->pluck('name')->filter()->values();
+        if ($productNames->isEmpty() && $case->product?->name) {
+            $productNames->push($case->product->name);
+        }
+        if ($productNames->isNotEmpty()) {
+            $message .= ' concernant '. $productNames->join(', ');
         }
         $message .= '. Nous sommes disponibles pour vous accompagner. TENACE COSMETIQUE';
 
@@ -1080,7 +1125,7 @@ class CustomerServiceCases extends Component
     {
         $this->reset([
             'customerSearch', 'selectedCustomerId', 'createCustomer', 'newCustomerName', 'newCustomerPhone', 'newCustomerEmail',
-            'newCustomerAddress', 'newProductId', 'newOrderId', 'newPurchaseDate', 'newDescription', 'uploads', 'supportNeed', 'supportObjectives',
+            'newCustomerAddress', 'newProductId', 'newProductIds', 'newOrderId', 'newPurchaseDate', 'newDescription', 'uploads', 'supportNeed', 'supportObjectives',
         ]);
         $this->newCaseType = 'complaint';
         $this->newPriority = 'normal';
@@ -1130,7 +1175,7 @@ class CustomerServiceCases extends Component
     protected function visibleCases(): Builder
     {
         $query = ($this->archiveView ? CustomerServiceCase::query() : $this->accessibleCases())
-            ->with(['customer', 'product', 'assignee']);
+            ->with(['customer', 'product', 'products', 'assignee']);
         if ($this->archiveView) {
             $query->whereNotNull('archived_at');
             if (! Auth::user()->hasRole(['ADMINUSER'])) {
@@ -1265,6 +1310,21 @@ class CustomerServiceCases extends Component
                 ->orderByDesc('updated_at')->paginate(15);
         }
 
+        $customerOrders = $this->selectedCustomerOrders();
+        $selectedOrder = $customerOrders->firstWhere('id', (int) $this->newOrderId);
+        $products = $selectedOrder ? collect() : Product::orderBy('name')->get(['id', 'name']);
+        $caseProducts = $selectedOrder
+            ? $selectedOrder->orderItems->filter(fn ($item) => $item->product_id)->unique('product_id')->map(fn ($item) => [
+                'id' => (int) $item->product_id,
+                'name' => $item->product?->name ?: 'Produit supprimé',
+                'quantity' => $item->quantity,
+            ])->values()
+            : $products->map(fn ($product) => [
+                'id' => (int) $product->id,
+                'name' => $product->name,
+                'quantity' => null,
+            ]);
+
         return view('livewire.customer-service-cases', [
             'case' => $case,
             'activities' => $activities,
@@ -1275,8 +1335,9 @@ class CustomerServiceCases extends Component
             'counts' => $counts,
             'dashboard' => $dashboard,
             'customers' => $customers,
-            'customerOrders' => $this->selectedCustomerOrders(),
-            'products' => Product::orderBy('name')->get(['id', 'name']),
+            'customerOrders' => $customerOrders,
+            'products' => $products,
+            'caseProducts' => $caseProducts,
             'assignees' => User::whereIn('user_type', ['CALLCENTER', 'MNG', 'SCR', 'ADMINUSER'])->where('active', 1)->orderBy('name')->get(['id', 'name', 'user_type']),
             'assigneeSuggestions' => $this->assigneeSuggestions($this->assigneeSearch, $this->assignedTo),
             'newAssigneeSuggestions' => $this->assigneeSuggestions($this->newAssigneeSearch, $this->newAssigneeId),

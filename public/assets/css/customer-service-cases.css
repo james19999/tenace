@@ -1053,4 +1053,10 @@ body.sc-modal-open {
 .service-cases .sc-archive-confirm-note{display:flex;align-items:flex-start;gap:12px;padding:15px;border:1px solid #eee6e4;border-radius:11px;background:#faf8f7;color:#56545f}
 .service-cases .sc-archive-confirm-note>.material-icons{flex:0 0 auto;color:#81201d}
 .service-cases .sc-archive-confirm-note p{margin:0;line-height:1.55}
+.service-cases .sc-product-options{display:grid;grid-template-columns:repeat(auto-fit,minmax(210px,1fr));gap:8px;margin-top:7px}
+.service-cases .sc-product-option{display:flex;align-items:center;gap:9px;min-width:0;margin:0;padding:10px 11px;border:1px solid #e6e7ec;border-radius:8px;background:#fff;cursor:pointer}
+.service-cases .sc-product-option:has(input:checked){border-color:#c99a97;background:#fcf5f4}
+.service-cases .sc-product-option input{flex:none;accent-color:#7e1615}
+.service-cases .sc-product-option span{flex:1;min-width:0;overflow-wrap:anywhere;color:#42434d;font-size:12px}
+.service-cases .sc-product-option small{flex:none;color:#81828c;font-size:11px}
 @media(max-width:575px){.service-cases .sc-case-tabs{width:100%}.service-cases .sc-case-tabs>button{flex:1;padding-inline:8px;font-size:13px}.service-cases .sc-case-row-actions{justify-content:flex-end}}
