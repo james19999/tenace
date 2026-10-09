@@ -1059,6 +1059,8 @@ body.sc-modal-open {
 .service-cases .sc-product-option input{flex:none;accent-color:#7e1615}
 .service-cases .sc-product-option span{flex:1;min-width:0;overflow-wrap:anywhere;color:#42434d;font-size:12px}
 .service-cases .sc-product-option small{flex:none;color:#81828c;font-size:11px}
+.service-cases .sc-product-list{display:flex;flex-direction:column;align-items:flex-start;gap:5px;min-width:0;max-width:100%}
+.service-cases .sc-product-list>span{display:block;max-width:100%;padding:4px 7px;border:1px solid #eee8e7;border-radius:6px;background:#faf7f7;color:#555762;font-size:11px;line-height:1.35;white-space:normal;overflow-wrap:anywhere;word-break:break-word}
 @media(max-width:575px){.service-cases .sc-case-tabs{width:100%}.service-cases .sc-case-tabs>button{flex:1;padding-inline:8px;font-size:13px}.service-cases .sc-case-row-actions{justify-content:flex-end}}
 @media(max-width:575px){
     .service-cases .sc-case-row td[data-label="Nature"],
@@ -1070,6 +1072,6 @@ body.sc-modal-open {
     .service-cases .sc-case-link,
     .service-cases .sc-customer-name,
     .service-cases .sc-customer-phone{max-width:100%;overflow-wrap:anywhere;word-break:break-word}
-    .service-cases .sc-product-list{display:flex;flex:1 1 auto;flex-direction:column;gap:4px;width:100%;min-width:0;max-width:100%;white-space:normal;overflow-wrap:anywhere;word-break:break-word}
+    .service-cases .sc-product-list{display:flex;flex:1 1 auto;flex-direction:column;align-items:stretch;gap:4px;width:100%;min-width:0;max-width:100%;white-space:normal;overflow-wrap:anywhere;word-break:break-word}
     .service-cases .sc-product-list>span{display:block;width:100%;min-width:0;max-width:100%;white-space:normal!important;overflow-wrap:anywhere;word-break:break-word;line-height:1.4}
 }
