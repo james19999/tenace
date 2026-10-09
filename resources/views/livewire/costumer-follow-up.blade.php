@@ -742,19 +742,23 @@
                                                 <small class="form-text text-muted">Les 20 commandes les plus récentes sont proposées, la dernière en premier.</small>
                                                 @error('quickServiceCaseOrderId') <small class="text-danger d-block">{{ $message }}</small> @enderror
                                             </div>
-                                            <div class="form-group col-md-6">
-                                                <label for="quick-service-case-product">Produit à rattacher au dossier SAV</label>
-                                                @if ($selectedServiceCaseOrder && $selectedServiceCaseOrder->orderItems->isNotEmpty())
-                                                    <select id="quick-service-case-product" class="form-control" wire:model.defer="quickServiceCaseProductId">
-                                                        @foreach ($selectedServiceCaseOrder->orderItems->unique('product_id') as $orderItem)
-                                                            <option value="{{ $orderItem->product_id }}">{{ $orderItem->product->name ?? 'Produit supprimé' }} × {{ $orderItem->quantity }}</option>
+                                            <div class="form-group col-12">
+                                                <label>Produits concernés par le dossier SAV</label>
+                                                @if ($selectedServiceCaseOrder && $selectedServiceCaseOrder->orderItems->whereNotNull('product_id')->isNotEmpty())
+                                                    <div class="quick-case-products">
+                                                        @foreach ($selectedServiceCaseOrder->orderItems->whereNotNull('product_id')->unique('product_id') as $orderItem)
+                                                            <label class="quick-case-product" wire:key="quick-case-product-{{ $orderItem->product_id }}">
+                                                                <input type="checkbox" wire:model.defer="quickServiceCaseProductIds" value="{{ $orderItem->product_id }}">
+                                                                <span>{{ $orderItem->product->name ?? 'Produit supprimé' }}</span>
+                                                                <small>× {{ $orderItem->quantity }}</small>
+                                                            </label>
                                                         @endforeach
-                                                    </select>
-                                                    <small class="form-text text-muted">Le produit choisi sera présélectionné dans le dossier SAV.</small>
+                                                    </div>
+                                                    <small class="form-text text-muted">Tous les produits de la commande sont sélectionnés. Décoche ceux qui ne sont pas concernés.</small>
                                                 @else
                                                     <div class="form-control text-muted">Aucun produit détaillé pour cette commande.</div>
                                                 @endif
-                                                @error('quickServiceCaseProductId') <small class="text-danger d-block">{{ $message }}</small> @enderror
+                                                @error('quickServiceCaseProductIds') <small class="text-danger d-block">{{ $message }}</small> @enderror
                                             </div>
                                         </div>
                                     @elseif ($selectedCostumer->latestOrder)
@@ -828,7 +832,17 @@
                                 </div>
                                 <small class="text-muted d-block">La réponse ci-dessus sera proposée automatiquement. Tu peux modifier la description avant l’enregistrement.</small>
                                 @if ($selectedCostumer && $selectedCostumer->latestOrder)
-                                    <small class="text-muted d-block mt-1">Dernière commande : {{ $selectedCostumer->latestOrder->code ?: '#'.$selectedCostumer->latestOrder->id }}@if($selectedCostumer->latestOrder->orderItems->first()), produit : {{ $selectedCostumer->latestOrder->orderItems->first()->product->name ?? 'indisponible' }}@endif</small>
+                                    <small class="text-muted d-block mt-1">Dernière commande : {{ $selectedCostumer->latestOrder->code ?: '#'.$selectedCostumer->latestOrder->id }}</small>
+                                    @if($selectedCostumer->latestOrder->orderItems->whereNotNull('product_id')->isNotEmpty())
+                                        <label class="d-block mt-2 mb-1">Produits concernés</label>
+                                        <div class="quick-case-products">
+                                            @foreach($selectedCostumer->latestOrder->orderItems->whereNotNull('product_id')->unique('product_id') as $orderItem)
+                                                <label class="quick-case-product" wire:key="response-case-product-{{ $orderItem->product_id }}"><input type="checkbox" wire:model.defer="quickServiceCaseProductIds" value="{{ $orderItem->product_id }}"><span>{{ $orderItem->product->name ?? 'Produit supprimé' }}</span><small>× {{ $orderItem->quantity }}</small></label>
+                                            @endforeach
+                                        </div>
+                                        <small class="form-text text-muted">Tous les produits de la dernière commande sont sélectionnés par défaut.</small>
+                                        @error('quickServiceCaseProductIds') <small class="text-danger d-block">{{ $message }}</small> @enderror
+                                    @endif
                                 @elseif ($selectedCostumer)
                                     <small class="text-muted d-block mt-1">Aucune commande récente : le dossier sera lié à la cliente uniquement.</small>
                                 @endif
@@ -936,6 +950,12 @@
             animation: follow-up-dialog-open .32s ease-out both;
             transition: transform .32s ease-in;
         }
+        .quick-case-products { display:grid; grid-template-columns:repeat(auto-fit,minmax(190px,1fr)); gap:8px; margin-top:7px; }
+        .quick-case-product { display:flex; align-items:center; gap:9px; min-width:0; margin:0; padding:10px 11px; border:1px solid #e6e7ec; border-radius:8px; background:#fff; cursor:pointer; }
+        .quick-case-product:has(input:checked) { border-color:#c99a97; background:#fcf5f4; }
+        .quick-case-product input { flex:none; accent-color:#7e1615; }
+        .quick-case-product span { flex:1; min-width:0; overflow-wrap:anywhere; color:#42434d; font-size:12px; }
+        .quick-case-product small { flex:none; color:#81828c; font-size:11px; }
         .follow-up-modal.is-closing {
             opacity: 0;
         }

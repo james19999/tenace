@@ -59,6 +59,7 @@ class CostumerFollowUp extends Component
     public $quickServiceCaseDescription = '';
     public $quickServiceCaseOrderId = '';
     public $quickServiceCaseProductId = '';
+    public $quickServiceCaseProductIds = [];
     public $response = '';
     public $sentiment = 'neutral';
     public $individualCallingCode = '+228';
@@ -180,7 +181,9 @@ class CostumerFollowUp extends Component
             ->orderByDesc('id')
             ->first();
         $this->quickServiceCaseOrderId = (string) ($latestOrder?->id ?? '');
-        $this->quickServiceCaseProductId = (string) optional($latestOrder?->orderItems->first())->product_id;
+        $this->quickServiceCaseProductIds = $latestOrder?->orderItems
+            ->pluck('product_id')->filter()->unique()->map(fn ($id) => (string) $id)->values()->all() ?? [];
+        $this->quickServiceCaseProductId = $this->quickServiceCaseProductIds[0] ?? '';
         $this->showContactModal = true;
     }
 
@@ -189,8 +192,10 @@ class CostumerFollowUp extends Component
         $order = $orderId
             ? Order::with('orderItems')->where('costumer_id', (string) $this->selectedCostumerId)->find($orderId)
             : null;
-        $this->quickServiceCaseProductId = (string) optional($order?->orderItems->first())->product_id;
-        $this->resetValidation('quickServiceCaseProductId');
+        $this->quickServiceCaseProductIds = $order?->orderItems
+            ->pluck('product_id')->filter()->unique()->map(fn ($id) => (string) $id)->values()->all() ?? [];
+        $this->quickServiceCaseProductId = $this->quickServiceCaseProductIds[0] ?? '';
+        $this->resetValidation('quickServiceCaseProductIds');
     }
 
     public function saveContact()
@@ -213,7 +218,8 @@ class CostumerFollowUp extends Component
             abort_unless($this->responseReceivedNow, 422);
             $rules['quickServiceCaseType'] = 'required|in:complaint,dissatisfied,personalized_support,information';
             $rules['quickServiceCaseOrderId'] = 'nullable|integer|exists:orders,id';
-            $rules['quickServiceCaseProductId'] = 'nullable|integer|exists:products,id';
+            $rules['quickServiceCaseProductIds'] = 'array';
+            $rules['quickServiceCaseProductIds.*'] = 'integer|distinct|exists:products,id';
         }
         if ($this->responseReceivedNow) {
             $rules['immediateResponse'] = 'required|string|max:10000';
@@ -231,8 +237,10 @@ class CostumerFollowUp extends Component
                 $this->addError('quickServiceCaseOrderId', 'Choisis une commande appartenant à cette cliente.');
                 return;
             }
-            if ($this->quickServiceCaseProductId && ! $serviceCaseOrder?->orderItems->contains(fn ($item) => (int) $item->product_id === (int) $this->quickServiceCaseProductId)) {
-                $this->addError('quickServiceCaseProductId', 'Choisis un produit de la commande sélectionnée.');
+            $selectedProductIds = collect($this->quickServiceCaseProductIds)->map(fn ($id) => (int) $id)->unique();
+            $orderProductIds = $serviceCaseOrder?->orderItems->pluck('product_id')->map(fn ($id) => (int) $id)->unique() ?? collect();
+            if ($selectedProductIds->diff($orderProductIds)->isNotEmpty()) {
+                $this->addError('quickServiceCaseProductIds', 'Choisis uniquement des produits de la commande sélectionnée.');
                 return;
             }
         }
@@ -274,15 +282,13 @@ class CostumerFollowUp extends Component
         $this->forgetFollowUpData();
 
         if ($this->createServiceCase) {
-            $latestOrderItem = $this->quickServiceCaseProductId
-                ? $serviceCaseOrder?->orderItems->first(fn ($item) => (int) $item->product_id === (int) $this->quickServiceCaseProductId)
-                : null;
-            $latestOrderItem = $latestOrderItem ?? $serviceCaseOrder?->orderItems->first();
+            $selectedProductIds = collect($this->quickServiceCaseProductIds)->map(fn ($id) => (int) $id)->unique()->values();
             session()->put('customer_service_case_prefill', [
                 'type' => $this->quickServiceCaseType,
                 'description' => trim((string) $this->immediateResponse),
                 'order_id' => $serviceCaseOrder?->id,
-                'product_id' => $latestOrderItem?->product_id,
+                'product_ids' => $selectedProductIds->all(),
+                'product_id' => $selectedProductIds->first(),
                 'purchase_date' => $serviceCaseOrder ? Carbon::parse($serviceCaseOrder->date_order ?: $serviceCaseOrder->created_at)->format('Y-m-d') : null,
             ]);
             session()->flash('messages', 'Contact et réponse enregistrés. Complète maintenant le dossier SAV.');
@@ -299,7 +305,8 @@ class CostumerFollowUp extends Component
         Costumer $customer,
         string $response,
         string $channel,
-        ?string $channelDetail = null
+        ?string $channelDetail = null,
+        array $productIds = []
     ): CustomerServiceCase {
         $latestOrder = Order::with('orderItems')
             ->where('costumer_id', (string) $customer->id)
@@ -310,7 +317,7 @@ class CostumerFollowUp extends Component
             'case_number' => 'TMP-'.\Illuminate\Support\Str::random(24),
             'costumer_id' => $customer->id,
             'order_id' => $latestOrder?->id,
-            'product_id' => $latestOrder?->orderItems->first()?->product_id,
+            'product_id' => $productIds[0] ?? null,
             'case_type' => $this->quickServiceCaseType,
             'purchase_date' => $latestOrder ? ($latestOrder->date_order ?: $latestOrder->created_at) : null,
             'description' => trim($this->quickServiceCaseDescription),
@@ -320,6 +327,7 @@ class CostumerFollowUp extends Component
             'created_by' => Auth::id(),
         ]);
         $case->update(['case_number' => 'TEN-SC-'.now()->format('Y').'-'.str_pad((string) $case->id, 4, '0', STR_PAD_LEFT)]);
+        $case->products()->sync($productIds);
         $case->activities()->create([
             'user_id' => Auth::id(),
             'activity_type' => 'created',
@@ -365,6 +373,10 @@ class CostumerFollowUp extends Component
         $this->createServiceCase = false;
         $this->quickServiceCaseType = 'dissatisfied';
         $this->quickServiceCaseDescription = '';
+        $latestOrder = Order::with('orderItems')->where('costumer_id', (string) $history->costumer_id)
+            ->orderByRaw('COALESCE(date_order, created_at) DESC')->orderByDesc('id')->first();
+        $this->quickServiceCaseProductIds = $latestOrder?->orderItems
+            ->pluck('product_id')->filter()->unique()->map(fn ($id) => (string) $id)->values()->all() ?? [];
         $this->resetValidation();
         $this->showResponseModal = true;
     }
@@ -386,13 +398,25 @@ class CostumerFollowUp extends Component
         if ($this->createServiceCase) {
             $rules['quickServiceCaseType'] = 'required|in:complaint,dissatisfied,personalized_support,information';
             $rules['quickServiceCaseDescription'] = 'required|string|min:8|max:10000';
+            $rules['quickServiceCaseProductIds'] = 'array';
+            $rules['quickServiceCaseProductIds.*'] = 'integer|distinct|exists:products,id';
         }
         $this->validate($rules);
 
         $history = CostumerContactHistory::with('costumer')->findOrFail($this->selectedHistoryId);
         abort_unless((int) $history->costumer_id === (int) $this->selectedCostumerId, 404);
+        $selectedProductIds = collect($this->quickServiceCaseProductIds)->map(fn ($id) => (int) $id)->unique()->values();
+        if ($this->createServiceCase && $selectedProductIds->isNotEmpty()) {
+            $latestOrder = Order::with('orderItems')->where('costumer_id', (string) $history->costumer_id)
+                ->orderByRaw('COALESCE(date_order, created_at) DESC')->orderByDesc('id')->first();
+            $orderProductIds = $latestOrder?->orderItems->pluck('product_id')->map(fn ($id) => (int) $id)->unique() ?? collect();
+            if ($selectedProductIds->diff($orderProductIds)->isNotEmpty()) {
+                $this->addError('quickServiceCaseProductIds', 'Choisis uniquement des produits de la dernière commande.');
+                return;
+            }
+        }
 
-        $serviceCase = DB::transaction(function () use ($history) {
+        $serviceCase = DB::transaction(function () use ($history, $selectedProductIds) {
             $history->update([
                 'response' => $this->response,
                 'sentiment' => $this->sentiment,
@@ -410,7 +434,8 @@ class CostumerFollowUp extends Component
                 $history->costumer,
                 trim($this->response),
                 $history->channel,
-                $history->channel_detail
+                $history->channel_detail,
+                $selectedProductIds->all()
             );
         });
 
@@ -538,10 +563,10 @@ class CostumerFollowUp extends Component
     {
         if ($modal === 'contact') {
             $this->showContactModal = false;
-            $this->reset(['selectedCostumerId', 'notes', 'selectedTemplateId', 'responseReceivedNow', 'immediateResponse', 'immediateSentiment', 'createServiceCase', 'quickServiceCaseType', 'quickServiceCaseDescription', 'quickServiceCaseOrderId', 'quickServiceCaseProductId']);
+            $this->reset(['selectedCostumerId', 'notes', 'selectedTemplateId', 'responseReceivedNow', 'immediateResponse', 'immediateSentiment', 'createServiceCase', 'quickServiceCaseType', 'quickServiceCaseDescription', 'quickServiceCaseOrderId', 'quickServiceCaseProductId', 'quickServiceCaseProductIds']);
         } elseif ($modal === 'response') {
             $this->showResponseModal = false;
-            $this->reset(['selectedHistoryId', 'selectedCostumerId', 'response', 'sentiment', 'createServiceCase', 'quickServiceCaseType', 'quickServiceCaseDescription']);
+            $this->reset(['selectedHistoryId', 'selectedCostumerId', 'response', 'sentiment', 'createServiceCase', 'quickServiceCaseType', 'quickServiceCaseDescription', 'quickServiceCaseProductIds']);
         } elseif ($modal === 'history') {
             $this->showHistoryModal = false;
             $this->reset(['selectedCostumerId']);

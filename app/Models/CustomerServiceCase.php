@@ -5,6 +5,7 @@ namespace App\Models;
 use App\Models\Orders\Order;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\HasOne;
 
@@ -41,6 +42,7 @@ class CustomerServiceCase extends Model
     public function customer(): BelongsTo { return $this->belongsTo(Costumer::class, 'costumer_id'); }
     public function order(): BelongsTo { return $this->belongsTo(Order::class); }
     public function product(): BelongsTo { return $this->belongsTo(Product::class); }
+    public function products(): BelongsToMany { return $this->belongsToMany(Product::class, 'service_case_products', 'case_id', 'product_id')->withTimestamps(); }
     public function assignee(): BelongsTo { return $this->belongsTo(User::class, 'assigned_to'); }
     public function creator(): BelongsTo { return $this->belongsTo(User::class, 'created_by'); }
     public function activities(): HasMany { return $this->hasMany(CustomerServiceCaseActivity::class, 'case_id')->orderBy('occurred_at')->orderBy('id'); }
