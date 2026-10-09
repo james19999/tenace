@@ -15,13 +15,13 @@
         <link rel="stylesheet" href="{{ asset('assets/css/customer-service-cases.css') }}?v=20261007.7">
     @endif
     @if (request()->routeIs('customer-loyalty.*'))
-        <link rel="stylesheet" href="{{ asset('assets/css/customer-loyalty.css') }}?v=20261008.13">
+        <link rel="stylesheet" href="{{ asset('assets/css/customer-loyalty.css') }}?v=20261009.1">
     @endif
 
     <link rel="shortcut icon" href="{{ asset('assets/images/tena.png') }}" type="image/png">
     <link rel="icon" href="{{ asset('assets/images/tena.png') }}" type="image/png">
 
-    <link rel="stylesheet" href="{{ asset('cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.1/css/all.min.css') }}">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.1/css/all.min.css">
 
 
 
