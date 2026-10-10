@@ -66,7 +66,8 @@
                             @include('orders.partials.list-table', ['orders' => $tab['orders']])
 
                             @if ($tab['orders']->hasPages())
-                                <div class="d-flex justify-content-end mt-3">
+                                <div class="orders-pagination-wrap mt-3">
+                                    <small class="orders-pagination-summary">Page {{ $tab['orders']->currentPage() }} sur {{ $tab['orders']->lastPage() }}</small>
                                     {{ $tab['orders']->appends(['ordersTab' => $key, 'filter' => $filter])->onEachSide(1)->links() }}
                                 </div>
                             @endif
@@ -78,16 +79,31 @@
     </div>
 
     <style>
+        .order-list-page { min-width: 0; max-width: 100%; }
+        .order-list-page .card, .order-list-page .card-body, .order-list-page .tab-content, .order-list-page .tab-pane { min-width: 0; max-width: 100%; }
         .order-list-tabs { flex-wrap: nowrap; overflow-x: auto; white-space: nowrap; gap: 4px; }
         .order-list-tabs .nav-item { flex: 0 0 auto; }
         .order-list-tabs .nav-link { display: flex; align-items: center; gap: 7px; color: #555; }
         .order-list-tabs .nav-link.active { color: #81201d; font-weight: 700; }
-        .order-list-page .table-responsive { overflow-x: auto; }
+        .order-list-page .table-responsive { width: 100%; max-width: 100%; overflow-x: auto; -webkit-overflow-scrolling: touch; }
         .order-list-page table { min-width: 1050px; }
         .order-list-page .order-actions { display: flex; flex-wrap: wrap; gap: 5px; min-width: 230px; }
+        .orders-pagination-wrap { display: flex; align-items: center; justify-content: flex-end; gap: 12px; max-width: 100%; }
+        .orders-pagination-wrap .pagination { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 3px; margin: 0; }
+        .orders-pagination-wrap .page-link { min-width: 38px; text-align: center; padding: 8px 10px; }
+        .orders-pagination-summary { display: none; color: #687386; white-space: nowrap; }
         @media (max-width: 767.98px) {
             .order-list-tabs .nav-link { padding: 8px 10px; font-size: 12px; }
             .order-list-page .card-body { padding: 12px; }
+            .order-list-page h3 { font-size: 1.25rem; }
+            .order-list-page .form-inline { align-items: stretch; }
+            .order-list-page .form-inline label { width: 100%; margin: 0 0 6px !important; }
+            .order-list-page .form-inline select { width: 100%; }
+            .orders-pagination-wrap { flex-direction: column; align-items: center; gap: 6px; }
+            .orders-pagination-wrap .pagination { justify-content: center; max-width: 100%; }
+            .orders-pagination-wrap .page-item:not(:first-child):not(:last-child):not(.active) { display: none; }
+            .orders-pagination-wrap .page-link { min-width: 40px; padding: 8px 11px; }
+            .orders-pagination-summary { display: block; }
         }
     </style>
 @endsection
