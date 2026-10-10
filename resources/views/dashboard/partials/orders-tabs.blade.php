@@ -1,4 +1,5 @@
 @php
+    $activeOrdersTab = request()->query('ordersTab', 'created');
     $orderTabs = [
         'created' => ['label' => 'Créées aujourd’hui', 'orders' => $createdTodayOrders],
         'delivery' => ['label' => 'Livraisons prévues aujourd’hui', 'orders' => $deliveryTodayOrders],
@@ -16,8 +17,8 @@
             <ul class="nav nav-tabs dashboard-order-tabs" id="dashboardOrderTabs" role="tablist">
                 @foreach($orderTabs as $key => $tab)
                     <li class="nav-item" role="presentation">
-                        <a class="nav-link {{ $loop->first ? 'active' : '' }}" id="orders-tab-{{ $key }}" data-toggle="tab" href="#orders-panel-{{ $key }}" role="tab" aria-controls="orders-panel-{{ $key }}" aria-selected="{{ $loop->first ? 'true' : 'false' }}">
-                            {{ $tab['label'] }} <span class="badge badge-light">{{ $tab['orders']->count() }}</span>
+                        <a class="nav-link {{ $activeOrdersTab === $key ? 'active' : '' }}" id="orders-tab-{{ $key }}" data-toggle="tab" href="#orders-panel-{{ $key }}" role="tab" aria-controls="orders-panel-{{ $key }}" aria-selected="{{ $activeOrdersTab === $key ? 'true' : 'false' }}">
+                            {{ $tab['label'] }} <span class="badge badge-light">{{ $tab['orders']->total() }}</span>
                         </a>
                     </li>
                 @endforeach
@@ -25,7 +26,7 @@
 
             <div class="tab-content pt-3" id="dashboardOrderTabContent">
                 @foreach($orderTabs as $key => $tab)
-                    <div class="tab-pane fade {{ $loop->first ? 'show active' : '' }}" id="orders-panel-{{ $key }}" role="tabpanel" aria-labelledby="orders-tab-{{ $key }}">
+                    <div class="tab-pane fade {{ $activeOrdersTab === $key ? 'show active' : '' }}" id="orders-panel-{{ $key }}" role="tabpanel" aria-labelledby="orders-tab-{{ $key }}">
                         <div class="table-responsive">
                             <table class="table table-hover dashboard-orders-table w-100">
                                 <thead class="thead-light">
@@ -72,6 +73,11 @@
                                 </tbody>
                             </table>
                         </div>
+                        @if($tab['orders']->hasPages())
+                            <div class="d-flex justify-content-end mt-3">
+                                {{ $tab['orders']->appends(['ordersTab' => $key])->onEachSide(1)->links() }}
+                            </div>
+                        @endif
                     </div>
                 @endforeach
             </div>

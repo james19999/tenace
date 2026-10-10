@@ -41,11 +41,12 @@ class DashboarController extends Controller
             ->orderByDesc('updated_at');
 
         $createdTodayOrders = $dashboardOrders()
-            ->where('created_at', '>=', $todayStart)->where('created_at', '<', $tomorrow)->get();
+            ->where('created_at', '>=', $todayStart)->where('created_at', '<', $tomorrow)
+            ->paginate(10, ['*'], 'createdPage');
 
         $deliveryTodayOrders = $dashboardOrders()
             ->where('date_order', $todayStart->toDateString())
-            ->get();
+            ->paginate(10, ['*'], 'deliveryPage');
 
         $assignedTodayOrders = $dashboardOrders()
             ->where(function ($query) use ($todayStart, $tomorrow) {
@@ -55,12 +56,12 @@ class DashboarController extends Controller
                     $legacy->whereNull('assigned_at')->where('status_order', true)
                         ->where('updated_at', '>=', $todayStart)->where('updated_at', '<', $tomorrow);
                 });
-            })->get();
+            })->paginate(10, ['*'], 'assignedPage');
 
         $overdueOrders = $dashboardOrders()
             ->where('status', 'ordered')
             ->whereNotNull('date_order')->where('date_order', '<', $todayStart->toDateString())
-            ->get();
+            ->paginate(10, ['*'], 'overduePage');
 
         $isAdmin = Auth::check() && Auth::user()->user_type === 'ADMINUSER';
 
