@@ -40,40 +40,58 @@ class OrderController extends Controller
     public function index(Request $request)
     {
         $filter = $request->get('filter', 'today');
-
-        $orders = Order::query()
-            ->where('brouillon', 1);
-
-        switch ($filter) {
-
-            case 'today':
-                $orders->whereDate('created_at', Carbon::today());
-                break;
-
-            case 'week':
-                $orders->whereBetween('created_at', [
-                    Carbon::now()->startOfWeek(),
-                    Carbon::now()->endOfWeek(),
-                ]);
-                break;
-
-            case 'month':
-                $orders->whereMonth('created_at', Carbon::now()->month)
-                    ->whereYear('created_at', Carbon::now()->year);
-                break;
-
-            case 'year':
-                $orders->whereYear('created_at', Carbon::now()->year);
-                break;
-
-            case 'all':
-                // Aucun filtre
-                break;
+        if (! in_array($filter, ['today', 'week', 'month', 'year', 'all'], true)) {
+            $filter = 'today';
         }
 
-        $orders = $orders->latest()->get();
+        $today = Carbon::today();
+        $tomorrow = $today->copy()->addDay();
+        $dashboardOrders = fn () => Order::with(['costumer', 'user'])
+            ->where('brouillon', 1)
+            ->orderByDesc('assigned_at')
+            ->orderByDesc('updated_at');
 
-        return view('orders.index', compact('orders', 'filter'));
+        $createdTodayOrders = $dashboardOrders()
+            ->where('created_at', '>=', $today)->where('created_at', '<', $tomorrow)
+            ->paginate(10, ['*'], 'createdPage');
+        $deliveryTodayOrders = $dashboardOrders()
+            ->whereDate('date_order', $today->toDateString())
+            ->paginate(10, ['*'], 'deliveryPage');
+        $assignedTodayOrders = $dashboardOrders()
+            ->where(function ($query) use ($today, $tomorrow) {
+                $query->where(function ($assignedAt) use ($today, $tomorrow) {
+                    $assignedAt->where('assigned_at', '>=', $today)->where('assigned_at', '<', $tomorrow);
+                })->orWhere(function ($legacy) use ($today, $tomorrow) {
+                    $legacy->whereNull('assigned_at')->where('status_order', true)
+                        ->where('updated_at', '>=', $today)->where('updated_at', '<', $tomorrow);
+                });
+            })->paginate(10, ['*'], 'assignedPage');
+        $overdueOrders = $dashboardOrders()
+            ->where('status', 'ordered')->whereNotNull('date_order')
+            ->where('date_order', '<', $today->toDateString())
+            ->paginate(10, ['*'], 'overduePage');
+
+        $historyOrdersQuery = Order::with(['costumer', 'user'])->where('brouillon', 1);
+        switch ($filter) {
+            case 'today':
+                $historyOrdersQuery->where('created_at', '>=', $today)->where('created_at', '<', $tomorrow);
+                break;
+            case 'week':
+                $historyOrdersQuery->whereBetween('created_at', [Carbon::now()->startOfWeek(), Carbon::now()->endOfWeek()]);
+                break;
+            case 'month':
+                $historyOrdersQuery->whereMonth('created_at', Carbon::now()->month)->whereYear('created_at', Carbon::now()->year);
+                break;
+            case 'year':
+                $historyOrdersQuery->whereYear('created_at', Carbon::now()->year);
+                break;
+        }
+        $historyOrders = $historyOrdersQuery->latest()->paginate(10, ['*'], 'historyPage')->appends(['filter' => $filter, 'ordersTab' => 'history']);
+
+        return view('orders.index', compact(
+            'createdTodayOrders', 'deliveryTodayOrders', 'assignedTodayOrders',
+            'overdueOrders', 'historyOrders', 'filter'
+        ));
     }
 
 

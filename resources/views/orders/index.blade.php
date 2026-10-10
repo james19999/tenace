@@ -1,176 +1,93 @@
 @extends('layouts.admin')
 
-
 @section('content')
-    <div class="col-12 ">
-        <div style="padding-top: 10px">
-            <h3>Liste des commandes</h4>
+    @php
+        $activeOrdersTab = request()->query('ordersTab', 'created');
+        $tabs = [
+            'created' => ['label' => 'Créées aujourd’hui', 'orders' => $createdTodayOrders],
+            'delivery' => ['label' => 'Livraisons prévues aujourd’hui', 'orders' => $deliveryTodayOrders],
+            'assigned' => ['label' => 'Attribuées aujourd’hui', 'orders' => $assignedTodayOrders],
+            'overdue' => ['label' => 'En retard', 'orders' => $overdueOrders],
+            'history' => ['label' => 'Historique', 'orders' => $historyOrders],
+        ];
+        if (! array_key_exists($activeOrdersTab, $tabs)) $activeOrdersTab = 'created';
+    @endphp
+
+    <div class="col-12 order-list-page">
+        <div class="py-2">
+            <h3>Liste des commandes</h3>
         </div>
-        <form method="GET" action="{{ route('order') }}" class="mb-3">
 
-            <div class="row">
+        @if (Session::has('messages'))
+            <div class="alert alert-success"><strong>{{ session('messages') }}</strong></div>
+        @endif
 
-                <div class="col-md-3">
-
-                    <select name="filter" class="form-control" onchange="this.form.submit()">
-
-                        <option value="today" {{ $filter == 'today' ? 'selected' : '' }}>
-                            Aujourd'hui
-                        </option>
-
-                        <option value="week" {{ $filter == 'week' ? 'selected' : '' }}>
-                            Cette semaine
-                        </option>
-
-                        <option value="month" {{ $filter == 'month' ? 'selected' : '' }}>
-                            Ce mois
-                        </option>
-
-                        <option value="year" {{ $filter == 'year' ? 'selected' : '' }}>
-                            Cette année
-                        </option>
-
-                        <option value="all" {{ $filter == 'all' ? 'selected' : '' }}>
-                            Toutes les commandes
-                        </option>
-
-                    </select>
-
-                </div>
-
-            </div>
-
-        </form>
         <div class="card shadow">
-            <div class="card-body ">
-                @if (Session::has('messages'))
-                    <div class="alert alert-success">
-                        <strong>{{ session('messages') }}</strong>
-                    </div>
-                @endif
+            <div class="card-body">
+                <ul class="nav nav-tabs order-list-tabs" role="tablist">
+                    @foreach ($tabs as $key => $tab)
+                        <li class="nav-item" role="presentation">
+                            <a class="nav-link {{ $activeOrdersTab === $key ? 'active' : '' }}"
+                                id="order-list-tab-{{ $key }}" data-toggle="tab" href="#order-list-panel-{{ $key }}"
+                                role="tab" aria-controls="order-list-panel-{{ $key }}"
+                                aria-selected="{{ $activeOrdersTab === $key ? 'true' : 'false' }}">
+                                {{ $tab['label'] }} <span class="badge badge-light">{{ $tab['orders']->total() }}</span>
+                            </a>
+                        </li>
+                    @endforeach
+                </ul>
 
+                <div class="tab-content pt-3">
+                    @foreach ($tabs as $key => $tab)
+                        <div class="tab-pane fade {{ $activeOrdersTab === $key ? 'show active' : '' }}"
+                            id="order-list-panel-{{ $key }}" role="tabpanel" aria-labelledby="order-list-tab-{{ $key }}">
+                            @if ($key === 'history')
+                                <form method="GET" action="{{ route('order') }}" class="form-inline mb-3">
+                                    <input type="hidden" name="ordersTab" value="history">
+                                    <label for="order-history-filter" class="mr-2">Période de création</label>
+                                    <select id="order-history-filter" name="filter" class="form-control" onchange="this.form.submit()">
+                                        <option value="today" {{ $filter === 'today' ? 'selected' : '' }}>Aujourd’hui</option>
+                                        <option value="week" {{ $filter === 'week' ? 'selected' : '' }}>Cette semaine</option>
+                                        <option value="month" {{ $filter === 'month' ? 'selected' : '' }}>Ce mois</option>
+                                        <option value="year" {{ $filter === 'year' ? 'selected' : '' }}>Cette année</option>
+                                        <option value="all" {{ $filter === 'all' ? 'selected' : '' }}>Toutes les commandes</option>
+                                    </select>
+                                </form>
+                            @else
+                                <p class="small text-muted mb-3">
+                                    @if ($key === 'created') Commandes créées aujourd’hui.
+                                    @elseif ($key === 'delivery') Commandes dont la livraison est prévue aujourd’hui.
+                                    @elseif ($key === 'assigned') Commandes attribuées à un livreur aujourd’hui.
+                                    @else Commandes encore en cours dont la date de livraison est dépassée.
+                                    @endif
+                                </p>
+                            @endif
 
-                <div class="table-responsive">
-                    <table id="example" class="table table-hover w-100">
-                        <thead class="thead-light">
-                            <tr>
-                                <th style="width: 20%">N°</th>
-                                <th style="width: 20%">Code</th>
-                                <th style="width: 20%">Nom/Téléphone (Client)</th>
-                                <th style="width: 20%">Nom/Téléphone (Livreur)</th>
-                                <th style="width: 20%">Sous total</th>
-                                <th style="width: 20%">Remise</th>
-                                <th style="width: 20%">Total</th>
-                                <th style="width: 20%">Etat</th>
-                                <th style="width: 20%">Actions</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            @php
-                                $i = 1;
-                            @endphp
-                            @foreach ($orders as $order)
-                                <tr>
+                            @include('orders.partials.list-table', ['orders' => $tab['orders']])
 
-                                    <td style="color: black ">{{ $i++ }}</td>
-                                    <td style="color: black ">{{ $order->code }}</td>
-                                    <td style="color: black ">{{ $order->costumer->name ?? '-' }}|
-                                        {{ $order->costumer->phone ?? '-' }}</td>
-                                    <td style="color: black ">{{ $order->user->name ?? 'Non' }}|
-                                        {{ $order->user->phone ?? '' }}</td>
-
-                                    <td style="color: black ">{{ $order->subtotal }} F</td>
-                                    <td style="color: black ">{{ $order->remis }} % </td>
-                                    <td style="color: black ">{{ $order->total }} F </td>
-                                    <td style="color: black ">
-                                        @if ($order->status == 'ordered')
-                                            <span class="badge badge-warning"> En cours</span>
-                                        @elseif($order->status == 'delivered')
-                                            <span class="badge badge-success"> Terminé</span>
-
-                                            {{-- @endif --}}
-                                        @elseif ($order->status == 'canceled')
-                                            <span class="badge badge-danger">Annuler</span>
-
-                                            {{-- @endif --}}
-                                        @endif
-                                    </td>
-                                    <td style="color: black " class=" pull-right">
-
-                                        <div class="btn-group btn-group-justified">
-                                            @if (Auth::user()->user_type == 'ADMINUSER')
-                                                <a href="{{ route('ordershow', $order) }}" style="color: white"
-                                                    type="button" class="btn btn-success">
-                                                    <i class="material-icons f-16">visibility</i>Details</a>
-
-                                                <a href="{{ route('check-type', $order) }}" style="color: white"
-                                                    type="button"
-                                                    class="btn b
-                                   @if ($order->type == 'PR') btn-dark
-                                   @else
-
-                                   btn-warning @endif
-
-                                 ">
-                                                    <i class="material-icons f-16">edit</i>{{ $order->type }}</a>
-
-
-                                                <form method="POST" action="{{ route('deleteorder', $order) }}"
-                                                    onclick="return confirm('supprimer') ">
-                                                    @csrf
-                                                    @method('DELETE')
-                                                    <button style="padding-bottom: 12%" class="btn btn-sm btn-danger"><i
-                                                            class="material-icons">delete</i>Supprimer</button>
-                                                </form>
-                                            @elseif (in_array(Auth::user()->user_type, ['MNG', 'SCR', 'CSA'], true))
-                                                <a href="{{ route('ordershow', $order) }}" style="color: white"
-                                                    type="button" class="btn btn-success">
-                                                    <i class="material-icons f-16">visibility</i>Details</a>
-
-                                                <a href="{{ route('check-type', $order) }}" style="color: white"
-                                                    type="button"
-                                                    class="btn b
-                                  @if ($order->type == 'PR') btn-dark
-                                  @else
-
-                                  btn-warning @endif
-
-                                ">
-                                                    <i class="material-icons f-16">edit</i>{{ $order->type }}</a>
-                                            @endif
-
-                                            <a href="{{ route('edit-order', $order) }}" class="btn btn-info">
-                                                <i class="fa fa-edit"></i> Modifier la commande
-                                            </a>
-                                            <a href="{{ route('orders.invoice', $order) }}" class="btn btn-success btn-sm">
-
-                                                <i class="fa fa-print"></i>
-
-                                                Facture
-
-                                            </a>
-                                        </div>
-                                    </td>
-                                </tr>
-                            @endforeach
-
-                        </tbody>
-                        <tfoot class="thead-light">
-                            <tr>
-                                <th style="width: 20%">N°</th>
-                                <th style="width: 20%">Code</th>
-                                <th style="width: 20%">Nom/Téléphone (Client)</th>
-                                <th style="width: 20%">Nom/Téléphone (Livreur)</th>
-                                <th style="width: 20%">Sous total</th>
-                                <th style="width: 20%">Remise</th>
-                                <th style="width: 20%">Total</th>
-                                <th style="width: 20%">Etat</th>
-                                <th style="width: 20%">Actions</th>
-                            </tr>
-                        </tfoot>
-                    </table>
+                            @if ($tab['orders']->hasPages())
+                                <div class="d-flex justify-content-end mt-3">
+                                    {{ $tab['orders']->appends(['ordersTab' => $key, 'filter' => $filter])->onEachSide(1)->links() }}
+                                </div>
+                            @endif
+                        </div>
+                    @endforeach
                 </div>
             </div>
         </div>
     </div>
+
+    <style>
+        .order-list-tabs { flex-wrap: nowrap; overflow-x: auto; white-space: nowrap; gap: 4px; }
+        .order-list-tabs .nav-item { flex: 0 0 auto; }
+        .order-list-tabs .nav-link { display: flex; align-items: center; gap: 7px; color: #555; }
+        .order-list-tabs .nav-link.active { color: #81201d; font-weight: 700; }
+        .order-list-page .table-responsive { overflow-x: auto; }
+        .order-list-page table { min-width: 1050px; }
+        .order-list-page .order-actions { display: flex; flex-wrap: wrap; gap: 5px; min-width: 230px; }
+        @media (max-width: 767.98px) {
+            .order-list-tabs .nav-link { padding: 8px 10px; font-size: 12px; }
+            .order-list-page .card-body { padding: 12px; }
+        }
+    </style>
 @endsection
