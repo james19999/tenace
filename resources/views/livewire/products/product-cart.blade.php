@@ -236,7 +236,6 @@
             function toggleNewCustomerFields() {
                 var isNew = !customerSelect || customerSelect.value === 'default';
                 root.querySelectorAll('.new-customer-field input').forEach(function (input) {
-                    input.required = isNew;
                     input.closest('.new-customer-field').style.display = isNew ? '' : 'none';
                 });
             }
