@@ -169,10 +169,6 @@ class DashboarController extends Controller
                 ->where('status', 'delivered')
                 ->sum('total');
 
-            $totalpubs = $this->totalpub();
-            $totalimpre = $this->totalimprevu();
-            $totalfond = $this->totalfond();
-            $totalepargn = $this->totalepargne();
         } else {
             $chart1 = null;
             $chart2 = null;
@@ -180,10 +176,6 @@ class DashboarController extends Controller
             $chart4 = null;
             $totalOrdersThisWeek = 0;
             $totalCommandes = 0;
-            $totalpubs = 0;
-            $totalimpre = 0;
-            $totalfond = 0;
-            $totalepargn = 0;
         }
 
         $createdTodaySql = '(created_at >= ? AND created_at < ?)';
@@ -236,7 +228,7 @@ class DashboarController extends Controller
             ->count();
 
         return view('dashboard.dashboard', compact(
-            'rupture', 'totalepargn', 'totalpubs', 'totalimpre', 'totalfond',
+            'rupture',
             'totalCommandes', 'expensive', 'totalOrdersThisWeek', 'chart1',
             'chart2', 'chart3', 'chart4', 'createdTodayOrders', 'deliveryTodayOrders',
             'assignedTodayOrders', 'overdueOrders', 'Ordered',
