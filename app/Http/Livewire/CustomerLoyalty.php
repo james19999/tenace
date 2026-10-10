@@ -68,7 +68,7 @@ class CustomerLoyalty extends Component
     public function mount(CustomerLoyaltyService $loyalty): void
     {
         $this->rulesPage = request()->routeIs('customer-loyalty.rules');
-        abort_unless(! $this->rulesPage || $this->isAdmin(), 403);
+        abort_unless($this->isAdmin(), 403);
         $this->fillRules($loyalty->rules());
     }
 

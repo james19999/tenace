@@ -118,7 +118,7 @@
         </div>
     </div>
 
-    @if($loyaltyProfile)
+    @if(Auth::user()->hasRole(['ADMINUSER']) && $loyaltyProfile)
         @php
             $loyaltyMetrics = $loyaltyProfile->metrics ?? [];
             $loyaltyMaxScore = max(100, $loyaltyHistory->max('score') ?? 0);
