@@ -307,16 +307,28 @@ class DashboarController extends Controller
      public function updates (Request $request,$id){
 
         $product=Product::findOrfail($id);
+        $validated = $request->validate([
+            'name' => ['required', 'string', 'max:255'],
+            'price' => ['required', 'numeric', 'min:0'],
+            'price_by' => ['nullable', 'numeric', 'min:0'],
+            'price_market' => ['nullable', 'numeric', 'min:0'],
+            'qts_seuil' => ['nullable', 'integer', 'min:0'],
+            'high_price' => ['nullable', 'numeric', 'min:0'],
+            'commission_amount' => ['nullable', 'numeric', 'min:0'],
+            'description' => ['nullable', 'string', 'max:2000'],
+        ]);
         // $image = $request->file('img');
         // $originalName = $image->getClientOriginalName();
         // $imageName = time() . '_' . $originalName;
         // $image->move(public_path('image'), $imageName);
 
-        $product->update(['name'=>$request->name,'price'=>$request->price,
-        'qts_seuil'=>$request->qts_seuil,
-        'commission_amount'=>$request->commission_amount,
-        'high_price'=>$request->high_price,
-        'description'=>$request->description,
+        $product->update(['name'=>$validated['name'],'price'=>$validated['price'],
+        'price_by'=>$validated['price_by'] ?? null,
+        'price_market'=>$validated['price_market'] ?? null,
+        'qts_seuil'=>$validated['qts_seuil'] ?? null,
+        'commission_amount'=>$validated['commission_amount'] ?? null,
+        'high_price'=>$validated['high_price'] ?? null,
+        'description'=>$validated['description'] ?? null,
         // 'img'=>$imageName
     ]);
 
