@@ -51,21 +51,19 @@
 
     <section class="loyalty-list-card loyalty-performance-card">
         @php $maxCategoryRevenue = max(1, (float) $categoryPerformance->max('revenue')); @endphp
-        <div class="loyalty-section-heading"><div><span class="loyalty-eyebrow">PERFORMANCE COMMERCIALE</span><h2>Chiffre d’affaires par catégorie</h2><p>Compare les ventes générées par chaque profil cliente.</p></div><div class="loyalty-repurchase"><span class="material-icons">repeat</span><span><small>Taux de réachat</small><strong>{{ number_format($summary->repurchase_rate ?? 0, 1, ',', ' ') }} %</strong></span></div></div>
+        <div class="loyalty-section-heading"><div><span class="loyalty-eyebrow">PERFORMANCE COMMERCIALE</span><h2>Chiffre d’affaires par catégorie</h2><p>Compare les ventes générées par chaque profil cliente.</p></div><div class="loyalty-performance-tools"><label class="loyalty-year-filter"><span>Année</span><select class="form-control" wire:model="revenueYear" aria-label="Filtrer le chiffre d’affaires par année"><option value="">Globalement</option>@foreach($revenueYears as $year)<option value="{{ $year }}">{{ $year }}</option>@endforeach</select></label><div class="loyalty-repurchase"><span class="material-icons">repeat</span><span><small>Taux de réachat global</small><strong>{{ number_format($summary->repurchase_rate ?? 0, 1, ',', ' ') }} %</strong></span></div></div></div>
         <div class="loyalty-revenue-chart" role="group" aria-label="Graphique du chiffre d’affaires par catégorie cliente">
             @foreach($categories as $key => $label)
                 @php $performance = $categoryPerformance[$key] ?? null; $revenue = (float) ($performance->revenue ?? 0); $barHeight = $revenue > 0 ? max(8, round($revenue / $maxCategoryRevenue * 100)) : 2; @endphp
-                @if($performance)
-                    <button type="button" class="loyalty-chart-column {{ $categoryFilter === $key ? 'is-selected' : '' }}" wire:click="$set('categoryFilter', '{{ $categoryFilter === $key ? '' : $key }}')" title="{{ $label }} : {{ number_format($revenue, 0, ',', ' ') }} F CFA, {{ number_format($performance->customers_count, 0, ',', ' ') }} cliente(s)">
+                    <button type="button" class="loyalty-chart-column {{ $categoryFilter === $key ? 'is-selected' : '' }}" wire:click="$set('categoryFilter', '{{ $categoryFilter === $key ? '' : $key }}')" title="{{ $label }} : {{ number_format($revenue, 0, ',', ' ') }} F CFA, {{ number_format($performance->customers_count ?? 0, 0, ',', ' ') }} cliente(s)">
                         <span class="loyalty-chart-value">{{ number_format($revenue, 0, ',', ' ') }} <small>F</small></span>
                         <span class="loyalty-chart-stage"><i class="chart-{{ $key }}" style="height:{{ $barHeight }}%"></i></span>
                         <span class="loyalty-chart-label"><i class="category-dot dot-{{ $key }}"></i>{{ $label }}</span>
-                        <small class="loyalty-chart-count">{{ number_format($performance->customers_count, 0, ',', ' ') }} cliente(s)</small>
+                        <small class="loyalty-chart-count">{{ number_format($performance->customers_count ?? 0, 0, ',', ' ') }} cliente(s)</small>
                     </button>
-                @endif
             @endforeach
         </div>
-        <div class="loyalty-chart-caption"><span><i></i> Chiffre d’affaires des commandes livrées</span><span>Clique sur une colonne pour filtrer les clientes</span></div>
+        <div class="loyalty-chart-caption"><span><i></i> Chiffre d’affaires des commandes prises en compte par les règles de fidélité{{ $selectedRevenueYear ? ' · '.$selectedRevenueYear : '' }}</span><span>Clique sur une colonne pour filtrer les clientes</span></div>
     </section>
 
     <section class="loyalty-list-card">

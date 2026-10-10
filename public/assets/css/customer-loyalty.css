@@ -55,3 +55,7 @@
 .loyalty-mobile-stats strong{overflow-wrap:anywhere;word-break:break-word;white-space:normal}
 @media(min-width:1200px) and (max-width:1359.98px){.loyalty-mobile-list{grid-template-columns:repeat(3,minmax(0,1fr))}}
 @media(max-width:767.98px){.loyalty-mobile-list{grid-template-columns:minmax(0,1fr)}}
+/* Annual filter for category revenue chart */
+.loyalty-performance-tools{display:flex;align-items:flex-end;justify-content:flex-end;gap:10px;flex:0 0 auto}.loyalty-year-filter{display:flex;flex-direction:column;gap:4px;min-width:135px;color:#777985;font-size:10px;font-weight:700}.loyalty-year-filter .form-control{height:36px;padding:6px 28px 6px 10px;border:1px solid #e5e1e0;border-radius:8px;background:#fff;color:#393840;font-size:12px}.loyalty-performance-tools .loyalty-repurchase{min-height:51px}
+@media(max-width:767.98px){.loyalty-performance-tools{width:100%;justify-content:space-between;gap:8px}.loyalty-year-filter{flex:1;min-width:0;max-width:170px}.loyalty-performance-tools .loyalty-repurchase{margin-left:0}.loyalty-performance-card .loyalty-section-heading{width:100%}}
+@media(max-width:420px){.loyalty-performance-tools{align-items:stretch;flex-direction:column}.loyalty-year-filter{max-width:none}.loyalty-performance-tools .loyalty-repurchase{align-self:flex-start}}

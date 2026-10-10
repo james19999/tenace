@@ -175,8 +175,8 @@
                         <span class="text">SAV</span>
                     </a>
                     <ul class="collapse {{ $active('costumer.follow-up', 'service-cases.*', 'customer-loyalty.*') ? 'show' : '' }}" id="serviceClientMenu">
-                        <li><a class="{{ $active('costumer.follow-up') }}" href="{{ route('costumer.follow-up') }}"><span class="icon material-icons">remove</span><span class="text">Suivi des contacts</span></a></li>
-                        <li><a class="{{ $active('service-cases.index') }}" href="{{ route('service-cases.index') }}"><span class="icon material-icons">remove</span><span class="text">Réclamations</span></a></li>
+                        <li><a class="{{ $active('costumer.follow-up') }}" href="{{ route('costumer.follow-up') }}"><span class="icon material-icons">remove</span><span class="text">Relances</span></a></li>
+                        <li><a class="{{ $active('service-cases.index') }}" href="{{ route('service-cases.index') }}"><span class="icon material-icons">remove</span><span class="text">Dossiers</span></a></li>
                         <li><a class="{{ $active('customer-loyalty.index') }}" href="{{ route('customer-loyalty.index') }}"><span class="icon material-icons">remove</span><span class="text">Fidélisation</span></a></li>
                     </ul>
                 </li>
@@ -474,7 +474,7 @@
                         <li>
                             <a href="{{ route('service-cases.index') }}" class="{{ $active('service-cases.index') }}">
                                 <span class="icon material-icons">remove</span>
-                                <span class="text">Réclamations</span>
+                                <span class="text">Dossiers</span>
                             </a>
                         </li>
                     </ul>
@@ -585,7 +585,7 @@
                 <li>
                     <a href="{{ route('service-cases.index') }}" class="{{ $active('service-cases.index') }}">
                         <span class="icon material-icons">support_agent</span>
-                        <span class="text">Réclamations</span>
+                        <span class="text">Dossiers</span>
                     </a>
                 </li>
             @elseif (Auth::user()->user_type == 'CALLCENTER')
@@ -598,7 +598,7 @@
                 <li>
                     <a href="{{ route('service-cases.index') }}" class="{{ $active('service-cases.index') }}">
                         <span class="icon material-icons">support_agent</span>
-                        <span class="text">Réclamations</span>
+                        <span class="text">Dossiers</span>
                     </a>
                 </li>
             @else
@@ -612,7 +612,7 @@
                     <li>
                         <a href="{{ route('service-cases.index') }}" class="{{ $active('service-cases.index') }}">
                             <span class="icon material-icons">support_agent</span>
-                            <span class="text">Réclamations</span>
+                            <span class="text">Dossiers</span>
                         </a>
                     </li>
                 @endif

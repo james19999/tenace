@@ -11,6 +11,7 @@ use App\Models\Product;
 use App\Services\CustomerLoyaltyService;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\DB;
 use Livewire\Component;
 use Livewire\WithPagination;
 
@@ -19,7 +20,7 @@ class CustomerLoyalty extends Component
     use WithPagination;
 
     protected $paginationTheme = 'bootstrap';
-    protected $queryString = ['search', 'categoryFilter', 'segmentFilter', 'minScore', 'minOrders', 'minSpend', 'purchaseFrom', 'purchaseTo', 'productFilter'];
+    protected $queryString = ['search', 'categoryFilter', 'segmentFilter', 'minScore', 'minOrders', 'minSpend', 'purchaseFrom', 'purchaseTo', 'productFilter', 'revenueYear'];
 
     public string $search = '';
     public string $categoryFilter = '';
@@ -30,6 +31,7 @@ class CustomerLoyalty extends Component
     public string $purchaseFrom = '';
     public string $purchaseTo = '';
     public string $productFilter = '';
+    public string $revenueYear = '';
     public bool $showRules = false;
     public bool $showReferralForm = false;
     public bool $rulesPage = false;
@@ -450,6 +452,51 @@ class CustomerLoyalty extends Component
             return [$categoryCounts, $segmentCounts, $metrics, $categoryPerformance];
         });
 
+        $loyaltyRules = app(CustomerLoyaltyService::class)->rules();
+        $qualifyingStatuses = array_values(array_intersect($loyaltyRules['qualifying_statuses'] ?? ['delivered'], ['ordered', 'delivered']));
+        $revenueYears = Cache::remember('customer-loyalty-revenue-years:'.md5(implode(',', $qualifyingStatuses)), 300, function () use ($qualifyingStatuses) {
+            if ($qualifyingStatuses === []) return collect();
+
+            return DB::table('orders')->whereIn('status', $qualifyingStatuses)
+                ->selectRaw('YEAR(COALESCE(date_order, created_at)) as year')
+                ->distinct()->orderByDesc('year')->pluck('year')->filter()->values();
+        });
+        $selectedRevenueYear = ctype_digit($this->revenueYear) && $revenueYears->contains((int) $this->revenueYear)
+            ? (int) $this->revenueYear
+            : null;
+
+        if ($selectedRevenueYear !== null) {
+            $categoryPerformance = Cache::remember(
+                'customer-loyalty-category-performance:'.md5(serialize([$selectedRevenueYear, $qualifyingStatuses])),
+                60,
+                function () use ($selectedRevenueYear, $qualifyingStatuses) {
+                    if ($qualifyingStatuses === []) return collect();
+
+                    $startDate = sprintf('%04d-01-01', $selectedRevenueYear);
+                    $endDate = sprintf('%04d-12-31', $selectedRevenueYear);
+                    $startDateTime = $startDate.' 00:00:00';
+                    $endDateTime = $endDate.' 23:59:59';
+                    $yearlyOrders = DB::table('orders')
+                        ->select('costumer_id')
+                        ->selectRaw('SUM(CAST(total AS DECIMAL(14,2))) as revenue')
+                        ->whereIn('status', $qualifyingStatuses)
+                        ->where(function ($query) use ($startDate, $endDate, $startDateTime, $endDateTime) {
+                            $query->whereBetween('date_order', [$startDate, $endDate])
+                                ->orWhere(function ($query) use ($startDateTime, $endDateTime) {
+                                    $query->whereNull('date_order')->whereBetween('created_at', [$startDateTime, $endDateTime]);
+                                });
+                        })
+                        ->groupBy('costumer_id');
+
+                    return DB::query()->fromSub($yearlyOrders, 'yearly_orders')
+                        ->join('customer_loyalty_profiles as profiles', DB::raw('CAST(yearly_orders.costumer_id AS UNSIGNED)'), '=', 'profiles.costumer_id')
+                        ->select('profiles.category')
+                        ->selectRaw('COUNT(*) as customers_count, SUM(yearly_orders.revenue) as revenue')
+                        ->groupBy('profiles.category')->get()->keyBy('category');
+                }
+            );
+        }
+
         return view('livewire.customer-loyalty', [
             'profiles' => $profiles,
             'referralDetails' => $referralDetails,
@@ -459,6 +506,8 @@ class CustomerLoyalty extends Component
             'segmentCounts' => $segmentCounts,
             'summary' => $metrics,
             'categoryPerformance' => $categoryPerformance,
+            'revenueYears' => $revenueYears,
+            'selectedRevenueYear' => $selectedRevenueYear,
             'products' => Product::orderBy('name')->get(['id', 'name']),
             'isAdmin' => $this->isAdmin(),
             'canRecordReferral' => $this->isAdmin() || Auth::user()->hasRole(['MNG', 'SCR']),
