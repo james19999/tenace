@@ -1,286 +1,148 @@
-<div class="container-fluid py-4">
-
-    <div class="d-flex justify-content-between align-items-center mb-4">
-
-        <div>
-            <h2 class="fw-bold mb-1">
-                Audit des ventes produits
-            </h2>
-
-
-        </div>
-
-        <button onclick="window.print()" class="btn btn-success no-print">
-            🖨 Imprimer
-        </button>
-
-    </div>
-
-    {{-- FILTRES --}}
-
-    <div class="card shadow-sm mb-4 no-print">
-
-        <div class="card-body">
-
-            <div class="row g-3">
-
-                <div class="col-md-3">
-
-                    <label class="form-label">
-                        Type de période
-                    </label>
-
-                    <select wire:model="filterType" class="form-select form-control">
-
-                        <option value="day">
-                            Jour
-                        </option>
-
-                        <option value="week">
-                            Semaine
-                        </option>
-
-                        <option value="month">
-                            Mois
-                        </option>
-
-                        <option value="year">
-                            Année
-                        </option>
-
-                    </select>
-
-                </div>
-
-                @if ($filterType == 'day')
-                    <div class="col-md-3">
-
-                        <label class="form-label">
-                            Date
-                        </label>
-
-                        <input type="date" class="form-control" wire:model="selectedDay">
-
-                    </div>
-                @endif
-
-                @if ($filterType == 'week')
-                    <div class="col-md-3">
-
-                        <label class="form-label">
-                            Semaine
-                        </label>
-
-                        <input type="week" class="form-control" wire:model="selectedWeek">
-
-                    </div>
-                @endif
-
-                @if ($filterType == 'month')
-                    <div class="col-md-3">
-
-                        <label class="form-label">
-                            Mois
-                        </label>
-
-                        <input type="month" class="form-control" wire:model="selectedMonth">
-
-                    </div>
-                @endif
-
-                @if ($filterType == 'year')
-                    <div class="col-md-3">
-
-                        <label class="form-label">
-                            Année
-                        </label>
-
-                        <input type="number" min="2020" class="form-control" wire:model="selectedYear">
-
-                    </div>
-                @endif
-
-            </div>
-
-        </div>
-
-    </div>
-
-    {{-- KPI --}}
-    <div id="printArea">
-
-
-        <div class="row g-3 mb-4">
-
-            {{-- Quantité vendue --}}
-            <div class="col-md-3">
-                <div class="card shadow-sm border-0 h-100">
-                    <div class="card-body">
-                        <small class="text-muted">
-                            Quantité vendue
-                        </small>
-
-                        <h3 class="fw-bold text-dark mb-0">
-                            {{ number_format($this->totalQty) }}
-                        </h3>
-                    </div>
-                </div>
-            </div>
-
-            {{-- Chiffre d'affaires --}}
-            <div class="col-md-3">
-                <div class="card shadow-sm border-0 h-100">
-                    <div class="card-body">
-                        <small class="text-muted">
-                            Chiffre d'affaires
-                        </small>
-
-                        <h3 class="fw-bold text-primary mb-0">
-                            {{ number_format($this->totalAmount) }} XOF
-                        </h3>
-                    </div>
-                </div>
-            </div>
-
-            {{-- Taxes --}}
-            <div class="col-md-3">
-                <div class="card shadow-sm border-0 h-100">
-                    <div class="card-body">
-                        <small class="text-muted">
-                            Total remise
-                        </small>
-
-                        <h3 class="fw-bold text-danger mb-0">
-                            {{ number_format($this->tax) }} XOF
-                        </h3>
-                    </div>
-                </div>
-            </div>
-
-            {{-- CA Net --}}
-            <div class="col-md-3">
-                <div class="card shadow-sm border-0 h-100">
-                    <div class="card-body">
-                        <small class="text-muted">
-                            CA net après remise
-                        </small>
-
-                        <h3 class="fw-bold text-success mb-0">
-                            {{ number_format($this->netAmount) }} XOF
-                        </h3>
-                    </div>
-                </div>
-            </div>
-
-        </div>
-
-        {{-- TABLEAU --}}
-
-        <div>
-
-            <div class="card shadow-sm border-0 mt-3">
-
-                <div class="card-header bg-white">
-
-                    <h5 class="mb-0">
-                        Détail des ventes du {{ now() }}
-                    </h5>
-
-                </div>
-
-                <div class="table-responsive">
-
-                    <table class="table table-striped table-hover mb-0">
-
-                        <thead class="table-light">
-
-                            <tr>
-
-                                <th>Produit</th>
-
-                                <th class="text-center">
-                                    Quantité
-                                </th>
-
-                                <th class="text-end">
-                                    Montant
-                                </th>
-
-                            </tr>
-
-                        </thead>
-
-                        <tbody>
-
-                            @forelse($reports as $report)
-                                <tr>
-
-                                    <td>
-                                        {{ $report->name }}
-                                    </td>
-
-                                    <td class="text-center fw-bold">
-
-                                        {{ number_format($report->qty) }}
-
-                                    </td>
-
-                                    <td class="text-end text-success fw-bold">
-
-                                        {{ number_format($report->amount) }}
-                                        XOF
-
-                                    </td>
-
-                                </tr>
-
-                            @empty
-
-                                <tr>
-
-                                    <td colspan="3" class="text-center py-4">
-
-                                        Aucun résultat trouvé
-
-                                    </td>
-
-                                </tr>
-                            @endforelse
-
-                        </tbody>
-
-                    </table>
-
-                </div>
-
-            </div>
-
-        </div>
-    </div>
+<div class="product-audit-page">
+    @php
+        $periodLabel = match ($filterType) {
+            'day' => $selectedDay ? \Illuminate\Support\Carbon::parse($selectedDay)->format('d/m/Y') : 'Jour sélectionné',
+            'week' => $selectedWeek ? 'Semaine ' . substr($selectedWeek, -2) . ' · ' . substr($selectedWeek, 0, 4) : 'Semaine sélectionnée',
+            'month' => $selectedMonth ? \Illuminate\Support\Carbon::parse($selectedMonth . '-01')->translatedFormat('F Y') : 'Mois sélectionné',
+            'year' => (string) $selectedYear,
+            default => 'Période sélectionnée',
+        };
+    @endphp
 
     <style>
-        @media print {
-
-            body * {
-                visibility: hidden;
-            }
-
-            #printArea,
-            #printArea * {
-                visibility: visible;
-            }
-
-            #printArea {
-                position: absolute;
-                left: 0;
-                top: 0;
-                width: 100%;
-            }
-
-            .no-print {
-                display: none !important;
-            }
+        .product-audit-page{--audit-red:#861b1b;--audit-ink:#282b35;--audit-muted:#777d89;--audit-border:#e7e9ee;color:var(--audit-ink);padding:8px 0 34px}
+        .product-audit-page *{box-sizing:border-box}
+        .audit-shell{max-width:1460px;margin:0 auto;padding:0 20px}
+        .audit-hero{display:flex;justify-content:space-between;align-items:flex-end;gap:20px;margin:8px 0 22px}
+        .audit-eyebrow{margin:0 0 7px;color:var(--audit-red);font-size:12px;font-weight:800;letter-spacing:.14em;text-transform:uppercase}
+        .audit-hero h1{margin:0;color:var(--audit-ink);font-size:clamp(27px,3vw,36px);font-weight:800;line-height:1.12}
+        .audit-hero p{margin:8px 0 0;color:var(--audit-muted);font-size:14px}
+        .audit-print{display:inline-flex;align-items:center;justify-content:center;gap:8px;min-height:43px;padding:9px 15px;border:1px solid #d9e4dd;border-radius:10px;background:#f1f8f3;color:#287046;font-weight:750;white-space:nowrap}
+        .audit-card{overflow:hidden;margin-bottom:17px;border:1px solid var(--audit-border);border-radius:15px;background:#fff;box-shadow:0 6px 22px rgba(32,36,46,.04)}
+        .audit-card-heading{display:flex;align-items:center;gap:11px;padding:16px 19px;border-bottom:1px solid var(--audit-border)}
+        .audit-heading-icon{display:grid;place-items:center;width:36px;height:36px;flex:0 0 36px;border-radius:11px;background:#f8eded;color:var(--audit-red)}
+        .audit-card-heading h2{margin:0;font-size:16px;font-weight:800}.audit-card-heading p{margin:3px 0 0;color:var(--audit-muted);font-size:12px}
+        .audit-filter-body{padding:17px 19px}
+        .audit-filters{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));align-items:end;gap:14px}
+        .audit-field{min-width:0}.audit-field label{display:block;margin:0 0 7px;color:#4d5260;font-size:12px;font-weight:750}
+        .audit-field .form-control{height:43px;border:1px solid #dfe2e8;border-radius:9px;box-shadow:none;font-size:14px}
+        .audit-field .form-control:focus{border-color:#bd7777;box-shadow:0 0 0 3px rgba(134,27,27,.09)}
+        .audit-period-chip{display:inline-flex;align-items:center;gap:7px;margin-top:13px;padding:6px 10px;border-radius:20px;background:#faf1f0;color:#81312d;font-size:12px;font-weight:700}
+        .audit-kpis{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:13px;margin-bottom:17px}
+        .audit-kpi{position:relative;min-width:0;min-height:126px;padding:17px 18px;border:1px solid var(--audit-border);border-radius:14px;background:#fff;box-shadow:0 5px 18px rgba(32,36,46,.035)}
+        .audit-kpi-top{display:flex;align-items:center;gap:9px;color:var(--audit-muted);font-size:12px;font-weight:700}
+        .audit-kpi-icon{display:grid;place-items:center;width:34px;height:34px;flex:0 0 34px;border-radius:10px;background:#f8eded;color:var(--audit-red)}
+        .audit-kpi strong{display:block;overflow-wrap:anywhere;margin-top:12px;color:var(--audit-ink);font-size:clamp(21px,2vw,28px);font-weight:850;letter-spacing:-.5px;line-height:1.15}
+        .audit-kpi small{display:block;margin-top:5px;color:#9297a1;font-size:11px}
+        .audit-kpi.kpi-green .audit-kpi-icon{background:#edf7f0;color:#3c8159}.audit-kpi.kpi-blue .audit-kpi-icon{background:#eef3fb;color:#5077a7}.audit-kpi.kpi-amber .audit-kpi-icon{background:#fff5e7;color:#a87424}
+        .audit-results-heading{display:flex;justify-content:space-between;align-items:center;gap:12px;padding:16px 19px;border-bottom:1px solid var(--audit-border)}
+        .audit-results-heading h2{margin:0;font-size:16px;font-weight:800}.audit-results-heading p{margin:4px 0 0;color:var(--audit-muted);font-size:12px}
+        .audit-results-count{padding:6px 10px;border-radius:20px;background:#f5f6f8;color:#626875;font-size:12px;font-weight:750;white-space:nowrap}
+        .audit-table-wrap{width:100%;overflow-x:auto}.audit-table{width:100%;border-collapse:collapse;min-width:620px}
+        .audit-table th{padding:12px 16px;background:#f8f9fb;color:#6e7480;text-align:left;font-size:10px;font-weight:800;letter-spacing:.07em;text-transform:uppercase}
+        .audit-table th.numeric,.audit-table td.numeric{text-align:right}.audit-table td{padding:13px 16px;border-top:1px solid #eff0f3;font-size:13px;vertical-align:middle}
+        .audit-table tbody tr:hover{background:#fcfaf9}.audit-product-name{font-weight:750;color:#343842}.audit-qty{display:inline-flex;min-width:40px;justify-content:center;padding:5px 9px;border-radius:8px;background:#f2f4f7;color:#454b57;font-weight:800}
+        .audit-amount{color:#34724b;font-weight:800;white-space:nowrap}.audit-empty{text-align:center!important;padding:38px 15px!important;color:var(--audit-muted)}
+        .audit-table tfoot td{background:#fbfbfc;font-weight:800;border-top:1px solid var(--audit-border)}
+        .audit-pagination{display:flex;justify-content:flex-end;padding:14px 18px;border-top:1px solid var(--audit-border)}
+        .audit-pagination nav{margin:0}.audit-pagination p{margin:0;color:var(--audit-muted);font-size:12px}
+        .audit-pagination .pagination{margin:0;flex-wrap:wrap;gap:4px}.audit-pagination .page-link{border-radius:7px!important;color:var(--audit-red);border-color:#e6e7eb}
+        .audit-pagination .page-item.active .page-link{background:var(--audit-red);border-color:var(--audit-red);color:#fff}
+        @media(max-width:991px){.audit-shell{padding:0 14px}.audit-filters{grid-template-columns:repeat(2,minmax(0,1fr))}.audit-kpis{grid-template-columns:repeat(2,minmax(0,1fr))}}
+        @media(max-width:575px){.product-audit-page{padding-top:0}.audit-shell{padding:0 11px}.audit-hero{display:block;margin:8px 0 17px}.audit-hero h1{font-size:26px}.audit-hero p{font-size:13px;line-height:1.5}.audit-print{margin-top:13px;width:100%}.audit-card{border-radius:12px}.audit-card-heading,.audit-results-heading{padding:14px}.audit-filter-body{padding:14px}.audit-filters{grid-template-columns:1fr;gap:12px}.audit-kpis{gap:9px}.audit-kpi{min-height:112px;padding:13px 12px}.audit-kpi-top{align-items:flex-start;font-size:11px;line-height:1.35}.audit-kpi-icon{width:30px;height:30px;flex-basis:30px}.audit-kpi strong{font-size:19px;margin-top:10px}.audit-kpi small{font-size:10px}.audit-table th,.audit-table td{padding:11px 12px}.audit-results-heading h2{font-size:14px}}
+        @media(max-width:360px){.audit-kpis{grid-template-columns:1fr}.audit-kpi{min-height:95px}}
+        @media print{
+            body *{visibility:hidden!important}.product-audit-page,.product-audit-page *{visibility:visible!important}
+            .product-audit-page{position:absolute;inset:0;width:100%;padding:0}.audit-shell{max-width:none;padding:0}
+            .no-print,.audit-print{display:none!important}.audit-card,.audit-kpi{box-shadow:none;break-inside:avoid}
+            .audit-filters-card{display:none!important}.audit-table{min-width:0}.audit-table-wrap{overflow:visible}
         }
     </style>
 
+    <div class="audit-shell">
+        <div class="audit-hero">
+            <div>
+                <p class="audit-eyebrow">Pilotage commercial</p>
+                <h1>Audit des ventes produits</h1>
+                <p>Analyse des quantités vendues et des montants par produit sur la période choisie.</p>
+            </div>
+            <button type="button" onclick="window.print()" class="audit-print no-print"><span class="material-icons" aria-hidden="true">print</span>Imprimer le rapport</button>
+        </div>
+
+        <section class="audit-card audit-filters-card no-print" aria-labelledby="audit-filters-title">
+            <div class="audit-card-heading">
+                <span class="audit-heading-icon material-icons" aria-hidden="true">tune</span>
+                <div><h2 id="audit-filters-title">Période d’analyse</h2><p>Choisis une période pour actualiser les résultats.</p></div>
+            </div>
+            <div class="audit-filter-body">
+                <div class="audit-filters">
+                    <div class="audit-field">
+                        <label for="audit-filter-type">Type de période</label>
+                        <select id="audit-filter-type" wire:model="filterType" class="form-control">
+                            <option value="day">Jour</option><option value="week">Semaine</option><option value="month">Mois</option><option value="year">Année</option>
+                        </select>
+                    </div>
+                    @if ($filterType == 'day')
+                        <div class="audit-field"><label for="audit-day">Date</label><input id="audit-day" type="date" class="form-control" wire:model="selectedDay"></div>
+                    @endif
+                    @if ($filterType == 'week')
+                        <div class="audit-field"><label for="audit-week">Semaine</label><input id="audit-week" type="week" class="form-control" wire:model="selectedWeek"></div>
+                    @endif
+                    @if ($filterType == 'month')
+                        <div class="audit-field"><label for="audit-month">Mois</label><input id="audit-month" type="month" class="form-control" wire:model="selectedMonth"></div>
+                    @endif
+                    @if ($filterType == 'year')
+                        <div class="audit-field"><label for="audit-year">Année</label><input id="audit-year" type="number" min="2020" max="2100" class="form-control" wire:model="selectedYear"></div>
+                    @endif
+                </div>
+                <span class="audit-period-chip"><span class="material-icons" aria-hidden="true" style="font-size:16px">calendar_month</span>{{ $periodLabel }}</span>
+            </div>
+        </section>
+
+        <div id="printArea" class="audit-report-content">
+            <div class="audit-kpis">
+                <article class="audit-kpi">
+                    <div class="audit-kpi-top"><span class="audit-kpi-icon material-icons" aria-hidden="true">inventory_2</span>Quantité vendue</div>
+                    <strong>{{ number_format($this->totalQty, 0, ',', ' ') }}</strong><small>Unités sur la période</small>
+                </article>
+                <article class="audit-kpi kpi-blue">
+                    <div class="audit-kpi-top"><span class="audit-kpi-icon material-icons" aria-hidden="true">payments</span>Chiffre d’affaires produits</div>
+                    <strong>{{ number_format($this->totalAmount, 0, ',', ' ') }} F</strong><small>Montant des lignes de commande</small>
+                </article>
+                <article class="audit-kpi kpi-amber">
+                    <div class="audit-kpi-top"><span class="audit-kpi-icon material-icons" aria-hidden="true">discount</span>Écart avec le total commandes</div>
+                    <strong>{{ number_format($this->tax, 0, ',', ' ') }} F</strong><small>Ventes produits moins total enregistré</small>
+                </article>
+                <article class="audit-kpi kpi-green">
+                    <div class="audit-kpi-top"><span class="audit-kpi-icon material-icons" aria-hidden="true">account_balance_wallet</span>Montant net calculé</div>
+                    <strong>{{ number_format($this->netAmount, 0, ',', ' ') }} F</strong><small>Selon les montants de commande enregistrés</small>
+                </article>
+            </div>
+
+            <section class="audit-card" aria-labelledby="audit-results-title">
+                <div class="audit-results-heading">
+                    <div><h2 id="audit-results-title">Détail des ventes</h2><p>Commandes livrées · {{ $periodLabel }}</p></div>
+                    <span class="audit-results-count">{{ $paginatedReports->total() }} produit(s)</span>
+                </div>
+                <div class="audit-table-wrap">
+                    <table class="audit-table">
+                        <thead><tr><th>Produit</th><th class="numeric">Quantité vendue</th><th class="numeric">Montant</th></tr></thead>
+                        <tbody>
+                            @forelse($paginatedReports as $report)
+                                <tr><td class="audit-product-name">{{ $report->name }}</td><td class="numeric"><span class="audit-qty">{{ number_format($report->qty, 0, ',', ' ') }}</span></td><td class="numeric audit-amount">{{ number_format($report->amount, 0, ',', ' ') }} F</td></tr>
+                            @empty
+                                <tr><td colspan="3" class="audit-empty">Aucune vente livrée trouvée pour cette période.</td></tr>
+                            @endforelse
+                        </tbody>
+                        @if ($paginatedReports->total() > 0)
+                            <tfoot><tr><td>Total de la période</td><td class="numeric">{{ number_format($this->totalQty, 0, ',', ' ') }}</td><td class="numeric">{{ number_format($this->totalAmount, 0, ',', ' ') }} F</td></tr></tfoot>
+                        @endif
+                    </table>
+                </div>
+                @if ($paginatedReports->hasPages())
+                    <div class="audit-pagination">{{ $paginatedReports->links() }}</div>
+                @endif
+            </section>
+        </div>
+    </div>
 </div>

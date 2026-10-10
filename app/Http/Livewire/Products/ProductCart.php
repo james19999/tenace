@@ -34,9 +34,10 @@ class ProductCart extends Component
 
     private function calculateTotal()
     {
-        $this->totals = intval($this->remis) == 0
-            ? Cart::instance('cart')->subtotal()
-            : Cart::instance('cart')->subtotal() - (Cart::instance('cart')->subtotal() * intval($this->remis)) / 100;
+        $subtotal = (float) Cart::instance('cart')->subtotal(2, '.', '');
+        $discount = min(100, max(0, (float) $this->remis));
+
+        $this->totals = $subtotal - ($subtotal * $discount / 100);
     }
 
 
@@ -48,6 +49,9 @@ class ProductCart extends Component
 
     public function increment($rowId){
         $produit=Cart::instance('cart')->get($rowId);
+        if (!$produit || !$produit->model || (int) $produit->qty >= (int) $produit->model->qt_initial) {
+            return;
+        }
         $qty=$produit->qty+1;
         Cart::instance('cart')->update($rowId,$qty);
         $this->calculateTotal();
@@ -72,7 +76,7 @@ class ProductCart extends Component
     }
 
        public function total() {
-        session()->put('subtotal',Cart::instance('cart')->subtotal());
+        session()->put('subtotal', Cart::instance('cart')->subtotal(2, '.', ''));
        }
 
     public function render()
@@ -86,7 +90,6 @@ class ProductCart extends Component
         ])
         ->extends('layouts.admin')
         ->section('content');
-        $this->total();
 
     }
 }
