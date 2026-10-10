@@ -90,12 +90,13 @@ public function assignOrder()
 
     $order = Order::findOrFail($this->assignOrderId);
 
-    $order->update([
-        'user_id' => $livreur->id,
-        'status_order'=>true,
-        'take' => true,
-        'assigned_at' => now(),
-    ]);
+    // These operational fields are intentionally not mass-assignable on Order.
+    // Set them explicitly so the assignment timestamp is persisted as well.
+    $order->user_id = $livreur->id;
+    $order->status_order = true;
+    $order->take = true;
+    $order->assigned_at = now();
+    $order->save();
 
     $this->showAssignModal = false;
 

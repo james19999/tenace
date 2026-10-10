@@ -14,6 +14,12 @@ class Order extends Model
 
     protected static function booted(): void
     {
+        static::saving(function (self $order): void {
+            if ($order->status === 'delivered' && ($order->isDirty('status') || ! $order->delivered_at)) {
+                $order->delivered_at = now();
+            }
+        });
+
         static::saved(function (self $order): void {
             if (($order->wasRecentlyCreated || $order->wasChanged(['status', 'total', 'costumer_id', 'date_order'])) && is_numeric($order->costumer_id)) {
                 try {
@@ -27,6 +33,7 @@ class Order extends Model
 
     protected $casts = [
         'assigned_at' => 'datetime',
+        'delivered_at' => 'datetime',
     ];
 
     protected $fillable=[
@@ -45,6 +52,7 @@ class Order extends Model
         'montant',
         'order_by',
         'date_order',
+        'delivered_at',
     ];
 
 
