@@ -35,8 +35,8 @@
             @if ($productOrders->isNotEmpty())
                 <section class="product-orders-card" aria-labelledby="product-orders-chart-title">
                     <div class="product-orders-card-heading">
-                        <div><h2 id="product-orders-chart-title">Commandes par produit</h2><p>Les produits les plus présents dans les commandes apparaissent en premier.</p></div>
-                        <span class="product-orders-count">{{ $productOrders->count() }} produit(s)</span>
+                        <div><h2 id="product-orders-chart-title">Top 10 des produits</h2><p>Les dix produits avec le plus de lignes de commande sur la période.</p></div>
+                        <span class="product-orders-count">10 produits maximum</span>
                     </div>
                     <div class="product-orders-chart-scroll">
                         <canvas id="productOrdersChart" aria-label="Graphique du nombre de lignes de commande par produit"></canvas>
@@ -102,9 +102,12 @@
         <script>
             (function () {
                 var rows = @json($productOrders->values());
+                var chartRows = rows.slice().sort(function (a, b) {
+                    return Number(b.order_count) - Number(a.order_count);
+                }).slice(0, 10);
                 var canvas = document.getElementById('productOrdersChart');
                 if (!canvas || !rows.length || typeof Chart === 'undefined') return;
-                canvas.style.height = Math.max(320, rows.length * 32) + 'px';
+                canvas.style.height = Math.max(300, chartRows.length * 38) + 'px';
                 var context = canvas.getContext('2d');
                 var gradient = context.createLinearGradient(0, 0, Math.max(canvas.parentElement.clientWidth || 700, 1), 0);
                 gradient.addColorStop(0, '#8b2524');
@@ -112,15 +115,15 @@
                 new Chart(context, {
                     type: 'bar',
                     data: {
-                        labels: rows.map(function (row) { return row.name; }),
-                        datasets: [{ label: 'Lignes de commande', data: rows.map(function (row) { return Number(row.order_count); }), backgroundColor: gradient, borderRadius: 5, maxBarThickness: 21 }]
+                        labels: chartRows.map(function (row) { return row.name; }),
+                        datasets: [{ label: 'Lignes de commande', data: chartRows.map(function (row) { return Number(row.order_count); }), backgroundColor: gradient, borderRadius: 5, maxBarThickness: 21 }]
                     },
                     options: {
                         indexAxis: 'y', responsive: true, maintainAspectRatio: false,
                         plugins: { legend: { display: false }, tooltip: { callbacks: { label: function (context) { return ' ' + context.formattedValue + ' ligne(s)'; } } } },
                         scales: {
                             x: { beginAtZero: true, ticks: { precision: 0 }, grid: { color: '#eef0f3' }, title: { display: true, text: 'Nombre de lignes de commande' } },
-                            y: { grid: { display: false }, ticks: { color: '#4d5360', autoSkip: false, callback: function (value) { var label = this.getLabelForValue(value); return label.length > 24 ? label.slice(0, 22) + '…' : label; } } }
+                            y: { grid: { display: false }, ticks: { color: '#4d5360', autoSkip: false, font: { size: 11 }, callback: function (value) { var label = this.getLabelForValue(value); return label.length > 28 ? label.slice(0, 26) + '…' : label; } } }
                         }
                     }
                 });
