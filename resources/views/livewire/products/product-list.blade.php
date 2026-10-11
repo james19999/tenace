@@ -1,6 +1,6 @@
 <div class="col-12 product-catalog-page">
     @php
-        $isAdmin = Auth::user()->user_type === 'ADMINUSER';
+        $isAdmin = Auth::user()->isAdmin();
     @endphp
 
     <div class="catalog-header">

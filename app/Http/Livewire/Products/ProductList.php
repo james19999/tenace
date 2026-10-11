@@ -5,6 +5,7 @@ namespace App\Http\Livewire\Products;
 use App\Models\Product;
 use Livewire\Component;
 use Livewire\WithPagination;
+use Illuminate\Support\Facades\Auth;
 use Gloudemans\Shoppingcart\Facades\Cart;
 
 class ProductList extends Component
@@ -58,14 +59,19 @@ class ProductList extends Component
 
     public function render()
     {
-        $inventory = Product::query()
+        $inventoryQuery = Product::query()
             ->selectRaw('COUNT(*) as total_products')
             ->selectRaw('SUM(CASE WHEN qt_initial IS NULL OR qt_initial <= 0 THEN 1 ELSE 0 END) as out_of_stock_count')
             ->selectRaw('SUM(CASE WHEN qt_initial > 0 AND qts_seuil IS NOT NULL AND qt_initial <= qts_seuil THEN 1 ELSE 0 END) as low_stock_count')
-            ->selectRaw('SUM(CASE WHEN qt_initial > 0 AND (qts_seuil IS NULL OR qt_initial > qts_seuil) THEN 1 ELSE 0 END) as available_count')
-            ->selectRaw('COALESCE(SUM(price_market * qts_sell), 0) as purchase_stock_value')
-            ->selectRaw('COALESCE(SUM(price * qts_sell), 0) as retail_stock_value')
-            ->first();
+            ->selectRaw('SUM(CASE WHEN qt_initial > 0 AND (qts_seuil IS NULL OR qt_initial > qts_seuil) THEN 1 ELSE 0 END) as available_count');
+
+        if (Auth::user()?->isAdmin()) {
+            $inventoryQuery
+                ->selectRaw('COALESCE(SUM(price_market * qts_sell), 0) as purchase_stock_value')
+                ->selectRaw('COALESCE(SUM(price * qts_sell), 0) as retail_stock_value');
+        }
+
+        $inventory = $inventoryQuery->first();
 
         $productsQuery = Product::query()
             ->when(trim($this->search) !== '', function ($query) {
