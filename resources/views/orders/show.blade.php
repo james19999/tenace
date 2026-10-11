@@ -15,17 +15,18 @@
     <style>
         .order-detail { --od-red:#851b1b; --od-ink:#292d38; --od-muted:#747b89; --od-line:#e8eaf0; color:var(--od-ink); padding:8px 0 32px; }
         .order-detail * { box-sizing:border-box; }
-        .od-heading { display:flex; align-items:center; justify-content:space-between; gap:18px; margin:0 0 22px; }
+        .od-heading { position:relative; display:flex; align-items:center; justify-content:space-between; gap:18px; width:100%; min-height:92px; margin:0 0 24px; clear:both; }
+        .od-heading > div:first-child { min-width:0; flex:1 1 auto; }
         .od-eyebrow { margin:0 0 6px; color:var(--od-red); font-size:11px; font-weight:800; letter-spacing:.14em; text-transform:uppercase; }
         .od-title { margin:0; font-size:clamp(24px,3vw,34px); line-height:1.15; font-weight:800; }
-        .od-subtitle { margin:7px 0 0; color:var(--od-muted); }
+        .od-subtitle { display:block; position:static; max-width:680px; margin:7px 0 0; color:var(--od-muted); line-height:1.5; overflow-wrap:anywhere; }
         .od-heading-actions { display:flex; gap:9px; flex-wrap:wrap; }
         .od-btn { display:inline-flex; align-items:center; justify-content:center; gap:7px; min-height:42px; padding:9px 15px; border:1px solid var(--od-line); border-radius:10px; background:#fff; color:var(--od-ink); font-weight:700; text-decoration:none; cursor:pointer; }
         .od-btn:hover { text-decoration:none; filter:brightness(.97); }
         .od-btn-primary { color:#fff; background:var(--od-red); border-color:var(--od-red); }
         .od-alert { margin-bottom:15px; border-radius:12px; }
         .od-paper, .od-panel { background:#fff; border:1px solid var(--od-line); border-radius:16px; box-shadow:0 8px 24px rgba(27,34,49,.045); }
-        .od-paper { padding:24px; }
+        .od-paper { position:relative; clear:both; margin-top:0; padding:24px; }
         .od-receipt-head { display:grid; grid-template-columns:1.1fr 1fr 1fr 1fr; gap:20px; padding-bottom:22px; border-bottom:1px solid var(--od-line); }
         .od-brand { display:flex; align-items:flex-start; gap:12px; }
         .od-logo { width:58px; height:58px; flex:none; object-fit:contain; padding:5px; border:1px solid var(--od-line); border-radius:12px; background:#fff; }
@@ -74,9 +75,9 @@
         }
         @media (max-width: 650px) {
             .order-detail { padding-top:0; }
-            .od-heading { align-items:flex-start; flex-direction:column; }
-            .od-heading-actions { width:100%; }
-            .od-heading-actions .od-btn { flex:1; }
+            .od-heading { display:block; min-height:0; margin-bottom:18px; }
+            .od-heading-actions { position:static; display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); width:100%; margin-top:14px; }
+            .od-heading-actions .od-btn { width:100%; min-width:0; padding:9px 8px; }
             .od-paper { padding:16px 13px; border-radius:13px; }
             .od-receipt-head { grid-template-columns:1fr 1fr; gap:16px 12px; }
             .od-brand { grid-column:1/-1; }
@@ -111,7 +112,7 @@
             <div class="alert alert-success od-alert"><strong>{{ session('succes') }}</strong></div>
         @endif
 
-        <header class="od-heading no-print">
+        <div class="od-heading no-print">
             <div>
                 <p class="od-eyebrow">Gestion des commandes</p>
                 <h1 class="od-title">Commande {{ $Orders->code }}</h1>
@@ -121,9 +122,9 @@
                 <a href="{{ route('order') }}" class="od-btn"><span aria-hidden="true">←</span> Retour</a>
                 <button type="button" onclick="printDiv('printableArea')" class="od-btn od-btn-primary">Imprimer la commande</button>
             </div>
-        </header>
+        </div>
 
-        <main id="printableArea" class="od-paper">
+        <div id="printableArea" class="od-paper">
             <section class="od-receipt-head">
                 <div class="od-brand">
                     @forelse ($settings as $setting)
@@ -216,7 +217,7 @@
                     <div class="od-total-row od-total-final"><span>Montant à payer</span><strong>{{ number_format($Orders->total + $Orders->tax, 0, ',', ' ') }} F</strong></div>
                 </div>
             </section>
-        </main>
+        </div>
 
         <section class="od-actions no-print">
             <h2 class="od-actions-title">Actions sur la commande</h2>
