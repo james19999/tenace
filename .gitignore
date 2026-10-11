@@ -3,6 +3,11 @@
 /public/build
 /public/hot
 /public/storage
+/public/image/*
+!/public/image/1706869283_logo.png
+!/public/image/1707000315_1706869283_logo.png
+!/public/image/1748778215_laravelstyle.PNG
+!/public/image/1748780714_laravelstyle.PNG
 /storage/*.key
 /vendor
 .env
