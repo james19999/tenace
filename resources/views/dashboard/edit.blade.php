@@ -1,6 +1,16 @@
 @extends('layouts.admin')
 
 @section('content')
+    @php
+        $productImageUrl = null;
+        if ($product->img) {
+            $productImageUrl = \Illuminate\Support\Str::startsWith($product->img, ['http://', 'https://', '/'])
+                ? $product->img
+                : (\Illuminate\Support\Str::startsWith($product->img, ['image/', 'storage/'])
+                    ? asset($product->img)
+                    : url('image/'.ltrim($product->img, '/')));
+        }
+    @endphp
     <div class="product-edit-page">
         <div class="product-edit-heading">
             <a href="{{ route('product') }}" class="product-edit-back"><span class="material-icons">arrow_back</span> Retour au catalogue</a>
@@ -9,7 +19,7 @@
             <p>Met à jour les informations de <strong>{{ $product->name }}</strong>.</p>
         </div>
 
-        <form method="POST" action="{{ route('updateproduct', $product) }}" class="product-edit-form">
+        <form method="POST" action="{{ route('updateproduct', $product) }}" class="product-edit-form" enctype="multipart/form-data">
             @csrf
             @method('PUT')
 
@@ -39,6 +49,16 @@
                         <textarea name="description" rows="3" maxlength="2000" placeholder="Informations utiles sur le produit">{{ old('description', $product->description) }}</textarea>
                         @error('description')<small class="edit-field-error">{{ $message }}</small>@enderror
                     </label>
+                    <div class="edit-field edit-field-wide edit-image-field">
+                        <label for="product-image">Image du produit <small>Facultatif · JPG, PNG ou WEBP · 5 Mo max.</small></label>
+                        @if ($productImageUrl)
+                            <img class="edit-image-preview" src="{{ $productImageUrl }}" alt="Image actuelle de {{ $product->name }}" onerror="this.hidden=true">
+                        @else
+                            <div class="edit-image-placeholder"><span class="material-icons" aria-hidden="true">image</span><span>Aucune image enregistrée</span></div>
+                        @endif
+                        <input id="product-image" type="file" name="img" accept="image/jpeg,image/png,image/webp">
+                        @error('img')<small class="edit-field-error">{{ $message }}</small>@enderror
+                    </div>
                 </div>
             </section>
 
@@ -106,6 +126,11 @@
         .edit-field input,.edit-field textarea{display:block;width:100%;min-width:0;border:1px solid #dfe2e8;border-radius:9px;background:#fff;color:var(--edit-ink);font-size:13px;font-weight:500;outline:none;transition:border-color .15s,box-shadow .15s}
         .edit-field input{height:43px;padding:0 12px}
         .edit-field textarea{padding:10px 12px;resize:vertical}
+        .edit-image-field>label{display:block;margin:0 0 8px;color:#444a56;font-size:12px;font-weight:700}
+        .edit-image-field input[type=file]{height:auto;min-height:43px;padding:9px 10px;background:#fafafb}
+        .edit-image-preview{display:block;width:100px;height:100px;margin:0 0 10px;object-fit:cover;border:1px solid var(--edit-line);border-radius:11px;background:#f7f7f8}
+        .edit-image-placeholder{display:flex;align-items:center;gap:7px;margin-bottom:10px;color:var(--edit-muted);font-size:11px}
+        .edit-image-placeholder .material-icons{font-size:20px;color:var(--edit-burgundy)}
         .edit-field input:focus,.edit-field textarea:focus{border-color:#a96360;box-shadow:0 0 0 3px rgba(126,22,21,.08)}
         .edit-field-wide{grid-column:1/-1}
         .edit-input-unit{display:flex;align-items:center;min-width:0;border:1px solid #dfe2e8;border-radius:9px;overflow:hidden}

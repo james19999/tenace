@@ -7,6 +7,8 @@ use Livewire\Component;
 use App\Models\EnterStock;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\File;
+use Illuminate\Support\Str;
 use Livewire\WithFileUploads;
 
 class ProductForm extends Component
@@ -58,6 +60,7 @@ class ProductForm extends Component
             'products.*.qts_seuil' => ['required', 'integer', 'min:0'],
             'products.*.high_price' => ['required', 'numeric', 'min:0'],
             'products.*.description' => ['nullable', 'string', 'max:2000'],
+            'products.*.img' => ['nullable', 'image', 'mimes:jpg,jpeg,png,webp', 'max:5120'],
         ], [], [
             'products.*.name' => 'nom du produit',
             'products.*.price' => 'prix de vente',
@@ -81,6 +84,15 @@ class ProductForm extends Component
                 $product->high_price = $productData['high_price'];
                 $product->description = $productData['description'] ?? null;
                 $product->save();
+
+                if (! empty($productData['img'])) {
+                    File::ensureDirectoryExists(public_path('image'));
+                    $image = $productData['img'];
+                    $imageName = Str::uuid().'.'.$image->getClientOriginalExtension();
+                    $image->move(public_path('image'), $imageName);
+                    $product->img = $imageName;
+                    $product->save();
+                }
 
                 $product->enterstocks()->create([
                     'qt_stock' => $productData['qt_initial'],

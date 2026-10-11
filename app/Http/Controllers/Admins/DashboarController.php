@@ -11,6 +11,8 @@ use App\Models\Expensive;
 use App\Models\Orders\Order;
 use App\Support\DashboardChart;
 use Illuminate\Http\Request;
+use Illuminate\Support\Str;
+use Illuminate\Support\Facades\File;
 use Illuminate\Support\Facades\DB;
 use App\Http\Controllers\Controller;
 use Illuminate\Support\Facades\Hash;
@@ -308,11 +310,16 @@ class DashboarController extends Controller
             'high_price' => ['nullable', 'numeric', 'min:0'],
             'commission_amount' => ['nullable', 'numeric', 'min:0'],
             'description' => ['nullable', 'string', 'max:2000'],
+            'img' => ['nullable', 'image', 'mimes:jpg,jpeg,png,webp', 'max:5120'],
         ]);
-        // $image = $request->file('img');
-        // $originalName = $image->getClientOriginalName();
-        // $imageName = time() . '_' . $originalName;
-        // $image->move(public_path('image'), $imageName);
+
+        if ($request->hasFile('img')) {
+            File::ensureDirectoryExists(public_path('image'));
+            $image = $request->file('img');
+            $imageName = Str::uuid().'.'.$image->getClientOriginalExtension();
+            $image->move(public_path('image'), $imageName);
+            $validated['img'] = $imageName;
+        }
 
         $product->update(['name'=>$validated['name'],'price'=>$validated['price'],
         'price_by'=>$validated['price_by'] ?? null,
@@ -321,7 +328,7 @@ class DashboarController extends Controller
         'commission_amount'=>$validated['commission_amount'] ?? null,
         'high_price'=>$validated['high_price'] ?? null,
         'description'=>$validated['description'] ?? null,
-        // 'img'=>$imageName
+        'img'=>$validated['img'] ?? $product->img,
     ]);
 
         return redirect()->route('product')->with('messages','produit modifié');

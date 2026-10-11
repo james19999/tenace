@@ -69,6 +69,16 @@
                         <textarea rows="3" wire:model.defer="products.{{ $index }}.description" placeholder="Précise les informations utiles sur le produit"></textarea>
                         @error('products.'.$index.'.description')<small class="product-field-error">{{ $message }}</small>@enderror
                     </label>
+
+                    <div class="product-field product-field-wide">
+                        <label for="product-image-{{ $index }}">Image du produit <small>Facultatif · JPG, PNG ou WEBP · 5 Mo max.</small></label>
+                        <input id="product-image-{{ $index }}" type="file" accept="image/jpeg,image/png,image/webp" wire:model="products.{{ $index }}.img">
+                        @error('products.'.$index.'.img')<small class="product-field-error">{{ $message }}</small>@enderror
+                        @if (!empty($product['img']))
+                            <div class="product-image-preview"><img src="{{ $product['img']->temporaryUrl() }}" alt="Aperçu de {{ $product['name'] ?: 'ce produit' }}"></div>
+                        @endif
+                        <span class="product-uploading" wire:loading wire:target="products.{{ $index }}.img">Chargement de l’image…</span>
+                    </div>
                 </div>
             </section>
         @endforeach
@@ -117,6 +127,10 @@
         .product-field textarea{padding:10px 12px;resize:vertical}
         .product-field input:focus,.product-field textarea:focus{border-color:#a96360;box-shadow:0 0 0 3px rgba(126,22,21,.08)}
         .product-field input::placeholder,.product-field textarea::placeholder{color:#aab0ba;font-weight:400}
+        .product-field input[type=file]{height:auto;min-height:43px;padding:9px 10px;background:#fafafb}
+        .product-image-preview{width:88px;height:88px;margin-top:10px;overflow:hidden;border:1px solid var(--form-line);border-radius:11px;background:#f7f7f8}
+        .product-image-preview img{width:100%;height:100%;object-fit:cover}
+        .product-uploading{display:block;margin-top:5px;color:var(--form-muted);font-size:11px}
         .product-field-wide{grid-column:1/-1}
         .product-input-unit{display:flex;align-items:center;min-width:0;border:1px solid #dfe2e8;border-radius:9px;overflow:hidden}
         .product-input-unit:focus-within{border-color:#a96360;box-shadow:0 0 0 3px rgba(126,22,21,.08)}
