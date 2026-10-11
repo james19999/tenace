@@ -26,6 +26,10 @@
         .cart-field{min-width:0}.cart-field.full{grid-column:1/-1}
         .cart-field label{display:block;color:#454a56;font-size:13px;font-weight:700;margin:0 0 7px}
         .cart-field .form-control{height:45px;border:1px solid #dfe2e8;border-radius:9px;box-shadow:none;color:var(--cart-ink);font-size:14px;max-width:100%}
+        .cart-field .select2-container{width:100%!important}
+        .cart-field .select2-container--default .select2-selection--single{height:45px;border:1px solid #dfe2e8;border-radius:9px}
+        .cart-field .select2-container--default .select2-selection--single .select2-selection__rendered{padding:8px 12px;color:var(--cart-ink);line-height:27px}
+        .cart-field .select2-container--default .select2-selection--single .select2-selection__arrow{height:43px;right:7px}
         .cart-field textarea.form-control{height:auto;min-height:88px;padding:11px 13px;resize:vertical}
         .cart-field .form-control:focus{border-color:#bd7777;box-shadow:0 0 0 3px rgba(134,27,27,.09)}
         .cart-help{display:block;color:var(--cart-muted);font-size:12px;line-height:1.45;margin-top:6px}
@@ -161,10 +165,12 @@
                             <div class="cart-form-grid">
                                 <div class="cart-field full">
                                     <label for="order-costumer-id">Cliente</label>
-                                    <select id="order-costumer-id" class="js-customer-search form-control" data-ajax-url="{{ route('costumer.search') }}" name="costumer_id">
-                                        <option value="default" @selected(old('costumer_id', 'default') === 'default')>Nouvelle cliente</option>
-                                        @if ($selectedCostumer)<option value="{{ $selectedCostumer->id }}" selected>{{ $selectedCostumer->name }} | {{ $selectedCostumer->phone }}</option>@endif
-                                    </select>
+                                    <div wire:ignore>
+                                        <select id="order-costumer-id" class="js-customer-search form-control" data-ajax-url="{{ route('costumer.search') }}" name="costumer_id" style="width:100%">
+                                            <option value="default" @selected(old('costumer_id', 'default') === 'default')>Nouvelle cliente</option>
+                                            @if ($selectedCostumer)<option value="{{ $selectedCostumer->id }}" selected>{{ $selectedCostumer->name }} | {{ $selectedCostumer->phone }}</option>@endif
+                                        </select>
+                                    </div>
                                     @error('costumer_id')<span class="cart-field-error">{{ $message }}</span>@enderror
                                 </div>
 
