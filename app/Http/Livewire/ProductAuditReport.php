@@ -160,15 +160,20 @@ class ProductAuditReport extends Component
     }
     public function render()
     {
-        $reports = $this->productsQuery()
+        $reportsQuery = $this->productsQuery()
             ->select('products.id', 'products.name')
             ->selectRaw('SUM(order_items.quantity) as qty')
             ->selectRaw('SUM(order_items.quantity * order_items.price) as amount')
             ->groupBy('products.id', 'products.name')
-            ->orderByDesc('qty')
-            ->paginate(10);
+            ->orderByDesc('qty');
 
-        return view('livewire.product-audit-report', ['paginatedReports' => $reports])
+        $reports = (clone $reportsQuery)->paginate(10);
+        $allReports = (clone $reportsQuery)->get();
+
+        return view('livewire.product-audit-report', [
+            'paginatedReports' => $reports,
+            'allReports' => $allReports,
+        ])
             ->extends('layouts.admin')
             ->section('content');
     }

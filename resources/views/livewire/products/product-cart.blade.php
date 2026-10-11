@@ -40,6 +40,8 @@
         .cart-product{display:flex;align-items:center;gap:12px;min-width:200px}
         .cart-product-thumb{width:46px;height:46px;flex:0 0 46px;border-radius:10px;display:grid;place-items:center;background:#f8eeee;color:var(--cart-wine);overflow:hidden}
         .cart-product-thumb img{width:100%;height:100%;object-fit:cover}
+        .cart-product-placeholder{font-size:22px}
+        .cart-product-placeholder[hidden]{display:none}
         .cart-product-name{font-weight:750;color:var(--cart-ink);line-height:1.35;overflow-wrap:anywhere}
         .cart-product-meta{font-size:12px;color:var(--cart-muted);margin-top:3px}
         .cart-price{white-space:nowrap;font-weight:650}
@@ -105,13 +107,25 @@
                                         @foreach ($cartItems as $items)
                                             @php
                                                 $productImage = $items->model->img ?? null;
-                                                $productImageUrl = $productImage ? (\Illuminate\Support\Str::startsWith($productImage, ['http://', 'https://', '/']) ? $productImage : asset('storage/' . $productImage)) : null;
+                                                $productImageUrl = null;
+                                                if ($productImage) {
+                                                    if (\Illuminate\Support\Str::startsWith($productImage, ['http://', 'https://', '/'])) {
+                                                        $productImageUrl = $productImage;
+                                                    } elseif (\Illuminate\Support\Str::startsWith($productImage, ['image/', 'storage/'])) {
+                                                        $productImageUrl = asset($productImage);
+                                                    } else {
+                                                        $productImageUrl = url('image/' . ltrim($productImage, '/'));
+                                                    }
+                                                }
                                             @endphp
                                             <tr wire:key="cart-row-{{ $items->rowId }}">
                                                 <td>
                                                     <div class="cart-product">
                                                         <div class="cart-product-thumb">
-                                                            @if ($productImageUrl)<img src="{{ $productImageUrl }}" alt="">@else<span class="material-icons" aria-hidden="true">inventory_2</span>@endif
+                                                            @if ($productImageUrl)
+                                                                <img src="{{ $productImageUrl }}" alt="{{ $items->model->name ?? 'Produit' }}" loading="lazy" onerror="this.remove();var fallback=this.parentElement.querySelector('[data-product-placeholder]');if(fallback)fallback.hidden=false;">
+                                                            @endif
+                                                            <span class="material-icons cart-product-placeholder" data-product-placeholder aria-hidden="true" @if ($productImageUrl) hidden @endif>inventory_2</span>
                                                         </div>
                                                         <div><div class="cart-product-name">{{ $items->model->name ?? 'Produit' }}</div><div class="cart-product-meta">Réf. {{ $items->id }}</div></div>
                                                     </div>

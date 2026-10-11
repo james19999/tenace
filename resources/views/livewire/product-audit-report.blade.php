@@ -48,14 +48,50 @@
         .audit-pagination nav{margin:0}.audit-pagination p{margin:0;color:var(--audit-muted);font-size:12px}
         .audit-pagination .pagination{margin:0;flex-wrap:wrap;gap:4px}.audit-pagination .page-link{border-radius:7px!important;color:var(--audit-red);border-color:#e6e7eb}
         .audit-pagination .page-item.active .page-link{background:var(--audit-red);border-color:var(--audit-red);color:#fff}
+        .audit-print-only{display:none}
+        .audit-print-header{display:none}
+        .audit-print-summary{display:none}
         @media(max-width:991px){.audit-shell{padding:0 14px}.audit-filters{grid-template-columns:repeat(2,minmax(0,1fr))}.audit-kpis{grid-template-columns:repeat(2,minmax(0,1fr))}}
         @media(max-width:575px){.product-audit-page{padding-top:0}.audit-shell{padding:0 11px}.audit-hero{display:block;margin:8px 0 17px}.audit-hero h1{font-size:26px}.audit-hero p{font-size:13px;line-height:1.5}.audit-print{margin-top:13px;width:100%}.audit-card{border-radius:12px}.audit-card-heading,.audit-results-heading{padding:14px}.audit-filter-body{padding:14px}.audit-filters{grid-template-columns:1fr;gap:12px}.audit-kpis{gap:9px}.audit-kpi{min-height:112px;padding:13px 12px}.audit-kpi-top{align-items:flex-start;font-size:11px;line-height:1.35}.audit-kpi-icon{width:30px;height:30px;flex-basis:30px}.audit-kpi strong{font-size:19px;margin-top:10px}.audit-kpi small{font-size:10px}.audit-table th,.audit-table td{padding:11px 12px}.audit-results-heading h2{font-size:14px}}
         @media(max-width:360px){.audit-kpis{grid-template-columns:1fr}.audit-kpi{min-height:95px}}
+        @page{size:A4 portrait;margin:13mm 14mm 16mm}
         @media print{
             body *{visibility:hidden!important}.product-audit-page,.product-audit-page *{visibility:visible!important}
-            .product-audit-page{position:absolute;inset:0;width:100%;padding:0}.audit-shell{max-width:none;padding:0}
-            .no-print,.audit-print{display:none!important}.audit-card,.audit-kpi{box-shadow:none;break-inside:avoid}
+            .product-audit-page{position:static;width:auto;padding:0}.audit-shell{max-width:none;padding:0}
+            .no-print,.audit-print,.audit-hero{display:none!important}
+            .audit-print-header{display:block;width:100%;margin:0 0 12px;padding:0 0 9px;border-bottom:2px solid #861b1b}
+            .audit-print-brand{margin:0 0 5px;color:#861b1b;font-size:9pt;font-weight:800;letter-spacing:.16em}
+            .audit-print-header h1{margin:0;color:#282b35;font-size:19pt;font-weight:800;line-height:1.2;white-space:nowrap}
+            .audit-print-description{margin:4px 0 6px;color:#686e78;font-size:8.5pt}
+            .audit-print-meta{display:block;width:100%;padding-top:6px;border-top:1px solid #e5e5e8;color:#555b66;font-size:8.5pt;line-height:1.45;text-align:left}
+            .audit-print-meta span{display:inline-block;margin-right:20px}
+            .audit-print-meta strong{display:inline;color:#282b35;font-size:8.5pt}
+            .audit-card,.audit-kpi{box-shadow:none;break-inside:avoid}
             .audit-filters-card{display:none!important}.audit-table{min-width:0}.audit-table-wrap{overflow:visible}
+            .audit-results-card{break-inside:auto!important;overflow:visible;border-color:#d7d9de}
+            .audit-screen-only,.audit-pagination{display:none!important}.audit-print-only{display:block!important}
+            .audit-kpis{display:none!important}
+            .audit-print-summary{display:table;width:100%;table-layout:fixed;margin:0 0 12px;border-collapse:separate;border-spacing:5px}
+            .audit-print-summary td{width:50%;padding:8px 10px;border:1px solid #dfe1e5;border-radius:5px;vertical-align:top}
+            .audit-print-summary span,.audit-print-summary strong,.audit-print-summary small{display:block}
+            .audit-print-summary span{color:#535a65;font-size:8pt;font-weight:700;line-height:1.3}
+            .audit-print-summary strong{margin-top:5px;color:#282b35;font-size:14pt;line-height:1.15}
+            .audit-print-summary small{margin-top:3px;color:#737985;font-size:7.5pt;line-height:1.25}
+            .audit-results-heading{padding:10px 12px;border-bottom:1px solid #d7d9de}
+            .audit-results-heading h2{font-size:11pt;text-transform:uppercase;letter-spacing:.04em}
+            .audit-results-heading p{font-size:8pt}
+            .audit-results-count{padding:4px 8px;background:#f1f2f4;font-size:8pt}
+            .audit-table{font-size:9pt}
+            .audit-table th{padding:8px 10px;background:#861b1b!important;color:#fff!important;font-size:8pt;-webkit-print-color-adjust:exact;print-color-adjust:exact}
+            .audit-table td{padding:7px 10px;border-color:#e4e5e8;font-size:9pt}
+            .audit-print-only .audit-table tbody tr:nth-child(even){background:#f7f7f8!important;-webkit-print-color-adjust:exact;print-color-adjust:exact}
+            .audit-qty{min-width:0;padding:2px 6px;background:transparent;color:#282b35}
+            .audit-amount{color:#282b35}
+            .audit-table tfoot td{padding:8px 10px;background:#eceef1!important;font-weight:800;-webkit-print-color-adjust:exact;print-color-adjust:exact}
+            .audit-table thead{display:table-header-group}
+            .audit-print-only .audit-table thead{display:table-header-group}
+            .audit-print-only .audit-table tfoot{display:table-row-group}
+            .audit-print-only .audit-table tr{break-inside:avoid;page-break-inside:avoid}
         }
     </style>
 
@@ -100,6 +136,29 @@
         </section>
 
         <div id="printArea" class="audit-report-content">
+            <div class="audit-print-header">
+                <div>
+                    <p class="audit-print-brand">TENACOS · GESTION COMMERCIALE</p>
+                    <h1>Rapport d’audit des ventes</h1>
+                    <p class="audit-print-description">Commandes livrées, regroupées par produit.</p>
+                </div>
+                <div class="audit-print-meta">
+                    <span><strong>Période :</strong> {{ $periodLabel }}</span>
+                    <span>Édité le {{ now()->format('d/m/Y à H:i') }} · {{ auth()->user()?->name ?? 'Équipe TENACOS' }}</span>
+                </div>
+            </div>
+            <table class="audit-print-summary">
+                <tbody>
+                    <tr>
+                        <td><span>Quantité vendue</span><strong>{{ number_format($this->totalQty, 0, ',', ' ') }}</strong><small>Unités sur la période</small></td>
+                        <td><span>Chiffre d’affaires produits</span><strong>{{ number_format($this->totalAmount, 0, ',', ' ') }} F</strong><small>Montant total des lignes vendues</small></td>
+                    </tr>
+                    <tr>
+                        <td><span>Écart avec le total des commandes</span><strong>{{ number_format($this->tax, 0, ',', ' ') }} F</strong><small>Ventes produits moins total enregistré</small></td>
+                        <td><span>Montant net calculé</span><strong>{{ number_format($this->netAmount, 0, ',', ' ') }} F</strong><small>Selon les montants de commande enregistrés</small></td>
+                    </tr>
+                </tbody>
+            </table>
             <div class="audit-kpis">
                 <article class="audit-kpi">
                     <div class="audit-kpi-top"><span class="audit-kpi-icon material-icons" aria-hidden="true">inventory_2</span>Quantité vendue</div>
@@ -119,12 +178,12 @@
                 </article>
             </div>
 
-            <section class="audit-card" aria-labelledby="audit-results-title">
+            <section class="audit-card audit-results-card" aria-labelledby="audit-results-title">
                 <div class="audit-results-heading">
                     <div><h2 id="audit-results-title">Détail des ventes</h2><p>Commandes livrées · {{ $periodLabel }}</p></div>
                     <span class="audit-results-count">{{ $paginatedReports->total() }} produit(s)</span>
                 </div>
-                <div class="audit-table-wrap">
+                <div class="audit-table-wrap audit-screen-only">
                     <table class="audit-table">
                         <thead><tr><th>Produit</th><th class="numeric">Quantité vendue</th><th class="numeric">Montant</th></tr></thead>
                         <tbody>
@@ -135,6 +194,21 @@
                             @endforelse
                         </tbody>
                         @if ($paginatedReports->total() > 0)
+                            <tfoot><tr><td>Total de la période</td><td class="numeric">{{ number_format($this->totalQty, 0, ',', ' ') }}</td><td class="numeric">{{ number_format($this->totalAmount, 0, ',', ' ') }} F</td></tr></tfoot>
+                        @endif
+                    </table>
+                </div>
+                <div class="audit-table-wrap audit-print-only">
+                    <table class="audit-table">
+                        <thead><tr><th>Produit</th><th class="numeric">Quantité vendue</th><th class="numeric">Montant</th></tr></thead>
+                        <tbody>
+                            @forelse($allReports as $report)
+                                <tr><td class="audit-product-name">{{ $report->name }}</td><td class="numeric"><span class="audit-qty">{{ number_format($report->qty, 0, ',', ' ') }}</span></td><td class="numeric audit-amount">{{ number_format($report->amount, 0, ',', ' ') }} F</td></tr>
+                            @empty
+                                <tr><td colspan="3" class="audit-empty">Aucune vente livrée trouvée pour cette période.</td></tr>
+                            @endforelse
+                        </tbody>
+                        @if ($allReports->isNotEmpty())
                             <tfoot><tr><td>Total de la période</td><td class="numeric">{{ number_format($this->totalQty, 0, ',', ' ') }}</td><td class="numeric">{{ number_format($this->totalAmount, 0, ',', ' ') }} F</td></tr></tfoot>
                         @endif
                     </table>
