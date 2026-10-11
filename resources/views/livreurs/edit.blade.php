@@ -66,14 +66,14 @@
                         <label for="password-confirm">Type:</label>
 
                          <select name="user_type" id="" class="form-control" required>
-                             <option value="LVS" {{ $user->user_type == 'LVS' ? 'selected' : '' }}>Livreur</option>
-                             <option value="PT" {{ $user->user_type == 'PT' ? 'selected' : '' }}>Partenaire</option>
-                             <option value="VDS" {{ $user->user_type == 'VDS' ? 'selected' : '' }}>Vendeur</option>
-                             <option value="CSA" {{ $user->user_type == 'CSA' ? 'selected' : '' }}>Caissier</option>
-                             <option value="MNG" {{ $user->user_type == 'MNG' ? 'selected' : '' }}>Manager</option>
-                             <option value="SCR" {{ $user->user_type == 'SCR' ? 'selected' : '' }}>Secrétaire</option>
-                             <option value="CALLCENTER" {{ $user->user_type == 'CALLCENTER' ? 'selected' : '' }}>SAV</option>
-                             <option value="ADMINUSER" {{ $user->user_type == 'ADMINUSER' ? 'selected' : '' }}>Administrateur</option>
+                             <option value="LVS" {{ $users->user_type == 'LVS' ? 'selected' : '' }}>Livreur</option>
+                             <option value="PT" {{ $users->user_type == 'PT' ? 'selected' : '' }}>Partenaire</option>
+                             <option value="VDS" {{ $users->user_type == 'VDS' ? 'selected' : '' }}>Vendeur</option>
+                             <option value="CSA" {{ $users->user_type == 'CSA' ? 'selected' : '' }}>Caissier</option>
+                             <option value="MNG" {{ $users->user_type == 'MNG' ? 'selected' : '' }}>Manager</option>
+                             <option value="SCR" {{ $users->user_type == 'SCR' ? 'selected' : '' }}>Secrétaire</option>
+                             <option value="CALLCENTER" {{ $users->user_type == 'CALLCENTER' ? 'selected' : '' }}>SAV</option>
+                             <option value="ADMINUSER" {{ $users->user_type == 'ADMINUSER' ? 'selected' : '' }}>Administrateur</option>
                          </select>
                         </div>
 

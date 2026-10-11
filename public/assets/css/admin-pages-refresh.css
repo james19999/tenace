@@ -1,0 +1,284 @@
+/* Shared visual refresh for legacy administration pages. Scoped in the layout. */
+.admin-pages-refresh {
+    --admin-ink: #292d36;
+    --admin-muted: #747b88;
+    --admin-red: #7e1615;
+    --admin-red-dark: #65100f;
+    --admin-border: #e8e9ed;
+    --admin-surface: #fff;
+    padding-top: 18px;
+    padding-bottom: 36px;
+    color: var(--admin-ink);
+}
+
+.admin-pages-refresh > .col-12 {
+    padding-left: 0;
+    padding-right: 0;
+}
+
+.admin-pages-refresh h1,
+.admin-pages-refresh h2,
+.admin-pages-refresh h3,
+.admin-pages-refresh h4 {
+    color: var(--admin-ink);
+    font-weight: 800;
+    letter-spacing: -.025em;
+}
+
+.admin-pages-refresh h3 {
+    margin: 8px 0 18px;
+    font-size: clamp(22px, 2.5vw, 30px);
+}
+
+.admin-pages-refresh h3::before {
+    content: "TENACOS  /  GESTION";
+    display: block;
+    margin-bottom: 7px;
+    color: var(--admin-red);
+    font-size: 10px;
+    font-weight: 800;
+    letter-spacing: .16em;
+}
+
+.admin-pages-refresh .card {
+    overflow: hidden;
+    margin-bottom: 18px;
+    border: 1px solid var(--admin-border);
+    border-radius: 16px;
+    background: var(--admin-surface);
+    box-shadow: 0 8px 24px rgba(31, 36, 47, .055) !important;
+}
+
+.admin-pages-refresh .card-header {
+    padding: 16px 20px;
+    border: 0;
+    background: var(--admin-red) !important;
+    color: #fff;
+}
+
+.admin-pages-refresh .card-header h1,
+.admin-pages-refresh .card-header h2,
+.admin-pages-refresh .card-header h3,
+.admin-pages-refresh .card-header h4,
+.admin-pages-refresh .card-header label {
+    margin: 0;
+    color: #fff;
+}
+
+.admin-pages-refresh .card-body {
+    padding: clamp(15px, 2.2vw, 24px);
+}
+
+.admin-pages-refresh .card-footer {
+    border-top: 1px solid var(--admin-border);
+    background: #fafafb !important;
+}
+
+.admin-pages-refresh .table-responsive,
+.admin-pages-refresh .dataTables_wrapper {
+    width: 100%;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+}
+
+.admin-pages-refresh table.table {
+    min-width: 720px;
+    margin: 0;
+    border-collapse: separate;
+    border-spacing: 0;
+}
+
+.admin-pages-refresh .table thead th,
+.admin-pages-refresh .table tfoot th {
+    padding: 13px 14px;
+    border: 0;
+    border-bottom: 1px solid var(--admin-border);
+    background: #f5f6f8;
+    color: #656c78;
+    font-size: 10px;
+    font-weight: 800;
+    letter-spacing: .075em;
+    text-transform: uppercase;
+    white-space: nowrap;
+}
+
+.admin-pages-refresh .table tbody td {
+    padding: 13px 14px;
+    border-top: 1px solid #eff0f3;
+    color: #454b56 !important;
+    font-size: 13px;
+    vertical-align: middle;
+}
+
+.admin-pages-refresh .table tbody tr {
+    transition: background-color .16s ease;
+}
+
+.admin-pages-refresh .table tbody tr:hover {
+    background: #fcf8f7;
+}
+
+.admin-pages-refresh .btn {
+    min-height: 38px;
+    border-radius: 9px;
+    font-weight: 700;
+    transition: transform .15s ease, box-shadow .15s ease, background-color .15s ease;
+}
+
+.admin-pages-refresh .btn:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 5px 12px rgba(35, 39, 48, .12);
+}
+
+.admin-pages-refresh .btn-primary {
+    border-color: var(--admin-red);
+    background: var(--admin-red);
+}
+
+.admin-pages-refresh .btn-primary:hover,
+.admin-pages-refresh .btn-primary:focus {
+    border-color: var(--admin-red-dark);
+    background: var(--admin-red-dark);
+}
+
+.admin-pages-refresh .form-control,
+.admin-pages-refresh .custom-select,
+.admin-pages-refresh select,
+.admin-pages-refresh textarea {
+    min-height: 43px;
+    border: 1px solid #dfe2e8;
+    border-radius: 9px;
+    color: var(--admin-ink);
+    box-shadow: none;
+}
+
+.admin-pages-refresh textarea.form-control {
+    min-height: 100px;
+}
+
+.admin-pages-refresh .form-control:focus,
+.admin-pages-refresh select:focus,
+.admin-pages-refresh textarea:focus {
+    border-color: #b9716e;
+    box-shadow: 0 0 0 3px rgba(126, 22, 21, .09);
+}
+
+.admin-pages-refresh label {
+    margin-bottom: 7px;
+    color: #555c68;
+    font-size: 12px;
+    font-weight: 700;
+}
+
+.admin-pages-refresh .alert {
+    border: 0;
+    border-radius: 11px;
+}
+
+.admin-pages-refresh .modal-content {
+    overflow: hidden;
+    border: 1px solid var(--admin-border);
+    border-radius: 16px;
+    box-shadow: 0 20px 60px rgba(26, 29, 36, .2);
+}
+
+.admin-pages-refresh .modal-header {
+    align-items: center;
+    padding: 17px 20px;
+    border-bottom: 1px solid var(--admin-border);
+}
+
+.admin-pages-refresh .modal-title {
+    color: var(--admin-ink);
+    font-weight: 800;
+}
+
+.admin-pages-refresh .modal-body,
+.admin-pages-refresh .modal-footer {
+    padding: 18px 20px;
+}
+
+.admin-pages-refresh .dataTables_wrapper .dataTables_filter input,
+.admin-pages-refresh .dataTables_wrapper .dataTables_length select {
+    min-height: 36px;
+    padding: 5px 9px;
+    border: 1px solid #dfe2e8;
+    border-radius: 8px;
+}
+
+.admin-pages-refresh .dataTables_wrapper .dataTables_paginate .paginate_button {
+    border-radius: 7px !important;
+}
+
+.admin-pages-refresh .dataTables_wrapper .dataTables_paginate .paginate_button.current {
+    border-color: var(--admin-red) !important;
+    background: var(--admin-red) !important;
+    color: #fff !important;
+}
+
+.admin-pages-refresh .badge {
+    padding: 6px 9px;
+    border-radius: 20px;
+    font-weight: 700;
+}
+
+.admin-pages-refresh .btn-group {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 5px;
+}
+
+.admin-pages-refresh .btn-group > .btn,
+.admin-pages-refresh .btn-group > form {
+    margin: 0;
+}
+
+@media (max-width: 767.98px) {
+    .admin-pages-refresh {
+        padding: 8px 10px 26px;
+    }
+
+    .admin-pages-refresh .card {
+        border-radius: 12px;
+    }
+
+    .admin-pages-refresh .card-body {
+        padding: 14px;
+    }
+
+    .admin-pages-refresh h3 {
+        margin: 6px 0 14px;
+    }
+
+    .admin-pages-refresh .card-header {
+        padding: 13px 15px;
+    }
+
+    .admin-pages-refresh .dataTables_wrapper .dataTables_filter,
+    .admin-pages-refresh .dataTables_wrapper .dataTables_length {
+        float: none;
+        width: 100%;
+        margin: 6px 0 12px;
+        text-align: left;
+    }
+
+    .admin-pages-refresh .dataTables_wrapper .dataTables_filter input {
+        width: min(62vw, 260px);
+        margin-left: 5px;
+    }
+
+    .admin-pages-refresh .modal-dialog {
+        margin: 10px;
+    }
+
+    .admin-pages-refresh .modal-body,
+    .admin-pages-refresh .modal-footer {
+        padding: 14px;
+    }
+
+    .admin-pages-refresh .btn-group > .btn,
+    .admin-pages-refresh .btn-group > form,
+    .admin-pages-refresh .btn-group > form .btn {
+        max-width: 100%;
+    }
+}
