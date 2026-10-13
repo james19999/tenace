@@ -1,429 +1,107 @@
 @extends('layouts.admin')
 
 @section('content')
-<a href="{{ route('product') }}">Retour</a>
-  <div class="container">
-
-      <div class="row">
-        <div class="col-12 col-sm-6 col-md-6 col-lg-3">
-            <div class="card shadow">
-                <div class="card-body">
-                    <div class="row">
-                        <div class="col">
-                            <h5 class="text-uppercase text-muted mb-0 card-title">Prix d'achat </h5><span style="font-size: 100%" class="h1 font-weight-bold mb-0">
-                             {{ $product->price_by }} FCFA
-                            </span>
-                        </div>
-                        <div class="col-auto col">
-                            <div>
-                                <button class="btn btn-transparent-primary btn-lg btn-circle">
-
-                                    <img style="background-color: white" src="{{ asset('assets/images/mos.png') }}" width="40" height="40" alt="" srcset="">
-
-                                </button>
-
-
-                            </div>
-                        </div>
-                    </div>
-
+    <div class="product-detail-page">
+        <header class="product-detail-hero">
+            <a class="product-detail-back" href="{{ route('product') }}"><span class="material-icons">arrow_back</span>Retour au catalogue</a>
+            <div class="product-detail-identity">
+                <div class="product-detail-image">
+                    @if($product->img)
+                        <img src="{{ url('image/' . ltrim($product->img, '/')) }}" alt="{{ $product->name }}" onerror="this.remove()">
+                    @else
+                        <span class="material-icons">inventory_2</span>
+                    @endif
+                </div>
+                <div class="product-detail-title">
+                    <span class="product-detail-eyebrow">FICHE PRODUIT · RÉF. {{ $product->id }}</span>
+                    <h1>{{ $product->name }}</h1>
+                    <p>Prix, quantités et historique des mouvements du produit.</p>
                 </div>
             </div>
-        </div>
-        <div class="col-12 col-sm-6 col-md-6 col-lg-3">
-            <div class="card shadow">
-                <div class="card-body">
-                    <div class="row">
-                        <div class="col">
-                            <h5 class="text-uppercase text-muted mb-0 card-title">Bénéfice</h5><span style="font-size: 100%" class="h1 font-weight-bold mb-0">
-                               {{ $product->benefice }} FCFA
-                            </span>
-                        </div>
-                        <div class="col-auto col">
-                            <div>
-                                <button class="btn btn-transparent-primary btn-lg btn-circle">
+            @if(auth()->user()?->user_type === 'ADMINUSER')
+                <a class="product-detail-edit" href="{{ route('editproduct', $product->id) }}"><span class="material-icons">edit</span>Modifier le produit</a>
+            @endif
+        </header>
 
-                                    <img src="{{ asset('assets/images/money.png') }}" width="40" height="40" alt="" srcset="">
-                                </button>
+        @if(session('message'))
+            <div class="product-detail-flash" role="status"><span class="material-icons">check_circle</span>{{ session('message') }}</div>
+        @endif
+        @if($errors->any())
+            <div class="product-detail-errors" role="alert"><strong>Vérifie les informations saisies.</strong><ul>@foreach($errors->all() as $error)<li>{{ $error }}</li>@endforeach</ul></div>
+        @endif
 
+        <section class="product-detail-metrics" aria-label="Indicateurs du produit">
+            <article><span class="product-detail-metric-icon">payments</span><div><small>Prix d’achat</small><strong>{{ number_format((float)$product->price_by, 0, ',', ' ') }} F</strong></div></article>
+            <article><span class="product-detail-metric-icon">trending_up</span><div><small>Bénéfice</small><strong>{{ number_format((float)$product->benefice, 0, ',', ' ') }} F</strong></div></article>
+            <article><span class="product-detail-metric-icon">sell</span><div><small>Prix de vente</small><strong>{{ number_format((float)$product->price, 0, ',', ' ') }} F</strong></div></article>
+            <article><span class="product-detail-metric-icon">shopping_bag</span><div><small>Quantité vendue</small><strong>{{ number_format((float)$product->qts_sell, 0, ',', ' ') }}</strong></div></article>
+            <article><span class="product-detail-metric-icon">inventory</span><div><small>Stock restant</small><strong>{{ number_format((float)$product->qt_initial, 0, ',', ' ') }}</strong></div></article>
+            <article><span class="product-detail-metric-icon">warehouse</span><div><small>Entrées enregistrées</small><strong>{{ number_format((float)$totalEnterStock, 0, ',', ' ') }}</strong></div></article>
+            <article><span class="product-detail-metric-icon">outbox</span><div><small>Sorties enregistrées</small><strong>{{ number_format((float)$totalOuttock, 0, ',', ' ') }}</strong></div></article>
+            <article><span class="product-detail-metric-icon">price_check</span><div><small>Prix d’achat unitaire</small><strong>{{ number_format((float)$product->price_market, 0, ',', ' ') }} F</strong></div></article>
+        </section>
 
-                            </div>
-                        </div>
-                    </div>
+        <section class="product-detail-workspace">
+            <nav class="nav nav-tabs product-detail-tabs" aria-label="Détails du produit">
+                <a class="nav-link active" href="#product-entry" data-toggle="tab" role="tab"><span class="material-icons">move_to_inbox</span>Entrées de stock <span class="product-detail-tab-count">{{ $product->enterstocks->count() }}</span></a>
+                <a class="nav-link" href="#product-exit" data-toggle="tab" role="tab"><span class="material-icons">outbox</span>Sorties de stock <span class="product-detail-tab-count">{{ $product->outstocks->count() }}</span></a>
+                <a class="nav-link" href="#product-wholesale" data-toggle="tab" role="tab"><span class="material-icons">price_change</span>Prix grossiste</a>
+            </nav>
 
-                </div>
-            </div>
-        </div>
-        <div class="col-12 col-sm-6 col-md-6 col-lg-3">
-            <div class="card shadow">
-                <div class="card-body">
-                    <div class="row">
-                        <div class="col">
-                            <h5 class="text-uppercase text-muted mb-0 card-title">Quantité vendue</h5><span style="font-size: 100%" class="h1 font-weight-bold mb-0">
-                              {{ $product->qts_sell }}
-                            </span>
-                        </div>
-                        <div class="col-auto col">
-                            <div>
-                                <button class="btn btn-transparent-primary btn-lg btn-circle">
-
-                                    <img src="{{ asset('assets/images/qt.png') }}" width="40" height="40" alt="" srcset="">
-
-                                </button>
-
-
-                            </div>
-                        </div>
-                    </div>
-
-                </div>
-            </div>
-        </div>
-        <div class="col-12 col-sm-6 col-md-6 col-lg-3">
-            <div class="card shadow">
-                <div class="card-body">
-                    <div class="row">
-                        <div class="col">
-                            <h5 class="text-uppercase text-muted mb-0 card-title">Prix de vente </h5><span  style="font-size: 100%" class="h1 font-weight-bold mb-0">
-                              {{ $product->price }} FCFA
-                            </span>
-                        </div>
-                        <div class="col-auto col">
-                            <div>
-                                <button class="btn btn-transparent-primary btn-lg btn-circle">
-
-                                    <img src="{{ asset('assets/images/P.png') }}" width="40" height="40" alt="" srcset="">
-
-                                </button>
-
-
-                            </div>
-                        </div>
-                    </div>
-
-                </div>
-            </div>
-        </div>
-     </div>
-
-
-      <div class="row">
-        <div class="col-12 col-sm-6 col-md-6 col-lg-3">
-            <div class="card shadow">
-                <div class="card-body">
-                    <div class="row">
-                        <div class="col">
-                            <h5 class="text-uppercase text-muted mb-0 card-title"> Sortie de stock </h5><span style="font-size: 100%" class="h1 font-weight-bold mb-0">
-                             {{ $totalOuttock }}
-                            </span>
-                        </div>
-                        <div class="col-auto col">
-                            <div>
-                                <button class="btn btn-transparent-primary btn-lg btn-circle">
-
-                                    <img style="background-color: white" src="{{ asset('assets/images/out.png') }}" width="40" height="40" alt="" srcset="">
-
-                                </button>
-
-
-                            </div>
-                        </div>
-                    </div>
-
-                </div>
-            </div>
-        </div>
-        <div class="col-12 col-sm-6 col-md-6 col-lg-3">
-            <div class="card shadow">
-                <div class="card-body">
-                    <div class="row">
-                        <div class="col">
-                            <h5 class="text-uppercase text-muted mb-0 card-title">Quantité total</h5><span style="font-size: 100%" class="h1 font-weight-bold mb-0">
-                               {{ $totalEnterStock }}
-                            </span>
-                        </div>
-                        <div class="col-auto col">
-                            <div>
-                                <button class="btn btn-transparent-primary btn-lg btn-circle">
-
-                                    <img src="{{ asset('assets/images/sto.png') }}" width="40" height="40" alt="" srcset="">
-                                </button>
-
-
-                            </div>
-                        </div>
-                    </div>
-
-                </div>
-            </div>
-        </div>
-        <div class="col-12 col-sm-6 col-md-6 col-lg-3">
-            <div class="card shadow">
-                <div class="card-body">
-                    <div class="row">
-                        <div class="col">
-                            <h5 class="text-uppercase text-muted mb-0 card-title">Quantité restant</h5><span style="font-size: 100%" class="h1 font-weight-bold mb-0">
-                              {{ $product->qt_initial }}
-                            </span>
-                        </div>
-                        <div class="col-auto col">
-                            <div>
-                                <button class="btn btn-transparent-primary btn-lg btn-circle">
-
-                                    <img src="{{ asset('assets/images/re.png') }}" width="40" height="40" alt="" srcset="">
-
-                                </button>
-
-
-                            </div>
-                        </div>
-                    </div>
-
-                </div>
-            </div>
-        </div>
-        <div class="col-12 col-sm-6 col-md-6 col-lg-3">
-            <div class="card shadow">
-                <div class="card-body">
-                    <div class="row">
-                        <div class="col">
-                            <h5 class="text-uppercase text-muted mb-0 card-title">Prix d'achat unitaire </h5><span  style="font-size: 100%" class="h1 font-weight-bold mb-0">
-                              {{ $product->price_market }} FCFA
-                            </span>
-                        </div>
-                        <div class="col-auto col">
-                            <div>
-                                <button class="btn btn-transparent-primary btn-lg btn-circle">
-
-                                    <img src="{{ asset('assets/images/P.png') }}" width="40" height="40" alt="" srcset="">
-
-                                </button>
-
-
-                            </div>
-                        </div>
-                    </div>
-
-                </div>
-            </div>
-        </div>
-     </div>
-
-
-
-  </div>
-  </div>
-  <div class="container mt-1">
-    <ul class="nav nav-tabs" id="myTabs" style="padding-left: 20px">
-      <li class="nav-item">
-        <a class="nav-link active" id="tab1-tab" data-toggle="tab" href="#tab1">Entrer de stock</a>
-      </li>
-      <li class="nav-item">
-        <a class="nav-link" id="tab2-tab" data-toggle="tab" href="#tab2">Sortie de stock</a>
-      </li>
-      <li class="nav-item">
-        <a class="nav-link" id="tab3-tab" data-toggle="tab" href="#tab3">{{ $product->name }}</a>
-      </li>
-    </ul>
-
-    <div class="tab-content mt-2">
-      <div class="tab-pane fade show active" id="tab1">
-             <div class="col-12">
-                 <div class="row ">
-                     <div class="col-md-12">
-                         <form action="{{ route('enter_stock',$product) }}" method="POST">
-                             @csrf
-                             <div class="row mt-3">
-                                 <div class="col-md-4">
-                                     <div class="form-group" style="padding-left: 9px">
-
-                                         <input type="number" name="qt_stock"
-                                         value="{{ old('qt_stock',0)}}" class="form-control" id="" required>
-                                         <input type="hidden" name="product_id" value="{{ $product->id }}">
-                                         <small>Entrer la quantité</small>
-                                     </div>
-                                 </div>
-                                 <div class="col-md-4">
-                                     <div class="form-group" style="padding-left: 9px">
-
-                                         <input type="number" name="amount"
-                                         value="{{ old('amount',0)}}" class="form-control" id="" required>
-                                         <small>Montant</small>
-                                     </div>
-                                 </div>
-
-                                 <div class="col-md-4 ">
-                                          <div class="form-group">
-
-                                          <button type="submit" class="btn btn-outline-success" >Valider</button>
-                                        </div>
-                                  </div>
-                             </div>
-                         </form>
-                     </div>
-                 </div>
-                 <div class="card shadow">
-                    <div class="card-body ">
-                        @if (Session::has('message'))
-                        <div class="alert alert-success">
-                        <strong>{{ session('message') }}</strong>
-                        </div>
-                        @endif
-
-                    <div class="table-responsive">
-                        <table id="example" class="table table-hover w-100">
-                            <thead class="thead-light">
-                                <tr>
-                                    <th style="width: 20%">N°</th>
-                                    <th style="width: 20%">Quantité</th>
-                                    <th style="width: 20%">Montant</th>
-                                    <th style="width: 20%">Date de création</th>
-                                    <th style="width: 20%">Créer par</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                    @php
-                                        $i=1;
-                                    @endphp
-                                    @foreach ($product->enterstocks as $items )
-                                <tr>
-
-                                    <td style="color: black ">{{ $i++}}</td>
-                                    <td style="color: black ">{{ $items->qt_stock}}</td>
-                                    <td style="color: black ">{{ $items->amount}}</td>
-                                    <td  style="color: black ; ">{{ $items->created_at }}</td>
-                                    <td  style="color: black ; ">{{ $items->user->name ?? '' }}</td>
-
-
-                                </tr>
-                                    @endforeach
-
-                            </tbody>
-                            <tfoot class="thead-light">
-                                <tr>
-                                    <th style="width: 20%">N°</th>
-                                    <th style="width: 20%">Quantité</th>
-                                    <th style="width: 20%">Montant</th>
-                                    <th style="width: 20%">Date de création</th>
-                                    <th style="width: 20%">Créer par</th>
-                                </tr>
-
-                            </tfoot>
+            <div class="tab-content product-detail-tab-content">
+                <section class="tab-pane fade show active" id="product-entry">
+                    <div class="product-detail-section-head"><div><span class="product-detail-eyebrow">APPROVISIONNEMENT</span><h2>Enregistrer une entrée</h2></div></div>
+                    <form action="{{ route('enter_stock', $product) }}" method="POST" class="product-detail-form">
+                        @csrf
+                        <input type="hidden" name="product_id" value="{{ $product->id }}">
+                        <label><span>Quantité reçue</span><input type="number" min="0" name="qt_stock" value="{{ old('qt_stock', 0) }}" required></label>
+                        <label><span>Montant total (FCFA)</span><input type="number" min="0" name="amount" value="{{ old('amount', 0) }}" required></label>
+                        <button type="submit" class="product-detail-button"><span class="material-icons">add</span>Enregistrer l’entrée</button>
+                    </form>
+                    <div class="product-detail-section-head product-detail-history-head"><div><span class="product-detail-eyebrow">JOURNAL</span><h2>Historique des entrées</h2></div></div>
+                    <div class="product-detail-table-wrap">
+                        <table id="example" class="table product-detail-table">
+                            <thead><tr><th>N°</th><th>Quantité</th><th>Montant</th><th>Date</th><th>Enregistré par</th></tr></thead>
+                            <tbody>@foreach($product->enterstocks as $index => $entry)<tr><td>{{ $index + 1 }}</td><td>{{ number_format((float)$entry->qt_stock, 0, ',', ' ') }}</td><td>{{ number_format((float)$entry->amount, 0, ',', ' ') }} F</td><td>{{ $entry->created_at?->format('d/m/Y H:i') }}</td><td>{{ $entry->user->name ?? '—' }}</td></tr>@endforeach</tbody>
                         </table>
                     </div>
-                </div>
-                </div>
-             </div>
-      </div>
-      <div class="tab-pane fade" id="tab2">
-        <div class="col-12">
-            <div class="row ">
-                <div class="col-md-12">
-                    <form action="{{ route('out_stock',$product) }}" method="POST">
+                </section>
+
+                <section class="tab-pane fade" id="product-exit">
+                    <div class="product-detail-section-head"><div><span class="product-detail-eyebrow">MOUVEMENT DE STOCK</span><h2>Enregistrer une sortie</h2></div></div>
+                    <form action="{{ route('out_stock', $product) }}" method="POST" class="product-detail-form product-detail-exit-form">
                         @csrf
-                        <div class="row mt-3">
-                            <div class="col-md-4">
-                                <div class="form-group" >
-
-                                    <input type="number" name="qt_stock"
-                                    value="{{ old('qt_stock',0)}}" class="form-control" id="" required>
-                                    <input type="hidden" name="product_id" value="{{ $product->id }}">
-                                    <small>Entrer la quantité</small>
-                                </div>
-                            </div>
-                            <div class="col-md-4">
-                                <div class="form-group">
-                                     <textarea name="raison" id="" required placeholder="Saisissez la raison" class="form-control" cols="8" rows="1">{{ old('raison') }}</textarea>
-
-                                    <small>Saisissez la raison</small>
-                                </div>
-                            </div>
-
-                            <div class="col-md-4">
-                                     <div class="form-group">
-
-                                     <button type="submit" class="btn btn-outline-success" >Valider</button>
-                                   </div>
-                             </div>
-                        </div>
+                        <input type="hidden" name="product_id" value="{{ $product->id }}">
+                        <label><span>Quantité sortie</span><input type="number" min="0" name="qt_stock" value="{{ old('qt_stock', 0) }}" required></label>
+                        <label class="product-detail-reason"><span>Motif de la sortie</span><textarea name="raison" rows="2" required placeholder="Indique le motif">{{ old('raison') }}</textarea></label>
+                        <button type="submit" class="product-detail-button"><span class="material-icons">remove</span>Enregistrer la sortie</button>
                     </form>
-                </div>
+                    <div class="product-detail-section-head product-detail-history-head"><div><span class="product-detail-eyebrow">JOURNAL</span><h2>Historique des sorties</h2></div></div>
+                    <div class="product-detail-table-wrap">
+                        <table id="examples" class="table product-detail-table">
+                            <thead><tr><th>N°</th><th>Motif</th><th>Quantité</th><th>Date</th><th>Enregistré par</th></tr></thead>
+                            <tbody>@foreach($product->outstocks as $index => $exit)<tr><td>{{ $index + 1 }}</td><td>{{ $exit->raison }}</td><td>{{ number_format((float)$exit->qt_stock, 0, ',', ' ') }}</td><td>{{ $exit->created_at?->format('d/m/Y H:i') }}</td><td>{{ $exit->user->name ?? '—' }}</td></tr>@endforeach</tbody>
+                        </table>
+                    </div>
+                </section>
+
+                <section class="tab-pane fade" id="product-wholesale">
+                    <div class="product-detail-section-head"><div><span class="product-detail-eyebrow">TARIFICATION</span><h2>Prix grossiste</h2><p>Définis le prix appliqué aux ventes en gros.</p></div></div>
+                    <form action="{{ route('update-product-price', $product) }}" method="POST" class="product-detail-wholesale-form">
+                        @csrf
+                        @method('PUT')
+                        <label><span>Prix grossiste (FCFA)</span><input type="number" min="0" name="high_price" value="{{ old('high_price', $product->high_price) }}" required></label>
+                        <button type="submit" class="product-detail-button"><span class="material-icons">save</span>Enregistrer le prix</button>
+                    </form>
+                </section>
             </div>
-            <div class="card shadow">
-               <div class="card-body ">
-                   @if (Session::has('message'))
-                   <div class="alert alert-success">
-                   <strong>{{ session('message') }}</strong>
-                   </div>
-                   @endif
-
-               <div class="table-responsive">
-                   <table id="example" class="table table-hover w-100">
-                       <thead class="thead-light">
-                           <tr>
-                               <th style="width: 20%">N°</th>
-                               <th style="width: 20%">Raison</th>
-                               <th style="width: 20%">Quantité</th>
-                               <th style="width: 20%">Date de création</th>
-                               <th style="width: 20%">Créer par</th>
-                           </tr>
-                       </thead>
-                       <tbody>
-                               @php
-                                   $i=1;
-                               @endphp
-                               @foreach ($product->outstocks as $item )
-                           <tr>
-
-                               <td style="color: black ">{{ $i++}}</td>
-                               <td style="color: black ">{{ $item->raison}}</td>
-                               <td style="color: black ">{{ $item->qt_stock}}</td>
-                               <td  style="color: black ; ">{{ $item->created_at }}</td>
-                               <td  style="color: black ; ">{{ $item->user->name ?? '' }}</td>
-
-
-                           </tr>
-                               @endforeach
-
-                       </tbody>
-                       <tfoot class="thead-light">
-                           <tr>
-                               <th style="width: 20%">N°</th>
-                               <th style="width: 20%">Raison</th>
-                               <th style="width: 20%">Quantité</th>
-                               <th style="width: 20%">Date de création</th>
-                               <th style="width: 20%">Créer</th>
-                           </tr>
-
-                       </tfoot>
-                   </table>
-               </div>
-           </div>
-           </div>
-        </div>
-      </div>
-      <div class="tab-pane fade" id="tab3">
-        <h1 class="mt-5" style="text-align: center">{{ $product->name }}</h1>
-        <hr>
-          <form action="{{ route('update-product-price',$product) }}"  method="POST">
-            @csrf
-            @method("PUT")
-               <div class="col-md-12">
-                      <label for="">Prix grossiste</label>
-                      <input type="number"  class="form-control" required  name="high_price"  value="{{ old('high_price',0) }}" >
-                      <div>
-                         <button type="submit"  class="btn btn-success mt-3 mb-2" >Valider</button>
-                      </div>
-               </div>
-          </form>
-          <div class="col-md-12">
-                  @if ($product->img==null)
-
-                  @else
-                  <img src="{{ url('image/',$product->img) }}" alt="" class="img-thumbnail" srcset="">
-                  @endif
-         </div>
-      </div>
+        </section>
     </div>
-  </div>
+    <script>
+        $(function () {
+            $('a[data-toggle="tab"]').on('shown.bs.tab', function () {
+                $.fn.dataTable.tables({ visible: true, api: true }).columns.adjust();
+            });
+        });
+    </script>
 @endsection

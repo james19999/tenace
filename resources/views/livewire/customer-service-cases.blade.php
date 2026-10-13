@@ -198,6 +198,17 @@
                 padding: 12px 18px !important;
             }
         }
+        .service-cases .sc-hero,.service-cases .sc-metric,.service-cases .sc-panel,
+        .service-cases .sc-detail-card,.service-cases .sc-result-count,.service-cases .sc-history-count,
+        .service-cases .sc-filters .form-control,.service-cases .sc-search input,
+        .service-cases .sc-modal,.service-cases .sc-modal-head .sc-icon-button,
+        .service-cases .sc-response-suggestions button,.service-cases .sc-primary-btn,
+        .service-cases .sc-secondary-btn,.service-cases .sc-modal-foot button,
+        .service-cases .sc-modal-body .form-control,.service-cases .sc-table-wrap,
+        .service-cases .sc-table .badge,.service-cases .sc-table .btn{border-radius:0!important}
+        .service-cases .sc-hero,.service-cases .sc-metric,.service-cases .sc-panel,
+        .service-cases .sc-detail-card{box-shadow:none!important;border-color:#d9dde5!important}
+        .service-cases .sc-modal{box-shadow:0 12px 36px rgba(0,0,0,.25)!important}
     </style>
     @php
         $statusLabels = ['new' => 'Nouveau', 'analysis' => 'En cours d’analyse', 'waiting_customer' => 'En attente de la cliente', 'waiting_internal' => 'Action interne attendue', 'support_in_progress' => 'Accompagnement en cours', 'to_follow' => 'À suivre', 'resolved' => 'Résolu', 'closed' => 'Clôturé'];

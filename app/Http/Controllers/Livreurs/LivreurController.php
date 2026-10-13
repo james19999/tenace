@@ -17,6 +17,7 @@ use App\Http\Controllers\Controller;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Hash;
 use App\Models\PourcentageCommission;
+use App\Services\StockDeliveryService;
 use Illuminate\Support\Facades\Redirect;
 
 class LivreurController extends Controller
@@ -139,8 +140,13 @@ class LivreurController extends Controller
 
 
     public function user_admin_list(Request $request){
-        $users=User::where('user_type',$request->user_type)->latest()->get();
-        return view('users.index',compact('users'));
+        $userType = $request->query('user_type', 'LVS');
+        $allowedTypes = ['LVS', 'PT', 'VDS', 'CSA', 'MNG', 'SCR', 'CALLCENTER', 'ADMINUSER'];
+        if (! in_array($userType, $allowedTypes, true)) {
+            $userType = 'LVS';
+        }
+        $users = User::where('user_type', $userType)->latest()->get();
+        return view('users.index', compact('users', 'userType'));
     }
 
     public function user_show($id){
@@ -177,7 +183,7 @@ class LivreurController extends Controller
     }
 
 
-    public function change_order_status_user(Request $request,$id){
+    public function change_order_status_user(Request $request,$id, StockDeliveryService $stockDelivery){
 
         $orders=Order::findOrfail($id);
 
@@ -204,10 +210,9 @@ class LivreurController extends Controller
               return redirect()->back()->with('success','commande annuler');
 
              }else if($request->status=="delivered"){
-                $order=Order::where('id',$orders->id)->first();
-                foreach ($order->orderItems as $key => $value) {
-                  # code...
-                  $this->updateProdSale($value->product_id,$value->quantity);
+                $order=Order::with('orderItems')->findOrFail($orders->id);
+                if (! $stockDelivery->deliver($order, (int) Auth::id())) {
+                    return redirect()->back()->with('success','Cette commande a déjà été validée comme livrée.');
                 }
                $orders->status=$request->status;
                $orders->user_id=Auth::user()->id;

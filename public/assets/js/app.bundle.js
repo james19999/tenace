@@ -229,6 +229,16 @@ $(function () {
         $('#hamburger-btn').trigger('click');
         $('.overlay-mask').removeClass('open');
     });
+    $(document).on('click', function (event) {
+        const clickedOutsideMenu = !$(event.target).closest('.sidebar, #hamburger-btn, .overlay-mask').length;
+        const mobileMenuIsOpen = window.matchMedia('(max-width: 991.98px)').matches
+            && mainWrapper.hasClass('collapsed');
+
+        if (mobileMenuIsOpen && clickedOutsideMenu) {
+            mainWrapper.removeClass('collapsed');
+            $('.overlay-mask').removeClass('open');
+        }
+    });
 });
 
 function checkSpaceAvaibility(currentPos, that) {

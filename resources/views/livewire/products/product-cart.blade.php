@@ -71,6 +71,21 @@
         @media(max-width:991px){.cart-layout{grid-template-columns:minmax(0,1fr) 300px;gap:15px}.cart-shell{padding:0 14px}.cart-panel-head,.cart-panel-body{padding-left:17px;padding-right:17px}}
         @media(max-width:767px){.product-cart-page{padding-top:0}.cart-shell{padding:0 12px}.cart-heading{align-items:flex-start;margin:8px 0 18px}.cart-heading p{font-size:13px}.cart-back-link{font-size:13px}.cart-layout{grid-template-columns:minmax(0,1fr);gap:14px}.cart-summary{position:static}.cart-sidebar{order:2}.cart-main{order:1}.cart-panel{border-radius:13px}.cart-panel-head{padding:15px}.cart-panel-body{padding:16px}.cart-form-grid{gap:13px}.cart-field .form-control{height:43px}.cart-table{min-width:580px}.cart-summary .cart-panel-body{padding:16px}.cart-primary-btn{margin-top:12px}}
         @media(max-width:480px){.cart-heading{display:block}.cart-back-link{margin-top:12px}.cart-heading h1{font-size:27px}.cart-form-grid{grid-template-columns:minmax(0,1fr)}.cart-field.full{grid-column:auto}.cart-panel-head h2{font-size:15px}.cart-panel-head p{font-size:12px}.cart-table th,.cart-table td{padding:11px 10px}.cart-product-thumb{width:40px;height:40px;flex-basis:40px}.cart-empty{padding:32px 16px}}
+        /* Surfaces nettes et carrées, cohérentes avec le reste de l'application. */
+        .product-cart-page .cart-panel{border-radius:0;box-shadow:none;border-color:#d9dde5}
+        .product-cart-page .cart-alert,.product-cart-page .cart-step,
+        .product-cart-page .cart-field .form-control,
+        .product-cart-page .cart-field .select2-container--default .select2-selection--single,
+        .product-cart-page .cart-product-thumb,.product-cart-page .cart-quantity,
+        .product-cart-page .cart-remove,.product-cart-page .cart-empty-icon,
+        .product-cart-page .cart-empty a,.product-cart-page .cart-primary-btn,
+        .product-cart-page .cart-summary-note{border-radius:0}
+        .product-cart-page .cart-panel-head{background:#fff}
+        .product-cart-page .cart-table th{background:#f1f3f6}
+        .product-cart-page .cart-quantity{border-color:#d9dde5}
+        .product-cart-page .cart-remove{border:1px solid #f0d2d2}
+        .product-cart-page .cart-primary-btn,.product-cart-page .cart-empty a{min-height:46px;letter-spacing:.01em}
+        @media(max-width:767px){.product-cart-page .cart-shell{padding-left:12px;padding-right:12px}.product-cart-page .cart-panel-head,.product-cart-page .cart-panel-body{padding-left:14px;padding-right:14px}}
     </style>
 
     <div class="cart-shell">

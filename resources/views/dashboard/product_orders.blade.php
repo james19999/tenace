@@ -116,7 +116,7 @@
                     type: 'bar',
                     data: {
                         labels: chartRows.map(function (row) { return row.name; }),
-                        datasets: [{ label: 'Lignes de commande', data: chartRows.map(function (row) { return Number(row.order_count); }), backgroundColor: gradient, borderRadius: 5, maxBarThickness: 21 }]
+                        datasets: [{ label: 'Lignes de commande', data: chartRows.map(function (row) { return Number(row.order_count); }), backgroundColor: gradient, borderRadius: 0, maxBarThickness: 21 }]
                     },
                     options: {
                         indexAxis: 'y', responsive: true, maintainAspectRatio: false,

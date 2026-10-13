@@ -2,33 +2,25 @@
 
 @section('content')
 
-<div class="col-12 ">
-    <div class="row"  style="padding-top: 10px">
-         <div class="col-md-4">
-
-             <a href="{{ route('livreurs.create') }}" class="btn btn-primary" > Ajouter un membre</a>
-         </div>
-
-        <div class="col-md-4">
-            <form action="{{ route('useradminlist') }}"  method="GET" >
-                <select name="user_type" id="" class="form-control">
-
-                    <option value="LVS" {{ request('user_type') == 'LVS' ? 'selected' : '' }}>Livreur</option>
-                    <option value="PT" {{ request('user_type') == 'PT' ? 'selected' : '' }}>Partenaire</option>
-                    <option value="VDS" {{ request('user_type') == 'VDS' ? 'selected' : '' }}>Vendeur</option>
-                    <option value="CSA" {{ request('user_type') == 'CSA' ? 'selected' : '' }}>Caissier</option>
-                    <option value="MNG" {{ request('user_type') == 'MNG' ? 'selected' : '' }}>Manager</option>
-                    <option value="SCR" {{ request('user_type') == 'SCR' ? 'selected' : '' }}>Secrétaire</option>
-                    <option value="CALLCENTER" {{ request('user_type') == 'CALLCENTER' ? 'selected' : '' }}>SAV</option>
-                    <option value="ADMINUSER" {{ request('user_type') == 'ADMINUSER' ? 'selected' : '' }}>Administrateur</option>
-                </select>
-
-            </div>
-            <div class="col-md-4">
-                <button type="submit"  class="btn btn-success" >Valider</button>
-            </div>
-        </form>
+<div class="col-12 legacy-users-page">
+    <div class="users-page-toolbar">
+        <div><span class="users-page-eyebrow">ÉQUIPE</span><h1>Utilisateurs</h1><p>Choisis un rôle pour afficher immédiatement les comptes correspondants.</p></div>
+        <a href="{{ route('livreurs.create') }}" class="btn btn-primary"><span class="material-icons" aria-hidden="true">person_add</span>Ajouter un membre</a>
     </div>
+    <form action="{{ route('useradminlist') }}" method="GET" class="users-role-filter">
+        <label for="user-type-filter">Afficher le rôle</label>
+        <select name="user_type" id="user-type-filter" class="form-control" onchange="this.form.submit()">
+            <option value="LVS" @selected($userType === 'LVS')>Livreur</option>
+            <option value="PT" @selected($userType === 'PT')>Partenaire</option>
+            <option value="VDS" @selected($userType === 'VDS')>Vendeur</option>
+            <option value="CSA" @selected($userType === 'CSA')>Caissier</option>
+            <option value="MNG" @selected($userType === 'MNG')>Manager</option>
+            <option value="SCR" @selected($userType === 'SCR')>Secrétaire</option>
+            <option value="CALLCENTER" @selected($userType === 'CALLCENTER')>SAV</option>
+            <option value="ADMINUSER" @selected($userType === 'ADMINUSER')>Administrateur</option>
+        </select>
+        <noscript><button type="submit" class="btn btn-secondary">Afficher</button></noscript>
+    </form>
    <div class="card shadow">
        <div class="card-body ">
             @if (Session::has('messages'))

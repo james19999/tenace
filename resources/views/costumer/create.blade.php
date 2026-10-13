@@ -1,54 +1,39 @@
 @extends('layouts.admin')
 
 @section('content')
-<div>
+<div class="customer-create-page">
+    <div class="customer-create-heading">
+        <div><span class="customer-create-eyebrow">GESTION CLIENTÈLE</span><h1>Ajouter un client</h1><p>Renseigne les coordonnées pour créer une nouvelle fiche client.</p></div>
+        <a href="{{ route('costumer.index') }}" class="customer-create-back"><span class="material-icons" aria-hidden="true">arrow_back</span>Retour aux clients</a>
+    </div>
+
     @if (session()->has('messages'))
         <div class="alert alert-success">{{ session('messages') }}</div>
     @endif
 
-    <div class="row d-flex justify-content-center">
-        <div class="col-12 col-sm-7 ">
-            <div class="card shadow">
-                <div class="card-header" style="background-color: #7e1615">
-                    <h4 style="text-align: center;font-weight: 900 ;color: white">
-
-                    Ajouter un client
-                    </h4>
+    <section class="customer-create-card">
+        <div class="customer-create-card-heading"><span class="material-icons" aria-hidden="true">person_add</span><div><h2>Informations du client</h2><p>Les champs marqués d’un astérisque sont nécessaires à la création.</p></div></div>
+        <form method="POST" action="{{ route('costumer.store') }}">
+            @csrf
+            <div class="customer-create-fields">
+                <div class="customer-create-field">
+                    <label for="customer-name">Nom complet <span>*</span></label>
+                    <input type="text" id="customer-name" name="name" value="{{ old('name') }}" placeholder="Ex. Ama Kossi" autocomplete="name" required>
+                    @error('name')<small class="customer-create-error">{{ $message }}</small>@enderror
                 </div>
-                <div class="card-body">
-                <form  method="POST" action="{{ route('costumer.store') }}" >
-                    @csrf
-                        <div class="form-group">
-                            <label for="name">Nom:</label>
-                            <input type="text" class="form-control" id="name"   name="name"  placeholder="Nom"  value="{{ old('name') }}" >
-                            @error('name') <span class="text-danger">{{ $message }}</span>@enderror
-                        </div>
-
-                        <div class="form-group">
-                            <label for="phone">Téléphone:</label>
-                            <input type="text" class="form-control" id="phone" name="phone" placeholder="Téléphone"  value="{{ old('phone') }}">
-                            @error('phone') <span class="text-danger">{{ $message }}</span>@enderror
-                        </div>
-                        <div class="form-group">
-                            <label for="phone">Adresse:</label>
-                            <input type="text" class="form-control" id="adresse" name="adresse" placeholder="Adresse"  value="{{ old('adresse') }}">
-                            @error('adresse') <span class="text-danger">{{ $message }}</span>@enderror
-                        </div>
-
-                        <a  href="{{ route('costumer.index') }}" class="btn btn-danger">Annuler</a>
-                        <button type="submit" class="btn btn-primary">Enregistrer</button>
-                    </form>
+                <div class="customer-create-field">
+                    <label for="customer-phone">Téléphone <span>*</span></label>
+                    <input type="tel" id="customer-phone" name="phone" value="{{ old('phone') }}" placeholder="Ex. 90 00 00 00" autocomplete="tel" required>
+                    @error('phone')<small class="customer-create-error">{{ $message }}</small>@enderror
+                </div>
+                <div class="customer-create-field customer-create-field-wide">
+                    <label for="customer-address">Adresse de livraison <span>*</span></label>
+                    <textarea id="customer-address" name="adresse" rows="3" placeholder="Quartier, rue, repère…" autocomplete="street-address" required>{{ old('adresse') }}</textarea>
+                    @error('adresse')<small class="customer-create-error">{{ $message }}</small>@enderror
                 </div>
             </div>
-            <div class="card-footer" style="background-color: #7e1615" >
-
-            </div>
-        </div>
-    </div>
-
-   </div>
-
+            <div class="customer-create-form-footer"><p><span>*</span> Champs requis</p><div><a href="{{ route('costumer.index') }}" class="customer-create-cancel">Annuler</a><button type="submit" class="customer-create-submit"><span class="material-icons" aria-hidden="true">save</span>Enregistrer le client</button></div></div>
+        </form>
+    </section>
 </div>
-
-
 @endsection

@@ -7,6 +7,7 @@ use App\Models\Orders\Order;
 use Laravel\Sanctum\HasApiTokens;
 use Illuminate\Notifications\Notifiable;
 use Illuminate\Foundation\Auth\User as Authenticatable;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 
 class User extends Authenticatable
@@ -108,6 +109,41 @@ class User extends Authenticatable
     }
     public function wallets(){
         return $this->hasMany(Wallet::class);
+    }
+
+    public function responsibleStockLocations(): HasMany
+    {
+        return $this->hasMany(StockLocation::class, 'responsible_user_id');
+    }
+
+    public function createdStockMovements(): HasMany
+    {
+        return $this->hasMany(StockMovement::class, 'created_by');
+    }
+
+    public function approvedStockMovements(): HasMany
+    {
+        return $this->hasMany(StockMovement::class, 'approved_by');
+    }
+
+    public function requestedStockTransfers(): HasMany
+    {
+        return $this->hasMany(StockTransfer::class, 'requested_by');
+    }
+
+    public function createdStockCounts(): HasMany
+    {
+        return $this->hasMany(StockCount::class, 'created_by');
+    }
+
+    public function requestedStockAdjustments(): HasMany
+    {
+        return $this->hasMany(StockAdjustment::class, 'requested_by');
+    }
+
+    public function stockAuditLogs(): HasMany
+    {
+        return $this->hasMany(StockAuditLog::class);
     }
 
   

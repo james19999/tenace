@@ -121,5 +121,14 @@
         .orders-pagination-summary{display:none;color:#687386;white-space:nowrap}
         @media(max-width:767.98px){.order-list-page{padding-top:0}.orders-page-shell{padding:0 11px}.orders-page-heading{display:block;margin:8px 0 17px}.orders-page-heading h1{font-size:27px}.orders-page-heading p:not(.orders-eyebrow){font-size:13px;line-height:1.5}.orders-new-link{width:100%;margin-top:13px}.orders-board{border-radius:12px}.orders-board-top{padding:15px}.orders-board-top h2{font-size:16px}.order-list-tab-content{padding:14px 12px}.order-list-tabs{padding:0 7px}.order-list-tabs .nav-link{padding:11px 9px;font-size:11px}.order-history-filter{align-items:stretch;flex-direction:column;max-width:none}.order-history-filter select{width:100%;min-width:0}.orders-pagination-wrap{flex-direction:column;align-items:center;gap:6px}.orders-pagination-wrap .pagination{justify-content:center;max-width:100%}.orders-pagination-wrap .page-item:not(:first-child):not(:last-child):not(.active){display:none}.orders-pagination-wrap .page-link{min-width:40px;padding:8px 11px}.orders-pagination-summary{display:block}}
         @media(max-width:360px){.orders-page-heading h1{font-size:24px}.order-list-tabs .nav-link{padding:10px 7px;font-size:10px}.orders-tab-count{min-width:20px;height:20px;padding:0 5px}}
+        .order-list-page .orders-new-link,.order-list-page .orders-alert,.order-list-page .orders-board,
+        .order-list-page .order-list-tabs .nav-link,.order-list-page .order-list-tabs .nav-link.active:after,
+        .order-list-page .orders-tab-count,.order-list-page .order-history-filter,
+        .order-list-page .order-history-filter select,.order-list-page .orders-pagination-wrap .page-link,
+        .order-list-page .table-responsive,.order-list-page .table-responsive table,
+        .order-list-page .table-responsive .badge,.order-list-page .table-responsive .btn{border-radius:0!important}
+        .order-list-page .orders-board{box-shadow:none;border-color:#d9dde5}
+        .order-list-page .orders-board-top,.order-list-page .order-list-tab-content{background:#fff}
+        .order-list-page .order-list-tabs .nav-link.active:after{height:2px}
     </style>
 @endsection

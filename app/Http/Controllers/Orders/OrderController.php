@@ -16,6 +16,7 @@ use App\Http\Controllers\Controller;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Mail;
 use App\Models\PourcentageCommission;
+use App\Services\StockDeliveryService;
 
 class OrderController extends Controller
 {
@@ -123,7 +124,7 @@ class OrderController extends Controller
         return  view('orders.show', compact('Orders', 'livreurs'));
     }
 
-    public function change_order_status(Request $request, $id)
+    public function change_order_status(Request $request, $id, StockDeliveryService $stockDelivery)
     {
 
         $orders = Order::findOrfail($id);
@@ -153,10 +154,9 @@ class OrderController extends Controller
                 $orders->save();
                 return redirect()->back()->with('success', 'commande remise en cours');
             } else if ($request->status == "delivered") {
-                $order = Order::where('id', $orders->id)->first();
-                foreach ($order->orderItems as $key => $value) {
-                    # code...
-                    $this->updateProdSale($value->product_id, $value->quantity);
+                $order = Order::with('orderItems')->findOrFail($orders->id);
+                if (! $stockDelivery->deliver($order, (int) Auth::id())) {
+                    return redirect()->back()->with('success', 'Cette commande a déjà été validée comme livrée.');
                 }
 
                 $orders->status = $request->status;

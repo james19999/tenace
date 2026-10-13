@@ -1,0 +1,23 @@
+@extends('layouts.admin')
+
+@section('content')
+@php $typeLabels=['opening_balance'=>'Reprise initiale','receipt'=>'Réception fournisseur','receipt_difference'=>'Écart de réception','transfer_shipment'=>'Expédition de transfert','transfer_receipt'=>'Réception de transfert','transfer_damage'=>'Écart transfert','manual_adjustment'=>'Ajustement manuel','inventory_adjustment'=>'Écart inventaire','sale'=>'Vente','return'=>'Retour']; @endphp
+<div class="stock-control-page stock-ledger-page">
+    <header class="stock-control-hero"><div class="stock-control-hero-copy"><span class="stock-control-kicker">TENACOS · TRAÇABILITÉ</span><h1>Journal des mouvements</h1><p>Retrouve les entrées, sorties, transferts et corrections qui composent le stock.</p></div><a href="{{ route('stock-control.balances') }}" class="stock-control-hero-action"><span class="material-icons">inventory</span>État du stock</a></header>
+    <section class="stock-control-card">
+        <div class="stock-control-section-head"><div><span class="stock-control-kicker">HISTORIQUE</span><h2>Mouvements de stock</h2></div><span class="stock-control-count">{{ number_format($movements->total(),0,',',' ') }} mouvement(s)</span></div>
+        <form method="GET" action="{{ route('stock-control.movements.index') }}" class="stock-balance-filters ledger-filters">
+            <label class="stock-control-field"><span>Produit</span><input class="stock-live-search" type="search" name="search" value="{{ $search }}" placeholder="Nom du produit" autocomplete="off"></label>
+            <label class="stock-control-field"><span>Type</span><select name="type"><option value="">Tous les types</option>@foreach($types as $type)<option value="{{ $type }}" @selected(($filters['type']??'')===$type)>{{ $typeLabels[$type]??ucfirst(str_replace('_',' ',$type)) }}</option>@endforeach</select></label>
+            <label class="stock-control-field"><span>Emplacement</span><select name="location_id"><option value="">Tous</option>@foreach($locations as $location)<option value="{{ $location->id }}" @selected(($filters['location_id']??'')==$location->id)>{{ $location->name }}</option>@endforeach</select></label>
+            <label class="stock-control-field"><span>État</span><select name="status">@foreach(['posted'=>'Appliqués','submitted'=>'En attente','draft'=>'Brouillons','reversed'=>'Annulés','all'=>'Tous'] as $value=>$label)<option value="{{ $value }}" @selected($status===$value)>{{ $label }}</option>@endforeach</select></label>
+            <label class="stock-control-field"><span>Du</span><input type="date" name="date_from" value="{{ $filters['date_from']??'' }}"></label><label class="stock-control-field"><span>Au</span><input type="date" name="date_to" value="{{ $filters['date_to']??'' }}"></label>
+            <div class="stock-balance-filter-actions"><button class="stock-control-button stock-control-button-primary" type="submit"><span class="material-icons">search</span>Filtrer</button><a class="stock-control-button" href="{{ route('stock-control.movements.index') }}">Effacer</a></div>
+        </form>
+        @if($movements->isEmpty())<div class="stock-control-empty"><span class="material-icons">swap_vert</span><strong>Aucun mouvement trouvé</strong><p>Les mouvements validés dans le module apparaîtront ici.</p></div>@else
+        <div class="ledger-list">@foreach($movements as $movement)
+            <a class="ledger-row" href="{{ route('stock-control.movements.show',$movement) }}"><div class="ledger-row-main"><span class="receipt-ref-icon material-icons">swap_vert</span><div><strong>{{ $movement->movement_number }}</strong><small>{{ $typeLabels[$movement->type]??ucfirst(str_replace('_',' ',$movement->type)) }} · {{ $movement->occurred_at?->format('d/m/Y H:i') }}</small></div></div><div class="ledger-row-products"><strong>{{ $movement->lines->take(2)->pluck('product.name')->filter()->join(', ') ?: 'Mouvement sans ligne' }}</strong>@if($movement->lines_count>2)<small>et {{ $movement->lines_count-2 }} autre(s) produit(s)</small>@endif</div><div class="ledger-row-location"><span>Emplacement(s)</span><strong>{{ $movement->lines->pluck('location.name')->filter()->unique()->take(2)->join(', ') ?: '—' }}</strong></div><strong class="ledger-delta">{{ $movement->lines_count }} ligne(s)</strong><span class="receipt-status-pill {{ $movement->status==='posted'?'validated':'neutral' }}">{{ $movement->status==='posted'?'Appliqué':ucfirst($movement->status) }}</span><span class="receipt-open-icon material-icons">arrow_forward</span></a>
+        @endforeach</div><div class="receipt-pagination">{{ $movements->links() }}</div>@endif
+    </section>
+</div>
+@endsection

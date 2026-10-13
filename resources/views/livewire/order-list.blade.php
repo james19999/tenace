@@ -1,4 +1,4 @@
-<div>
+<div class="order-list-page">
 
     <style>
         .date-scroll-container {
@@ -114,6 +114,30 @@
             border: 1px solid #e2e8f0;
             border-radius: 8px;
             padding: 12px 16px;
+        }
+        .order-list-page{--orders-wine:#861b1b;--orders-line:#dfe3e9;color:#272a35}
+        .order-list-page .card,.order-list-page .order-card,.order-list-page .finance-box,
+        .order-list-page .table-responsive,.order-list-page .modal-content{border-radius:0!important;box-shadow:none!important}
+        .order-list-page .card,.order-list-page .order-card{border:1px solid var(--orders-line)!important}
+        .order-list-page .order-card{margin-bottom:16px}
+        .order-list-page .order-card-header,.order-list-page .order-card-footer{background:#f7f8fa}
+        .order-list-page .date-chip,.order-list-page .date-chip-badge,.order-list-page .pill-badge{border-radius:0!important}
+        .order-list-page .date-chip{border-color:#d9dde5;padding:9px 12px}
+        .order-list-page .date-chip.active{background:var(--orders-wine);border-color:var(--orders-wine);box-shadow:none}
+        .order-list-page .finance-box{border-color:var(--orders-line)}
+        .order-list-page .form-control,.order-list-page .btn,.order-list-page .badge,
+        .order-list-page .alert{border-radius:0!important}
+        .order-list-page .table-responsive{border-color:var(--orders-line)!important}
+        .order-list-page h4{line-height:1.25}
+        @media(max-width:767px){
+            .order-list-page .card-body>.d-flex.align-items-center{display:grid!important;grid-template-columns:1fr 1fr;gap:8px}
+            .order-list-page .date-scroll-container{grid-column:1/-1;grid-row:1;min-width:0;order:0}
+            .order-list-page .card-body>.d-flex.align-items-center>button{min-width:0!important;width:100%;height:44px!important;margin:0!important;padding:6px!important}
+            .order-list-page .card-body>.d-flex.align-items-center>button:first-child{grid-column:1;grid-row:2}
+            .order-list-page .card-body>.d-flex.align-items-center>button:last-child{grid-column:2;grid-row:2}
+            .order-list-page .date-chip{min-width:76px;padding:7px 8px;margin-right:6px}
+            .order-list-page .order-card-header,.order-list-page .order-card-body,.order-list-page .order-card-footer{padding:13px}
+            .order-list-page .modal-dialog{width:calc(100% - 24px);max-width:none;margin:12px auto}
         }
     </style>
 

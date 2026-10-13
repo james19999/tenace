@@ -6,6 +6,7 @@ use App\Models\OutStock;
 use App\Models\EnterStock;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class Product extends Model
 {
@@ -18,5 +19,35 @@ class Product extends Model
     }
     public function outstocks() {
         return $this->hasMany(OutStock::class);
+    }
+
+    public function stockLots(): HasMany
+    {
+        return $this->hasMany(StockLot::class);
+    }
+
+    public function stockMovementLines(): HasMany
+    {
+        return $this->hasMany(StockMovementLine::class);
+    }
+
+    public function stockTransferLines(): HasMany
+    {
+        return $this->hasMany(StockTransferLine::class);
+    }
+
+    public function stockReceiptLines(): HasMany
+    {
+        return $this->hasMany(StockReceiptLine::class);
+    }
+
+    public function stockCountLines(): HasMany
+    {
+        return $this->hasMany(StockCountLine::class);
+    }
+
+    public function stockAdjustmentLines(): HasMany
+    {
+        return $this->hasMany(StockAdjustmentLine::class);
     }
 }

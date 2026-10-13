@@ -7,6 +7,22 @@
  * Copyright 2011-2020 Twitter, Inc.
  * Licensed under MIT (https://github.com/twbs/bootstrap/blob/main/LICENSE)
  */
+
+/* Consistent square active state across every sidebar tab. */
+.main-wrapper .sidebar .navigation > ul li a.active
+{
+    border-radius: 0 !important;
+    background: #f2eeee !important;
+    color: #851b1b !important;
+    box-shadow: inset 3px 0 0 #851b1b;
+}
+
+.main-wrapper .sidebar .navigation > ul li a.active .icon,
+.main-wrapper .sidebar .navigation > ul li a.active .caret,
+.main-wrapper .sidebar .navigation > ul li a.active .text
+{
+    color: #851b1b !important;
+}
 :root
 {
     --blue: #084B83;
@@ -16515,6 +16531,45 @@ table.dataTable > thead .sorting_desc_disabled:before
     align-items: center;
     text-decoration: none;
     border-radius: 0 20px 20px 0;
+}
+
+/* Stock control submenu: square, restrained active state. */
+.main-wrapper .sidebar .navigation > ul li ul li a[href*="stock-control"].active
+{
+    border-radius: 0 !important;
+    background: #f2eeee !important;
+    color: #851b1b !important;
+    box-shadow: inset 3px 0 0 #851b1b;
+}
+
+.main-wrapper .sidebar .navigation > ul li ul li a[href*="stock-control"].active .icon,
+.main-wrapper .sidebar .navigation > ul li ul li a[href*="stock-control"].active .text
+{
+    color: #851b1b !important;
+}
+
+.main-wrapper .sidebar .navigation > ul li > a[href="#adminStockControlMenu"].active,
+.main-wrapper .sidebar .navigation > ul li > a[href="#mngStockControlMenu"].active
+{
+    border-radius: 0 !important;
+    background: #f2eeee !important;
+    color: #851b1b !important;
+    box-shadow: inset 3px 0 0 #851b1b;
+}
+
+.main-wrapper .sidebar .navigation > ul li > a[href="#adminStockControlMenu"].active .icon,
+.main-wrapper .sidebar .navigation > ul li > a[href="#adminStockControlMenu"].active .text,
+.main-wrapper .sidebar .navigation > ul li > a[href="#adminStockControlMenu"].active .caret,
+.main-wrapper .sidebar .navigation > ul li > a[href="#mngStockControlMenu"].active .icon,
+.main-wrapper .sidebar .navigation > ul li > a[href="#mngStockControlMenu"].active .text,
+.main-wrapper .sidebar .navigation > ul li > a[href="#mngStockControlMenu"].active .caret
+{
+    color: #851b1b !important;
+}
+
+.main-wrapper .sidebar .navigation > ul li ul li a[href*="stock-control"] .badge
+{
+    border-radius: 2px !important;
 }
 
 .main-wrapper .sidebar .navigation > ul li a span

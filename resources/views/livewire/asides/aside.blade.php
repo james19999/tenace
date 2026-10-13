@@ -75,6 +75,23 @@
                     </a>
                 </li>
                 <li>
+                    <a href="#adminStockControlMenu" class="{{ $active('stock-control.*') }}" data-toggle="collapse" aria-expanded="{{ request()->routeIs('stock-control.*') ? 'true' : 'false' }}">
+                        <span class="caret material-icons">arrow_right</span>
+                        <span class="icon material-icons">inventory_2</span>
+                        <span class="text">Contrôle des stocks</span>
+                    </a>
+                    <ul class="collapse {{ $active('stock-control.*') ? 'show' : '' }}" id="adminStockControlMenu">
+                        <li><a href="{{ route('stock-control.index') }}" class="stock-control-link {{ $active('stock-control.index') }}"><span class="icon material-icons">remove</span><span class="text">Paramètres et sites @if(($stockBadges['settings'] ?? 0) > 0)<span class="badge badge-pill badge-danger">{{ $stockBadges['settings'] }}</span>@endif</span></a></li>
+                        <li><a href="{{ route('stock-control.balances') }}" class="stock-control-link {{ $active('stock-control.balances') }}"><span class="icon material-icons">remove</span><span class="text">État du stock @if(($stockBadges['balances'] ?? 0) > 0)<span class="badge badge-pill badge-danger">{{ $stockBadges['balances'] }}</span>@endif</span></a></li>
+                        <li><a href="{{ route('stock-control.receipts.index') }}" class="stock-control-link {{ $active('stock-control.receipts.*') }}"><span class="icon material-icons">remove</span><span class="text">Réceptions @if(($stockBadges['receipts'] ?? 0) > 0)<span class="badge badge-pill badge-danger">{{ $stockBadges['receipts'] }}</span>@endif</span></a></li>
+                        <li><a href="{{ route('stock-control.transfers.index') }}" class="stock-control-link {{ $active('stock-control.transfers.*') }}"><span class="icon material-icons">remove</span><span class="text">Transferts @if(($stockBadges['transfers'] ?? 0) > 0)<span class="badge badge-pill badge-danger">{{ $stockBadges['transfers'] }}</span>@endif</span></a></li>
+                        <li><a href="{{ route('stock-control.counts.index') }}" class="stock-control-link {{ $active('stock-control.counts.*') }}"><span class="icon material-icons">remove</span><span class="text">Inventaires @if(($stockBadges['counts'] ?? 0) > 0)<span class="badge badge-pill badge-danger">{{ $stockBadges['counts'] }}</span>@endif</span></a></li>
+                        <li><a href="{{ route('stock-control.adjustments.index') }}" class="stock-control-link {{ $active('stock-control.adjustments.*') }}"><span class="icon material-icons">remove</span><span class="text">Ajustements @if(($stockBadges['adjustments'] ?? 0) > 0)<span class="badge badge-pill badge-danger">{{ $stockBadges['adjustments'] }}</span>@endif</span></a></li>
+                        <li><a href="{{ route('stock-control.movements.index') }}" class="stock-control-link {{ $active('stock-control.movements.*') }}"><span class="icon material-icons">remove</span><span class="text">Mouvements @if(($stockBadges['movements'] ?? 0) > 0)<span class="badge badge-pill badge-danger">{{ $stockBadges['movements'] }}</span>@endif</span></a></li>
+                        <li><a href="{{ route('stock-control.alerts.index') }}" class="stock-control-link {{ $active('stock-control.alerts.*') }}"><span class="icon material-icons">remove</span><span class="text">Alertes @if(($stockBadges['alerts'] ?? 0) > 0)<span class="badge badge-pill badge-danger">{{ $stockBadges['alerts'] }}</span>@endif</span></a></li>
+                    </ul>
+                </li>
+                <li>
                     <a href="{{ route('audit.products') }}" class="{{ $active('audit.products') }}">
                         <span class="icon material-icons">store
                         </span>
@@ -217,7 +234,7 @@
                         <span class="text">Consultations</span>
                     </a>
                 </li>
-                <li wire:poll.5s>
+                <li>
                     <a href="{{ route('brouillons') }}" class="{{ $active('brouillons') }}">
                         <span class="icon material-icons">delete_sweep
                         </span>
@@ -394,6 +411,23 @@
                         <span class="icon material-icons">store</span>
                         <span class="text">Produits</span>
                     </a>
+                </li>
+                <li>
+                    <a href="#mngStockControlMenu" class="{{ $active('stock-control.*') }}" data-toggle="collapse" aria-expanded="{{ request()->routeIs('stock-control.*') ? 'true' : 'false' }}">
+                        <span class="caret material-icons">arrow_right</span>
+                        <span class="icon material-icons">inventory_2</span>
+                        <span class="text">Contrôle des stocks</span>
+                    </a>
+                    <ul class="collapse {{ $active('stock-control.*') ? 'show' : '' }}" id="mngStockControlMenu">
+                        <li><a href="{{ route('stock-control.index') }}" class="{{ $active('stock-control.index') }}"><span class="icon material-icons">remove</span><span class="text">Paramètres et sites @if(($stockBadges['settings'] ?? 0) > 0)<span class="badge badge-pill badge-danger">{{ $stockBadges['settings'] }}</span>@endif</span></a></li>
+                        <li><a href="{{ route('stock-control.balances') }}" class="{{ $active('stock-control.balances') }}"><span class="icon material-icons">remove</span><span class="text">État du stock @if(($stockBadges['balances'] ?? 0) > 0)<span class="badge badge-pill badge-danger">{{ $stockBadges['balances'] }}</span>@endif</span></a></li>
+                        <li><a href="{{ route('stock-control.receipts.index') }}" class="{{ $active('stock-control.receipts.*') }}"><span class="icon material-icons">remove</span><span class="text">Réceptions @if(($stockBadges['receipts'] ?? 0) > 0)<span class="badge badge-pill badge-danger">{{ $stockBadges['receipts'] }}</span>@endif</span></a></li>
+                        <li><a href="{{ route('stock-control.transfers.index') }}" class="{{ $active('stock-control.transfers.*') }}"><span class="icon material-icons">remove</span><span class="text">Transferts @if(($stockBadges['transfers'] ?? 0) > 0)<span class="badge badge-pill badge-danger">{{ $stockBadges['transfers'] }}</span>@endif</span></a></li>
+                        <li><a href="{{ route('stock-control.counts.index') }}" class="{{ $active('stock-control.counts.*') }}"><span class="icon material-icons">remove</span><span class="text">Inventaires @if(($stockBadges['counts'] ?? 0) > 0)<span class="badge badge-pill badge-danger">{{ $stockBadges['counts'] }}</span>@endif</span></a></li>
+                        <li><a href="{{ route('stock-control.adjustments.index') }}" class="{{ $active('stock-control.adjustments.*') }}"><span class="icon material-icons">remove</span><span class="text">Ajustements @if(($stockBadges['adjustments'] ?? 0) > 0)<span class="badge badge-pill badge-danger">{{ $stockBadges['adjustments'] }}</span>@endif</span></a></li>
+                        <li><a href="{{ route('stock-control.movements.index') }}" class="{{ $active('stock-control.movements.*') }}"><span class="icon material-icons">remove</span><span class="text">Mouvements @if(($stockBadges['movements'] ?? 0) > 0)<span class="badge badge-pill badge-danger">{{ $stockBadges['movements'] }}</span>@endif</span></a></li>
+                        <li><a href="{{ route('stock-control.alerts.index') }}" class="{{ $active('stock-control.alerts.*') }}"><span class="icon material-icons">remove</span><span class="text">Alertes @if(($stockBadges['alerts'] ?? 0) > 0)<span class="badge badge-pill badge-danger">{{ $stockBadges['alerts'] }}</span>@endif</span></a></li>
+                    </ul>
                 </li>
                 <li>
                     <a href="{{ route('order-liste-order') }}" class="{{ $active('order-liste-order') }}">
@@ -652,9 +686,15 @@
 
 
 </aside>
-
 @once
     <script>
+        window.addEventListener('stock-notification-read', function () {
+            var aside = document.querySelector('.sidebar[wire\\:id]');
+            if (!aside || !window.Livewire) return;
+            var component = window.Livewire.find(aside.getAttribute('wire:id'));
+            if (component) component.call('refreshStockBadges');
+        });
+
         if (!window.tenaceCartCountListener) {
             window.tenaceCartCountListener = true;
             window.addEventListener('cart-count-updated', function (event) {

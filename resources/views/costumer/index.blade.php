@@ -85,5 +85,13 @@
         .dataTables_wrapper .dataTables_paginate .paginate_button:hover{background:#f8eded!important;color:var(--customer-red)!important}
         @media(max-width:767.98px){.customer-directory-page{padding-top:0}.customer-directory-shell{padding:0 11px}.customer-directory-heading{display:block;margin:8px 0 16px}.customer-directory-heading h1{font-size:26px}.customer-directory-heading>div:first-child>p:last-child{font-size:13px;line-height:1.45}.customer-directory-actions{display:grid;grid-template-columns:1fr 1fr;margin-top:13px}.customer-directory-actions a{min-height:40px;padding:8px 6px;font-size:11px}.customer-directory-card{border-radius:12px}.customer-directory-card-heading{padding:14px}.customer-directory-table-wrap{padding:0 9px 10px}.dataTables_wrapper{padding:12px 10px 0}.dataTables_wrapper .dataTables_filter,.dataTables_wrapper .dataTables_length{float:none!important;text-align:left!important;width:100%;margin:0 0 10px}.dataTables_wrapper .dataTables_filter input{display:block;width:100%;margin:5px 0 0}.dataTables_wrapper .dataTables_length select{margin-left:4px}.dataTables_wrapper .dt-buttons{gap:4px}.dataTables_wrapper .dt-buttons .dt-button{padding:6px 7px!important;font-size:10px!important}.dataTables_wrapper .dataTables_info{float:none!important;text-align:center;padding-bottom:5px}.dataTables_wrapper .dataTables_paginate{float:none!important;text-align:center;padding-bottom:8px}.dataTables_wrapper .dataTables_paginate .paginate_button{padding:6px 8px!important}}
         @media(max-width:360px){.customer-directory-actions{grid-template-columns:1fr}.customer-directory-actions a{width:100%}.customer-directory-card-heading p{font-size:11px}}
+        .customer-directory-page .customer-directory-actions a,.customer-directory-page .customer-directory-alert,
+        .customer-directory-page .customer-directory-card,.customer-directory-page .customer-directory-card-icon,
+        .customer-directory-page #customer-table tbody td .btn,.customer-directory-page .dataTables_wrapper .dt-button,
+        .customer-directory-page .dataTables_wrapper .dataTables_filter input,
+        .customer-directory-page .dataTables_wrapper .dataTables_length select,
+        .customer-directory-page .dataTables_wrapper .dataTables_paginate .paginate_button{border-radius:0!important}
+        .customer-directory-page .customer-directory-card{box-shadow:none;border-color:#d9dde5}
+        .customer-directory-page .customer-directory-card-heading{background:#fff}
     </style>
 @endsection

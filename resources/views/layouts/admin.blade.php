@@ -6,17 +6,27 @@
 <head>
     <meta charset="UTF-8">
     <title>TENACE COSMETIQUE</title>
+    @php
+        $squareAdminPages = true;
+    @endphp
 
     <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
 
-    <link rel="stylesheet" href="{{ asset('assets/css/style.css') }}">
+    <link rel="stylesheet" href="{{ asset('assets/css/style.css') }}?v=20261012.4">
     <link rel="stylesheet" href="{{ asset('assets/css/customer-service-notifications.css') }}?v=20261008.1">
     @if (request()->routeIs('service-cases.*'))
-        <link rel="stylesheet" href="{{ asset('assets/css/customer-service-cases.css') }}?v=20261009.3">
+        <link rel="stylesheet" href="{{ asset('assets/css/customer-service-cases.css') }}?v=20261009.4">
     @endif
     @if (request()->routeIs('customer-loyalty.*'))
-        <link rel="stylesheet" href="{{ asset('assets/css/customer-loyalty.css') }}?v=20261010.1">
+        <link rel="stylesheet" href="{{ asset('assets/css/customer-loyalty.css') }}?v=20261010.2">
     @endif
+    @if (request()->routeIs('stock-control.*'))
+        <link rel="stylesheet" href="{{ asset('assets/css/stock-control.css') }}?v=20261013.2">
+    @endif
+    @if (request()->routeIs('show-product'))
+        <link rel="stylesheet" href="{{ asset('assets/css/product-detail.css') }}?v=20261012.3">
+    @endif
+    <link rel="stylesheet" href="{{ asset('assets/css/legacy-square-pages.css') }}?v=20261013.7">
 
     <link rel="shortcut icon" href="{{ asset('assets/images/tena.png') }}" type="image/png">
     <link rel="icon" href="{{ asset('assets/images/tena.png') }}" type="image/png">
@@ -40,7 +50,7 @@
 
 </head>
 
-<body>
+<body class="{{ $squareAdminPages ? 'legacy-square-pages' : '' }}">
     <div class="overlay-mask"></div>
     <div class="main-wrapper ">
 
@@ -71,7 +81,7 @@
     <script src="{{ asset('assets/js/vendor.bundle.js') }}"></script>
 
 
-    <script src="{{ asset('assets/js/app.bundle.js') }}"></script>
+    <script src="{{ asset('assets/js/app.bundle.js') }}?v=20261012.2"></script>
 
 
 
@@ -195,6 +205,56 @@
     </script>
 
     @include('partials.pwa-scripts')
+    @if (request()->routeIs('stock-control.*'))
+        <dialog class="stock-confirm-dialog" id="stockConfirmDialog" aria-labelledby="stockConfirmTitle" aria-describedby="stockConfirmMessage">
+            <div class="stock-confirm-dialog-head"><span class="material-icons" aria-hidden="true">fact_check</span><button type="button" data-stock-confirm-cancel aria-label="Fermer">×</button></div>
+            <h2 id="stockConfirmTitle">Confirmer l’action</h2>
+            <p id="stockConfirmMessage"></p>
+            <div class="stock-confirm-dialog-actions"><button type="button" class="stock-control-button" data-stock-confirm-cancel>Annuler</button><button type="button" class="stock-control-button stock-control-button-primary" id="stockConfirmAccept">Confirmer</button></div>
+        </dialog>
+        <script>
+            (() => {
+                const timers = new WeakMap();
+                document.addEventListener('input', (event) => {
+                    const input = event.target;
+                    if (!(input instanceof HTMLInputElement) || !input.matches('.stock-live-search')) return;
+                    const form = input.form;
+                    if (!form) return;
+                    window.clearTimeout(timers.get(input));
+                    timers.set(input, window.setTimeout(() => {
+                        if (typeof form.requestSubmit === 'function') form.requestSubmit();
+                        else form.submit();
+                    }, 550));
+                });
+
+                const dialog = document.getElementById('stockConfirmDialog');
+                const accept = document.getElementById('stockConfirmAccept');
+                let pendingForm = null;
+                if (!dialog || !accept) return;
+                document.addEventListener('submit', (event) => {
+                    const form = event.target;
+                    if (!(form instanceof HTMLFormElement) || !form.hasAttribute('data-stock-confirm-title')) return;
+                    event.preventDefault();
+                    pendingForm = form;
+                    dialog.querySelector('#stockConfirmTitle').textContent = form.dataset.stockConfirmTitle || 'Confirmer l’action';
+                    dialog.querySelector('#stockConfirmMessage').textContent = form.dataset.stockConfirmMessage || '';
+                    dialog.showModal();
+                });
+                dialog.querySelectorAll('[data-stock-confirm-cancel]').forEach((button) => button.addEventListener('click', () => dialog.close()));
+                dialog.addEventListener('click', (event) => { if (event.target === dialog) dialog.close(); });
+                dialog.addEventListener('close', () => { pendingForm = null; });
+                accept.addEventListener('click', () => {
+                    if (!pendingForm) return;
+                    const form = pendingForm;
+                    pendingForm = null;
+                    form.removeAttribute('data-stock-confirm-title');
+                    form.removeAttribute('data-stock-confirm-message');
+                    dialog.close();
+                    form.requestSubmit();
+                });
+            })();
+        </script>
+    @endif
 </body>
 
 

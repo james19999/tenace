@@ -134,7 +134,7 @@
                                 <div class="product-admin-actions">
                                     <a href="{{ route('show-product', $product) }}"><span class="material-icons">visibility</span> Voir</a>
                                     <a href="{{ route('editproduct', $product) }}"><span class="material-icons">edit</span> Modifier</a>
-                                    <form method="POST" action="{{ route('delteproduct', $product) }}" onsubmit="return confirm('Supprimer ce produit ?')">
+                                    <form method="POST" action="{{ route('delteproduct', $product) }}" data-product-delete-confirm data-product-name="{{ $product->name }}">
                                         @csrf
                                         @method('DELETE')
                                         <button type="submit"><span class="material-icons">delete</span> Supprimer</button>
@@ -163,6 +163,43 @@
             </div>
         @endif
     </section>
+
+    @if ($isAdmin)
+        <dialog class="product-delete-dialog" id="productDeleteDialog" aria-labelledby="productDeleteTitle" aria-describedby="productDeleteMessage">
+            <div class="product-delete-dialog-mark"><span class="material-icons" aria-hidden="true">delete_outline</span><button type="button" data-product-delete-cancel aria-label="Fermer">×</button></div>
+            <h2 id="productDeleteTitle">Supprimer ce produit ?</h2>
+            <p id="productDeleteMessage"></p>
+            <div class="product-delete-dialog-actions"><button type="button" data-product-delete-cancel class="product-delete-cancel">Annuler</button><button type="button" id="productDeleteAccept" class="product-delete-accept"><span class="material-icons">delete</span>Supprimer le produit</button></div>
+        </dialog>
+        <script>
+            (() => {
+                const dialog = document.getElementById('productDeleteDialog');
+                const accept = document.getElementById('productDeleteAccept');
+                if (!dialog || !accept || dialog.dataset.ready) return;
+                dialog.dataset.ready = '1';
+                let pendingForm = null;
+                document.addEventListener('submit', (event) => {
+                    const form = event.target;
+                    if (!(form instanceof HTMLFormElement) || !form.hasAttribute('data-product-delete-confirm')) return;
+                    event.preventDefault();
+                    pendingForm = form;
+                    dialog.querySelector('#productDeleteMessage').textContent = `Tu vas supprimer « ${form.dataset.productName} ». Cette action est définitive.`;
+                    dialog.showModal();
+                });
+                dialog.querySelectorAll('[data-product-delete-cancel]').forEach(button => button.addEventListener('click', () => dialog.close()));
+                dialog.addEventListener('click', event => { if (event.target === dialog) dialog.close(); });
+                dialog.addEventListener('close', () => { pendingForm = null; });
+                accept.addEventListener('click', () => {
+                    if (!pendingForm) return;
+                    const form = pendingForm;
+                    pendingForm = null;
+                    form.removeAttribute('data-product-delete-confirm');
+                    dialog.close();
+                    form.requestSubmit();
+                });
+            })();
+        </script>
+    @endif
 
     <style>
         .product-catalog-page{--catalog-burgundy:#7e1615;--catalog-ink:#272b35;--catalog-muted:#78808e;--catalog-line:#e8e9ed;--catalog-bg:#f7f7f9;min-width:0;padding-top:14px;padding-bottom:28px;color:var(--catalog-ink)}
@@ -233,6 +270,19 @@
         .product-admin-actions a,.product-admin-actions button{display:inline-flex;align-items:center;gap:4px;padding:0;border:0;background:none;color:#747b88;font-size:10px;text-decoration:none}
         .product-admin-actions a:hover,.product-admin-actions button:hover{color:var(--catalog-burgundy)}
         .product-admin-actions .material-icons{font-size:15px}
+        .product-delete-dialog{width:min(440px,calc(100vw - 28px));max-width:none;padding:22px;border:1px solid #e3e5ea;border-radius:4px;background:#fff;color:#292d38;box-shadow:0 20px 60px rgba(24,28,38,.25)}
+        .product-delete-dialog::backdrop{background:rgba(20,24,31,.56)}
+        .product-delete-dialog-mark{display:flex;align-items:center;justify-content:space-between;margin-bottom:14px}
+        .product-delete-dialog-mark>.material-icons{display:grid;width:40px;height:40px;place-items:center;background:#faeded;color:#851b1b}
+        .product-delete-dialog-mark button{width:34px;height:34px;border:1px solid #e3e5ea;background:#fff;color:#596170;font-size:22px;line-height:1}
+        .product-delete-dialog h2{margin:0 0 8px;font-size:18px;font-weight:850}
+        .product-delete-dialog p{margin:0;color:#667080;font-size:13px;line-height:1.6}
+        .product-delete-dialog-actions{display:flex;justify-content:flex-end;gap:9px;margin-top:22px}
+        .product-delete-dialog-actions button{display:inline-flex;min-height:40px;align-items:center;justify-content:center;gap:6px;padding:8px 13px;border:1px solid #dfe2e8;border-radius:3px;background:#fff;color:#343a46;font-size:12px;font-weight:800;cursor:pointer}
+        .product-delete-dialog-actions .product-delete-accept{border-color:#851b1b;background:#851b1b;color:#fff}
+        .product-delete-dialog-actions .product-delete-accept:hover{background:#681313}
+        .product-delete-dialog-actions .material-icons{font-size:17px}
+        @media(max-width:480px){.product-delete-dialog{padding:17px}.product-delete-dialog-actions{display:grid;grid-template-columns:1fr 1fr}.product-delete-dialog-actions button{width:100%}}
         .product-admin-actions form{margin:0}
         .catalog-pagination{display:flex;justify-content:space-between;align-items:center;gap:12px;margin-top:20px;padding-top:15px;border-top:1px solid #f0f0f2}
         .catalog-pagination>span{color:var(--catalog-muted);font-size:12px;white-space:nowrap}
@@ -282,5 +332,61 @@
             .catalog-pagination .page-item:not(:first-child):not(:last-child):not(.active){display:none}
         }
         @media(max-width:359.98px){.catalog-filters{grid-template-columns:1fr}.catalog-stock-filter{height:40px}.catalog-header-actions{grid-template-columns:1fr}.catalog-metric{padding:9px 7px}.catalog-metric strong{font-size:12px}}
+
+        /* Catalogue refresh: straight edges, clear spacing, restrained surfaces. */
+        .product-catalog-page{padding-top:8px;color:#292d38}
+        .catalog-header{align-items:center;gap:24px;margin-bottom:20px;padding:20px 22px;border:1px solid #e1e4e9;background:#fff}
+        .catalog-header>div:first-child{min-width:0}
+        .catalog-header h1{font-size:28px;line-height:1.2}
+        .catalog-header p{margin-top:7px;line-height:1.55}
+        .catalog-header-actions{gap:8px}
+        .catalog-report-link,.catalog-add-button,.catalog-alert,.catalog-metric,.catalog-metric-icon,.catalog-panel,.catalog-search,.catalog-stock-filter,.product-card,.product-image,.stock-badge,.product-cart-actions .btn,.catalog-reset-button,.catalog-pagination .page-link{border-radius:0!important}
+        .catalog-report-link{min-height:48px;padding:8px 12px;box-shadow:none}
+        .catalog-add-button{min-height:44px;padding:0 14px}
+        .catalog-alert{border-left:3px solid #238252}
+        .catalog-metrics{gap:10px;margin-bottom:16px}
+        .catalog-metric{min-height:82px;padding:13px 15px;box-shadow:none}
+        .catalog-metric-icon{width:38px;height:38px;flex-basis:38px}
+        .catalog-metric strong{font-size:18px}
+        .catalog-panel{padding:0;border:1px solid #e1e4e9;box-shadow:none}
+        .catalog-toolbar{margin:0;padding:17px 19px;border-bottom:1px solid #e1e4e9}
+        .catalog-toolbar h2{font-size:18px}
+        .catalog-filters{max-width:580px}
+        .catalog-search,.catalog-stock-filter{border-radius:0!important}
+        .catalog-search:focus-within{box-shadow:inset 0 0 0 1px #ad6c69}
+        .catalog-grid{padding:16px;gap:12px}
+        .product-card{box-shadow:none;transition:border-color .15s ease}
+        .product-card:hover{transform:none;border-color:#b8a2a1;box-shadow:none}
+        .product-card-top{padding:14px 15px 0}
+        .product-image{width:52px;height:52px;flex-basis:52px}
+        .stock-badge{padding:6px 8px}
+        .stock-badge>span{border-radius:0}
+        .product-card-content{padding:13px 15px 15px}
+        .product-title-row{gap:12px}
+        .product-title-row h3{line-height:1.4}
+        .product-prices{gap:12px;margin-top:14px;padding:12px 0}
+        .product-cart-actions{grid-template-columns:minmax(0,1fr) minmax(0,auto);gap:8px}
+        .product-cart-actions .btn{min-height:40px;padding:0 11px}
+        .product-admin-actions{gap:7px}
+        .product-admin-actions a,.product-admin-actions button{min-height:32px;padding:0 8px;border:1px solid #dfe1e7;background:#fff}
+        .product-admin-actions a:hover,.product-admin-actions button:hover{border-color:#b98987;background:#faf5f5}
+        .catalog-pagination{padding:14px 18px 18px}
+        .catalog-pagination .page-link{border-radius:0!important;color:#555d6b}
+        .catalog-pagination .page-item.active .page-link{border-color:#7e1615;background:#7e1615;color:#fff}
+        .catalog-empty{padding:48px 18px}
+        @media(max-width:767.98px){
+            .catalog-header{padding:15px 14px}
+            .catalog-header h1{font-size:24px}
+            .catalog-header-actions{grid-template-columns:1fr 1fr}
+            .catalog-metric{min-height:72px;padding:10px 9px}
+            .catalog-panel{padding:0}
+            .catalog-toolbar{padding:14px 12px}
+            .catalog-grid{padding:10px;gap:10px}
+            .product-card-top{padding:11px 12px 0}
+            .product-card-content{padding:10px 12px 12px}
+            .product-cart-actions{grid-template-columns:minmax(0,1fr) auto}
+            .product-cart-actions .btn{white-space:normal;line-height:1.25}
+            .catalog-pagination{padding:12px}
+        }
     </style>
 </div>

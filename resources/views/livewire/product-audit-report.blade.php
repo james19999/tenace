@@ -54,6 +54,14 @@
         @media(max-width:991px){.audit-shell{padding:0 14px}.audit-filters{grid-template-columns:repeat(2,minmax(0,1fr))}.audit-kpis{grid-template-columns:repeat(2,minmax(0,1fr))}}
         @media(max-width:575px){.product-audit-page{padding-top:0}.audit-shell{padding:0 11px}.audit-hero{display:block;margin:8px 0 17px}.audit-hero h1{font-size:26px}.audit-hero p{font-size:13px;line-height:1.5}.audit-print{margin-top:13px;width:100%}.audit-card{border-radius:12px}.audit-card-heading,.audit-results-heading{padding:14px}.audit-filter-body{padding:14px}.audit-filters{grid-template-columns:1fr;gap:12px}.audit-kpis{gap:9px}.audit-kpi{min-height:112px;padding:13px 12px}.audit-kpi-top{align-items:flex-start;font-size:11px;line-height:1.35}.audit-kpi-icon{width:30px;height:30px;flex-basis:30px}.audit-kpi strong{font-size:19px;margin-top:10px}.audit-kpi small{font-size:10px}.audit-table th,.audit-table td{padding:11px 12px}.audit-results-heading h2{font-size:14px}}
         @media(max-width:360px){.audit-kpis{grid-template-columns:1fr}.audit-kpi{min-height:95px}}
+        .product-audit-page .audit-print,.product-audit-page .audit-card,
+        .product-audit-page .audit-heading-icon,.product-audit-page .audit-field .form-control,
+        .product-audit-page .audit-period-chip,.product-audit-page .audit-kpi,
+        .product-audit-page .audit-kpi-icon,.product-audit-page .audit-results-count,
+        .product-audit-page .audit-qty,.product-audit-page .audit-pagination .page-link{border-radius:0!important}
+        .product-audit-page .audit-card,.product-audit-page .audit-kpi{box-shadow:none}
+        .product-audit-page .audit-card,.product-audit-page .audit-kpi{border-color:#d9dde5}
+        .product-audit-page .audit-card-heading,.product-audit-page .audit-results-heading{background:#fff}
         @page{size:A4 portrait;margin:13mm 14mm 16mm}
         @media print{
             body *{visibility:hidden!important}.product-audit-page,.product-audit-page *{visibility:visible!important}

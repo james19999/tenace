@@ -507,6 +507,40 @@
         .dashboard-content .card-title{font-size:10px;letter-spacing:.04em;line-height:1.35}.dashboard-content .h1{font-size:clamp(19px,1.8vw,24px)!important;letter-spacing:-.45px}
         .dashboard-content>.col-12>a{display:block;height:100%;text-decoration:none}
         @media(max-width:767.98px){.dashboard-page{padding-top:0}.dashboard-welcome{align-items:stretch;flex-direction:column;margin:5px 0 15px;padding:18px;border-radius:13px;gap:15px}.dashboard-welcome:after{right:-110px;bottom:-150px}.dashboard-welcome h1{font-size:25px}.dashboard-welcome-copy p{font-size:12px;line-height:1.5}.dashboard-datetime{min-width:0;width:100%;padding:10px 12px}.dashboard-date-icon{width:38px;height:38px;flex-basis:38px}.dashboard-date-copy strong{font-size:21px}.dashboard-content>.col-12>.card .card-body,.dashboard-content>.col-12>a>.card .card-body{padding:12px}.dashboard-content .card-title{font-size:10px}.dashboard-content .h1{font-size:19px!important}}
+
+        /* Flat, square dashboard styling. */
+        .dashboard-welcome{overflow:visible;margin-top:4px;padding:20px 22px;border-radius:0;background:#fff;box-shadow:none}
+        .dashboard-welcome:after{display:none}
+        .dashboard-welcome h1{line-height:1.25}
+        .dashboard-welcome-copy p{line-height:1.6}
+        .dashboard-datetime{border-radius:0;background:#fff;box-shadow:none}
+        .dashboard-date-icon{border-radius:0;background:#f7eeee}
+        .dashboard-live-dot{border-radius:0;box-shadow:none}
+        .dashboard-content>.col-12>.card,.dashboard-content>.col-12>a>.card{border-radius:0;box-shadow:none!important;transition:border-color .15s ease}
+        .dashboard-content>.col-12>.card:hover,.dashboard-content>.col-12>a>.card:hover{transform:none;border-color:#c7b7b6;box-shadow:none!important}
+        .dashboard-content>.col-12>.card .card-body,.dashboard-content>.col-12>a>.card .card-body{padding:16px}
+        .dashboard-content .card-title{margin-bottom:9px!important;color:#6c7380;font-size:10px;font-weight:800;letter-spacing:.07em;line-height:1.5}
+        .dashboard-content .h1{display:block;line-height:1.25;overflow-wrap:anywhere}
+        .dashboard-content .btn-circle{display:grid;width:46px;height:46px;place-items:center;padding:8px;border-radius:0;background:#f7eeee}
+        .dashboard-content .btn-circle img{width:28px!important;height:28px!important;object-fit:contain}
+        .dashboard-content>.col-12>a{color:inherit}
+        .dashboard-order-tabs .nav-link{border-radius:0!important}
+        .dashboard-order-tabs .badge,.dashboard-orders-table .badge,.dashboard-orders-table .btn,.dashboard-content .pagination .page-link{border-radius:0!important}
+        .dashboard-orders-table{border-collapse:collapse}
+        .dashboard-orders-table th,.dashboard-orders-table td{padding:12px 13px;vertical-align:middle}
+        @media(max-width:767.98px){
+            .dashboard-welcome{margin:4px 0 14px;padding:16px}
+            .dashboard-datetime{width:100%;min-width:0}
+            .dashboard-content>.col-12>.card .card-body,.dashboard-content>.col-12>a>.card .card-body{padding:13px}
+            .dashboard-order-tabs{gap:0}
+        }
+        @media(max-width:575.98px){
+            .dashboard-content>.col-12.col-sm-6.col-md-6.col-lg-3{flex:0 0 50%;max-width:50%;padding-right:6px;padding-left:6px}
+            .dashboard-content .btn-circle{width:36px;height:36px;padding:5px}
+            .dashboard-content .btn-circle img{width:24px!important;height:24px!important}
+            .dashboard-content .card-title{font-size:9px}
+            .dashboard-content .h1{font-size:17px!important}
+        }
     </style>
     <script>
         (function () {

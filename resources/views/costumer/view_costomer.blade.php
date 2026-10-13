@@ -1,9 +1,9 @@
 @extends('layouts.admin')
 
 @section('content')
-<div class="container-fluid px-3 py-2">
+<div class="container-fluid px-3 py-2 customer-profile-page">
     <!-- Header / Navigation -->
-    <div class="d-flex justify-content-between align-items-center flex-wrap mb-4">
+    <div class="d-flex justify-content-between align-items-center flex-wrap mb-4 customer-profile-heading">
         <div>
             <nav aria-label="breadcrumb">
                 <ol class="breadcrumb bg-transparent p-0 mb-1">
@@ -16,7 +16,7 @@
                     <li class="breadcrumb-item active" aria-current="page">Fiche client</li>
                 </ol>
             </nav>
-            <h3 class="font-weight-bold mb-0 text-dark">
+            <h3 class="font-weight-bold mb-0 text-dark customer-profile-title">
                 {{ $costumers->name }}
             </h3>
         </div>
@@ -36,7 +36,7 @@
     <div class="row mb-4">
         <!-- Client Details -->
         <div class="col-12 col-md-4 mb-3 mb-md-0">
-            <div class="card shadow-sm border-0 h-100">
+            <div class="card shadow-sm border-0 h-100 customer-profile-identity">
                 <div class="card-body">
                     <div class="d-flex align-items-center mb-3">
                         <div class="rounded-circle bg-primary text-white d-flex align-items-center justify-content-center mr-3" style="width: 48px; height: 48px; font-size: 1.3rem;">
@@ -77,7 +77,7 @@
 
         <!-- Orders Count -->
         <div class="col-12 col-sm-6 col-md-4 mb-3 mb-sm-0">
-            <div class="card shadow-sm border-0 h-100">
+            <div class="card shadow-sm border-0 h-100 customer-profile-metric">
                 <div class="card-body d-flex flex-column justify-content-between">
                     <div class="d-flex justify-content-between align-items-start">
                         <div>
@@ -97,7 +97,7 @@
 
         <!-- Total Spent -->
         <div class="col-12 col-sm-6 col-md-4">
-            <div class="card shadow-sm border-0 h-100">
+            <div class="card shadow-sm border-0 h-100 customer-profile-metric customer-profile-spend">
                 <div class="card-body d-flex flex-column justify-content-between">
                     <div class="d-flex justify-content-between align-items-start">
                         <div>
@@ -123,7 +123,7 @@
             $loyaltyMetrics = $loyaltyProfile->metrics ?? [];
             $loyaltyMaxScore = max(100, $loyaltyHistory->max('score') ?? 0);
         @endphp
-        <section class="card shadow-sm border-0 mb-4">
+        <section class="card shadow-sm border-0 mb-4 customer-profile-section customer-profile-loyalty">
             <div class="card-header bg-white py-3 d-flex justify-content-between align-items-center flex-wrap">
                 <div><h5 class="mb-1 font-weight-bold text-dark"><i class="fas fa-heart text-danger mr-2"></i>Fidélité</h5><small class="text-muted">Analyse basée sur les commandes livrées, les retours et les dossiers SAV.</small></div>
                 <a href="{{ route('customer-loyalty.index', ['search' => $costumers->phone ?: $costumers->name]) }}" class="btn btn-outline-primary btn-sm">Voir la segmentation</a>
@@ -168,7 +168,7 @@
     @endif
 
     <!-- Section 1: Synthèse des produits commandés -->
-    <div class="card shadow-sm border-0 mb-4">
+    <div class="card shadow-sm border-0 mb-4 customer-profile-section">
         <div class="card-header bg-white py-3 d-flex justify-content-between align-items-center flex-wrap">
             <h5 class="mb-0 font-weight-bold text-dark">
                 <i class="fas fa-layer-group text-primary mr-2"></i>Produits commandés par ce client
@@ -237,7 +237,7 @@
     </div>
 
     <!-- Section 2: Historique chronologique des commandes -->
-    <div class="card shadow-sm border-0 mb-4">
+    <div class="card shadow-sm border-0 mb-4 customer-profile-section customer-profile-orders">
         <div class="card-header bg-white py-3 d-flex justify-content-between align-items-center flex-wrap">
             <h5 class="mb-0 font-weight-bold text-dark">
                 <i class="fas fa-history text-primary mr-2"></i>Historique détaillé des commandes
@@ -247,7 +247,7 @@
         </div>
         <div class="card-body p-3">
             @forelse ($costumers->orders as $orde)
-                <div class="card mb-3 border shadow-none bg-white">
+                <div class="card mb-3 border shadow-none bg-white customer-order-card">
                     <div class="card-header bg-light py-2 px-3 d-flex justify-content-between align-items-center flex-wrap border-bottom">
                         <div class="d-flex align-items-center flex-wrap my-1">
                             <span class="badge badge-dark mr-2" style="font-size: 0.9rem;">

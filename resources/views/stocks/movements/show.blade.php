@@ -1,0 +1,13 @@
+@extends('layouts.admin')
+
+@section('content')
+@php $typeLabels=['opening_balance'=>'Reprise initiale','receipt'=>'Réception fournisseur','receipt_difference'=>'Écart de réception','transfer_shipment'=>'Expédition de transfert','transfer_receipt'=>'Réception de transfert','transfer_damage'=>'Écart transfert','manual_adjustment'=>'Ajustement manuel','inventory_adjustment'=>'Écart inventaire','sale'=>'Vente','return'=>'Retour']; @endphp
+<div class="stock-control-page stock-ledger-page">
+    <header class="stock-control-hero"><div class="stock-control-hero-copy"><span class="stock-control-kicker">{{ $typeLabels[$movement->type]??'MOUVEMENT DE STOCK' }}</span><h1>{{ $movement->movement_number }}</h1><p>{{ $movement->occurred_at?->format('d/m/Y à H:i') }} · {{ $movement->status==='posted'?'Mouvement appliqué':'État : '.$movement->status }}</p></div><a href="{{ route('stock-control.movements.index') }}" class="stock-control-hero-action"><span class="material-icons">arrow_back</span>Retour au journal</a></header>
+    <section class="stock-control-card"><div class="stock-control-section-head"><div><span class="stock-control-kicker">DÉTAIL</span><h2>Lignes du mouvement</h2></div><span class="stock-control-count">{{ $movement->lines->count() }} ligne(s)</span></div>
+        <div class="movement-meta-grid"><div><small>Créé par</small><strong>{{ $movement->creator?->name??'—' }}</strong></div><div><small>Approuvé par</small><strong>{{ $movement->approver?->name??'—' }}</strong></div><div><small>Origine</small><strong>{{ $movement->source_type?ucfirst(str_replace('_',' ',$movement->source_type)):'—' }}</strong></div><div><small>Référence d’origine</small><strong>{{ $movement->source_reference??'—' }}</strong></div></div>
+        <div class="movement-line-list">@forelse($movement->lines as $line)<article class="movement-line"><div><strong>{{ $line->product?->name??'Produit supprimé' }}</strong><small>{{ $line->location?->name??'Emplacement inconnu' }}@if($line->lot) · Lot {{ $line->lot->lot_code?:'#'.$line->lot->id }}@endif</small></div><strong class="{{ (float)$line->quantity_delta<0?'adjustment-negative':'adjustment-positive' }}">{{ (float)$line->quantity_delta>0?'+':'' }}{{ number_format((float)$line->quantity_delta,0,',',' ') }} {{ $line->unit }}</strong><span>{{ $line->notes??'' }}</span></article>@empty<div class="stock-control-empty"><strong>Aucune ligne enregistrée</strong></div>@endforelse</div>
+        @if($movement->reason||$movement->notes)<div class="adjustment-reason-box"><strong>Motif / notes</strong><p>{{ $movement->reason }}@if($movement->notes){{ "\n".$movement->notes }}@endif</p></div>@endif
+    </section>
+</div>
+@endsection

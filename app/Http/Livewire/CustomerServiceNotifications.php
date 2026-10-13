@@ -5,6 +5,7 @@ namespace App\Http\Livewire;
 use App\Notifications\CustomerServiceCaseNotification;
 use App\Models\CustomerServiceCase;
 use App\Models\CustomerServiceSupportMilestone;
+use App\Notifications\StockControlNotification;
 use Illuminate\Support\Facades\Auth;
 use Livewire\Component;
 
@@ -28,14 +29,14 @@ class CustomerServiceNotifications extends Component
         $this->loginNotificationShown = true;
         $this->createDueFollowUpNotificationsForCurrentUser();
         $recentIds = Auth::user()->notifications()
-            ->where('type', CustomerServiceCaseNotification::class)
+            ->whereIn('type', $this->notificationTypes())
             ->latest()
             ->limit(30)
             ->pluck('id')
             ->map(fn ($id) => (string) $id)
             ->all();
         $unread = Auth::user()->unreadNotifications()
-            ->where('type', CustomerServiceCaseNotification::class);
+            ->whereIn('type', $this->notificationTypes());
         $unreadIds = (clone $unread)->pluck('id')->map(fn ($id) => (string) $id)->all();
         $knownIds = array_map('strval', $this->knownNotificationIds);
         $notification = (clone $unread)
@@ -57,7 +58,7 @@ class CustomerServiceNotifications extends Component
     public function checkForNewNotifications(): void
     {
         $latest = Auth::user()->notifications()
-            ->where('type', CustomerServiceCaseNotification::class)
+            ->whereIn('type', $this->notificationTypes())
             ->latest()
             ->limit(30)
             ->get();
@@ -72,7 +73,7 @@ class CustomerServiceNotifications extends Component
             $this->dispatchBrowserEvent('customer-service-notifications-push', [
                 'notification' => $this->notificationData($newUnread->first()),
                 'unreadCount' => Auth::user()->unreadNotifications()
-                    ->where('type', CustomerServiceCaseNotification::class)
+                    ->whereIn('type', $this->notificationTypes())
                     ->count(),
                 'playSound' => true,
             ]);
@@ -83,10 +84,16 @@ class CustomerServiceNotifications extends Component
     {
         return [
             'id' => (string) $notification->id,
-            'title' => $notification->data['case_number'] ?? 'Service client',
+            'title' => $notification->data['title'] ?? $notification->data['case_number'] ?? 'TENACOS',
             'message' => $notification->data['message'] ?? 'Vous avez une nouvelle notification.',
             'url' => $notification->data['url'] ?? route('service-cases.index'),
+            'icon' => $notification->data['icon'] ?? 'folder_shared',
         ];
+    }
+
+    protected function notificationTypes(): array
+    {
+        return [CustomerServiceCaseNotification::class, StockControlNotification::class];
     }
 
     protected function createDueFollowUpNotificationsForCurrentUser(): void
@@ -188,32 +195,38 @@ class CustomerServiceNotifications extends Component
     public function markAsRead(string $notificationId): void
     {
         Auth::user()->unreadNotifications()
-            ->where('type', CustomerServiceCaseNotification::class)
+            ->whereIn('type', $this->notificationTypes())
             ->whereKey($notificationId)
             ->firstOrFail()
             ->markAsRead();
+
+        $this->dispatchBrowserEvent('stock-notification-read');
     }
 
     public function openNotification(string $notificationId): void
     {
         $notification = Auth::user()->unreadNotifications()
-            ->where('type', CustomerServiceCaseNotification::class)
+            ->whereIn('type', $this->notificationTypes())
             ->whereKey($notificationId)
             ->firstOrFail();
 
         $url = $notification->data['url'] ?? null;
         $caseId = $notification->data['case_id'] ?? null;
+        $isStockNotification = ($notification->data['module'] ?? null) === 'stock_control';
         $notification->markAsRead();
+        $this->dispatchBrowserEvent('stock-notification-read');
 
-        $this->redirect($url ?: ($caseId
+        $destination = $url ?: ($caseId
             ? route('service-cases.show', $caseId)
-            : route('service-cases.index')));
+            : ($isStockNotification ? route('stock-control.index') : route('service-cases.index')));
+
+        $this->redirect($destination);
     }
 
     public function render()
     {
         $unread = Auth::user()->unreadNotifications()
-            ->where('type', CustomerServiceCaseNotification::class);
+            ->whereIn('type', $this->notificationTypes());
 
         return view('livewire.customer-service-notifications', [
             'notificationCount' => (clone $unread)->count(),

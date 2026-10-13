@@ -7,6 +7,7 @@ use Carbon\Carbon;
 use App\Models\User;
 use App\Models\Product;
 use App\Models\Orders\Order;
+use App\Services\StockDeliveryService;
 use Illuminate\Http\Request;
 use App\Http\Controllers\Controller;
 use Illuminate\Support\Facades\Auth;
@@ -198,7 +199,7 @@ class ApiController extends Controller
 
 
 
-      public function change_order_status_user(Request $request,$id){
+      public function change_order_status_user(Request $request,$id, StockDeliveryService $stockDelivery){
           try {
             //code...
             $orders=Order::findOrfail($id);
@@ -219,10 +220,9 @@ class ApiController extends Controller
                   return Response::json(['status'=>true,'messages'=>'Commande annuler']);
 
                  }else if($request->status=="delivered"){
-                    $order=Order::where('id',$orders->id)->first();
-                    foreach ($order->orderItems as $key => $value) {
-                      # code...
-                      $this->updateProdSale($value->product_id,$value->quantity);
+                    $order=Order::with('orderItems')->findOrFail($orders->id);
+                    if (! $stockDelivery->deliver($order, (int) Auth::id())) {
+                        return Response::json(['status'=>true,'messages'=>'Cette commande a déjà été validée comme livrée']);
                     }
                    $orders->status=$request->status;
                    $orders->user_id=Auth::user()->id;
