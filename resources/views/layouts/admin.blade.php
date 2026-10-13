@@ -26,7 +26,7 @@
     @if (request()->routeIs('show-product'))
         <link rel="stylesheet" href="{{ asset('assets/css/product-detail.css') }}?v=20261012.3">
     @endif
-    <link rel="stylesheet" href="{{ asset('assets/css/legacy-square-pages.css') }}?v=20261013.7">
+    <link rel="stylesheet" href="{{ asset('assets/css/legacy-square-pages.css') }}?v=20261013.8">
 
     <link rel="shortcut icon" href="{{ asset('assets/images/tena.png') }}" type="image/png">
     <link rel="icon" href="{{ asset('assets/images/tena.png') }}" type="image/png">

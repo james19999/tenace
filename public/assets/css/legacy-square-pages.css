@@ -682,6 +682,24 @@ body.legacy-square-pages .main-content * {
     border-radius: 0 !important;
 }
 
+/* Sidebar tabs also animate a hover background outside the page content. */
+body.legacy-square-pages .main-wrapper .sidebar .navigation > ul li a,
+body.legacy-square-pages .main-wrapper .sidebar .navigation > ul li:hover > a,
+body.legacy-square-pages .main-wrapper .sidebar .navigation > ul li a:hover,
+body.legacy-square-pages .main-wrapper .sidebar .navigation > ul li a:focus,
+body.legacy-square-pages .main-wrapper .sidebar .navigation > ul li a.active,
+body.legacy-square-pages .main-wrapper .sidebar .navigation > ul li ul li a:hover,
+body.legacy-square-pages .main-wrapper .sidebar .navigation > ul li ul li a:focus,
+body.legacy-square-pages .main-wrapper .sidebar .navigation > ul li ul li a.active,
+body.legacy-square-pages .main-content .nav-tabs .nav-link:hover,
+body.legacy-square-pages .main-content .nav-tabs .nav-link:focus,
+body.legacy-square-pages .main-content .nav-tabs .nav-link.active,
+body.legacy-square-pages .main-content .nav-pills .nav-link:hover,
+body.legacy-square-pages .main-content .nav-pills .nav-link:focus,
+body.legacy-square-pages .main-content .nav-pills .nav-link.active {
+    border-radius: 0 !important;
+}
+
 body.legacy-square-pages .select2-dropdown,
 body.legacy-square-pages .select2-container .select2-selection,
 body.legacy-square-pages .select2-container .select2-selection__rendered,
