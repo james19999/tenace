@@ -24,6 +24,11 @@
         .cart-panel-body{padding:20px 22px}
         .cart-form-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:16px}
         .cart-field{min-width:0}.cart-field.full{grid-column:1/-1}
+        .cart-field.anonymous-customer-help{padding:12px 14px;border-left:3px solid var(--cart-wine);background:#f8f3f3;color:#5f626c;font-size:12px;line-height:1.5}
+        .cart-customer-create-actions{display:flex;flex-wrap:wrap;gap:8px;margin-top:9px}
+        .cart-customer-mode{display:inline-flex;align-items:center;justify-content:center;gap:6px;min-height:38px;padding:8px 11px;border:1px solid #d8dce3;background:#fff;color:#505765;font-size:12px;font-weight:700;cursor:pointer}
+        .cart-customer-mode:hover,.cart-customer-mode.is-selected{border-color:var(--cart-wine);background:#f8eeee;color:var(--cart-wine)}
+        .cart-customer-mode .material-icons{font-size:17px}
         .cart-field label{display:block;color:#454a56;font-size:13px;font-weight:700;margin:0 0 7px}
         .cart-field .form-control{height:45px;border:1px solid #dfe2e8;border-radius:9px;box-shadow:none;color:var(--cart-ink);font-size:14px;max-width:100%}
         .cart-field .select2-container{width:100%!important}
@@ -182,16 +187,22 @@
                                     <label for="order-costumer-id">Cliente</label>
                                     <div wire:ignore>
                                         <select id="order-costumer-id" class="js-customer-search form-control" data-ajax-url="{{ route('costumer.search') }}" name="costumer_id" style="width:100%">
-                                            <option value="default" @selected(old('costumer_id', 'default') === 'default')>Nouvelle cliente</option>
+                                            <option value="default" @selected(old('costumer_id', 'default') === 'default')>Nouveau client avec nom</option>
+                                            <option value="anonymous" @selected(old('costumer_id') === 'anonymous')>Client anonyme · générer un identifiant</option>
                                             @if ($selectedCostumer)<option value="{{ $selectedCostumer->id }}" selected>{{ $selectedCostumer->name }} | {{ $selectedCostumer->phone }}</option>@endif
                                         </select>
+                                    </div>
+                                    <div class="cart-customer-create-actions" role="group" aria-label="Type de nouveau client">
+                                        <button type="button" class="cart-customer-mode" data-customer-mode="default" aria-pressed="false"><span class="material-icons" aria-hidden="true">person_add</span>Nouveau client avec nom</button>
+                                        <button type="button" class="cart-customer-mode" data-customer-mode="anonymous" aria-pressed="false"><span class="material-icons" aria-hidden="true">visibility_off</span>Client anonyme</button>
                                     </div>
                                     @error('costumer_id')<span class="cart-field-error">{{ $message }}</span>@enderror
                                 </div>
 
-                                <div class="cart-field new-customer-field"><label for="name">Nom de la cliente</label><input type="text" class="form-control" id="name" name="name" placeholder="Nom complet" value="{{ old('name') }}">@error('name')<span class="cart-field-error">{{ $message }}</span>@enderror</div>
+                                <div class="cart-field new-customer-field new-customer-name-field"><label for="name">Nom du client</label><input type="text" class="form-control" id="name" name="name" placeholder="Nom complet" value="{{ old('name') }}">@error('name')<span class="cart-field-error">{{ $message }}</span>@enderror</div>
                                 <div class="cart-field new-customer-field"><label for="phone">Téléphone</label><input type="text" class="form-control" id="phone" name="phone" placeholder="Numéro de téléphone" value="{{ old('phone') }}">@error('phone')<span class="cart-field-error">{{ $message }}</span>@enderror</div>
                                 <div class="cart-field new-customer-field"><label for="adresse">Adresse de livraison</label><input type="text" class="form-control" id="adresse" name="adresse" placeholder="Quartier, repère…" value="{{ old('adresse') }}">@error('adresse')<span class="cart-field-error">{{ $message }}</span>@enderror</div>
+                                <div class="cart-field full anonymous-customer-help" hidden>Le nom ne sera pas demandé. Un identifiant client sera généré automatiquement ; le téléphone et l’adresse servent à organiser la livraison.</div>
                                 <div class="cart-field"><label for="tax">Frais de livraison (F CFA) <span class="text-danger">*</span></label><input type="number" min="0" step="1" class="form-control" id="tax" name="tax" value="{{ old('tax', 0) }}" placeholder="0">@error('tax')<span class="cart-field-error">{{ $message }}</span>@enderror</div>
                             </div>
 
@@ -269,14 +280,36 @@
             if (deliveryInput) deliveryInput.addEventListener('input', updateSummary);
 
             function toggleNewCustomerFields() {
-                var isNew = !customerSelect || customerSelect.value === 'default';
-                root.querySelectorAll('.new-customer-field input').forEach(function (input) {
-                    input.closest('.new-customer-field').style.display = isNew ? '' : 'none';
+                var selection = customerSelect ? customerSelect.value : 'default';
+                var isAnonymous = selection === 'anonymous';
+                var isNew = selection === 'default' || isAnonymous;
+                root.querySelectorAll('.new-customer-field').forEach(function (field) {
+                    field.style.display = isNew && !(isAnonymous && field.classList.contains('new-customer-name-field')) ? '' : 'none';
+                });
+                var nameInput = root.querySelector('#name');
+                if (nameInput) nameInput.required = selection === 'default';
+                var anonymousHelp = root.querySelector('.anonymous-customer-help');
+                if (anonymousHelp) anonymousHelp.hidden = !isAnonymous;
+                root.querySelectorAll('.cart-customer-mode').forEach(function (button) {
+                    var selected = button.getAttribute('data-customer-mode') === selection;
+                    button.classList.toggle('is-selected', selected);
+                    button.setAttribute('aria-pressed', selected ? 'true' : 'false');
                 });
             }
             if (customerSelect) {
                 customerSelect.addEventListener('change', toggleNewCustomerFields);
                 if (window.jQuery) window.jQuery(customerSelect).on('select2:select select2:clear', toggleNewCustomerFields);
+                root.querySelectorAll('.cart-customer-mode').forEach(function (button) {
+                    button.addEventListener('click', function () {
+                        var mode = button.getAttribute('data-customer-mode');
+                        if (window.jQuery) window.jQuery(customerSelect).val(mode).trigger('change');
+                        else {
+                            customerSelect.value = mode;
+                            customerSelect.dispatchEvent(new Event('change', { bubbles: true }));
+                        }
+                        toggleNewCustomerFields();
+                    });
+                });
                 toggleNewCustomerFields();
             }
         })();

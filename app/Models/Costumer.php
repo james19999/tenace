@@ -34,6 +34,23 @@ class Costumer extends Model
 
     ];
 
+    public function getNameAttribute($value): string
+    {
+        $legacyAnonymousPrefix = 'Client anonyme · ';
+
+        return is_string($value) && str_starts_with($value, $legacyAnonymousPrefix)
+            ? substr($value, strlen($legacyAnonymousPrefix))
+            : (string) $value;
+    }
+
+    public function isAnonymous(): bool
+    {
+        $storedName = (string) ($this->getRawOriginal('name') ?? $this->attributes['name'] ?? '');
+
+        return str_starts_with($storedName, 'CL-')
+            || str_starts_with($storedName, 'Client anonyme · CL-');
+    }
+
     // protected $casts = [
 
     //     'phone' => 'integer',

@@ -16,6 +16,7 @@ use Illuminate\Support\Facades\URL;
 use App\Http\Controllers\Controller;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Mail;
+use Illuminate\Support\Str;
 use Gloudemans\Shoppingcart\Facades\Cart;
 
 class CheckController extends Controller
@@ -34,12 +35,15 @@ class CheckController extends Controller
     public function palce_order(Request $request) {
 
 
-         if ($request->costumer_id=="default") {
+         $customerSelection = (string) $request->input('costumer_id', 'default');
+         $isAnonymousCustomer = $customerSelection === 'anonymous';
+
+         if (in_array($customerSelection, ['default', 'anonymous'], true)) {
             # code...
                 $request->validate([
-                    'name'=>'required',
-                    'phone'=>'required',
-                    'adresse'=>'required',
+                    'name'=>$isAnonymousCustomer ? 'nullable|string|max:255' : 'required|string|max:255',
+                    'phone'=>'required|string|max:50',
+                    'adresse'=>'required|string|max:1000',
                     'tax'=>'required',
                     'time'=>'required',
                     'date_order'=>'required|date',
@@ -57,22 +61,47 @@ class CheckController extends Controller
                 ]
 
                 );
-                $exist =Costumer::where('phone' ,$request->phone)->first();
-                  if ($exist) {
-                    # code...
-                return redirect()->route('productcart')->with('error','Le client existe dèjà sélectionné  le dans la liste des clients');
+                $normalizedPhone = preg_replace('/\s+/u', '', trim((string) $request->phone));
+                $customersWithPhone = Costumer::query()
+                    ->whereRaw("REPLACE(phone, ' ', '') = ?", [$normalizedPhone])
+                    ->get();
+                $exist = $customersWithPhone->first();
 
-                  } else {
-                    # code...
+                if ($isAnonymousCustomer) {
+                    $anonymousCustomer = $customersWithPhone->first(
+                        fn (Costumer $customer) => $customer->isAnonymous()
+                    );
 
-                    $constumer= Costumer::create([
-                            'name'=>$request->name,
-                            'phone'=>str_replace(' ', '',$request->phone),
-                            'email'=>$request->email,
-                            'adresse'=>$request->adresse,
-                            'user_id'=>Auth::user()->id,
-
-                      ]);
+                    if ($anonymousCustomer) {
+                        $constumer = $anonymousCustomer;
+                        $constumer->adresse = $request->adresse;
+                        $constumer->save();
+                    } elseif ($exist) {
+                        return redirect()->route('productcart')
+                            ->withErrors(['phone' => 'Ce numéro appartient déjà à une fiche client. Sélectionne cette fiche dans la liste.'])
+                            ->withInput();
+                    } else {
+                        $constumer = Costumer::create([
+                            'name' => $this->generateAnonymousCustomerName(),
+                            'phone' => $normalizedPhone,
+                            'email' => null,
+                            'adresse' => $request->adresse,
+                            'user_id' => Auth::id(),
+                        ]);
+                    }
+                } elseif ($exist) {
+                    return redirect()->route('productcart')
+                        ->with('error', 'Le client existe déjà. Sélectionne-le dans la liste des clients.')
+                        ->withInput();
+                } else {
+                    $constumer = Costumer::create([
+                        'name' => $request->name,
+                        'phone' => $normalizedPhone,
+                        'email' => $request->email,
+                        'adresse' => $request->adresse,
+                        'user_id' => Auth::id(),
+                    ]);
+                }
                     $users =User::where('user_type','LVS')
                                    ->where('active',1)
                                   ->get();
@@ -130,9 +159,12 @@ class CheckController extends Controller
 
                      Cart::instance('cart')->destroy();
                      return redirect()->route('order')->with('messages','Commande effectuée');
-                  }
-
          } else {
+            if (! Costumer::whereKey($customerSelection)->exists()) {
+                return redirect()->route('productcart')
+                    ->withErrors(['costumer_id' => 'Sélectionne un client existant ou choisis une option de création.'])
+                    ->withInput();
+            }
             $request->validate([
                 'tax'=>'required',
                 'time'=>'required',
@@ -213,6 +245,15 @@ class CheckController extends Controller
          }
 
 
+    }
+
+    private function generateAnonymousCustomerName(): string
+    {
+        do {
+            $name = 'CL-'.Str::upper(Str::random(6));
+        } while (Costumer::where('name', $name)->exists());
+
+        return $name;
     }
 
     private function updateCustomerFollowUp(Request $request, int $costumerId): void

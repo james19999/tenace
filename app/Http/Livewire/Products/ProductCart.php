@@ -82,7 +82,7 @@ class ProductCart extends Component
     public function render()
     {
         return view('livewire.products.product-cart', [
-            'selectedCostumer' => old('costumer_id') && old('costumer_id') !== 'default'
+            'selectedCostumer' => old('costumer_id') && ! in_array(old('costumer_id'), ['default', 'anonymous'], true)
                 ? Costumer::find(old('costumer_id'))
                 : null,
             'defaultFollowUpDays' => $this->defaultFollowUpDays,
