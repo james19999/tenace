@@ -91,6 +91,24 @@
         .product-cart-page .cart-remove{border:1px solid #f0d2d2}
         .product-cart-page .cart-primary-btn,.product-cart-page .cart-empty a{min-height:46px;letter-spacing:.01em}
         @media(max-width:767px){.product-cart-page .cart-shell{padding-left:0;padding-right:0}.product-cart-page .cart-panel-head,.product-cart-page .cart-panel-body{padding-left:14px;padding-right:14px}}
+        @media(max-width:767px){
+            .product-cart-page .cart-table-wrap{overflow-x:hidden}
+            .product-cart-page .cart-table{display:block;width:100%;min-width:0}
+            .product-cart-page .cart-table thead{display:none}
+            .product-cart-page .cart-table tbody{display:grid;width:100%}
+            .product-cart-page .cart-table tbody tr{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:2px 12px;padding:10px 14px;border-bottom:1px solid var(--cart-line)}
+            .product-cart-page .cart-table tbody tr:last-child{border-bottom:0}
+            .product-cart-page .cart-table td{display:flex;min-width:0;align-items:flex-start;flex-direction:column;gap:4px;padding:8px 2px;border:0;white-space:normal;font-size:12px}
+            .product-cart-page .cart-table td:first-child{grid-column:1/-1;display:block;padding-bottom:10px;border-bottom:1px solid #edf0f3}
+            .product-cart-page .cart-product{width:100%;min-width:0;gap:10px}
+            .product-cart-page .cart-product>div:last-child{min-width:0}
+            .product-cart-page .cart-table td:nth-child(2)::before{content:"Prix unitaire"}
+            .product-cart-page .cart-table td:nth-child(3)::before{content:"Quantité"}
+            .product-cart-page .cart-table td:nth-child(4)::before{content:"Total"}
+            .product-cart-page .cart-table td:nth-child(2)::before,.product-cart-page .cart-table td:nth-child(3)::before,.product-cart-page .cart-table td:nth-child(4)::before{color:var(--cart-muted);font-size:10px;font-weight:700}
+            .product-cart-page .cart-table td:nth-child(5){grid-column:2;grid-row:3;align-items:flex-end;justify-content:flex-end}
+            .product-cart-page .cart-table .cart-price{font-size:13px}
+        }
     </style>
 
     <div class="cart-shell">
