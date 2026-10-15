@@ -20281,6 +20281,28 @@ h6, .h6
         display: none;
     }
 
+    .right-area header .navbar-nav li.nav-item.dropdown.with-caret .avatar
+    {
+        display: grid;
+        place-items: center;
+        background: #fff !important;
+    }
+
+    .right-area header .navbar-nav li.nav-item.dropdown.with-caret .avatar-img
+    {
+        display: none;
+    }
+
+    .right-area header .navbar-nav li.nav-item.dropdown.with-caret .avatar::after
+    {
+        color: #851b1b;
+        content: "person";
+        font-family: "Material Icons";
+        font-size: 21px;
+        font-weight: normal;
+        line-height: 1;
+    }
+
     .main-wrapper:not(.collapsed) .sidebar
     {
         z-index: 1200;
