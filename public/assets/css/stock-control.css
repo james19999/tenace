@@ -17,10 +17,6 @@
 
 .stock-control-page,
 .stock-control-page * { box-sizing: border-box; }
-/* Keep the fixed hamburger panel above positioned page content on mobile. */
-.main-wrapper .sidebar { z-index: 1200; }
-/* The dismiss layer must cover the page and header, while staying below the menu. */
-.overlay-mask.open { z-index: 1190; cursor: pointer; }
 .stock-control-hero { position: relative; display: flex; min-height: 170px; align-items: center; justify-content: space-between; overflow: hidden; gap: 24px; padding: 30px 34px; border: 1px solid #741616; border-radius: 4px; background: #851b1b; color: #fff; box-shadow: none; }
 /* The app header rule also matches nested semantic headers inside page content. */
 .right-area .stock-control-page > header.stock-control-hero { position: relative; top: auto; z-index: auto; height: auto; }

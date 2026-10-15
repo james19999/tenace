@@ -20273,6 +20273,18 @@ h6, .h6
     border-radius: 0 50px 50px 0;
 }
 
+/* Keep the mobile navigation above page content on every section. */
+.main-wrapper .sidebar
+{
+    z-index: 1200;
+}
+
+.overlay-mask.open
+{
+    z-index: 1190;
+    cursor: pointer;
+}
+
 /*
 Include via CDN
 @import '../../../node_modules/summernote/dist/summernote-bs4';
