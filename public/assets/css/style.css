@@ -20276,7 +20276,7 @@ h6, .h6
 /* Raise the navigation only on smaller screens, and only while it is open. */
 @media (max-width: 991.98px)
 {
-    .main-wrapper:not(.collapsed) .sidebar
+    .main-wrapper.collapsed .sidebar
     {
         z-index: 1200;
     }
