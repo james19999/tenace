@@ -8,6 +8,10 @@
     color: var(--sc-ink);
     position: relative;
     z-index: 0;
+    width: 100%;
+    max-width: 100%;
+    min-width: 0;
+    margin-inline: auto;
     padding: 8px 0 34px;
 }
 
@@ -194,7 +198,10 @@
     .adjustment-detail-grid { grid-template-columns: repeat(2,minmax(0,1fr)); }
 }
 @media(max-width: 600px) {
-    .stock-control-page { width: calc(100vw - 24px); max-width: calc(100vw - 24px); min-width: 0; margin-right: auto; margin-left: auto; }
+    .right-area .main-content { padding: 12px 10px !important; }
+    /* Keep the stock pages aligned to the content column, which already owns
+       the mobile gutters. A viewport-based width here double-counts them. */
+    .stock-control-page { width: 100%; max-width: 100%; min-width: 0; margin-inline: auto; }
     .stock-control-page .stock-control-hero { width: 100%; min-width: 0; max-width: 100%; overflow: hidden; }
     .stock-control-page .stock-control-hero-copy { width: 100%; max-width: 100%; min-width: 0; flex: 1 1 100%; }
     .stock-control-page .stock-control-hero-action { max-width: 100%; min-width: 0; white-space: normal; text-align: center; overflow-wrap: anywhere; }
