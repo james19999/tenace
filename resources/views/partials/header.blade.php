@@ -1,3 +1,7 @@
+@php
+    $settings = App\Models\Setting::all();
+    $headerCartCount = (int) \Gloudemans\Shoppingcart\Facades\Cart::instance('cart')->count();
+@endphp
 <header>
     <div>
 
@@ -29,6 +33,13 @@
 
             </li>
 
+            <li class="nav-item icon header-cart-link">
+                <a href="{{ route('productcart') }}" aria-label="Ouvrir le panier" title="Panier">
+                    <span class="material-icons" aria-hidden="true">shopping_cart</span>
+                    <span class="header-cart-count js-cart-count">{{ $headerCartCount }}</span>
+                </a>
+            </li>
+
             {{--  @livewire('delivery-alert')  --}}
 
             @if (Auth::user()->hasRole(['ADMINUSER', 'MNG', 'SCR', 'CALLCENTER']))
@@ -39,9 +50,6 @@
             <li class="nav-item dropdown with-caret  ">
                 <a class="nav-link" data-toggle="dropdown" href="#">
                     <div class="avatar avatar-sm avatar-dnd bg-primary">
-                        @php
-                            $settings = App\Models\Setting::all();
-                        @endphp
                         @forelse ($settings as $setting)
                             <img src="{{ url('image/', $setting->img) }}" height="100" width="100"
                                 class="avatar-img align-top rounded-circle" alt="">

@@ -17220,6 +17220,30 @@ table.dataTable > thead .sorting_desc_disabled:before
     font-size: 1.4em;
 }
 
+.right-area header .navbar-nav li.header-cart-link > a
+{
+    position: relative;
+    min-width: 54px;
+}
+
+.right-area header .navbar-nav li.header-cart-link .header-cart-count
+{
+    position: absolute;
+    top: 5px;
+    right: 5px;
+    display: grid;
+    min-width: 17px;
+    height: 17px;
+    padding: 0 4px;
+    place-items: center;
+    border: 1px solid var(--primary, #7e1615);
+    background: #e63946;
+    color: #fff;
+    font-size: 9px;
+    font-weight: 800;
+    line-height: 1;
+}
+
 .right-area header .navbar-nav li.nav-item.icon > a:focus,
           .right-area header .navbar-nav li.nav-item.icon button:focus
 {
