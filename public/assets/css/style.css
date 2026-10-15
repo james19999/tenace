@@ -20276,33 +20276,6 @@ h6, .h6
 /* Raise the navigation only on smaller screens, and only while it is open. */
 @media (max-width: 991.98px)
 {
-    .main-wrapper .sidebar .navbar .navbar-brand .logo
-    {
-        display: none;
-    }
-
-    .right-area header .navbar-nav li.nav-item.dropdown.with-caret .avatar
-    {
-        display: grid;
-        place-items: center;
-        background: #fff !important;
-    }
-
-    .right-area header .navbar-nav li.nav-item.dropdown.with-caret .avatar-img
-    {
-        display: none;
-    }
-
-    .right-area header .navbar-nav li.nav-item.dropdown.with-caret .avatar::after
-    {
-        color: #851b1b;
-        content: "person";
-        font-family: "Material Icons";
-        font-size: 21px;
-        font-weight: normal;
-        line-height: 1;
-    }
-
     .main-wrapper:not(.collapsed) .sidebar
     {
         z-index: 1200;

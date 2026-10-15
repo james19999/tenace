@@ -9,7 +9,7 @@
             @endphp
             @forelse ($settings as $setting)
                 <img src="{{ url('image/', $setting->img) }}" style="background-color: white ; " alt=""
-                    class="logo img-thumbnail ">{{ $setting->name }}
+                    class="logo img-thumbnail ">{{ trim(str_replace(['🌞', '☀️', '☀'], '', $setting->name)) }}
 
             @empty
 
