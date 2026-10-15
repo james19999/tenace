@@ -20276,6 +20276,11 @@ h6, .h6
 /* Raise the navigation only on smaller screens, and only while it is open. */
 @media (max-width: 991.98px)
 {
+    .main-wrapper .sidebar .navbar .navbar-brand .logo
+    {
+        display: none;
+    }
+
     .main-wrapper:not(.collapsed) .sidebar
     {
         z-index: 1200;
