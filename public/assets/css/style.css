@@ -20273,16 +20273,19 @@ h6, .h6
     border-radius: 0 50px 50px 0;
 }
 
-/* Keep the mobile navigation above page content on every section. */
-.main-wrapper .sidebar
+/* Raise the navigation only on smaller screens, and only while it is open. */
+@media (max-width: 991.98px)
 {
-    z-index: 1200;
-}
+    .main-wrapper:not(.collapsed) .sidebar
+    {
+        z-index: 1200;
+    }
 
-.overlay-mask.open
-{
-    z-index: 1190;
-    cursor: pointer;
+    .overlay-mask.open
+    {
+        z-index: 1190;
+        cursor: pointer;
+    }
 }
 
 /*
