@@ -20276,6 +20276,35 @@ h6, .h6
 /* Raise the navigation only on smaller screens, and only while it is open. */
 @media (max-width: 991.98px)
 {
+    html,
+    body
+    {
+        max-width: 100%;
+        overflow-x: clip;
+    }
+
+    .main-wrapper,
+    .right-area,
+    .right-area .main-content.container
+    {
+        width: 100%;
+        max-width: 100%;
+        min-width: 0;
+    }
+
+    .right-area .main-content.container
+    {
+        margin-right: 0;
+        margin-left: 0;
+        padding: 14px 12px !important;
+    }
+
+    .right-area .main-content.container > *
+    {
+        max-width: 100%;
+        min-width: 0;
+    }
+
     .main-wrapper.collapsed .sidebar
     {
         z-index: 1200;
