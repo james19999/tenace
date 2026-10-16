@@ -25,10 +25,11 @@
         .cart-form-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:16px}
         .cart-field{min-width:0}.cart-field.full{grid-column:1/-1}
         .cart-field.anonymous-customer-help{padding:12px 14px;border-left:3px solid var(--cart-wine);background:#f8f3f3;color:#5f626c;font-size:12px;line-height:1.5}
-        .cart-customer-create-actions{display:flex;flex-wrap:wrap;gap:8px;margin-top:9px}
-        .cart-customer-mode{display:inline-flex;align-items:center;justify-content:center;gap:6px;min-height:38px;padding:8px 11px;border:1px solid #d8dce3;background:#fff;color:#505765;font-size:12px;font-weight:700;cursor:pointer}
+        .cart-customer-create-actions{display:flex;flex-wrap:nowrap;align-items:stretch;gap:6px;margin-top:7px;width:100%;max-width:100%}
+        .cart-customer-mode{display:inline-flex;flex:1 1 0;min-width:0;align-items:center;justify-content:center;gap:6px;min-height:36px;padding:6px 9px;border:1px solid #d8dce3;background:#fff;color:#505765;font-size:11px;font-weight:700;white-space:nowrap;cursor:pointer}
         .cart-customer-mode:hover,.cart-customer-mode.is-selected{border-color:var(--cart-wine);background:#f8eeee;color:var(--cart-wine)}
-        .cart-customer-mode .material-icons{font-size:17px}
+        .cart-customer-mode .material-icons{flex:0 0 auto;font-size:16px}
+        .cart-field[hidden]{display:none!important}
         .cart-field label{display:block;color:#454a56;font-size:13px;font-weight:700;margin:0 0 7px}
         .cart-field .form-control{height:45px;border:1px solid #dfe2e8;border-radius:9px;box-shadow:none;color:var(--cart-ink);font-size:14px;max-width:100%}
         .cart-field .select2-container{width:100%!important}
@@ -74,8 +75,9 @@
         .cart-primary-btn:disabled{opacity:.48;cursor:not-allowed}
         .cart-mobile-submit{display:none}
         @media(max-width:991px){.cart-layout{grid-template-columns:minmax(0,1fr) 300px;gap:15px}.cart-shell{padding:0}.cart-panel-head,.cart-panel-body{padding-left:17px;padding-right:17px}}
-        @media(max-width:767px){.product-cart-page{padding-top:0}.cart-shell{padding:0}.cart-heading{align-items:flex-start;margin:8px 0 18px}.cart-heading p{font-size:13px}.cart-back-link{font-size:13px}.cart-layout{grid-template-columns:minmax(0,1fr);gap:14px}.cart-summary{position:static}.cart-sidebar{order:2}.cart-main{order:1}.cart-panel{border-radius:13px}.cart-panel-head{padding:15px}.cart-panel-body{padding:16px}.cart-form-grid{gap:13px}.cart-field .form-control{height:43px}.cart-table{min-width:580px}.cart-summary .cart-panel-body{padding:16px}.cart-primary-btn{margin-top:12px}}
+        @media(max-width:767px){.product-cart-page{padding-top:0}.cart-shell{padding:0}.cart-heading{align-items:flex-start;margin:8px 0 18px}.cart-heading p{font-size:13px}.cart-back-link{font-size:13px}.cart-layout{grid-template-columns:minmax(0,1fr);gap:14px}.cart-summary{position:static}.cart-sidebar{order:2}.cart-main{order:1}.cart-panel{border-radius:13px}.cart-panel-head{padding:15px}.cart-panel-body{padding:16px}.cart-form-grid{grid-template-columns:minmax(0,1fr);gap:13px}.cart-field,.cart-field.full{grid-column:1/-1;width:100%;max-width:100%}.cart-field .form-control{width:100%;height:43px}.cart-customer-create-actions{gap:6px}.cart-customer-mode{min-height:42px;padding:6px 7px;font-size:11px;line-height:1.2;white-space:normal;text-align:center}.cart-table{min-width:580px}.cart-summary .cart-panel-body{padding:16px}.cart-primary-btn{margin-top:12px}}
         @media(max-width:480px){.cart-heading{display:block}.cart-back-link{margin-top:12px}.cart-heading h1{font-size:27px}.cart-form-grid{grid-template-columns:minmax(0,1fr)}.cart-field.full{grid-column:auto}.cart-panel-head h2{font-size:15px}.cart-panel-head p{font-size:12px}.cart-table th,.cart-table td{padding:11px 10px}.cart-product-thumb{width:40px;height:40px;flex-basis:40px}.cart-empty{padding:32px 16px}}
+        @media(max-width:380px){.cart-customer-create-actions{gap:4px}.cart-customer-mode{gap:4px;padding:5px;font-size:10px}.cart-customer-mode .material-icons{font-size:14px}}
         /* Surfaces nettes et carrées, cohérentes avec le reste de l'application. */
         .product-cart-page .cart-panel{border-radius:0;box-shadow:none;border-color:#d9dde5}
         .product-cart-page .cart-alert,.product-cart-page .cart-step,
@@ -220,7 +222,7 @@
                                 <div class="cart-field new-customer-field"><label for="phone">Téléphone</label><input type="text" class="form-control" id="phone" name="phone" placeholder="Numéro de téléphone" value="{{ old('phone') }}">@error('phone')<span class="cart-field-error">{{ $message }}</span>@enderror</div>
                                 <div class="cart-field new-customer-field"><label for="adresse">Adresse de livraison</label><input type="text" class="form-control" id="adresse" name="adresse" placeholder="Quartier, repère…" value="{{ old('adresse') }}">@error('adresse')<span class="cart-field-error">{{ $message }}</span>@enderror</div>
                                 <div class="cart-field full anonymous-customer-help" hidden>Le nom ne sera pas demandé. Un identifiant client sera généré automatiquement ; le téléphone et l’adresse servent à organiser la livraison.</div>
-                                <div class="cart-field"><label for="tax">Frais de livraison (F CFA) <span class="text-danger">*</span></label><input type="number" min="0" step="1" class="form-control" id="tax" name="tax" value="{{ old('tax', 0) }}" data-has-old-value="{{ old('tax') !== null ? '1' : '0' }}" placeholder="0">@error('tax')<span class="cart-field-error">{{ $message }}</span>@enderror</div>
+                                <div class="cart-field full"><label for="tax">Frais de livraison (F CFA) <span class="text-danger">*</span></label><input type="number" min="0" step="1" class="form-control" id="tax" name="tax" value="{{ old('tax', 0) }}" data-has-old-value="{{ old('tax') !== null ? '1' : '0' }}" placeholder="0">@error('tax')<span class="cart-field-error">{{ $message }}</span>@enderror</div>
                             </div>
 
                             <div class="cart-subsection"><p class="cart-subsection-title">Planification et détails</p>
