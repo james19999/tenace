@@ -216,6 +216,7 @@ Route::middleware(['auth'])->group(function () {
         Route::get('edit/order/{order}', EditOrder::class)->name('edit-order');
         Route::get('order/list', [OrderController::class, 'index'])->name('order');
         Route::get('order/show/{id}', [OrderController::class, 'show'])->name('ordershow');
+        Route::post('order/show/{id}/payment', [OrderController::class, 'updatePayment'])->middleware('role:ADMINUSER,MNG')->name('ordershow.payment');
         Route::get('order/cancel/list', [OrderController::class, 'order_cancel_list'])->name('order-cancel-list');
         Route::get('order/report/list', [OrderController::class, 'order_report_list'])->name('order-report-list');
         Route::get('ordered/list/ordered', [OrderController::class, 'ordered_list'])->name('ordered-list-orderer');
@@ -247,6 +248,7 @@ Route::middleware(['auth'])->group(function () {
     Route::middleware(['role:ADMINUSER,MNG,LVS'])->group(function () {
         Route::get('livrable/list', [LivreurController::class, 'livrable'])->name('livrable');
         Route::get('livrable/show/{id}', [LivreurController::class, 'livrable_show'])->name('livrableshow');
+        Route::post('livrable/show/{id}/payment', [LivreurController::class, 'updateOrderPayment'])->middleware('role:ADMINUSER,MNG')->name('livrableshow.payment');
         Route::get('auth/livrable/{id}', [LivreurController::class, 'auth_user_livrable'])->name('authlivrable');
         Route::get('unlock/{id}', [LivreurController::class, 'unlock'])->name('unlock');
         Route::post('check/livraison/{id}', [LivreurController::class, 'check_livraison'])->name('checklivraison');

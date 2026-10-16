@@ -50,6 +50,7 @@ class Order extends Model
         'avis',
         'remis',
         'montant',
+        'paid_amount',
         'order_by',
         'date_order',
         'delivered_at',

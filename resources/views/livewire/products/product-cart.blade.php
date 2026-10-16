@@ -95,6 +95,12 @@
         .cart-summary-note{padding:11px 12px;background:#f8f8fa;border-radius:9px;color:var(--cart-muted);font-size:12px;line-height:1.5;margin-top:12px}
         .cart-primary-btn{width:100%;margin-top:16px;min-height:48px;font-size:15px;cursor:pointer}
         .cart-primary-btn:disabled{opacity:.48;cursor:not-allowed}
+        .cart-paid-field{margin-top:14px;padding:13px;border:1px solid #f0c7c7;background:#fff8f8}
+        .cart-paid-field label{display:block;margin:0 0 7px;color:#861b1b;font-size:12px;font-weight:800}
+        .cart-paid-field .form-control{height:42px;border:1px solid #dfb9b9;border-radius:0}
+        .cart-paid-field small{display:block;margin-top:6px;color:var(--cart-muted);font-size:11px;line-height:1.4}
+        .cart-balance-line{color:#861b1b;font-weight:800}
+        .cart-balance-line strong{color:#861b1b!important}
         .cart-mobile-submit{display:none}
         @media(max-width:991px){.cart-layout{grid-template-columns:minmax(0,1fr) 300px;gap:15px}.cart-shell{padding:0}.cart-panel-head,.cart-panel-body{padding-left:17px;padding-right:17px}}
         @media(max-width:767px){.product-cart-page{padding-top:0}.cart-shell{padding:0}.cart-heading{align-items:flex-start;margin:8px 0 18px}.cart-heading p{font-size:13px}.cart-back-link{font-size:13px}.cart-layout{grid-template-columns:minmax(0,1fr);gap:14px}.cart-summary{position:static}.cart-sidebar{order:2}.cart-main{order:1}.cart-panel{border-radius:13px}.cart-panel-head{padding:15px}.cart-panel-body{padding:16px}.cart-form-grid{grid-template-columns:minmax(0,1fr);gap:13px}.cart-field,.cart-field.full{grid-column:1/-1;width:100%;max-width:100%}.cart-field .form-control{width:100%;height:43px}.cart-customer-create-actions{gap:6px}.cart-customer-mode{min-height:42px;padding:6px 7px;font-size:11px;line-height:1.2;white-space:normal;text-align:center}.cart-table{min-width:580px}.cart-summary .cart-panel-body{padding:16px}.cart-primary-btn{margin-top:12px}}
@@ -278,6 +284,8 @@
                             <div class="cart-summary-line"><span>Remise <span id="cart-discount-rate">({{ (int) old('remis', 0) }} %)</span></span><strong id="cart-discount-display">− {{ number_format($cartSubtotal * min(100, max(0, (int) old('remis', 0))) / 100, 0, ',', ' ') }} F</strong></div>
                             <div class="cart-summary-line"><span>Livraison</span><strong id="cart-delivery-display">{{ number_format((float) old('tax', 0), 0, ',', ' ') }} F</strong></div>
                             <div class="cart-summary-line total"><span>Total estimé</span><strong id="cart-total-display">{{ number_format($cartSubtotal * (1 - min(100, max(0, (int) old('remis', 0))) / 100) + (float) old('tax', 0), 0, ',', ' ') }} F</strong></div>
+                            <div class="cart-paid-field"><label for="paid_amount">Déjà payé par la cliente (F CFA)</label><input type="number" min="0" step="1" class="form-control" id="paid_amount" name="paid_amount" value="{{ old('paid_amount', 0) }}" data-has-old-value="{{ old('paid_amount') !== null ? '1' : '0' }}"><small>Indique ce qui a déjà été encaissé. Mets 0 si le paiement se fera à la livraison.</small>@error('paid_amount')<span class="cart-field-error">{{ $message }}</span>@enderror</div>
+                            <div class="cart-summary-line cart-balance-line"><span>Reste à encaisser</span><strong id="cart-balance-display">{{ number_format(max(0, $cartSubtotal * (1 - min(100, max(0, (int) old('remis', 0))) / 100) + (float) old('tax', 0) - (float) old('paid_amount', 0)), 0, ',', ' ') }} F</strong></div>
                             <div class="cart-summary-note">Le total inclut les frais de livraison et la remise saisie. Vérifie le numéro, l’adresse et la date avant validation.</div>
                             <button type="submit" class="cart-primary-btn" @disabled($cartItems->isEmpty())><span class="material-icons" aria-hidden="true">check_circle</span>Valider la commande</button>
                         </div>
@@ -317,7 +325,8 @@
             function currentPricingInputs() {
                 return {
                     discount: root.querySelector('#remise'),
-                    delivery: root.querySelector('#tax')
+                    delivery: root.querySelector('#tax'),
+                    paid: root.querySelector('#paid_amount')
                 };
             }
 
@@ -333,6 +342,9 @@
                 if (inputs.discount && (!preserveOldValues || inputs.discount.getAttribute('data-has-old-value') !== '1')) {
                     inputs.discount.value = savedPricing.remis ?? inputs.discount.value;
                 }
+                if (inputs.paid && (!preserveOldValues || inputs.paid.getAttribute('data-has-old-value') !== '1')) {
+                    inputs.paid.value = savedPricing.paid ?? inputs.paid.value;
+                }
             }
 
             function updateSummary() {
@@ -341,14 +353,18 @@
                 var subtotal = Math.max(0, parseFloat(subtotalElement && subtotalElement.getAttribute('data-subtotal')) || 0);
                 var discountRate = Math.min(100, Math.max(0, parseFloat(inputs.discount && inputs.discount.value) || 0));
                 var delivery = Math.max(0, parseFloat(inputs.delivery && inputs.delivery.value) || 0);
+                var paid = Math.max(0, parseFloat(inputs.paid && inputs.paid.value) || 0);
                 var discount = subtotal * discountRate / 100;
+                var total = Math.max(0, Math.round(subtotal - discount + delivery));
                 var formatter = new Intl.NumberFormat('fr-FR', { maximumFractionDigits: 0 });
                 root.querySelector('#cart-discount-rate').textContent = '(' + formatter.format(discountRate) + ' %)';
                 root.querySelector('#cart-discount-display').textContent = '− ' + formatter.format(discount) + ' F';
                 root.querySelector('#cart-delivery-display').textContent = formatter.format(delivery) + ' F';
-                root.querySelector('#cart-total-display').textContent = formatter.format(subtotal - discount + delivery) + ' F';
+                root.querySelector('#cart-total-display').textContent = formatter.format(total) + ' F';
+                root.querySelector('#cart-balance-display').textContent = formatter.format(Math.max(0, total - paid)) + ' F';
+                if (inputs.paid) inputs.paid.max = String(total);
                 if (!cartIsEmpty && inputs.delivery && inputs.discount) {
-                    try { sessionStorage.setItem(storageKey, JSON.stringify({ tax: inputs.delivery.value, remis: inputs.discount.value })); } catch (error) {}
+                    try { sessionStorage.setItem(storageKey, JSON.stringify({ tax: inputs.delivery.value, remis: inputs.discount.value, paid: inputs.paid ? inputs.paid.value : '0' })); } catch (error) {}
                 }
             }
             if (cartIsEmpty) {
@@ -357,7 +373,7 @@
                 restorePricing(true);
             }
             root.addEventListener('input', function (event) {
-                if (event.target.matches('#remise, #tax')) updateSummary();
+                if (event.target.matches('#remise, #tax, #paid_amount')) updateSummary();
             });
             updateSummary();
             window.addEventListener('cart-count-updated', function () {

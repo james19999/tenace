@@ -10,6 +10,9 @@
         ];
         [$statusLabel, $statusTone] = $statusLabels[$Orders->status] ?? ['Statut inconnu', 'secondary'];
         $orderDate = $Orders->created_at ? $Orders->created_at->format('d/m/Y à H:i') : '—';
+        $amountDue = (float) ($Orders->montant ?? ((float) $Orders->total + (float) $Orders->tax));
+        $paidAmount = $Orders->paid_amount;
+        $remainingAmount = $paidAmount === null ? null : max(0, $amountDue - (float) $paidAmount);
     @endphp
 
     <style>
@@ -67,6 +70,9 @@
         .od-field .form-control { min-height:42px; border-color:#dfe2e9; border-radius:9px; }
         .od-field .invalid-feedback { display:block; }
         .od-panel .od-btn { width:100%; }
+        .od-payment-status{margin:16px 0;padding:12px;border-left:4px solid var(--od-red);background:#fff5f5;color:#681616;font-size:13px;line-height:1.5}
+        .od-payment-status strong{color:#451111}
+        .od-payment-form{margin-top:13px;padding:13px;border:1px solid #efc2c2;border-left:4px solid var(--od-red);background:#fff8f8}
         .od-back { margin-top:18px; }
         @media (max-width: 1050px) {
             .od-receipt-head { grid-template-columns:repeat(2,minmax(0,1fr)); }
@@ -214,9 +220,31 @@
                     <div class="od-total-row"><span>Remise</span><strong>{{ $Orders->remis }} %</strong></div>
                     <div class="od-total-row"><span>Total articles</span><strong>{{ number_format($Orders->total, 0, ',', ' ') }} F</strong></div>
                     <div class="od-total-row"><span>Frais de livraison</span><strong>{{ number_format($Orders->tax, 0, ',', ' ') }} F</strong></div>
-                    <div class="od-total-row od-total-final"><span>Montant à payer</span><strong>{{ number_format($Orders->total + $Orders->tax, 0, ',', ' ') }} F</strong></div>
+                    <div class="od-total-row od-total-final"><span>Montant à payer</span><strong>{{ number_format($amountDue, 0, ',', ' ') }} F</strong></div>
+                    @if ($paidAmount !== null)
+                        <div class="od-total-row"><span>Déjà payé</span><strong>{{ number_format((float) $paidAmount, 0, ',', ' ') }} F</strong></div>
+                        <div class="od-total-row"><span>Reste à payer</span><strong>{{ number_format($remainingAmount, 0, ',', ' ') }} F</strong></div>
+                    @endif
+                    @if (in_array(auth()->user()?->user_type, ['ADMINUSER', 'MNG'], true))
+                        <form action="{{ route('ordershow.payment', $Orders->id) }}" method="POST" class="od-payment-form no-print">
+                            @csrf
+                            <div class="od-field">
+                                <label for="order-paid-amount">Montant déjà payé (F CFA)</label>
+                                <input id="order-paid-amount" type="number" class="form-control @error('paid_amount') is-invalid @enderror" name="paid_amount" min="0" max="{{ (int) $amountDue }}" step="1" value="{{ old('paid_amount', $paidAmount ?? 0) }}" required>
+                                @error('paid_amount') <div class="invalid-feedback">{{ $message }}</div> @enderror
+                            </div>
+                            <button type="submit" class="od-btn od-btn-primary">Enregistrer le paiement</button>
+                        </form>
+                    @endif
                 </div>
             </section>
+            @if ($paidAmount !== null && $remainingAmount <= 0)
+                <div class="od-payment-status" style="border-left-color:#23824e;background:#effaf3;color:#185b37"><strong>Commande déjà payée :</strong> ne rien réclamer à la cliente.</div>
+            @elseif ($paidAmount !== null && $paidAmount > 0)
+                <div class="od-payment-status"><strong>Paiement partiel :</strong> reste {{ number_format($remainingAmount, 0, ',', ' ') }} F à percevoir.</div>
+            @else
+                <div class="od-payment-status"><strong>À encaisser :</strong> {{ number_format($amountDue, 0, ',', ' ') }} F.</div>
+            @endif
         </div>
 
         <section class="od-actions no-print">
@@ -284,6 +312,7 @@
                         <button type="submit" class="od-btn">Enregistrer l’heure</button>
                     </form>
                 </div>
+
             </div>
         </section>
 

@@ -54,6 +54,12 @@ class CheckController extends Controller
          $discountRate = (int) $request->input('remis');
          $itemsTotal = (int) round($subtotal - ($subtotal * $discountRate / 100));
          $amountDue = $itemsTotal + (int) $request->input('tax');
+         $request->validate([
+             'paid_amount' => ['nullable', 'integer', 'min:0', 'max:'.$amountDue],
+         ], [
+             'paid_amount.max' => 'Le montant déjà payé ne peut pas dépasser le total de la commande.',
+         ]);
+         $paidAmount = (int) $request->input('paid_amount', 0);
          $customerSelection = (string) $request->input('costumer_id', 'default');
          $isAnonymousCustomer = $customerSelection === 'anonymous';
 
@@ -136,6 +142,7 @@ class CheckController extends Controller
                           'remis'=>$discountRate,
                           'total'=>$itemsTotal,
                           'montant'=>$amountDue,
+                          'paid_amount'=>$paidAmount,
                           'code' => $code,
                           'brouillon' =>$this->brouillons() ,
                           'created_user' =>Auth::user()->id,
@@ -209,6 +216,7 @@ class CheckController extends Controller
                  'order_by'=>Auth::user()->id,
                 'total'=>$itemsTotal,
                 'montant'=>$amountDue,
+                'paid_amount'=>$paidAmount,
                 'code' => $code,
                 'brouillon' =>$this->brouillons() ,
                 'created_user' =>Auth::user()->id,

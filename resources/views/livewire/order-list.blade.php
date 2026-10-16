@@ -266,6 +266,15 @@
     <div wire:loading.remove>
 
         @forelse($orders as $order)
+            @php
+                // `montant` is the final amount due (discounted items + delivery).
+                // `paid_amount` alone represents money already received.
+                $orderAmountDue = (float) ($order->montant ?? ((float) ($order->total ?? 0) + (float) ($order->tax ?? 0)));
+                $orderPaidAmount = $order->paid_amount;
+                $orderRemainingAmount = $orderPaidAmount === null
+                    ? $orderAmountDue
+                    : max(0, $orderAmountDue - (float) $orderPaidAmount);
+            @endphp
 
             <div class="order-card">
 
@@ -433,11 +442,11 @@
                                         </div>
                                     @endif
 
-                                    @if ($order->montant > 0 && $order->montant != $order->subtotal)
+                                    @if ($orderPaidAmount !== null)
                                         <div class="d-flex justify-content-between align-items-center mb-2">
-                                            <span class="text-muted small">Montant payé :</span>
+                                            <span class="text-muted small">Déjà payé :</span>
                                             <span class="text-dark font-weight-bold">
-                                                {{ number_format($order->montant, 0, ',', ' ') }} F
+                                                {{ number_format((float) $orderPaidAmount, 0, ',', ' ') }} F
                                             </span>
                                         </div>
                                     @endif
@@ -447,7 +456,13 @@
                                     <div class="d-flex justify-content-between align-items-center mb-2">
                                         <span class="font-weight-bold text-dark" style="font-size: 14px;">Total à régler :</span>
                                         <span class="text-primary font-weight-bold" style="font-size: 18px;">
-                                            {{ number_format($order->total ?? 0, 0, ',', ' ') }} F
+                                            {{ number_format($orderAmountDue, 0, ',', ' ') }} F
+                                        </span>
+                                    </div>
+                                    <div class="d-flex justify-content-between align-items-center mb-2">
+                                        <span class="font-weight-bold {{ $orderRemainingAmount > 0 ? 'text-danger' : 'text-success' }}">Reste à payer :</span>
+                                        <span class="font-weight-bold {{ $orderRemainingAmount > 0 ? 'text-danger' : 'text-success' }}">
+                                            {{ number_format($orderRemainingAmount, 0, ',', ' ') }} F
                                         </span>
                                     </div>
                                 </div>

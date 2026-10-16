@@ -177,9 +177,27 @@ class LivreurController extends Controller
 
     public function livrable_show($id){
 
-        $Orders=Order::findOrfail($id);
+        $Orders=Order::with(['costumer', 'user', 'createduser', 'orderItems.product'])->findOrfail($id);
 
         return view('livreurs.livrablde_show',compact('Orders'));
+    }
+
+    public function updateOrderPayment(Request $request, string $id)
+    {
+        abort_unless(in_array($request->user()?->user_type, ['ADMINUSER', 'MNG'], true), 403);
+
+        $order = Order::findOrFail($id);
+        $amountDue = (float) ($order->montant ?? ((float) $order->total + (float) $order->tax));
+        $validated = $request->validate([
+            'paid_amount' => ['required', 'integer', 'min:0', 'max:'.$amountDue],
+        ], [
+            'paid_amount.max' => 'Le montant encaissé ne peut pas dépasser le total de la commande.',
+        ]);
+
+        $order->paid_amount = (int) $validated['paid_amount'];
+        $order->save();
+
+        return redirect()->back()->with('success', 'Le règlement de la commande a été enregistré.');
     }
 
 

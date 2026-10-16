@@ -124,6 +124,22 @@ class OrderController extends Controller
         return  view('orders.show', compact('Orders', 'livreurs'));
     }
 
+    public function updatePayment(Request $request, string $id)
+    {
+        $order = Order::findOrFail($id);
+        $amountDue = (float) ($order->montant ?? ((float) $order->total + (float) $order->tax));
+        $validated = $request->validate([
+            'paid_amount' => ['required', 'integer', 'min:0', 'max:'.$amountDue],
+        ], [
+            'paid_amount.max' => 'Le montant déjà payé ne peut pas dépasser le total de la commande.',
+        ]);
+
+        $order->paid_amount = (int) $validated['paid_amount'];
+        $order->save();
+
+        return redirect()->back()->with('success', 'Le paiement de la commande a été enregistré.');
+    }
+
     public function change_order_status(Request $request, $id, StockDeliveryService $stockDelivery)
     {
 
