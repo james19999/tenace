@@ -2,6 +2,7 @@
     @php
         $cartItems = Cart::instance('cart')->content();
         $cartSubtotal = (float) Cart::instance('cart')->subtotal(2, '.', '');
+        $customerMode = old('costumer_id');
     @endphp
 
     <style>
@@ -219,9 +220,9 @@
                                     @error('costumer_id')<span class="cart-field-error">{{ $message }}</span>@enderror
                                 </div>
 
-                                <div class="cart-field new-customer-field new-customer-name-field"><label for="name">Nom du client</label><input type="text" class="form-control" id="name" name="name" placeholder="Nom complet" value="{{ old('name') }}">@error('name')<span class="cart-field-error">{{ $message }}</span>@enderror</div>
-                                <div class="cart-field new-customer-field"><label for="phone">Téléphone</label><input type="text" class="form-control" id="phone" name="phone" placeholder="Numéro de téléphone" value="{{ old('phone') }}">@error('phone')<span class="cart-field-error">{{ $message }}</span>@enderror</div>
-                                <div class="cart-field new-customer-field"><label for="adresse">Adresse de livraison</label><input type="text" class="form-control" id="adresse" name="adresse" placeholder="Quartier, repère…" value="{{ old('adresse') }}">@error('adresse')<span class="cart-field-error">{{ $message }}</span>@enderror</div>
+                                <div class="cart-field new-customer-field new-customer-name-field" @if ($customerMode !== 'default') hidden @endif><label for="name">Nom du client</label><input type="text" class="form-control" id="name" name="name" placeholder="Nom complet" value="{{ old('name') }}">@error('name')<span class="cart-field-error">{{ $message }}</span>@enderror</div>
+                                <div class="cart-field new-customer-field" @if (!in_array($customerMode, ['default', 'anonymous'], true)) hidden @endif><label for="phone">Téléphone</label><input type="text" class="form-control" id="phone" name="phone" placeholder="Numéro de téléphone" value="{{ old('phone') }}">@error('phone')<span class="cart-field-error">{{ $message }}</span>@enderror</div>
+                                <div class="cart-field new-customer-field" @if (!in_array($customerMode, ['default', 'anonymous'], true)) hidden @endif><label for="adresse">Adresse de livraison</label><input type="text" class="form-control" id="adresse" name="adresse" placeholder="Quartier, repère…" value="{{ old('adresse') }}">@error('adresse')<span class="cart-field-error">{{ $message }}</span>@enderror</div>
                                 <div class="cart-field full anonymous-customer-help" hidden>Le nom ne sera pas demandé. Un identifiant client sera généré automatiquement ; le téléphone et l’adresse servent à organiser la livraison.</div>
                                 <div class="cart-field full"><label for="tax">Frais de livraison (F CFA) <span class="text-danger">*</span></label><input type="number" min="0" step="1" class="form-control" id="tax" name="tax" value="{{ old('tax', 0) }}" data-has-old-value="{{ old('tax') !== null ? '1' : '0' }}" placeholder="0">@error('tax')<span class="cart-field-error">{{ $message }}</span>@enderror</div>
                             </div>
