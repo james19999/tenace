@@ -131,7 +131,6 @@
 
         <form method="POST" action="{{ route('palceorder') }}" id="product-cart-order-form">
             @csrf
-            <input type="hidden" name="subtotal" value="{{ number_format($cartSubtotal, 2, '.', '') }}">
 
             <div class="cart-layout">
                 <main class="cart-main">
@@ -221,7 +220,7 @@
                                 <div class="cart-field new-customer-field"><label for="phone">Téléphone</label><input type="text" class="form-control" id="phone" name="phone" placeholder="Numéro de téléphone" value="{{ old('phone') }}">@error('phone')<span class="cart-field-error">{{ $message }}</span>@enderror</div>
                                 <div class="cart-field new-customer-field"><label for="adresse">Adresse de livraison</label><input type="text" class="form-control" id="adresse" name="adresse" placeholder="Quartier, repère…" value="{{ old('adresse') }}">@error('adresse')<span class="cart-field-error">{{ $message }}</span>@enderror</div>
                                 <div class="cart-field full anonymous-customer-help" hidden>Le nom ne sera pas demandé. Un identifiant client sera généré automatiquement ; le téléphone et l’adresse servent à organiser la livraison.</div>
-                                <div class="cart-field"><label for="tax">Frais de livraison (F CFA) <span class="text-danger">*</span></label><input type="number" min="0" step="1" class="form-control" id="tax" name="tax" value="{{ old('tax', 0) }}" placeholder="0">@error('tax')<span class="cart-field-error">{{ $message }}</span>@enderror</div>
+                                <div class="cart-field"><label for="tax">Frais de livraison (F CFA) <span class="text-danger">*</span></label><input type="number" min="0" step="1" class="form-control" id="tax" name="tax" value="{{ old('tax', 0) }}" data-has-old-value="{{ old('tax') !== null ? '1' : '0' }}" placeholder="0">@error('tax')<span class="cart-field-error">{{ $message }}</span>@enderror</div>
                             </div>
 
                             <div class="cart-subsection"><p class="cart-subsection-title">Planification et détails</p>
@@ -229,7 +228,7 @@
                                     <div class="cart-field"><label for="date_order">Date de livraison <span class="text-danger">*</span></label><input type="date" class="form-control" id="date_order" name="date_order" value="{{ old('date_order', now()->toDateString()) }}">@error('date_order')<span class="cart-field-error">{{ $message }}</span>@enderror</div>
                                     <div class="cart-field"><label for="time">Heure de livraison <span class="text-danger">*</span></label><input type="time" name="time" id="time" value="{{ old('time') }}" class="form-control">@error('time')<span class="cart-field-error">{{ $message }}</span>@enderror</div>
                                     <div class="cart-field"><label for="order-type">Type de commande</label><select name="type" id="order-type" class="form-control"><option value="PU" @selected(old('type', 'PU') === 'PU')>Publique</option><option value="PR" @selected(old('type') === 'PR')>Privée</option></select>@error('type')<span class="cart-field-error">{{ $message }}</span>@enderror</div>
-                                    <div class="cart-field"><label for="remise">Remise (%)</label><input type="number" min="0" max="100" step="1" class="form-control" id="remise" name="remis" placeholder="0" value="{{ old('remis', 0) }}">@error('remis')<span class="cart-field-error">{{ $message }}</span>@enderror</div>
+                                    <div class="cart-field"><label for="remise">Remise (%)</label><input type="number" min="0" max="100" step="1" class="form-control" id="remise" name="remis" placeholder="0" value="{{ old('remis', 0) }}" data-has-old-value="{{ old('remis') !== null ? '1' : '0' }}">@error('remis')<span class="cart-field-error">{{ $message }}</span>@enderror</div>
                                     <div class="cart-field"><label for="customer-follow-up-at">Prochaine relance cliente <span class="text-danger">*</span></label><input type="datetime-local" class="form-control" id="customer-follow-up-at" name="follow_up_at" data-delay-days="{{ $defaultFollowUpDays }}" value="{{ old('follow_up_at', $defaultFollowUpAt) }}" required>@error('follow_up_at')<span class="cart-field-error">{{ $message }}</span>@enderror</div>
                                     <div class="cart-field full"><label for="avis">Commentaire (facultatif)</label><textarea name="avis" id="avis" placeholder="Informations utiles pour la préparation ou la livraison" class="form-control" rows="3">{{ old('avis') }}</textarea>@error('avis')<span class="cart-field-error">{{ $message }}</span>@enderror</div>
                                 </div>
@@ -243,7 +242,7 @@
                     <section class="cart-panel cart-summary" aria-labelledby="cart-summary-title">
                         <div class="cart-panel-head"><div><h2 id="cart-summary-title">Résumé de la commande</h2><p>Montants avant confirmation.</p></div><span class="cart-step">03</span></div>
                         <div class="cart-panel-body">
-                            <div class="cart-summary-line"><span>Sous-total des articles</span><strong id="cart-subtotal-display">{{ number_format($cartSubtotal, 0, ',', ' ') }} F</strong></div>
+                            <div class="cart-summary-line"><span>Sous-total des articles</span><strong id="cart-subtotal-display" data-subtotal="{{ number_format($cartSubtotal, 2, '.', '') }}">{{ number_format($cartSubtotal, 0, ',', ' ') }} F</strong></div>
                             <div class="cart-summary-line"><span>Remise <span id="cart-discount-rate">({{ (int) old('remis', 0) }} %)</span></span><strong id="cart-discount-display">− {{ number_format($cartSubtotal * min(100, max(0, (int) old('remis', 0))) / 100, 0, ',', ' ') }} F</strong></div>
                             <div class="cart-summary-line"><span>Livraison</span><strong id="cart-delivery-display">{{ number_format((float) old('tax', 0), 0, ',', ' ') }} F</strong></div>
                             <div class="cart-summary-line total"><span>Total estimé</span><strong id="cart-total-display">{{ number_format($cartSubtotal * (1 - min(100, max(0, (int) old('remis', 0))) / 100) + (float) old('tax', 0), 0, ',', ' ') }} F</strong></div>
@@ -264,8 +263,8 @@
             var deliveryDate = root.querySelector('#date_order');
             var followUpDate = root.querySelector('#customer-follow-up-at');
             var customerSelect = root.querySelector('#order-costumer-id');
-            var discountInput = root.querySelector('#remise');
-            var deliveryInput = root.querySelector('#tax');
+            var storageKey = 'tenacos-product-cart-pricing';
+            var cartIsEmpty = {{ $cartItems->isEmpty() ? 'true' : 'false' }};
             var manuallyChanged = false;
             var updatingFromDeliveryDate = false;
             var delayDays = parseInt(followUpDate && followUpDate.getAttribute('data-delay-days'), 10) || 14;
@@ -283,19 +282,62 @@
                 });
             }
 
+            function currentPricingInputs() {
+                return {
+                    discount: root.querySelector('#remise'),
+                    delivery: root.querySelector('#tax')
+                };
+            }
+
+            function restorePricing(preserveOldValues) {
+                var inputs = currentPricingInputs();
+                var savedPricing = null;
+                try { savedPricing = JSON.parse(sessionStorage.getItem(storageKey) || 'null'); } catch (error) {}
+                if (!savedPricing) return;
+
+                if (inputs.delivery && (!preserveOldValues || inputs.delivery.getAttribute('data-has-old-value') !== '1')) {
+                    inputs.delivery.value = savedPricing.tax ?? inputs.delivery.value;
+                }
+                if (inputs.discount && (!preserveOldValues || inputs.discount.getAttribute('data-has-old-value') !== '1')) {
+                    inputs.discount.value = savedPricing.remis ?? inputs.discount.value;
+                }
+            }
+
             function updateSummary() {
-                var subtotal = {{ json_encode($cartSubtotal) }};
-                var discountRate = Math.min(100, Math.max(0, parseFloat(discountInput && discountInput.value) || 0));
-                var delivery = Math.max(0, parseFloat(deliveryInput && deliveryInput.value) || 0);
+                var inputs = currentPricingInputs();
+                var subtotalElement = root.querySelector('#cart-subtotal-display');
+                var subtotal = Math.max(0, parseFloat(subtotalElement && subtotalElement.getAttribute('data-subtotal')) || 0);
+                var discountRate = Math.min(100, Math.max(0, parseFloat(inputs.discount && inputs.discount.value) || 0));
+                var delivery = Math.max(0, parseFloat(inputs.delivery && inputs.delivery.value) || 0);
                 var discount = subtotal * discountRate / 100;
                 var formatter = new Intl.NumberFormat('fr-FR', { maximumFractionDigits: 0 });
                 root.querySelector('#cart-discount-rate').textContent = '(' + formatter.format(discountRate) + ' %)';
                 root.querySelector('#cart-discount-display').textContent = '− ' + formatter.format(discount) + ' F';
                 root.querySelector('#cart-delivery-display').textContent = formatter.format(delivery) + ' F';
                 root.querySelector('#cart-total-display').textContent = formatter.format(subtotal - discount + delivery) + ' F';
+                if (!cartIsEmpty && inputs.delivery && inputs.discount) {
+                    try { sessionStorage.setItem(storageKey, JSON.stringify({ tax: inputs.delivery.value, remis: inputs.discount.value })); } catch (error) {}
+                }
             }
-            if (discountInput) discountInput.addEventListener('input', updateSummary);
-            if (deliveryInput) deliveryInput.addEventListener('input', updateSummary);
+            if (cartIsEmpty) {
+                try { sessionStorage.removeItem(storageKey); } catch (error) {}
+            } else {
+                restorePricing(true);
+            }
+            root.addEventListener('input', function (event) {
+                if (event.target.matches('#remise, #tax')) updateSummary();
+            });
+            updateSummary();
+            window.addEventListener('cart-count-updated', function () {
+                window.setTimeout(function () {
+                    restorePricing(false);
+                    updateSummary();
+                }, 0);
+            });
+            var orderForm = root.querySelector('#product-cart-order-form');
+            if (orderForm) orderForm.addEventListener('submit', function () {
+                try { sessionStorage.removeItem(storageKey); } catch (error) {}
+            });
 
             function toggleNewCustomerFields() {
                 var selection = customerSelect ? customerSelect.value : 'default';
