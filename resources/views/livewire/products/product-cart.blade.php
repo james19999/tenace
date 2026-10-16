@@ -206,7 +206,8 @@
                                     <label for="order-costumer-id">Cliente</label>
                                     <div wire:ignore>
                                         <select id="order-costumer-id" class="js-customer-search form-control" data-ajax-url="{{ route('costumer.search') }}" name="costumer_id" style="width:100%">
-                                            <option value="default" @selected(old('costumer_id', 'default') === 'default')>Nouveau client avec nom</option>
+                                            <option value="" @selected(old('costumer_id', '') === '')>Rechercher ou choisir un client</option>
+                                            <option value="default" @selected(old('costumer_id') === 'default')>Nouveau client avec nom</option>
                                             <option value="anonymous" @selected(old('costumer_id') === 'anonymous')>Client anonyme · générer un identifiant</option>
                                             @if ($selectedCostumer)<option value="{{ $selectedCostumer->id }}" selected>{{ $selectedCostumer->name }} | {{ $selectedCostumer->phone }}</option>@endif
                                         </select>
@@ -259,12 +260,12 @@
 
     <script>
         (function () {
-            var root = document.currentScript && document.currentScript.closest('.product-cart-page');
+            var root = (document.currentScript && document.currentScript.closest('.product-cart-page'))
+                || document.querySelector('.product-cart-page');
             if (!root) return;
 
             var deliveryDate = root.querySelector('#date_order');
             var followUpDate = root.querySelector('#customer-follow-up-at');
-            var customerSelect = root.querySelector('#order-costumer-id');
             var storageKey = 'tenacos-product-cart-pricing';
             var cartIsEmpty = {{ $cartItems->isEmpty() ? 'true' : 'false' }};
             var manuallyChanged = false;
@@ -341,12 +342,15 @@
                 try { sessionStorage.removeItem(storageKey); } catch (error) {}
             });
 
-            function toggleNewCustomerFields() {
-                var selection = customerSelect ? customerSelect.value : 'default';
+            function toggleNewCustomerFields(selectionOverride) {
+                var customerSelect = root.querySelector('#order-costumer-id');
+                var selection = selectionOverride !== undefined && selectionOverride !== null
+                    ? String(selectionOverride)
+                    : (customerSelect ? customerSelect.value : '');
                 var isAnonymous = selection === 'anonymous';
                 var isNew = selection === 'default' || isAnonymous;
                 root.querySelectorAll('.new-customer-field').forEach(function (field) {
-                    field.style.display = isNew && !(isAnonymous && field.classList.contains('new-customer-name-field')) ? '' : 'none';
+                    field.hidden = !isNew || (isAnonymous && field.classList.contains('new-customer-name-field'));
                 });
                 var nameInput = root.querySelector('#name');
                 if (nameInput) nameInput.required = selection === 'default';
@@ -358,21 +362,44 @@
                     button.setAttribute('aria-pressed', selected ? 'true' : 'false');
                 });
             }
-            if (customerSelect) {
-                customerSelect.addEventListener('change', toggleNewCustomerFields);
-                if (window.jQuery) window.jQuery(customerSelect).on('select2:select select2:clear', toggleNewCustomerFields);
-                root.querySelectorAll('.cart-customer-mode').forEach(function (button) {
-                    button.addEventListener('click', function () {
-                        var mode = button.getAttribute('data-customer-mode');
-                        if (window.jQuery) window.jQuery(customerSelect).val(mode).trigger('change');
-                        else {
-                            customerSelect.value = mode;
-                            customerSelect.dispatchEvent(new Event('change', { bubbles: true }));
-                        }
+            function bindCustomerEvents() {
+                if (window.jQuery) {
+                    var $root = window.jQuery(root);
+                    $root.off('.cartCustomerMode');
+                    $root.on('change.cartCustomerMode select2:clear.cartCustomerMode', '#order-costumer-id', function () {
                         toggleNewCustomerFields();
                     });
-                });
+                    $root.on('select2:select.cartCustomerMode', '#order-costumer-id', function (event) {
+                        var selectedId = event.params && event.params.data ? event.params.data.id : this.value;
+                        if (selectedId !== undefined && selectedId !== null) {
+                            window.jQuery(this).val(String(selectedId));
+                        }
+                        toggleNewCustomerFields(selectedId);
+                    });
+                    $root.on('click.cartCustomerMode', '.cart-customer-mode', function () {
+                        var customerSelect = root.querySelector('#order-costumer-id');
+                        if (!customerSelect) return;
+                        window.jQuery(customerSelect).val(this.getAttribute('data-customer-mode')).trigger('change');
+                        toggleNewCustomerFields();
+                    });
+                } else {
+                    root.addEventListener('change', function (event) {
+                        if (event.target.matches('#order-costumer-id')) toggleNewCustomerFields();
+                    });
+                    root.addEventListener('click', function (event) {
+                        var button = event.target.closest('.cart-customer-mode');
+                        var customerSelect = root.querySelector('#order-costumer-id');
+                        if (!button || !customerSelect) return;
+                        customerSelect.value = button.getAttribute('data-customer-mode');
+                        customerSelect.dispatchEvent(new Event('change', { bubbles: true }));
+                    });
+                }
                 toggleNewCustomerFields();
+            }
+            if (document.readyState === 'loading') {
+                document.addEventListener('DOMContentLoaded', bindCustomerEvents, { once: true });
+            } else {
+                bindCustomerEvents();
             }
         })();
     </script>
