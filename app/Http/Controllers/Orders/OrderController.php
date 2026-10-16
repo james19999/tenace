@@ -390,7 +390,7 @@ class OrderController extends Controller
         $endDate = $request->input('end_date');
         $created_user = $request->input('costumer_id');
 
-        $orders = Order::whereBetween('created_at', [$startDate . ' 00:00:00', $endDate . ' 23:59:59'])
+        $orders = Order::whereBetween('delivered_at', [$startDate . ' 00:00:00', $endDate . ' 23:59:59'])
             ->where("status", "delivered")
             ->where('costumer_id', $created_user)
             ->get();
@@ -403,7 +403,7 @@ class OrderController extends Controller
     public function order_repport(Request $request)
     {
 
-        $orders = Order::whereYear('created_at', $request->year)
+        $orders = Order::whereYear('delivered_at', $request->year)
             ->where('status', 'delivered')
             ->get();
         return view('orders.order_repport', compact('orders'));
@@ -421,12 +421,12 @@ class OrderController extends Controller
             ->select(
                 'users.id',
                 'users.name',
-                DB::raw('DAYNAME(orders.updated_at) as day'), // Jour de la livraison
+                DB::raw('DAYNAME(orders.delivered_at) as day'), // Jour de la livraison
                 DB::raw('COUNT(orders.id) as delivered_count') // Nombre de commandes livrées par jour
             )
             ->where('users.user_type', '=', 'LVS') // Filtrer les utilisateurs de type LVS
             ->where('orders.status', '=', 'delivered')
-            ->whereBetween('orders.updated_at', [$startOfWeek, $endOfWeek])  // Filtrer les commandes livrées
+            ->whereBetween('orders.delivered_at', [$startOfWeek, $endOfWeek])  // Filtrer les commandes livrées
             ->groupBy('users.id', 'users.name', 'day') // Grouper par utilisateur et jour
             ->get();
 
@@ -448,7 +448,7 @@ class OrderController extends Controller
             )
             ->where('users.user_type', '=', 'LVS') // Filtrer les utilisateurs de type LVS
             ->where('orders.status', '=', 'delivered') // Filtrer les commandes livrées
-            ->whereBetween('orders.updated_at', [$startOfWeek, $endOfWeek]) // Filtrer les commandes de la semaine en cours
+            ->whereBetween('orders.delivered_at', [$startOfWeek, $endOfWeek]) // Filtrer les commandes de la semaine en cours
             ->groupBy('users.id', 'users.name') // Grouper par utilisateur
             ->orderByDesc('total_deliveries') // Trier par total décroissant
             ->get();
@@ -518,7 +518,7 @@ class OrderController extends Controller
             )
             ->where('users.user_type', 'LVS')
             ->where('orders.status', 'delivered')
-            ->whereYear('orders.updated_at', $year)
+            ->whereYear('orders.delivered_at', $year)
             ->groupBy('users.id', 'users.name')
             ->orderByDesc('total_deliveries')
             ->orderByDesc('total_revenue')

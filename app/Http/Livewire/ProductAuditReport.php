@@ -61,7 +61,7 @@ class ProductAuditReport extends Component
             case 'day':
 
                 $query->whereDate(
-                    'orders.created_at',
+                    'orders.delivered_at',
                     $this->selectedDay
                 );
 
@@ -76,7 +76,7 @@ class ProductAuditReport extends Component
                     $yearWeek = $year . str_pad($week, 2, '0', STR_PAD_LEFT);
 
                     $query->whereRaw(
-                        'YEARWEEK(orders.created_at,1) = ?',
+                        'YEARWEEK(orders.delivered_at,1) = ?',
                         [$yearWeek]
                     );
 
@@ -90,8 +90,8 @@ class ProductAuditReport extends Component
 
                     [$year, $month] = explode('-', $this->selectedMonth);
 
-                    $query->whereYear('orders.created_at', $year)
-                        ->whereMonth('orders.created_at', $month);
+                    $query->whereYear('orders.delivered_at', $year)
+                        ->whereMonth('orders.delivered_at', $month);
 
                 }
 
@@ -100,7 +100,7 @@ class ProductAuditReport extends Component
             case 'year':
 
                 $query->whereYear(
-                    'orders.created_at',
+                    'orders.delivered_at',
                     $this->selectedYear
                 );
 
@@ -116,22 +116,22 @@ class ProductAuditReport extends Component
 
         switch ($this->filterType) {
             case 'day':
-                $query->whereDate('created_at', $this->selectedDay);
+                $query->whereDate('delivered_at', $this->selectedDay);
                 break;
             case 'week':
                 if ($this->selectedWeek) {
                     [$year, $week] = explode('-W', $this->selectedWeek);
-                    $query->whereRaw('YEARWEEK(created_at,1) = ?', [$year . str_pad($week, 2, '0', STR_PAD_LEFT)]);
+                    $query->whereRaw('YEARWEEK(delivered_at,1) = ?', [$year . str_pad($week, 2, '0', STR_PAD_LEFT)]);
                 }
                 break;
             case 'month':
                 if ($this->selectedMonth) {
                     [$year, $month] = explode('-', $this->selectedMonth);
-                    $query->whereYear('created_at', $year)->whereMonth('created_at', $month);
+                    $query->whereYear('delivered_at', $year)->whereMonth('delivered_at', $month);
                 }
                 break;
             case 'year':
-                $query->whereYear('created_at', $this->selectedYear);
+                $query->whereYear('delivered_at', $this->selectedYear);
                 break;
         }
 
