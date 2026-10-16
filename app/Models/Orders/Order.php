@@ -4,6 +4,7 @@ namespace App\Models\Orders;
 
 use App\Models\User;
 use App\Models\Costumer;
+use App\Models\TransportCompany;
 use App\Models\Orders\OrderItem;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
@@ -51,6 +52,10 @@ class Order extends Model
         'remis',
         'montant',
         'paid_amount',
+        'delivery_mode',
+        'transport_company_id',
+        'shipping_country',
+        'shipping_city',
         'order_by',
         'date_order',
         'delivered_at',
@@ -74,5 +79,15 @@ class Order extends Model
 
     public function orderItems(){
         return $this->hasMany(OrderItem::class);
+    }
+
+    public function transportCompany()
+    {
+        return $this->belongsTo(TransportCompany::class);
+    }
+
+    public function deliveryPhotos()
+    {
+        return $this->hasMany(OrderDeliveryPhoto::class)->latest();
     }
 }

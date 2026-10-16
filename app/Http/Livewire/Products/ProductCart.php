@@ -4,6 +4,7 @@ namespace App\Http\Livewire\Products;
 
 use Livewire\Component;
 use App\Models\Costumer;
+use App\Models\TransportCompany;
 use App\Models\CostumerContactSetting;
 use Illuminate\Support\Carbon;
 use Gloudemans\Shoppingcart\Facades\Cart;
@@ -91,6 +92,7 @@ class ProductCart extends Component
                 ->exists(),
             'defaultFollowUpDays' => $this->defaultFollowUpDays,
             'defaultFollowUpAt' => $this->defaultFollowUpAt,
+            'transportCompanies' => TransportCompany::query()->orderBy('name')->pluck('name'),
         ])
         ->extends('layouts.admin')
         ->section('content');

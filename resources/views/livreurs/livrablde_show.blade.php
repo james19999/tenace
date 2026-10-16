@@ -76,6 +76,20 @@
         .dd-payment-form button{min-height:38px;padding:7px 10px;border:1px solid var(--dd-red);background:var(--dd-red);color:#fff;font-size:12px;font-weight:800;cursor:pointer}
         .dd-payment-form .invalid-feedback{grid-column:1/-1;display:block}
         .dd-payment-edit-card{display:block}
+        .dd-shipping-card,.dd-package-photo-panel{margin:18px 0;padding:15px;border:1px solid var(--dd-line);background:#fbfcfd}
+        .dd-shipping-card h2,.dd-package-photo-panel h2{margin:0 0 9px;font-size:15px;font-weight:850}
+        .dd-package-photo-panel p{margin:5px 0;color:var(--dd-muted);font-size:13px}
+        .dd-package-photo-input{display:block;width:100%;padding:10px;border:1px solid var(--dd-line);background:#fff}
+        .dd-package-photo-status{display:block;min-height:20px;margin-top:8px;color:#555;font-size:12px;font-weight:700}
+        .dd-driver-photo-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(110px,1fr));gap:9px;margin-top:12px}
+        .dd-driver-photo-grid img{width:100%;height:100px;object-fit:cover;border:1px solid var(--dd-line);background:#fff}
+        .dd-camera-actions{display:flex;gap:9px;flex-wrap:wrap;margin:12px 0}
+        .dd-camera-actions button,.dd-camera-capture{min-height:42px;padding:9px 14px;border:1px solid var(--dd-red);background:var(--dd-red);color:#fff;font-size:13px;font-weight:800;cursor:pointer}
+        .dd-camera-actions button:disabled,.dd-camera-capture:disabled{opacity:.55;cursor:not-allowed}
+        .dd-camera-wrap{max-width:560px;margin:12px 0;padding:10px;border:1px solid var(--dd-line);background:#17191d}
+        .dd-camera-wrap[hidden]{display:none}
+        .dd-camera-wrap video{display:block;width:100%;max-height:55vh;object-fit:contain;background:#000}
+        .dd-camera-capture{width:100%;margin-top:9px}
         .dd-actions { margin-top:20px; }
         .dd-panel { max-width:680px; padding:19px; }
         .dd-panel h2 { margin:0 0 14px; font-size:18px; font-weight:800; }
@@ -208,11 +222,49 @@
                     <p>Référence : <strong>{{ $Orders->code }}</strong></p>
                     <p>Créée le : <strong>{{ $orderDate }}</strong></p>
                     <p>Heure de livraison : <strong>{{ $Orders->time ?: 'À définir' }}</strong></p>
-                    @if ($Orders->status === 'canceled' && $Orders->motif)
-                        <p>Motif : <strong>{{ $Orders->motif }}</strong></p>
-                    @endif
+            @if ($Orders->status === 'canceled' && $Orders->motif)
+                <p>Motif : <strong>{{ $Orders->motif }}</strong></p>
+            @endif
+            @if ($Orders->delivery_mode === 'expedition')
+                <p>Type : <strong>Expédition</strong></p>
+                <p>Transporteur : <strong>{{ $Orders->transportCompany->name ?? 'Non renseigné' }}</strong></p>
+                <p>Destination : <strong>{{ \App\Support\WestAfricaShippingCatalog::countries()[$Orders->shipping_country]['label'] ?? $Orders->shipping_country }} · {{ $Orders->shipping_city ?: 'Ville non renseignée' }}</strong></p>
+            @endif
                 </div>
             </section>
+
+            @if ($Orders->delivery_mode === 'expedition' && $Orders->status !== 'delivered')
+                <section class="dd-package-photo-panel no-print">
+                    <h2>Photos obligatoires des colis</h2>
+                    <p>Prends une ou plusieurs photos avant de confirmer l’expédition. Chaque cliché est envoyé dès la capture.</p>
+                    <div class="dd-camera-actions"><button type="button" id="start-package-camera">📷 Prendre une photo</button><button type="button" id="stop-package-camera" hidden>Fermer la caméra</button></div>
+                    <div id="package-camera-wrap" class="dd-camera-wrap" hidden>
+                        <video id="package-camera-video" autoplay playsinline muted></video>
+                        <button type="button" id="capture-package-photo" class="dd-camera-capture">Capturer et envoyer</button>
+                    </div>
+                    <p>Tu peux aussi joindre des photos déjà prises :</p>
+                    <form id="package-photo-upload-form" action="{{ route('livrableshow.package-photos', $Orders->id) }}" data-upload-url="{{ route('livrableshow.package-photos', $Orders->id) }}" method="POST" enctype="multipart/form-data">
+                        @csrf
+                        <input id="package-photos" class="dd-package-photo-input" type="file" name="photos[]" accept="image/jpeg,image/png,image/webp" multiple>
+                    </form>
+                    <span id="package-photo-status" class="dd-package-photo-status" role="status" aria-live="polite">{{ $Orders->deliveryPhotos->count() }} photo(s) enregistrée(s).</span>
+                    @error('photos')<span class="invalid-feedback d-block">{{ $message }}</span>@enderror
+                    <div id="package-photo-grid" class="dd-driver-photo-grid">
+                        @foreach ($Orders->deliveryPhotos as $photo)
+                            <a href="{{ route('livrableshow.package-photo', [$Orders->id, $photo->id]) }}" target="_blank" rel="noopener"><img src="{{ route('livrableshow.package-photo', [$Orders->id, $photo->id]) }}" alt="Photo du colis" loading="lazy"></a>
+                        @endforeach
+                    </div>
+                </section>
+            @elseif ($Orders->delivery_mode === 'expedition' && $Orders->deliveryPhotos->isNotEmpty())
+                <section class="dd-package-photo-panel">
+                    <h2>Photos des colis · {{ $Orders->deliveryPhotos->count() }}</h2>
+                    <div class="dd-driver-photo-grid">
+                        @foreach ($Orders->deliveryPhotos as $photo)
+                            <a href="{{ route('livrableshow.package-photo', [$Orders->id, $photo->id]) }}" target="_blank" rel="noopener"><img src="{{ route('livrableshow.package-photo', [$Orders->id, $photo->id]) }}" alt="Photo du colis" loading="lazy"></a>
+                        @endforeach
+                    </div>
+                </section>
+            @endif
 
             <section class="dd-order-alerts" aria-label="Statut et paiement de la commande">
                 <div class="dd-order-alert">
@@ -331,4 +383,128 @@
             </section>
         @endif
     </div>
+    <script>
+        (function () {
+            var form = document.getElementById('package-photo-upload-form');
+            var input = document.getElementById('package-photos');
+            var status = document.getElementById('package-photo-status');
+            var grid = document.getElementById('package-photo-grid');
+            if (!form || !input || !status || !grid) return;
+            var savedCount = {{ $Orders->deliveryPhotos->count() }};
+            var cameraStream = null;
+            var cameraWrap = document.getElementById('package-camera-wrap');
+            var cameraVideo = document.getElementById('package-camera-video');
+            var startCamera = document.getElementById('start-package-camera');
+            var stopCamera = document.getElementById('stop-package-camera');
+            var capturePhoto = document.getElementById('capture-package-photo');
+
+            async function uploadFiles(files) {
+                if (!files.length) return;
+                status.textContent = 'Envoi de ' + files.length + ' photo(s)…';
+                input.disabled = true;
+                try {
+                    for (var index = 0; index < files.length; index++) {
+                        status.textContent = 'Envoi de la photo ' + (index + 1) + ' sur ' + files.length + '…';
+                        var data = new FormData();
+                        data.append('photos[]', files[index]);
+                        data.append('_token', form.querySelector('[name="_token"]').value);
+                        var response = await fetch(form.dataset.uploadUrl, { method: 'POST', body: data, headers: { 'Accept': 'application/json', 'X-Requested-With': 'XMLHttpRequest' } });
+                        var result = await response.json();
+                        if (!response.ok) {
+                            var validationMessage = result.errors && result.errors.photos && result.errors.photos[0];
+                            throw new Error(validationMessage || result.message || 'Impossible d’envoyer les photos.');
+                        }
+                        result.photos.forEach(function (photo) {
+                            var link = document.createElement('a');
+                            link.href = photo.url;
+                            link.target = '_blank';
+                            link.rel = 'noopener';
+                            var image = document.createElement('img');
+                            image.src = photo.url;
+                            image.alt = 'Photo du colis envoyée';
+                            link.appendChild(image);
+                            grid.prepend(link);
+                        });
+                        savedCount = result.count;
+                    }
+                    status.textContent = savedCount + ' photo(s) enregistrée(s). Tu peux en ajouter d’autres.';
+                    input.value = '';
+                } catch (error) {
+                    status.textContent = error.message;
+                    status.style.color = '#a62828';
+                } finally {
+                    input.disabled = false;
+                }
+            }
+
+            input.addEventListener('change', async function () {
+                await uploadFiles(Array.from(input.files || []));
+            });
+
+            function closeCamera() {
+                if (cameraStream) cameraStream.getTracks().forEach(function (track) { track.stop(); });
+                cameraStream = null;
+                if (cameraVideo) cameraVideo.srcObject = null;
+                if (cameraWrap) cameraWrap.hidden = true;
+                if (startCamera) startCamera.hidden = false;
+                if (stopCamera) stopCamera.hidden = true;
+            }
+
+            if (startCamera && navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
+                startCamera.addEventListener('click', async function () {
+                    try {
+                        cameraStream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: { ideal: 'environment' } }, audio: false });
+                        cameraVideo.srcObject = cameraStream;
+                        cameraWrap.hidden = false;
+                        startCamera.hidden = true;
+                        stopCamera.hidden = false;
+                        status.style.color = '';
+                        status.textContent = 'Caméra prête. Capture les colis un par un.';
+                    } catch (error) {
+                        status.style.color = '#a62828';
+                        status.textContent = 'Accès caméra refusé ou indisponible. Autorise la caméra ou joins une photo existante.';
+                    }
+                });
+            } else if (startCamera) {
+                startCamera.addEventListener('click', function () {
+                    status.style.color = '#a62828';
+                    status.textContent = 'La caméra directe nécessite un navigateur compatible et une connexion sécurisée. Tu peux joindre une photo existante.';
+                });
+            }
+            if (stopCamera) stopCamera.addEventListener('click', closeCamera);
+            if (capturePhoto) capturePhoto.addEventListener('click', function () {
+                if (!cameraVideo.videoWidth || !cameraVideo.videoHeight) {
+                    status.textContent = 'La caméra démarre encore, réessaie dans un instant.';
+                    return;
+                }
+                var canvas = document.createElement('canvas');
+                canvas.width = cameraVideo.videoWidth;
+                canvas.height = cameraVideo.videoHeight;
+                canvas.getContext('2d').drawImage(cameraVideo, 0, 0, canvas.width, canvas.height);
+                canvas.toBlob(async function (blob) {
+                    if (!blob) {
+                        status.textContent = 'La photo n’a pas pu être capturée. Réessaie.';
+                        return;
+                    }
+                    capturePhoto.disabled = true;
+                    var photo = new File([blob], 'colis-' + Date.now() + '.jpg', { type: 'image/jpeg' });
+                    await uploadFiles([photo]);
+                    capturePhoto.disabled = false;
+                    if (savedCount > 0) status.style.color = '';
+                }, 'image/jpeg', 0.88);
+            });
+            window.addEventListener('pagehide', closeCamera);
+
+            var statusForm = document.querySelector('form[action*="change/order/status/user/"]');
+            if (statusForm) statusForm.addEventListener('submit', function (event) {
+                var selectedStatus = statusForm.querySelector('[name="status"]');
+                if (selectedStatus && selectedStatus.value === 'delivered' && savedCount < 1) {
+                    event.preventDefault();
+                    status.textContent = 'Ajoute au moins une photo avant de valider cette expédition.';
+                    status.style.color = '#a62828';
+                    document.getElementById('package-photo-upload-form').scrollIntoView({ behavior: 'smooth', block: 'center' });
+                }
+            });
+        })();
+    </script>
 @endsection

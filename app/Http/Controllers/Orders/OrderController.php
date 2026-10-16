@@ -99,7 +99,7 @@ class OrderController extends Controller
     public function addnewproduct(Request $request, $id)
     {
 
-        $Orders = Order::findOrfail($id);
+        $Orders = Order::with(['costumer', 'user', 'createduser', 'transportCompany', 'deliveryPhotos.user', 'orderItems.product'])->findOrfail($id);
 
         $Orders->orderItems()->save([
             'product_id',

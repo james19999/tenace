@@ -73,6 +73,13 @@
         .od-payment-status{margin:16px 0;padding:12px;border-left:4px solid var(--od-red);background:#fff5f5;color:#681616;font-size:13px;line-height:1.5}
         .od-payment-status strong{color:#451111}
         .od-payment-form{margin-top:13px;padding:13px;border:1px solid #efc2c2;border-left:4px solid var(--od-red);background:#fff8f8}
+        .od-shipping-card,.od-package-photos{margin:18px 0;padding:16px;border:1px solid var(--od-line);background:#fbfcfd}
+        .od-shipping-card h2,.od-package-photos h2{margin:0 0 10px;font-size:15px;font-weight:800}
+        .od-shipping-card p{margin:4px 0;color:var(--od-muted)}
+        .od-photo-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:12px}
+        .od-photo-card{min-width:0;border:1px solid var(--od-line);background:#fff}
+        .od-photo-card img{display:block;width:100%;height:140px;object-fit:cover;background:#f3f4f6}
+        .od-photo-card a{display:block;padding:8px;color:var(--od-red);font-size:12px;font-weight:750;overflow-wrap:anywhere}
         .od-back { margin-top:18px; }
         @media (max-width: 1050px) {
             .od-receipt-head { grid-template-columns:repeat(2,minmax(0,1fr)); }
@@ -172,6 +179,14 @@
                 </div>
             </section>
 
+            @if ($Orders->delivery_mode === 'expedition')
+                <section class="od-shipping-card">
+                    <h2>Détails de l’expédition</h2>
+                    <p><strong>Transporteur :</strong> {{ $Orders->transportCompany->name ?? 'Non renseigné' }}</p>
+                    <p><strong>Destination :</strong> {{ \App\Support\WestAfricaShippingCatalog::countries()[$Orders->shipping_country]['label'] ?? $Orders->shipping_country }} · {{ $Orders->shipping_city ?: 'Ville non renseignée' }}</p>
+                </section>
+            @endif
+
             <section>
                 <div class="od-items-heading">
                     <h2>Articles de la commande</h2>
@@ -206,6 +221,22 @@
                     </table>
                 </div>
             </section>
+
+            @if ($Orders->deliveryPhotos->isNotEmpty())
+                <section class="od-package-photos no-print">
+                    <h2>Photos des colis · {{ $Orders->deliveryPhotos->count() }}</h2>
+                    <div class="od-photo-grid">
+                        @foreach ($Orders->deliveryPhotos as $photo)
+                            <div class="od-photo-card">
+                                <a href="{{ route('livrableshow.package-photo', [$Orders->id, $photo->id]) }}" target="_blank" rel="noopener">
+                                    <img src="{{ route('livrableshow.package-photo', [$Orders->id, $photo->id]) }}" alt="Photo de colis pour {{ $Orders->code }}" loading="lazy">
+                                </a>
+                                <a href="{{ route('ordershow.package-photo.download', [$Orders->id, $photo->id]) }}">Télécharger la photo</a>
+                            </div>
+                        @endforeach
+                    </div>
+                </section>
+            @endif
 
             <section class="od-totals">
                 <div class="od-note">

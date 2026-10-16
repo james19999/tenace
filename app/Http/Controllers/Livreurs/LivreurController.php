@@ -9,6 +9,7 @@ use App\Models\Product;
 use App\Traits\MyTrait;
 use App\Traits\NewTrait;
 use App\Models\Orders\Order;
+use App\Models\Orders\OrderDeliveryPhoto;
 use App\Models\CustomerServiceCase;
 use App\Models\CustomerServiceCaseArchiveAccessRequest;
 use App\Notifications\CustomerServiceCaseNotification;
@@ -19,6 +20,7 @@ use Illuminate\Support\Facades\Hash;
 use App\Models\PourcentageCommission;
 use App\Services\StockDeliveryService;
 use Illuminate\Support\Facades\Redirect;
+use Illuminate\Support\Facades\Storage;
 
 class LivreurController extends Controller
 {
@@ -177,7 +179,7 @@ class LivreurController extends Controller
 
     public function livrable_show($id){
 
-        $Orders=Order::with(['costumer', 'user', 'createduser', 'orderItems.product'])->findOrfail($id);
+        $Orders=Order::with(['costumer', 'user', 'createduser', 'transportCompany', 'deliveryPhotos.user', 'orderItems.product'])->findOrfail($id);
 
         return view('livreurs.livrablde_show',compact('Orders'));
     }
@@ -200,10 +202,81 @@ class LivreurController extends Controller
         return redirect()->back()->with('success', 'Le règlement de la commande a été enregistré.');
     }
 
+    public function uploadPackagePhotos(Request $request, string $id)
+    {
+        $order = Order::findOrFail($id);
+        $this->ensureOrderPhotoAccess($order, $request);
+        abort_unless($order->status === 'ordered', 409, 'Les photos ne peuvent être ajoutées que pendant la préparation de la livraison.');
+
+        $validated = $request->validate([
+            'photos' => ['required', 'array', 'min:1', 'max:10'],
+            'photos.*' => ['required', 'image', 'mimes:jpg,jpeg,png,webp', 'max:10240'],
+        ], [
+            'photos.required' => 'Prends au moins une photo des colis.',
+            'photos.*.image' => 'Chaque fichier doit être une photo valide.',
+            'photos.*.max' => 'Chaque photo doit faire au maximum 10 Mo.',
+        ]);
+
+        $storedPhotos = [];
+        foreach ($validated['photos'] as $photoFile) {
+            $path = $photoFile->store("orders/{$order->id}/package-photos", 'local');
+            $photo = $order->deliveryPhotos()->create([
+                'user_id' => $request->user()->id,
+                'path' => $path,
+                'original_name' => $photoFile->getClientOriginalName(),
+            ]);
+            $storedPhotos[] = [
+                'id' => $photo->id,
+                'url' => route('livrableshow.package-photo', [$order->id, $photo->id]),
+            ];
+        }
+
+        return response()->json([
+            'message' => count($storedPhotos) . ' photo(s) enregistrée(s).',
+            'photos' => $storedPhotos,
+            'count' => $order->deliveryPhotos()->count(),
+        ]);
+    }
+
+    public function showPackagePhoto(Request $request, string $orderId, string $photoId)
+    {
+        $order = Order::findOrFail($orderId);
+        $this->ensureOrderPhotoAccess($order, $request);
+        $photo = OrderDeliveryPhoto::where('order_id', $order->id)->findOrFail($photoId);
+        abort_unless(Storage::disk('local')->exists($photo->path), 404);
+
+        return response()->file(Storage::disk('local')->path($photo->path), [
+            'Content-Disposition' => 'inline; filename="' . addslashes($photo->original_name ?: basename($photo->path)) . '"',
+        ]);
+    }
+
+    public function downloadPackagePhoto(Request $request, string $orderId, string $photoId)
+    {
+        $order = Order::findOrFail($orderId);
+        abort_unless(in_array($request->user()?->user_type, ['ADMINUSER', 'MNG'], true), 403);
+        $photo = OrderDeliveryPhoto::where('order_id', $order->id)->findOrFail($photoId);
+        abort_unless(Storage::disk('local')->exists($photo->path), 404);
+
+        return Storage::disk('local')->download($photo->path, $photo->original_name ?: basename($photo->path));
+    }
+
+    private function ensureOrderPhotoAccess(Order $order, Request $request): void
+    {
+        $user = $request->user();
+        $isManager = in_array($user?->user_type, ['ADMINUSER', 'MNG'], true);
+        abort_unless($isManager || ($user?->user_type === 'LVS' && (int) $order->user_id === (int) $user->id), 403);
+    }
+
 
     public function change_order_status_user(Request $request,$id, StockDeliveryService $stockDelivery){
 
         $orders=Order::findOrfail($id);
+
+         abort_unless(
+             in_array($request->user()?->user_type, ['ADMINUSER', 'MNG'], true)
+                 || ($request->user()?->user_type === 'LVS' && (int) $orders->user_id === (int) $request->user()->id),
+             403
+         );
 
          if($orders){
              if($request->status=="canceled"){
@@ -228,6 +301,11 @@ class LivreurController extends Controller
               return redirect()->back()->with('success','commande annuler');
 
              }else if($request->status=="delivered"){
+                if ($orders->delivery_mode === 'expedition' && ! $orders->deliveryPhotos()->exists()) {
+                    return redirect()->back()->withErrors([
+                        'photos' => 'Ajoute au moins une photo des colis avant de valider cette expédition.',
+                    ]);
+                }
                 $order=Order::with('orderItems')->findOrFail($orders->id);
                 if (! $stockDelivery->deliver($order, (int) Auth::id())) {
                     return redirect()->back()->with('success','Cette commande a déjà été validée comme livrée.');

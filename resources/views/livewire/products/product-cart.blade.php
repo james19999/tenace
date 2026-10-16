@@ -259,6 +259,10 @@
                                 <div class="cart-field new-customer-field" @if ($customerMode !== 'anonymous') hidden @endif><label for="adresse">Adresse de livraison</label><input type="text" class="form-control" id="adresse" name="adresse" placeholder="Quartier, repère…" value="{{ old('adresse') }}">@error('adresse')<span class="cart-field-error">{{ $message }}</span>@enderror</div>
                                 <div class="cart-field full anonymous-customer-help" hidden>Le nom ne sera pas demandé. Un identifiant client sera généré automatiquement ; le téléphone et l’adresse servent à organiser la livraison.</div>
                                 <div class="cart-field full"><label for="tax">Frais de livraison (F CFA) <span class="text-danger">*</span></label><input type="number" min="0" step="1" class="form-control" id="tax" name="tax" value="{{ old('tax', 0) }}" data-has-old-value="{{ old('tax') !== null ? '1' : '0' }}" placeholder="0">@error('tax')<span class="cart-field-error">{{ $message }}</span>@enderror</div>
+                                <div class="cart-field full"><label for="delivery-mode">Mode de livraison <span class="text-danger">*</span></label><select class="form-control" id="delivery-mode" name="delivery_mode"><option value="local" @selected(old('delivery_mode', 'local') === 'local')>Livraison locale</option><option value="expedition" @selected(old('delivery_mode') === 'expedition')>Expédition vers une autre ville / un autre pays</option></select>@error('delivery_mode')<span class="cart-field-error">{{ $message }}</span>@enderror</div>
+                                <div class="cart-field expedition-field" data-expedition-field @if(old('delivery_mode', 'local') !== 'expedition') hidden @endif><label for="transport-company">Transporteur / moyen de transport <span class="text-danger">*</span></label><input type="text" class="form-control" id="transport-company" name="transport_company" list="transport-company-options" value="{{ old('transport_company') }}" placeholder="Choisir ou saisir un transporteur"> <datalist id="transport-company-options">@foreach($transportCompanies as $transportCompany)<option value="{{ $transportCompany }}">@endforeach</datalist><small class="cart-help">Sélectionne un transporteur existant ou saisis-en un nouveau : il sera enregistré automatiquement.</small>@error('transport_company')<span class="cart-field-error">{{ $message }}</span>@enderror</div>
+                                <div class="cart-field expedition-field" data-expedition-field @if(old('delivery_mode', 'local') !== 'expedition') hidden @endif><label for="shipping-country">Pays de destination <span class="text-danger">*</span></label><select class="form-control" id="shipping-country" name="shipping_country"><option value="">Choisir un pays</option>@foreach(\App\Support\WestAfricaShippingCatalog::countries() as $countryCode => $countryData)<option value="{{ $countryCode }}" @selected(old('shipping_country') === $countryCode)>{{ $countryData['label'] }}</option>@endforeach</select>@error('shipping_country')<span class="cart-field-error">{{ $message }}</span>@enderror</div>
+                                <div class="cart-field expedition-field" data-expedition-field @if(old('delivery_mode', 'local') !== 'expedition') hidden @endif><label for="shipping-city">Ville de destination <span class="text-danger">*</span></label><select class="form-control" id="shipping-city" name="shipping_city" data-selected-city="{{ old('shipping_city') }}"><option value="">Choisir d’abord un pays</option></select>@error('shipping_city')<span class="cart-field-error">{{ $message }}</span>@enderror</div>
                             </div>
 
                             <div class="cart-subsection"><p class="cart-subsection-title">Planification et détails</p>
@@ -308,6 +312,39 @@
             var manuallyChanged = false;
             var updatingFromDeliveryDate = false;
             var delayDays = parseInt(followUpDate && followUpDate.getAttribute('data-delay-days'), 10) || 14;
+
+            var deliveryMode = root.querySelector('#delivery-mode');
+            var expeditionFields = Array.from(root.querySelectorAll('[data-expedition-field]'));
+            var shippingCountry = root.querySelector('#shipping-country');
+            var shippingCity = root.querySelector('#shipping-city');
+            var shippingCities = @json(\App\Support\WestAfricaShippingCatalog::countries());
+
+            function updateExpeditionFields() {
+                var isExpedition = deliveryMode && deliveryMode.value === 'expedition';
+                expeditionFields.forEach(function (field) { field.hidden = !isExpedition; });
+                expeditionFields.forEach(function (field) {
+                    var input = field.querySelector('input, select');
+                    if (input) input.required = isExpedition;
+                });
+            }
+
+            function updateShippingCities(selectedCity) {
+                if (!shippingCountry || !shippingCity) return;
+                var country = shippingCities[shippingCountry.value];
+                shippingCity.replaceChildren(new Option(country ? 'Choisir une ville' : 'Choisir d’abord un pays', ''));
+                (country ? country.cities : []).forEach(function (city) {
+                    shippingCity.add(new Option(city, city, false, city === selectedCity));
+                });
+            }
+
+            if (deliveryMode) {
+                deliveryMode.addEventListener('change', updateExpeditionFields);
+                updateExpeditionFields();
+            }
+            if (shippingCountry && shippingCity) {
+                updateShippingCities(shippingCity.getAttribute('data-selected-city'));
+                shippingCountry.addEventListener('change', function () { updateShippingCities(''); });
+            }
 
             if (followUpDate && deliveryDate) {
                 followUpDate.addEventListener('input', function () { if (!updatingFromDeliveryDate) manuallyChanged = true; });

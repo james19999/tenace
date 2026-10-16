@@ -11,12 +11,15 @@ use App\Mail\ParthnerMail;
 use App\Models\Orders\Order;
 use Illuminate\Http\Request;
 use App\Models\Orders\OrderItem;
+use App\Models\TransportCompany;
+use App\Support\WestAfricaShippingCatalog;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\URL;
 use App\Http\Controllers\Controller;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Str;
+use Illuminate\Validation\Rule;
 use Gloudemans\Shoppingcart\Facades\Cart;
 
 class CheckController extends Controller
@@ -54,6 +57,33 @@ class CheckController extends Controller
          $discountRate = (int) $request->input('remis');
          $itemsTotal = (int) round($subtotal - ($subtotal * $discountRate / 100));
          $amountDue = $itemsTotal + (int) $request->input('tax');
+         $shippingCountries = WestAfricaShippingCatalog::countries();
+         $deliveryMode = (string) $request->input('delivery_mode', 'local');
+         $shippingCountry = (string) $request->input('shipping_country', '');
+         $shippingCities = $shippingCountries[$shippingCountry]['cities'] ?? [];
+         $request->validate([
+             'delivery_mode' => ['required', Rule::in(['local', 'expedition'])],
+             'transport_company' => ['required_if:delivery_mode,expedition', 'nullable', 'string', 'max:120'],
+             'shipping_country' => ['required_if:delivery_mode,expedition', 'nullable', Rule::in(array_keys($shippingCountries))],
+             'shipping_city' => ['required_if:delivery_mode,expedition', 'nullable', Rule::in($shippingCities)],
+         ], [
+             'transport_company.required_if' => 'Indique le transporteur ou le moyen de transport.',
+             'shipping_country.required_if' => 'Choisis le pays de destination.',
+             'shipping_city.required_if' => 'Choisis la ville de destination.',
+             'shipping_city.in' => 'La ville choisie ne correspond pas au pays sélectionné.',
+         ]);
+         $transportCompany = null;
+         if ($deliveryMode === 'expedition') {
+             $transportCompany = TransportCompany::firstOrCreate([
+                 'name' => trim((string) $request->input('transport_company')),
+             ]);
+         }
+         $shippingAttributes = [
+             'delivery_mode' => $deliveryMode,
+             'transport_company_id' => $transportCompany?->id,
+             'shipping_country' => $deliveryMode === 'expedition' ? $shippingCountry : null,
+             'shipping_city' => $deliveryMode === 'expedition' ? $request->input('shipping_city') : null,
+         ];
          $request->validate([
              'paid_amount' => ['nullable', 'integer', 'min:0', 'max:'.$amountDue],
          ], [
@@ -143,6 +173,7 @@ class CheckController extends Controller
                           'total'=>$itemsTotal,
                           'montant'=>$amountDue,
                           'paid_amount'=>$paidAmount,
+                          ...$shippingAttributes,
                           'code' => $code,
                           'brouillon' =>$this->brouillons() ,
                           'created_user' =>Auth::user()->id,
@@ -217,6 +248,7 @@ class CheckController extends Controller
                 'total'=>$itemsTotal,
                 'montant'=>$amountDue,
                 'paid_amount'=>$paidAmount,
+                ...$shippingAttributes,
                 'code' => $code,
                 'brouillon' =>$this->brouillons() ,
                 'created_user' =>Auth::user()->id,
