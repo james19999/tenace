@@ -34,7 +34,26 @@ class CheckController extends Controller
 
     public function palce_order(Request $request) {
 
+         $cartItems = Cart::instance('cart')->content();
+         if ($cartItems->isEmpty()) {
+            return redirect()->route('productcart')->with('error', 'Ajoute au moins un produit avant de valider la commande.');
+         }
 
+         $request->validate([
+             'tax' => ['required', 'integer', 'min:0'],
+             'remis' => ['required', 'integer', 'between:0,100'],
+         ], [
+             'tax.required' => 'Entre les frais de livraison.',
+             'tax.integer' => 'Les frais de livraison doivent être un montant entier.',
+             'remis.required' => 'Entre le pourcentage de remise.',
+             'remis.between' => 'La remise doit être comprise entre 0 et 100 %.',
+         ]);
+
+         // Recalculate from the session cart. Never trust the subtotal submitted by the browser.
+         $subtotal = (float) $cartItems->sum(fn ($item) => (float) $item->price * (int) $item->qty);
+         $discountRate = (int) $request->input('remis');
+         $itemsTotal = (int) round($subtotal - ($subtotal * $discountRate / 100));
+         $amountDue = $itemsTotal + (int) $request->input('tax');
          $customerSelection = (string) $request->input('costumer_id', 'default');
          $isAnonymousCustomer = $customerSelection === 'anonymous';
 
@@ -109,16 +128,14 @@ class CheckController extends Controller
                       $code = $this->getName();
                       $order = Order::create([
                           'costumer_id'=>$constumer->id,
-                          'subtotal'=>round($request->subtotal) ,
+                          'subtotal'=>round($subtotal),
                           'tax'=>$request->tax,
                           'date_order'=>$request->date_order,
                           'order_by'=>Auth::user()->id,
                           'time'=>$request->time,
-                          'remis'=>$request->remis,
-                          'total'=>intval($request->remis)==0?($request->subtotal):
-                          intval(($request->subtotal))-
-                          (intval(($request->subtotal))*intval($request->remis))/100,
-                           'montant'=>intval($request->subtotal)+intval($request->tax),
+                          'remis'=>$discountRate,
+                          'total'=>$itemsTotal,
+                          'montant'=>$amountDue,
                           'code' => $code,
                           'brouillon' =>$this->brouillons() ,
                           'created_user' =>Auth::user()->id,
@@ -184,16 +201,14 @@ class CheckController extends Controller
 
             $order = Order::create([
                 'costumer_id'=>$request->costumer_id,
-                'subtotal'=>round($request->subtotal) ,
+                'subtotal'=>round($subtotal),
                 'tax'=>$request->tax,
                 'time'=>$request->time,
-                'remis'=>$request->remis,
+                'remis'=>$discountRate,
                 'date_order'=>$request->date_order,
                  'order_by'=>Auth::user()->id,
-                'total'=>intval($request->remis)==0?($request->subtotal):
-                intval(($request->subtotal))-
-                (intval(($request->subtotal))*intval($request->remis))/100,
-                 'montant'=>intval($request->subtotal)+intval($request->tax),
+                'total'=>$itemsTotal,
+                'montant'=>$amountDue,
                 'code' => $code,
                 'brouillon' =>$this->brouillons() ,
                 'created_user' =>Auth::user()->id,
