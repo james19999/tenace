@@ -210,6 +210,7 @@ Route::middleware(['auth'])->group(function () {
     Route::middleware(['role:ADMINUSER,MNG,SCR,VDS,PT,CSA'])->group(function () {
         Route::get('product/list', ProductList::class)->name('product');
         Route::get('product/cart', ProductCart::class)->name('productcart');
+        Route::post('costumer/anonymize-all', [CostumerController::class, 'anonymizeAllFromCart'])->name('costumer.anonymize-all');
         Route::post('palce/order', [CheckController::class, 'palce_order'])->name('palceorder');
         Route::get('order/liste', OrderList::class)->name('order-liste-order');
         Route::get('edit/order/{order}', EditOrder::class)->name('edit-order');

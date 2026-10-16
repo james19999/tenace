@@ -85,6 +85,10 @@ class ProductCart extends Component
             'selectedCostumer' => old('costumer_id') && ! in_array(old('costumer_id'), ['default', 'anonymous'], true)
                 ? Costumer::find(old('costumer_id'))
                 : null,
+            'hasNamedCustomers' => Costumer::query()
+                ->where('name', 'not like', 'CL-%')
+                ->where('name', 'not like', 'Client anonyme · CL-%')
+                ->exists(),
             'defaultFollowUpDays' => $this->defaultFollowUpDays,
             'defaultFollowUpAt' => $this->defaultFollowUpAt,
         ])

@@ -12,6 +12,7 @@ use Illuminate\Http\Request;
 use App\Http\Controllers\Controller;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Str;
 use Throwable;
 
 
@@ -116,6 +117,82 @@ class CostumerController extends Controller
             ]),
             'pagination' => ['more' => $costumers->hasMorePages()],
         ]);
+    }
+
+    public function anonymizeAllFromCart(Request $request)
+    {
+        abort_unless(in_array($request->user()?->user_type, ['ADMINUSER', 'MNG'], true), 403);
+        $action = $request->validate([
+            'action' => ['required', 'in:start,batch'],
+        ])['action'];
+        $maxId = $action === 'start'
+            ? (int) (Costumer::query()->max('id') ?? 0)
+            : (int) $request->validate(['max_id' => ['required', 'integer', 'min:0']])['max_id'];
+
+        if ($action === 'start') {
+            $total = $this->nonAnonymousCustomers($maxId)->count();
+
+            return response()->json([
+                'total' => $total,
+                'max_id' => $maxId,
+                'done' => $total === 0,
+                'processed' => 0,
+                'message' => $total === 0 ? 'Tous les clients utilisent déjà un identifiant anonyme.' : null,
+            ]);
+        }
+
+        $batchData = $request->validate([
+            'max_id' => ['required', 'integer', 'min:0'],
+            'cursor' => ['required', 'integer', 'min:0'],
+            'total' => ['required', 'integer', 'min:0'],
+            'selected_customer_id' => ['nullable', 'integer'],
+        ]);
+        $customers = $this->nonAnonymousCustomers($maxId)
+            ->where('id', '>', $batchData['cursor'])
+            ->orderBy('id')->limit(50)->get();
+
+        DB::transaction(function () use ($customers): void {
+            foreach ($customers as $customer) {
+                $locked = Costumer::query()->lockForUpdate()->find($customer->id);
+                if (! $locked || $locked->isAnonymous()) {
+                    continue;
+                }
+
+                do {
+                    $anonymousName = 'CL-'.Str::upper(Str::random(6));
+                } while (Costumer::query()->where('name', $anonymousName)->exists());
+
+                $locked->name = $anonymousName;
+                $locked->save();
+            }
+        });
+
+        $remaining = $this->nonAnonymousCustomers($maxId)->count();
+        $selectedCustomer = ! empty($batchData['selected_customer_id'])
+            ? Costumer::query()->find($batchData['selected_customer_id'], ['id', 'name', 'phone'])
+            : null;
+
+        return response()->json([
+            'total' => $batchData['total'],
+            'max_id' => $maxId,
+            'processed' => max(0, min($batchData['total'], $batchData['total'] - $remaining)),
+            'remaining' => $remaining,
+            'cursor' => $customers->last()?->id ?? $batchData['cursor'],
+            'done' => $remaining === 0,
+            'selected_customer' => $selectedCustomer ? [
+                'id' => $selectedCustomer->id,
+                'name' => $selectedCustomer->name,
+                'phone' => $selectedCustomer->phone,
+            ] : null,
+        ]);
+    }
+
+    private function nonAnonymousCustomers(int $maxId): \Illuminate\Database\Eloquent\Builder
+    {
+        return Costumer::query()
+            ->where('id', '<=', $maxId)
+            ->where('name', 'not like', 'CL-%')
+            ->where('name', 'not like', 'Client anonyme · CL-%');
     }
 
     public function topcostumer(Request $request)

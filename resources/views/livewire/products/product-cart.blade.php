@@ -30,6 +30,27 @@
         .cart-customer-mode{display:inline-flex;flex:1 1 0;min-width:0;align-items:center;justify-content:center;gap:6px;min-height:36px;padding:6px 9px;border:1px solid #d8dce3;background:#fff;color:#505765;font-size:11px;font-weight:700;white-space:nowrap;cursor:pointer}
         .cart-customer-mode:hover,.cart-customer-mode.is-selected{border-color:var(--cart-wine);background:#f8eeee;color:var(--cart-wine)}
         .cart-customer-mode .material-icons{flex:0 0 auto;font-size:16px}
+        .cart-customer-anonymize{display:inline-flex;align-items:center;gap:7px;margin-top:9px;padding:8px 11px;border:1px solid #d9dde5;background:#fff;color:#575d69;font-size:12px;font-weight:750;cursor:pointer}
+        .cart-customer-anonymize:hover{border-color:var(--cart-wine);background:#fbf3f3;color:var(--cart-wine)}
+        .cart-customer-anonymize[hidden]{display:none!important}
+        .cart-anonymize-dialog{width:min(520px,calc(100vw - 28px));max-width:520px;padding:0;border:1px solid #d9dde5;background:#fff;color:var(--cart-ink);box-shadow:0 22px 70px rgba(25,30,40,.25)}
+        .cart-anonymize-dialog::backdrop{background:rgba(26,30,38,.56)}
+        .cart-anonymize-dialog-head{display:flex;align-items:center;justify-content:space-between;padding:18px 20px;border-bottom:1px solid var(--cart-line)}
+        .cart-anonymize-dialog-icon{display:grid;place-items:center;width:42px;height:42px;background:#f8eeee;color:var(--cart-wine)}
+        .cart-anonymize-dialog .cart-anonymize-dialog-head .cart-anonymize-dialog-close{display:grid;flex:0 0 40px;place-items:center;width:40px;min-width:40px;height:40px;margin:0;padding:0;border:1px solid var(--cart-line);background:#fff;color:#555;font-size:24px;font-weight:400;line-height:1;white-space:nowrap;overflow:hidden;cursor:pointer}
+        .cart-anonymize-dialog .cart-anonymize-dialog-head .cart-anonymize-dialog-close:hover{border-color:var(--cart-wine);background:#f8eeee;color:var(--cart-wine)}
+        .cart-anonymize-dialog-content{padding:20px}
+        .cart-anonymize-dialog-content h2{margin:0 0 9px;font-size:20px;font-weight:800}
+        .cart-anonymize-dialog-content p{margin:0;color:var(--cart-muted);font-size:14px;line-height:1.6}
+        .cart-anonymize-dialog-warning{margin-top:14px;padding:12px;border-left:3px solid #bd8a28;background:#fbf7ee;color:#66552f;font-size:12px;line-height:1.5}
+        .cart-anonymize-progress{margin:16px 20px 0;padding:13px;border:1px solid var(--cart-line);background:#f7f8fa}
+        .cart-anonymize-progress[hidden]{display:none!important}
+        .cart-anonymize-progress progress{display:block;width:100%;height:12px;margin-bottom:8px;accent-color:var(--cart-wine)}
+        .cart-anonymize-progress-text{display:block;color:#4d5360;font-size:12px;font-weight:750}
+        .cart-anonymize-progress-error{color:#a52727}
+        .cart-anonymize-dialog-actions{display:flex;justify-content:flex-end;gap:9px;padding:15px 20px;border-top:1px solid var(--cart-line)}
+        .cart-anonymize-dialog-actions button{min-height:42px;padding:9px 14px;border:1px solid var(--cart-line);background:#fff;color:#4d5360;font-size:13px;font-weight:750;cursor:pointer}
+        .cart-anonymize-dialog-actions .cart-anonymize-confirm{border-color:var(--cart-wine);background:var(--cart-wine);color:#fff}
         .cart-field[hidden]{display:none!important}
         .cart-field label{display:block;color:#454a56;font-size:13px;font-weight:700;margin:0 0 7px}
         .cart-field .form-control{height:45px;border:1px solid #dfe2e8;border-radius:9px;box-shadow:none;color:var(--cart-ink);font-size:14px;max-width:100%}
@@ -208,21 +229,28 @@
                                     <div wire:ignore>
                                         <select id="order-costumer-id" class="js-customer-search form-control" data-ajax-url="{{ route('costumer.search') }}" name="costumer_id" style="width:100%">
                                             <option value="" @selected(old('costumer_id', '') === '')>Rechercher ou choisir un client</option>
-                                            <option value="default" @selected(old('costumer_id') === 'default')>Nouveau client avec nom</option>
                                             <option value="anonymous" @selected(old('costumer_id') === 'anonymous')>Client anonyme · générer un identifiant</option>
                                             @if ($selectedCostumer)<option value="{{ $selectedCostumer->id }}" selected>{{ $selectedCostumer->name }} | {{ $selectedCostumer->phone }}</option>@endif
                                         </select>
                                     </div>
-                                    <div class="cart-customer-create-actions" role="group" aria-label="Type de nouveau client">
-                                        <button type="button" class="cart-customer-mode" data-customer-mode="default" aria-pressed="false"><span class="material-icons" aria-hidden="true">person_add</span>Nouveau client avec nom</button>
+                                    <div class="cart-customer-create-actions" role="group" aria-label="Option client anonyme">
                                         <button type="button" class="cart-customer-mode" data-customer-mode="anonymous" aria-pressed="false"><span class="material-icons" aria-hidden="true">visibility_off</span>Client anonyme</button>
                                     </div>
+                                    @if(in_array(auth()->user()?->user_type, ['ADMINUSER', 'MNG'], true) && $hasNamedCustomers)
+                                        <button type="button" class="cart-customer-anonymize" data-open-anonymize-dialog><span class="material-icons" aria-hidden="true">group_off</span>Anonymiser tous les clients existants</button>
+                                        <small class="cart-help">Le nom de chaque fiche et son affichage dans les anciennes commandes seront remplacés par un identifiant CL-… Les coordonnées de livraison seront conservées.</small>
+                                        <dialog class="cart-anonymize-dialog" id="cartAnonymizeDialog" aria-labelledby="cartAnonymizeTitle" aria-describedby="cartAnonymizeDescription">
+                                            <div class="cart-anonymize-dialog-head"><span class="cart-anonymize-dialog-icon material-icons" aria-hidden="true">group_off</span><button type="button" class="cart-anonymize-dialog-close" data-close-anonymize-dialog aria-label="Fermer">×</button></div>
+                                            <div class="cart-anonymize-dialog-content"><h2 id="cartAnonymizeTitle">Anonymiser tous les clients ?</h2><p id="cartAnonymizeDescription">Le nom de chaque fiche client nominative sera remplacé par un identifiant CL-… Les commandes passées afficheront également ce nouvel identifiant.</p><div class="cart-anonymize-dialog-warning">Les numéros de téléphone et les adresses seront conservés pour permettre les livraisons. Cette action concerne toutes les fiches clients existantes.</div></div>
+                                            <div class="cart-anonymize-progress" data-anonymize-progress hidden role="status" aria-live="polite"><progress max="100" value="0" data-anonymize-progress-bar></progress><span class="cart-anonymize-progress-text" data-anonymize-progress-text>Préparation de la synchronisation…</span></div>
+                                            <div class="cart-anonymize-dialog-actions"><button type="button" data-close-anonymize-dialog>Annuler</button><button type="button" class="cart-anonymize-confirm" data-start-anonymization>Confirmer l’anonymisation</button></div>
+                                        </dialog>
+                                    @endif
                                     @error('costumer_id')<span class="cart-field-error">{{ $message }}</span>@enderror
                                 </div>
 
-                                <div class="cart-field new-customer-field new-customer-name-field" @if ($customerMode !== 'default') hidden @endif><label for="name">Nom du client</label><input type="text" class="form-control" id="name" name="name" placeholder="Nom complet" value="{{ old('name') }}">@error('name')<span class="cart-field-error">{{ $message }}</span>@enderror</div>
-                                <div class="cart-field new-customer-field" @if (!in_array($customerMode, ['default', 'anonymous'], true)) hidden @endif><label for="phone">Téléphone</label><input type="text" class="form-control" id="phone" name="phone" placeholder="Numéro de téléphone" value="{{ old('phone') }}">@error('phone')<span class="cart-field-error">{{ $message }}</span>@enderror</div>
-                                <div class="cart-field new-customer-field" @if (!in_array($customerMode, ['default', 'anonymous'], true)) hidden @endif><label for="adresse">Adresse de livraison</label><input type="text" class="form-control" id="adresse" name="adresse" placeholder="Quartier, repère…" value="{{ old('adresse') }}">@error('adresse')<span class="cart-field-error">{{ $message }}</span>@enderror</div>
+                                <div class="cart-field new-customer-field" @if ($customerMode !== 'anonymous') hidden @endif><label for="phone">Téléphone</label><input type="text" class="form-control" id="phone" name="phone" placeholder="Numéro de téléphone" value="{{ old('phone') }}">@error('phone')<span class="cart-field-error">{{ $message }}</span>@enderror</div>
+                                <div class="cart-field new-customer-field" @if ($customerMode !== 'anonymous') hidden @endif><label for="adresse">Adresse de livraison</label><input type="text" class="form-control" id="adresse" name="adresse" placeholder="Quartier, repère…" value="{{ old('adresse') }}">@error('adresse')<span class="cart-field-error">{{ $message }}</span>@enderror</div>
                                 <div class="cart-field full anonymous-customer-help" hidden>Le nom ne sera pas demandé. Un identifiant client sera généré automatiquement ; le téléphone et l’adresse servent à organiser la livraison.</div>
                                 <div class="cart-field full"><label for="tax">Frais de livraison (F CFA) <span class="text-danger">*</span></label><input type="number" min="0" step="1" class="form-control" id="tax" name="tax" value="{{ old('tax', 0) }}" data-has-old-value="{{ old('tax') !== null ? '1' : '0' }}" placeholder="0">@error('tax')<span class="cart-field-error">{{ $message }}</span>@enderror</div>
                             </div>
@@ -349,12 +377,9 @@
                     ? String(selectionOverride)
                     : (customerSelect ? customerSelect.value : '');
                 var isAnonymous = selection === 'anonymous';
-                var isNew = selection === 'default' || isAnonymous;
                 root.querySelectorAll('.new-customer-field').forEach(function (field) {
-                    field.hidden = !isNew || (isAnonymous && field.classList.contains('new-customer-name-field'));
+                    field.hidden = !isAnonymous;
                 });
-                var nameInput = root.querySelector('#name');
-                if (nameInput) nameInput.required = selection === 'default';
                 var anonymousHelp = root.querySelector('.anonymous-customer-help');
                 if (anonymousHelp) anonymousHelp.hidden = !isAnonymous;
                 root.querySelectorAll('.cart-customer-mode').forEach(function (button) {
@@ -364,6 +389,126 @@
                 });
             }
             function bindCustomerEvents() {
+                var anonymizeDialog = root.querySelector('#cartAnonymizeDialog');
+                var openAnonymizeDialog = root.querySelector('[data-open-anonymize-dialog]');
+                if (anonymizeDialog && openAnonymizeDialog) {
+                    openAnonymizeDialog.addEventListener('click', function () { anonymizeDialog.showModal(); });
+                    var progressPanel = anonymizeDialog.querySelector('[data-anonymize-progress]');
+                    var progressBar = anonymizeDialog.querySelector('[data-anonymize-progress-bar]');
+                    var progressText = anonymizeDialog.querySelector('[data-anonymize-progress-text]');
+                    var startButton = anonymizeDialog.querySelector('[data-start-anonymization]');
+                    var closeButtons = anonymizeDialog.querySelectorAll('[data-close-anonymize-dialog]');
+                    var footerCloseButtons = anonymizeDialog.querySelectorAll('.cart-anonymize-dialog-actions [data-close-anonymize-dialog]');
+                    var isProcessingAnonymization = false;
+                    closeButtons.forEach(function (button) {
+                        button.addEventListener('click', function () {
+                            if (!isProcessingAnonymization) anonymizeDialog.close();
+                        });
+                    });
+                    anonymizeDialog.addEventListener('close', function () {
+                        isProcessingAnonymization = false;
+                        progressPanel.hidden = true;
+                        progressPanel.classList.remove('cart-anonymize-progress-error');
+                        progressBar.max = 100;
+                        progressBar.value = 0;
+                        progressBar.hidden = false;
+                        progressText.textContent = 'Préparation de la synchronisation…';
+                        startButton.hidden = false;
+                        startButton.disabled = false;
+                        startButton.textContent = 'Confirmer l’anonymisation';
+                        closeButtons.forEach(function (button) { button.disabled = false; });
+                        footerCloseButtons.forEach(function (button) { button.textContent = 'Annuler'; });
+                    });
+                    anonymizeDialog.addEventListener('cancel', function (event) {
+                        if (isProcessingAnonymization) event.preventDefault();
+                    });
+                    anonymizeDialog.addEventListener('click', function (event) {
+                        if (event.target === anonymizeDialog && !isProcessingAnonymization) anonymizeDialog.close();
+                    });
+                    startButton.addEventListener('click', async function () {
+                        isProcessingAnonymization = true;
+                        startButton.disabled = true;
+                        closeButtons.forEach(function (button) { button.disabled = true; });
+                        progressPanel.hidden = false;
+                        progressPanel.classList.remove('cart-anonymize-progress-error');
+                        progressText.textContent = 'Préparation de la synchronisation…';
+                        progressBar.max = 100;
+                        progressBar.value = 0;
+
+                        var csrfToken = orderForm && orderForm.querySelector('input[name="_token"]')
+                            ? orderForm.querySelector('input[name="_token"]').value
+                            : '';
+                        var endpoint = '{{ route('costumer.anonymize-all') }}';
+                        var customerSelect = root.querySelector('#order-costumer-id');
+                        var selectedCustomerId = customerSelect && /^\d+$/.test(customerSelect.value)
+                            ? Number(customerSelect.value)
+                            : null;
+                        var postAction = async function (payload) {
+                            var response = await fetch(endpoint, {
+                                method: 'POST',
+                                credentials: 'same-origin',
+                                headers: { 'Content-Type': 'application/json', 'Accept': 'application/json', 'X-CSRF-TOKEN': csrfToken },
+                                body: JSON.stringify(payload)
+                            });
+                            var result = await response.json();
+                            if (!response.ok) throw new Error(result.message || 'La synchronisation a échoué. Réessaie.');
+                            return result;
+                        };
+
+                        try {
+                            var state = await postAction({ action: 'start' });
+                            var total = Number(state.total || 0);
+                            var cursor = 0;
+                            var processed = 0;
+                            progressBar.max = Math.max(total, 1);
+                            progressBar.value = 0;
+                            if (total === 0) {
+                                progressBar.hidden = true;
+                                progressText.textContent = state.message || 'Tous les clients sont déjà anonymes.';
+                            } else {
+                                while (!state.done) {
+                                    state = await postAction({
+                                        action: 'batch', max_id: state.max_id, cursor: cursor,
+                                        total: total, selected_customer_id: selectedCustomerId
+                                    });
+                                    cursor = Number(state.cursor || cursor);
+                                    processed = Number(state.processed || 0);
+                                    progressBar.value = Math.min(processed, total);
+                                    progressText.textContent = 'Synchronisation des clients : ' + processed + ' / ' + total + ' (' + Math.round(processed * 100 / total) + '%)';
+                                    if (!state.done && Number(state.remaining || 0) > 0 && cursor === 0) {
+                                        throw new Error('La synchronisation est bloquée. Tu peux réessayer sans perdre les fiches déjà traitées.');
+                                    }
+                                    if (!state.done && Number(state.remaining || 0) > 0 && processed === total) {
+                                        total = processed + Number(state.remaining);
+                                        progressBar.max = total;
+                                    }
+                                }
+                                progressText.textContent = processed + ' / ' + total + ' client(s) anonymisé(s). Synchronisation terminée.';
+                                progressBar.value = progressBar.max;
+                                if (state.selected_customer && customerSelect) {
+                                    var selectedOption = Array.from(customerSelect.options).find(function (option) {
+                                        return option.value === String(state.selected_customer.id);
+                                    });
+                                    if (selectedOption) {
+                                        selectedOption.textContent = state.selected_customer.name + ' | ' + (state.selected_customer.phone || '');
+                                        if (window.jQuery) window.jQuery(customerSelect).trigger('change.select2');
+                                    }
+                                }
+                            }
+                            isProcessingAnonymization = false;
+                            closeButtons.forEach(function (button) { button.disabled = false; });
+                            footerCloseButtons.forEach(function (button) { button.textContent = 'Fermer'; });
+                            startButton.hidden = true;
+                        } catch (error) {
+                            progressPanel.classList.add('cart-anonymize-progress-error');
+                            progressText.textContent = error.message || 'La synchronisation a échoué. Réessaie.';
+                            startButton.disabled = false;
+                            startButton.textContent = 'Réessayer';
+                            closeButtons.forEach(function (button) { button.disabled = false; });
+                            isProcessingAnonymization = false;
+                        }
+                    });
+                }
                 if (window.jQuery) {
                     var $root = window.jQuery(root);
                     $root.off('.cartCustomerMode');
