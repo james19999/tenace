@@ -37,6 +37,7 @@ use App\Http\Controllers\Admins\DashboarController;
 use App\Http\Controllers\Livreurs\LivreurController;
 use App\Http\Controllers\Costumers\CostumerController;
 use App\Http\Controllers\CustomerServiceCaseAttachmentController;
+use App\Http\Controllers\PublicReviewController;
 use App\Http\Controllers\Expensive\ExpensiveController;
 use App\Http\Controllers\Brouillons\BrouillonController;
 use App\Http\Controllers\TypeExpensive\TypeExpensiveController;
@@ -59,6 +60,7 @@ Route::get('/', function () {
 Auth::routes();
 
 Route::get('/home', [App\Http\Controllers\HomeController::class, 'index'])->name('home');
+Route::get('/avis-clients', [PublicReviewController::class, 'index'])->name('public-reviews.index');
 
 Route::get('/tenacos/parthner',[DashboarController::class,'register']);
 Route::get('/space',[EcomController::class,'space']);
@@ -71,6 +73,7 @@ Route::middleware(['auth'])->group(function () {
     // 1. ROUTES STRICTEMENT ADMINISTRATEUR (ADMINUSER)
     // -------------------------------------------------------------------------
     Route::middleware(['role:ADMINUSER'])->group(function () {
+        Route::post('/avis-clients/phone-display', [PublicReviewController::class, 'updatePhoneDisplay'])->name('public-reviews.phone-display');
         // Paramètres & Rôles & Sécurité
         Route::get('settings/config', [DashboarController::class, 'settings'])->name('setting');
         Route::post('settinginfo/config', [DashboarController::class, 'settinginfo'])->name('setting-info');

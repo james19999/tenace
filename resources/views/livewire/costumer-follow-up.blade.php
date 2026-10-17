@@ -431,7 +431,7 @@
         @php $feedbackLabel = ['positive' => 'positifs', 'neutral' => 'neutres', 'negative' => 'négatifs'][$feedbackSentiment] ?? 'clients'; @endphp
         <div class="modal fade show d-block follow-up-modal" id="follow-up-feedback-modal" style="background: rgba(0,0,0,.5)" tabindex="-1" role="dialog" aria-modal="true">
             <div class="modal-dialog modal-lg modal-dialog-centered modal-dialog-scrollable follow-up-modal-dialog" role="document"><div class="modal-content">
-                <div class="modal-header"><h5 class="modal-title">Avis {{ $feedbackLabel }}</h5><button type="button" class="close" wire:click="beginClosingModal('follow-up-feedback-modal')" aria-label="Fermer"><span>&times;</span></button></div>
+                <div class="modal-header"><h5 class="modal-title">Avis {{ $feedbackLabel }}</h5><div class="d-flex align-items-center">@if($feedbackSentiment === 'positive')<a class="btn btn-sm btn-outline-success mr-3" href="{{ route('public-reviews.index') }}" target="_blank" rel="noopener">Ouvrir la page publique</a>@endif<button type="button" class="close" wire:click="beginClosingModal('follow-up-feedback-modal')" aria-label="Fermer"><span>&times;</span></button></div></div>
                 <div class="modal-body">
                     @forelse ($feedbacks as $feedback)
                         <div class="border rounded p-3 mb-2">
