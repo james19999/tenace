@@ -19,8 +19,8 @@
                 <h1>Contrôle des stocks</h1>
                 <p>Organise les réceptions en entrepôt, les transferts vers les boutiques et les sorties liées aux commandes.</p>
             </div>
-            <a href="{{ route('stock-control.balances') }}" class="stock-control-hero-action"><span class="material-icons">warehouse</span>Consulter le stock</a>
             @if ($isAdmin)
+                <a href="{{ route('stock-control.balances') }}" class="stock-control-hero-action"><span class="material-icons">warehouse</span>Consulter le stock</a>
                 <a href="{{ route('stock-control.audit') }}" class="stock-control-hero-action"><span class="material-icons">history</span>Journal d’audit</a>
             @endif
             <div class="stock-control-hero-mark" aria-hidden="true"><span class="material-icons">inventory_2</span></div>

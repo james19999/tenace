@@ -49,26 +49,27 @@ class LivreurController extends Controller
      */
     public function store(Request $request)
     {
-         $request->validate([
+         $data = $request->validate([
                  'name' => ['required', 'string', 'max:255'],
                  'email' => ['required', 'string', 'email', 'max:255', 'unique:users'],
                  'password' => ['required', 'string', 'min:8', 'confirmed'],
                  'adresse' => ['required', 'string'],
-                 'phone' => ['required', 'integer' ,'unique:users'],
+                 'phone' => ['required', 'string', 'max:32', 'unique:users,phone'],
+                 'user_type' => ['required', 'in:LVS,PT,VDS,CSA,MNG,SCR,CALLCENTER,ADMINUSER,COMPTABLE'],
                ]);
 
 
 
                User::create([
-                'name' => $request->name,
-                'email' =>$request->email ,
-                'password' =>Hash::make($request->password),
-                'adresse' => $request->adresse,
-                'phone' => $request->phone,
-                'user_type' => $request->user_type,
+                'name' => $data['name'],
+                'email' => $data['email'],
+                'password' => Hash::make($data['password']),
+                'adresse' => $data['adresse'],
+                'phone' => $data['phone'],
+                'user_type' => $data['user_type'],
                ]);
 
-         return redirect()->route('livreurs.index')->with('messages','utilisateur créer');
+         return redirect()->route('useradminlist', ['user_type' => $data['user_type']])->with('messages','utilisateur créer');
     }
 
     /**
@@ -77,6 +78,7 @@ class LivreurController extends Controller
     public function show(string $id)
     {
       $user=User::findOrfail($id);
+      abort_unless($user->user_type === 'LVS', 404);
 
     //    $sum=Order::where('user_id',$id)->where('status','delivered')
     //     ->whereDate('created_at',Carbon::today())
@@ -143,7 +145,7 @@ class LivreurController extends Controller
 
     public function user_admin_list(Request $request){
         $userType = $request->query('user_type', 'LVS');
-        $allowedTypes = ['LVS', 'PT', 'VDS', 'CSA', 'MNG', 'SCR', 'CALLCENTER', 'ADMINUSER'];
+        $allowedTypes = ['LVS', 'PT', 'VDS', 'CSA', 'MNG', 'SCR', 'CALLCENTER', 'ADMINUSER', 'COMPTABLE'];
         if (! in_array($userType, $allowedTypes, true)) {
             $userType = 'LVS';
         }

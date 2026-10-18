@@ -216,9 +216,12 @@ class CustomerServiceNotifications extends Component
         $notification->markAsRead();
         $this->dispatchBrowserEvent('stock-notification-read');
 
+        $stockFallback = Auth::user()->user_type === 'ADMINUSER'
+            ? route('stock-control.index')
+            : route('stock-control.receipts.index');
         $destination = $url ?: ($caseId
             ? route('service-cases.show', $caseId)
-            : ($isStockNotification ? route('stock-control.index') : route('service-cases.index')));
+            : ($isStockNotification ? $stockFallback : route('service-cases.index')));
 
         $this->redirect($destination);
     }

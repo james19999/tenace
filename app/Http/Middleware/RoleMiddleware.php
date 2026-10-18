@@ -44,6 +44,7 @@ class RoleMiddleware
     {
         return match ($user->user_type) {
             'CALLCENTER' => route('costumer.follow-up'),
+            'COMPTABLE' => route('expensives'),
             default      => route('Admin'),
         };
     }

@@ -432,8 +432,6 @@
                         <span class="text">Contrôle des stocks</span>
                     </a>
                     <ul class="collapse {{ $active('stock-control.*') ? 'show' : '' }}" id="mngStockControlMenu">
-                        <li><a href="{{ route('stock-control.index') }}" class="{{ $active('stock-control.index') }}"><span class="icon material-icons">remove</span><span class="text">Paramètres et sites @if(($stockBadges['settings'] ?? 0) > 0)<span class="badge badge-pill badge-danger">{{ $stockBadges['settings'] }}</span>@endif</span></a></li>
-                        <li><a href="{{ route('stock-control.balances') }}" class="{{ $active('stock-control.balances') }}"><span class="icon material-icons">remove</span><span class="text">État du stock @if(($stockBadges['balances'] ?? 0) > 0)<span class="badge badge-pill badge-danger">{{ $stockBadges['balances'] }}</span>@endif</span></a></li>
                         <li>
                             <a href="#mngStockOpsMenu" class="{{ request()->routeIs('stock-control.receipts.*', 'stock-control.transfers.*', 'stock-control.movements.*') ? 'active' : '' }}" data-toggle="collapse" aria-expanded="{{ request()->routeIs('stock-control.receipts.*', 'stock-control.transfers.*', 'stock-control.movements.*') ? 'true' : 'false' }}"><span class="caret material-icons">arrow_right</span><span class="text">Opérations</span></a>
                             <ul class="collapse {{ request()->routeIs('stock-control.receipts.*', 'stock-control.transfers.*', 'stock-control.movements.*') ? 'show' : '' }}" id="mngStockOpsMenu">
@@ -522,6 +520,12 @@
                     </a>
                 </li>
                 <li>
+                    <a href="{{ route('livreurs.index') }}" class="{{ $active('livreurs.index', 'livreurs.show') }}">
+                        <span class="icon material-icons">directions_bike</span>
+                        <span class="text">Livreurs</span>
+                    </a>
+                </li>
+                <li>
                     <a href="#mngServiceClientMenu" class="{{ $active('service-cases.*') }}" data-toggle="collapse">
                         <span class="caret material-icons">arrow_right</span>
                         <span class="icon material-icons">support_agent</span>
@@ -555,6 +559,30 @@
                                 <span class="text">Dépense</span>
                             </a>
                         </li>
+                    </ul>
+                </li>
+            @elseif (Auth::user()->user_type == 'COMPTABLE')
+                <li>
+                    <a href="{{ route('stock-control.balances') }}" class="{{ $active('stock-control.balances') }}">
+                        <span class="icon material-icons">inventory_2</span>
+                        <span class="text">État du stock</span>
+                    </a>
+                </li>
+                <li>
+                    <a href="{{ route('audit.products') }}" class="{{ $active('audit.products') }}">
+                        <span class="icon material-icons">fact_check</span>
+                        <span class="text">Audits</span>
+                    </a>
+                </li>
+                <li>
+                    <a href="#accountantAccountingCollapse" class="{{ $active('type-expensives', 'expensives') }}" data-toggle="collapse" aria-expanded="{{ request()->routeIs('type-expensives', 'expensives') ? 'true' : 'false' }}">
+                        <span class="caret material-icons">arrow_right</span>
+                        <span class="icon material-icons">money</span>
+                        <span class="text">Comptabilité</span>
+                    </a>
+                    <ul class="collapse {{ $active('type-expensives', 'expensives') ? 'show' : '' }}" id="accountantAccountingCollapse">
+                        <li><a href="{{ route('type-expensives') }}" class="{{ $active('type-expensives') }}"><span class="icon material-icons">remove</span><span class="text">Type de dépense</span></a></li>
+                        <li><a href="{{ route('expensives') }}" class="{{ $active('expensives') }}"><span class="icon material-icons">remove</span><span class="text">Dépenses</span></a></li>
                     </ul>
                 </li>
             @elseif (Auth::user()->user_type == 'SCR')

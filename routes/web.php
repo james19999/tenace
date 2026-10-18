@@ -84,7 +84,7 @@ Route::middleware(['auth'])->group(function () {
         Route::get('active/user/{id}', [DashboarController::class, 'active'])->name('active-user');
 
         // Gestion Membres & Livreurs
-        Route::resource('livreurs', LivreurController::class);
+        Route::resource('livreurs', LivreurController::class)->except(['index', 'show']);
         Route::get('user/admin/list', [LivreurController::class, 'user_admin_list'])->name('useradminlist');
         Route::get('user/show/{id}', [LivreurController::class, 'user_show'])->name('user-show');
 
@@ -121,11 +121,14 @@ Route::middleware(['auth'])->group(function () {
         Route::put('edit/percent/{id}', [PercentController::class, 'edit'])->name('percen-edit');
     });
 
+    Route::middleware(['role:ADMINUSER,MNG'])->group(function () {
+        Route::get('livreurs', [LivreurController::class, 'index'])->name('livreurs.index');
+        Route::get('livreurs/{livreur}', [LivreurController::class, 'show'])->name('livreurs.show');
+    });
+
     Route::middleware(['role:ADMINUSER,MNG'])->prefix('stock-control')->name('stock-control.')->group(function () {
-        Route::get('/', [StockControlController::class, 'index'])->name('index');
         Route::get('/audit/export', [StockAuditController::class, 'export'])->middleware('role:ADMINUSER')->name('audit.export');
         Route::get('/audit', [StockAuditController::class, 'index'])->middleware('role:ADMINUSER')->name('audit');
-        Route::get('/balances', [StockControlController::class, 'balances'])->name('balances');
         Route::post('/locations', [StockControlController::class, 'storeLocation'])->name('locations.store');
         Route::put('/locations/{location}', [StockControlController::class, 'updateLocation'])->name('locations.update');
         Route::delete('/locations/{location}', [StockControlController::class, 'destroyLocation'])->name('locations.destroy');
@@ -171,6 +174,14 @@ Route::middleware(['auth'])->group(function () {
         Route::post('/alerts/refresh', [StockAlertController::class, 'refresh'])->name('alerts.refresh');
         Route::post('/alerts/{alert}/resolve', [StockAlertController::class, 'resolve'])->name('alerts.resolve');
     });
+
+    Route::get('stock-control/', [StockControlController::class, 'index'])
+        ->middleware('role:ADMINUSER')
+        ->name('stock-control.index');
+
+    Route::get('stock-control/balances', [StockControlController::class, 'balances'])
+        ->middleware('role:ADMINUSER,COMPTABLE')
+        ->name('stock-control.balances');
 
     // -------------------------------------------------------------------------
     // 2. SAV / CALL-CENTER STRICTEMENT (ADMINUSER, CALLCENTER)
@@ -279,21 +290,27 @@ Route::middleware(['auth'])->group(function () {
         Route::resource('costumer', CostumerController::class);
     });
 
-    Route::middleware(['role:ADMINUSER,MNG'])->group(function () {
+    Route::middleware(['role:ADMINUSER,MNG,COMPTABLE'])->group(function () {
         Route::get('type/expensives', [TypeExpensiveController::class, 'index'])->name('type-expensives');
         Route::delete('destroy/expensives/{id}', [TypeExpensiveController::class, 'destroy'])->name('destroy-expensives');
         Route::post('type/expensives/create', [TypeExpensiveController::class, 'create'])->name('type-expensives-create');
         Route::put('type/expensives/expensives/{id}', [TypeExpensiveController::class, 'update'])->name('typeexpensives');
-        Route::get('/audit-produits', ProductAuditReport::class)->name('audit.products');
-        Route::get('erport/expensive/repport/expensives', [ExpensiveController::class, 'repport'])->name('repport-expensives');
         Route::get('/expensives', [ExpensiveController::class, 'index'])->name('expensives');
         Route::post('/expensives/create', [ExpensiveController::class, 'create'])->name('expensives-create');
         Route::put('/expensives/{id}', [ExpensiveController::class, 'update'])->name('expensives-update');
+    });
+
+    Route::middleware(['role:ADMINUSER,MNG'])->group(function () {
+        Route::get('erport/expensive/repport/expensives', [ExpensiveController::class, 'repport'])->name('repport-expensives');
 
         Route::get('show/{id}/product', [StockController::class, 'show_product'])->name('show-product');
         Route::post('entrer/stock/{id}', [StockController::class, 'enter_stocks'])->name('enter_stock');
         Route::post('out/stock/{id}', [StockController::class, 'out_stock'])->name('out_stock');
         Route::put('update/product/price/{id}', [StockController::class, 'update_product_price'])->name('update-product-price');
+    });
+
+    Route::middleware(['role:ADMINUSER,MNG,COMPTABLE'])->group(function () {
+        Route::get('/audit-produits', ProductAuditReport::class)->name('audit.products');
     });
 
 });

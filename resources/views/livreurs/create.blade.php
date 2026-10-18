@@ -20,7 +20,7 @@
                     @csrf
                         <div class="form-group">
                             <label for="name">Nom:</label>
-                            <input type="text" class="form-control" id="name"   name="name"  placeholder="Nom"  value="{{ old('name') }}" >
+                            <input type="text" class="form-control" id="name" name="name" placeholder="Nom" value="{{ old('name') }}" required>
                             @error('name') <span class="text-danger">{{ $message }}</span>@enderror
                         </div>
                         <div class="form-group">
@@ -36,12 +36,12 @@
 
                         <div class="form-group">
                             <label for="phone">Téléphone:</label>
-                            <input type="text" class="form-control" id="phone" name="phone" placeholder="Téléphone"  value="{{ old('phone') }}">
+                            <input type="tel" class="form-control" id="phone" name="phone" placeholder="Téléphone" value="{{ old('phone') }}" required>
                             @error('phone') <span class="text-danger">{{ $message }}</span>@enderror
                         </div>
                         <div class="form-group">
                             <label for="phone">Adresse:</label>
-                            <input type="text" class="form-control" id="adresse" name="adresse" placeholder="Adresse"  value="{{ old('adresse') }}">
+                            <input type="text" class="form-control" id="adresse" name="adresse" placeholder="Adresse" value="{{ old('adresse') }}" required>
                             @error('adresse') <span class="text-danger">{{ $message }}</span>@enderror
                         </div>
                         <div class="form-group">
@@ -63,16 +63,18 @@
                         <div class="form-group">
                         <label for="password-confirm">Type:</label>
 
-                         <select name="user_type" id="" class="form-control" required>
-                             <option value="LVS">Livreur</option>
-                             <option value="PT">Partenaire</option>
-                             <option value="VDS">Vendeur</option>
-                             <option value="CSA">Caissier</option>
-                             <option value="MNG">Manager</option>
-                             <option value="SCR">Secrétaire</option>
-                             <option value="CALLCENTER">SAV</option>
-                             <option value="ADMINUSER">Administrateur</option>
+                         <select name="user_type" id="user_type" class="form-control" required>
+                             <option value="LVS" @selected(old('user_type', 'LVS') === 'LVS')>Livreur</option>
+                             <option value="PT" @selected(old('user_type') === 'PT')>Partenaire</option>
+                             <option value="VDS" @selected(old('user_type') === 'VDS')>Vendeur</option>
+                             <option value="CSA" @selected(old('user_type') === 'CSA')>Caissier</option>
+                             <option value="MNG" @selected(old('user_type') === 'MNG')>Manager</option>
+                             <option value="SCR" @selected(old('user_type') === 'SCR')>Secrétaire</option>
+                             <option value="CALLCENTER" @selected(old('user_type') === 'CALLCENTER')>SAV</option>
+                             <option value="COMPTABLE" @selected(old('user_type') === 'COMPTABLE')>Comptable</option>
+                             <option value="ADMINUSER" @selected(old('user_type') === 'ADMINUSER')>Administrateur</option>
                          </select>
+                         @error('user_type') <span class="text-danger">{{ $message }}</span>@enderror
                         </div>
 
                         <a  href="{{ route('useradminlist') }}" class="btn btn-danger">Annuler</a>

@@ -53,6 +53,12 @@ class LoginController extends Controller
             return redirect('/costumer/follow-up');
         }
 
+        if ($user->user_type === User::ROLE_ACCOUNTANT) {
+            $request->session()->forget('url.intended');
+
+            return redirect()->route('expensives');
+        }
+
         return redirect()->intended(RouteServiceProvider::HOME);
     }
 }

@@ -221,6 +221,7 @@
                                             'LVS'         => ['label' => 'Livreur',        'class' => 'badge-info'],
                                             'PT'          => ['label' => 'Partenaire',     'class' => 'badge-secondary'],
                                             'CSA'         => ['label' => 'Caissier',       'class' => 'badge-dark'],
+                                            'COMPTABLE'   => ['label' => 'Comptable',      'class' => 'badge-primary'],
                                             'User'        => ['label' => 'Utilisateur',    'class' => 'badge-light border'],
                                         ];
                                         $badge = $roleLabels[$u->user_type] ?? ['label' => $u->user_type, 'class' => 'badge-secondary'];

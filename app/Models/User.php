@@ -60,6 +60,7 @@ class User extends Authenticatable
     const ROLE_LIVREUR     = 'LVS';
     const ROLE_PARTNER     = 'PT';
     const ROLE_CASHIER     = 'CSA';
+    const ROLE_ACCOUNTANT  = 'COMPTABLE';
 
     // -------------------------------------------------------
     // Helpers de rôle
@@ -92,6 +93,11 @@ class User extends Authenticatable
     public function isSecretary(): bool
     {
         return $this->user_type === self::ROLE_SECRETARY;
+    }
+
+    public function isAccountant(): bool
+    {
+        return $this->user_type === self::ROLE_ACCOUNTANT;
     }
 
     public function hasRole(string|array $roles): bool
