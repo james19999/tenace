@@ -2,6 +2,7 @@
 
 @section('content')
     @php
+        $warehouseConfigured = $warehouseConfigured ?? $locations->contains(fn ($location) => $location->type === 'warehouse');
         $typeLabels = [
             'warehouse' => 'Entrepôt',
             'shop' => 'Boutique',
