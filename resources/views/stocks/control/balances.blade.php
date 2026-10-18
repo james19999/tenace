@@ -67,7 +67,7 @@
                                     $productLocations = $locationBreakdowns->get($row->product_id, collect());
                                     $warehouseLocations = $productLocations->where('location_type', 'warehouse');
                                     $shopLocations = $productLocations->where('location_type', 'shop');
-                                    $globalQuantity = (int) $row->warehouse_quantity;
+                                    $globalQuantity = (int) $row->warehouse_quantity + (int) $row->shop_quantity;
                                     $threshold = (int) ($row->low_stock_threshold ?? 0);
                                     if ($globalQuantity <= 0) { $stateLabel = 'Rupture'; $stateClass = 'out'; }
                                     elseif ($threshold > 0 && $globalQuantity <= $threshold) { $stateLabel = 'Stock bas'; $stateClass = 'low'; }

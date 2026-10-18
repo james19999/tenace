@@ -99,9 +99,9 @@ class StockControlController extends Controller
                         ->where('filter_sm.status', 'posted');
                 });
             })
-            ->when($state === 'available', fn ($query) => $query->whereRaw('COALESCE(plt.warehouse_quantity, 0) > 0')->whereRaw('COALESCE(products.qts_seuil, 0) < COALESCE(plt.warehouse_quantity, 0)'))
-            ->when($state === 'low', fn ($query) => $query->whereRaw('COALESCE(plt.warehouse_quantity, 0) > 0')->whereRaw('COALESCE(products.qts_seuil, 0) > 0 AND COALESCE(plt.warehouse_quantity, 0) <= products.qts_seuil'))
-            ->when($state === 'out', fn ($query) => $query->whereRaw('COALESCE(plt.warehouse_quantity, 0) <= 0'))
+            ->when($state === 'available', fn ($query) => $query->whereRaw('(COALESCE(plt.warehouse_quantity, 0) + COALESCE(plt.shop_quantity, 0)) > 0')->whereRaw('COALESCE(products.qts_seuil, 0) < (COALESCE(plt.warehouse_quantity, 0) + COALESCE(plt.shop_quantity, 0))'))
+            ->when($state === 'low', fn ($query) => $query->whereRaw('(COALESCE(plt.warehouse_quantity, 0) + COALESCE(plt.shop_quantity, 0)) > 0')->whereRaw('COALESCE(products.qts_seuil, 0) > 0 AND (COALESCE(plt.warehouse_quantity, 0) + COALESCE(plt.shop_quantity, 0)) <= products.qts_seuil'))
+            ->when($state === 'out', fn ($query) => $query->whereRaw('(COALESCE(plt.warehouse_quantity, 0) + COALESCE(plt.shop_quantity, 0)) <= 0'))
             ->select([
                 'products.id as product_id', 'products.name as product_name',
                 'products.qts_seuil as low_stock_threshold',
