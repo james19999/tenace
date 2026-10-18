@@ -37,6 +37,7 @@ class StockControlController extends Controller
                 ->orderByRaw("CASE type WHEN 'warehouse' THEN 1 WHEN 'shop' THEN 2 WHEN 'transit' THEN 3 WHEN 'blocked' THEN 4 ELSE 5 END")
                 ->orderBy('name')
                 ->get(),
+            'warehouseConfigured' => StockLocation::query()->where('type', 'warehouse')->exists(),
             'salesLocations' => StockLocation::query()->where('is_active', true)->where('type', 'shop')->orderBy('name')->get(['id', 'name', 'code', 'type']),
             'users' => \App\Models\User::query()->where('active', true)->whereIn('user_type', ['ADMINUSER', 'MNG'])->orderBy('name')->get(['id', 'name', 'user_type']),
             'rules' => $settings->rules(),
@@ -133,9 +134,12 @@ class StockControlController extends Controller
 
     public function storeLocation(Request $request): RedirectResponse
     {
+        $allowedTypes = StockLocation::query()->where('type', 'warehouse')->exists()
+            ? ['shop']
+            : self::LOCATION_TYPES;
         $data = $request->validate([
             'name' => ['required', 'string', 'max:120'],
-            'type' => ['required', Rule::in(self::LOCATION_TYPES)],
+            'type' => ['required', Rule::in($allowedTypes)],
             'responsible_user_id' => ['nullable', 'integer', 'exists:users,id'],
             'notes' => ['nullable', 'string', 'max:2000'],
         ]);
