@@ -18,6 +18,7 @@
                     <p>Prix, quantités et historique des mouvements du produit.</p>
                 </div>
             </div>
+            <a class="product-detail-edit" href="{{ route('stock-control.transfers.create', ['replenishment' => 1]) }}"><span class="material-icons">store</span>Préparer un transfert multi-produits</a>
             @if(auth()->user()?->user_type === 'ADMINUSER')
                 <a class="product-detail-edit" href="{{ route('editproduct', $product->id) }}"><span class="material-icons">edit</span>Modifier le produit</a>
             @endif

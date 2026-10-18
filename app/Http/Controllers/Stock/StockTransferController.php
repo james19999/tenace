@@ -70,7 +70,7 @@ class StockTransferController extends Controller
             ->all();
         $requestedProductId = $request->integer('product_id');
         $selectedProductId = $products->contains('id', $requestedProductId) ? $requestedProductId : null;
-        $productReplenishment = $selectedProductId !== null;
+        $productReplenishment = $selectedProductId !== null || $request->boolean('replenishment');
         $sourceLocations = $productReplenishment ? $locations->where('type', 'warehouse')->values() : $locations;
         $destinationLocations = $productReplenishment ? $locations->where('type', 'shop')->values() : $locations;
         $defaultWarehouseId = $sourceLocations->count() === 1 ? $sourceLocations->first()->id : null;

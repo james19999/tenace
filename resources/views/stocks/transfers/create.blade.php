@@ -2,7 +2,7 @@
 
 @section('content')
     <div class="stock-control-page stock-transfer-page">
-        <div class="receipt-page-heading"><a href="{{ route('stock-control.transfers.index') }}" class="receipt-back-link"><span class="material-icons">arrow_back</span>Transferts</a><span class="stock-control-kicker">NOUVEAU TRANSFERT</span><h1>Transférer du stock</h1><p>@if(auth()->user()->user_type === 'ADMINUSER')Pour un transfert entre entrepôt et boutique, la création par un Admin expédie directement les quantités vers TRANSIT.@else Pour un transfert entre entrepôt et boutique, la demande attend l’autorisation d’un Admin. Le stock partira ensuite vers TRANSIT.@endif À l’arrivée, un utilisateur du module pourra saisir les quantités reçues et les éventuels écarts.</p></div>
+        <div class="receipt-page-heading"><a href="{{ route('stock-control.transfers.index') }}" class="receipt-back-link"><span class="material-icons">arrow_back</span>Transferts</a><span class="stock-control-kicker">NOUVEAU TRANSFERT</span><h1>{{ $productReplenishment ? 'Approvisionner une boutique' : 'Transférer du stock' }}</h1><p>@if(auth()->user()->user_type === 'ADMINUSER')Pour un transfert entre entrepôt et boutique, la création par un Admin expédie directement les quantités vers TRANSIT.@else Pour un transfert entre entrepôt et boutique, la demande attend l’autorisation d’un Admin. Le stock partira ensuite vers TRANSIT.@endif À l’arrivée, un utilisateur du module pourra saisir les quantités reçues et les éventuels écarts.</p></div>
         @if($errors->any())<div class="stock-control-alert stock-control-alert-error" role="alert"><span class="material-icons">error_outline</span><div><strong>Vérifie les informations du transfert.</strong><ul>@foreach($errors->all() as $error)<li>{{ $error }}</li>@endforeach</ul></div></div>@endif
 
         <form method="POST" action="{{ route('stock-control.transfers.store') }}" class="receipt-form">
@@ -10,8 +10,8 @@
             <section class="stock-control-card receipt-form-section">
                 <div class="stock-control-section-head"><div><span class="stock-control-kicker">ÉTAPE 1</span><h2>Trajet et motif</h2></div></div>
                 <div class="receipt-meta-grid">
-                    <label class="stock-control-field"><span>Emplacement source</span><select name="source_location_id" required><option value="">Choisir le site de départ</option>@foreach($locations as $location)<option value="{{ $location->id }}" @selected((string) old('source_location_id') === (string) $location->id)>{{ $location->name }} · {{ $location->code }}</option>@endforeach</select></label>
-                    <label class="stock-control-field"><span>Emplacement destinataire</span><select name="destination_location_id" required><option value="">Choisir le site d’arrivée</option>@foreach($locations as $location)<option value="{{ $location->id }}" @selected((string) old('destination_location_id') === (string) $location->id)>{{ $location->name }} · {{ $location->code }}</option>@endforeach</select></label>
+                    <label class="stock-control-field"><span>Emplacement source</span><select name="source_location_id" required><option value="">Choisir le site de départ</option>@foreach($sourceLocations as $location)<option value="{{ $location->id }}" @selected((string) old('source_location_id', $defaultWarehouseId) === (string) $location->id)>{{ $location->name }} · {{ $location->code }}</option>@endforeach</select></label>
+                    <label class="stock-control-field"><span>Emplacement destinataire</span><select name="destination_location_id" required><option value="">Choisir le site d’arrivée</option>@foreach($destinationLocations as $location)<option value="{{ $location->id }}" @selected((string) old('destination_location_id', $defaultShopId) === (string) $location->id)>{{ $location->name }} · {{ $location->code }}</option>@endforeach</select></label>
                     <label class="stock-control-field"><span>Date souhaitée d’arrivée</span><input type="datetime-local" name="due_at" value="{{ old('due_at') }}" min="{{ now()->format('Y-m-d\TH:i') }}"></label>
                     <label class="stock-control-field"><span>Motif du transfert</span><input name="reason" value="{{ old('reason') }}" maxlength="1000" placeholder="Réapprovisionnement de la boutique…" required></label>
                 </div>
@@ -21,7 +21,7 @@
             <section class="stock-control-card receipt-form-section">
                 <div class="stock-control-section-head"><div><span class="stock-control-kicker">ÉTAPE 2</span><h2>Produits et quantités</h2></div><button type="button" class="stock-control-button" id="add-transfer-line"><span class="material-icons">add</span>Ajouter un produit</button></div>
                 <div id="transfer-lines" class="receipt-lines">
-                    @php $oldLines = old('lines', [['product_id' => '', 'quantity_requested' => '']]); @endphp
+                    @php $oldLines = old('lines', [['product_id' => $selectedProductId ?? '', 'quantity_requested' => '']]); @endphp
                     @foreach($oldLines as $index => $line)
                         <div class="receipt-product-line" data-transfer-line-index="{{ $index }}">
                             <div class="receipt-line-top"><span class="receipt-line-number">Produit {{ str_pad($index + 1, 2, '0', STR_PAD_LEFT) }}</span><button type="button" class="receipt-remove-line" aria-label="Supprimer cette ligne"><span class="material-icons">delete_outline</span></button></div>
