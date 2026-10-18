@@ -95,7 +95,7 @@
                         <td><span class="loyalty-category category-{{ $profile->category }}">{{ $categories[$profile->category] ?? $profile->category }}</span></td>
                         <td>{{ number_format($data['orders_count'] ?? 0) }}</td>
                         <td>{{ number_format($data['total_spent'] ?? 0, 0, ',', ' ') }} F</td>
-                        <td>@if(!empty($data['last_purchase_at'])){{ \Carbon\Carbon::parse($data['last_purchase_at'])->format('d/m/Y') }}<small>Il y a {{ $data['days_since_last_purchase'] }} j</small>@else—@endif</td>
+                        <td>@if(!empty($data['last_purchase_at']))@php $lastPurchaseDate = \Carbon\Carbon::parse($data['last_purchase_at'])->startOfDay(); $daysSinceLastPurchase = (int) $lastPurchaseDate->diffInDays(today()); @endphp{{ $lastPurchaseDate->format('d/m/Y') }}<small>Il y a {{ $daysSinceLastPurchase }} j</small>@else—@endif</td>
                         <td>{{ isset($data['average_purchase_gap_days']) ? number_format($data['average_purchase_gap_days'], 0, ',', ' ').' j' : '—' }}<small>{{ ucfirst($data['regularity'] ?? '—') }}</small></td>
                         @php $referral = $referralDetails[$profile->costumer_id] ?? ['count' => 0, 'names' => [], 'referred_by' => null]; $referralLabel = $referral['names'] ? implode(', ', array_slice($referral['names'], 0, 2)).(count($referral['names']) > 2 ? ' +'.(count($referral['names']) - 2) : '') : ($referral['referred_by'] ? 'Recommandée par '.$referral['referred_by'] : 'Aucune recommandation'); @endphp
                         <td><div class="loyalty-referral-info"><strong>{{ $referral['count'] }} recommandée(s)</strong><small>{{ $referralLabel }}</small></div></td>
