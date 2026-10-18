@@ -6,14 +6,9 @@
     <div  style="padding-top: 10px">
         <div class="card-body">
             <!-- Button trigger modal -->
+            @if (!auth()->user()->isAccountant())
             <button type="button" class="btn btn-primary" data-toggle="modal" data-target="#defaultModal">
                 Créer une dépense
-            </button>
-            <a href="{{ route('repport-expensives') }}" type="button" class="btn btn-primary">
-                Rapport sur les dépenses
-            </a>
-            <button type="button" class="btn btn-dark">
-                Total dépense : {{ $expensives->sum('amount') }} XOF
             </button>
             {{--  <button type="button" class="btn btn-primary" data-toggle="modal" data-target="#defaultModal">
                 Créer une dépense
@@ -67,6 +62,9 @@
                     </div>
                 </div>
             </div>
+            @endif
+            <a href="{{ route('repport-expensives') }}" type="button" class="btn btn-primary">Rapport sur les dépenses</a>
+            <button type="button" class="btn btn-dark">Total dépense : {{ $expensives->sum('amount') }} XOF</button>
         </div>
     </div>
 
@@ -90,7 +88,7 @@
                         <th style="width: 20%">Montant</th>
                         <th style="width: 20%">Date</th>
                         <th style="width: 20%">Créer par</th>
-                        <th style="width: 20%">Actions</th>
+                        @if (!auth()->user()->isAccountant())<th style="width: 20%">Actions</th>@endif
                        </tr>
                    </thead>
                    <tbody>
@@ -107,6 +105,7 @@
                          <td style="color: black ">{{ $expensive->date_create->format('Y-m-d') }}</td>
                          <td style="color: black ">{{ $expensive->user->name }}</td>
 
+                         @if (!auth()->user()->isAccountant())
                          <td style="color: black " class=" pull-right">
 
                              <div class="btn-group btn-group-justified">
@@ -131,7 +130,6 @@
                                     </form>
                              </div>
                          </td>
-                      </tr>
                       <div class="modal fade" id="modal-edit-customers{{$expensive->id}}" tabindex="-1" aria-labelledby="defaultModalLabel" aria-hidden="true">
                         <div class="modal-dialog">
                             <div class="modal-content">
@@ -183,6 +181,8 @@
                             </div>
                         </div>
                      </div>
+                         @endif
+                      </tr>
                          @endforeach
 
                    </tbody>
@@ -194,7 +194,7 @@
                         <th style="width: 20%">Montant</th>
                         <th style="width: 20%">Date</th>
                         <th style="width: 20%">Créer par</th>
-                        <th style="width: 20%">Actions</th>
+                        @if (!auth()->user()->isAccountant())<th style="width: 20%">Actions</th>@endif
                     </tr>
                    </tfoot>
                </table>

@@ -292,17 +292,19 @@ Route::middleware(['auth'])->group(function () {
 
     Route::middleware(['role:ADMINUSER,MNG,COMPTABLE'])->group(function () {
         Route::get('type/expensives', [TypeExpensiveController::class, 'index'])->name('type-expensives');
+        Route::get('/expensives', [ExpensiveController::class, 'index'])->name('expensives');
+        Route::get('erport/expensive/repport/expensives', [ExpensiveController::class, 'repport'])->name('repport-expensives');
+    });
+
+    Route::middleware(['role:ADMINUSER,MNG'])->group(function () {
         Route::delete('destroy/expensives/{id}', [TypeExpensiveController::class, 'destroy'])->name('destroy-expensives');
         Route::post('type/expensives/create', [TypeExpensiveController::class, 'create'])->name('type-expensives-create');
         Route::put('type/expensives/expensives/{id}', [TypeExpensiveController::class, 'update'])->name('typeexpensives');
-        Route::get('/expensives', [ExpensiveController::class, 'index'])->name('expensives');
         Route::post('/expensives/create', [ExpensiveController::class, 'create'])->name('expensives-create');
         Route::put('/expensives/{id}', [ExpensiveController::class, 'update'])->name('expensives-update');
     });
 
     Route::middleware(['role:ADMINUSER,MNG'])->group(function () {
-        Route::get('erport/expensive/repport/expensives', [ExpensiveController::class, 'repport'])->name('repport-expensives');
-
         Route::get('show/{id}/product', [StockController::class, 'show_product'])->name('show-product');
         Route::post('entrer/stock/{id}', [StockController::class, 'enter_stocks'])->name('enter_stock');
         Route::post('out/stock/{id}', [StockController::class, 'out_stock'])->name('out_stock');

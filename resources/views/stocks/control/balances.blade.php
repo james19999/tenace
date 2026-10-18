@@ -13,10 +13,12 @@
                 <h1>État du stock par emplacement</h1>
                 <p>Le stock global correspond aux entrepôts. Les quantités des boutiques et des zones de contrôle restent affichées séparément.</p>
             </div>
-            <div class="transfer-detail-heading-actions">
-                <a href="{{ route('stock-control.counts.create', ['warehouse_only' => 1, 'opening_balance' => 1]) }}" class="stock-control-hero-action"><span class="material-icons">playlist_add_check</span>Saisir le stock réel de l’entrepôt</a>
-                <a href="{{ route('stock-control.receipts.index') }}" class="stock-control-hero-action"><span class="material-icons">move_to_inbox</span>Réceptions</a>
-            </div>
+            @if (!auth()->user()->isAccountant())
+                <div class="transfer-detail-heading-actions">
+                    <a href="{{ route('stock-control.counts.create', ['warehouse_only' => 1, 'opening_balance' => 1]) }}" class="stock-control-hero-action"><span class="material-icons">playlist_add_check</span>Saisir le stock réel de l’entrepôt</a>
+                    <a href="{{ route('stock-control.receipts.index') }}" class="stock-control-hero-action"><span class="material-icons">move_to_inbox</span>Réceptions</a>
+                </div>
+            @endif
             <div class="stock-control-hero-mark" aria-hidden="true"><span class="material-icons">inventory</span></div>
         </header>
 

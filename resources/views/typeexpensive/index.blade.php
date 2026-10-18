@@ -6,6 +6,7 @@
     <div  style="padding-top: 10px">
         <div class="card-body">
             <!-- Button trigger modal -->
+            @if (!auth()->user()->isAccountant())
             <button type="button" class="btn btn-primary" data-toggle="modal" data-target="#defaultModal">
                 Créer un type dépense
             </button>
@@ -33,6 +34,7 @@
                     </div>
                 </div>
             </div>
+            @endif
         </div>
     </div>
 
@@ -52,7 +54,7 @@
                        <tr>
                            <th style="width: 20%">N°</th>
                            <th style="width: 20%">Libelle</th>
-                           <th style="width: 20%">Actions</th>
+                           @if (!auth()->user()->isAccountant())<th style="width: 20%">Actions</th>@endif
                        </tr>
                    </thead>
                    <tbody>
@@ -65,6 +67,7 @@
                          <td style="color: black ">{{ $i++ }}</td>
                          <td style="color: black ">{{ $type->name }}</td>
 
+                         @if (!auth()->user()->isAccountant())
                          <td style="color: black " class=" pull-right">
 
                              <div class="btn-group btn-group-justified">
@@ -89,7 +92,6 @@
                                     </form>
                              </div>
                          </td>
-                      </tr>
                       <div class="modal fade" id="modal-edit-customers{{$type->id}}" tabindex="-1" aria-labelledby="defaultModalLabel" aria-hidden="true">
                         <div class="modal-dialog">
                             <div class="modal-content">
@@ -113,6 +115,8 @@
                             </div>
                         </div>
                      </div>
+                         @endif
+                      </tr>
                          @endforeach
 
                    </tbody>
@@ -120,7 +124,7 @@
                     <tr>
                         <th style="width: 20%">N°</th>
                         <th style="width: 20%">Libelle</th>
-                        <th style="width: 20%">Actions</th>
+                        @if (!auth()->user()->isAccountant())<th style="width: 20%">Actions</th>@endif
                     </tr>
                    </tfoot>
                </table>
