@@ -31,7 +31,7 @@ class StockReceiptController extends Controller
         $receipts = StockReceipt::query()
             ->with(['location:id,name,code', 'creator:id,name'])
             ->withCount('lines')
-            ->latest('occurred_at')
+            ->latest('expected_at')
             ->paginate(15);
 
         return view('stocks.receipts.index', compact('receipts'));
@@ -39,12 +39,15 @@ class StockReceiptController extends Controller
 
     public function create(): View
     {
+        $locations = StockLocation::query()
+            ->where('is_active', true)
+            ->where('type', 'warehouse')
+            ->orderBy('name')
+            ->get(['id', 'code', 'name', 'type']);
+
         return view('stocks.receipts.create', [
-            'locations' => StockLocation::query()
-                ->where('is_active', true)
-                ->whereNotIn('type', ['transit', 'blocked'])
-                ->orderBy('name')
-                ->get(['id', 'code', 'name', 'type']),
+            'locations' => $locations,
+            'defaultLocationId' => $locations->count() === 1 ? $locations->first()->id : null,
             'products' => Product::query()->orderBy('name')->get(['id', 'name', 'price_market']),
         ]);
     }
@@ -54,8 +57,7 @@ class StockReceiptController extends Controller
         $data = $request->validate([
             'location_id' => ['required', 'integer', 'exists:stock_locations,id'],
             'origin_name' => ['nullable', 'string', 'max:160'],
-            'source_reference' => ['nullable', 'string', 'max:100'],
-            'occurred_at' => ['required', 'date', 'before_or_equal:now'],
+            'expected_at' => ['required', 'date'],
             'notes' => ['nullable', 'string', 'max:5000'],
             'lines' => ['required', 'array', 'min:1'],
             'lines.*.product_id' => ['required', 'integer', 'exists:products,id'],
@@ -69,8 +71,8 @@ class StockReceiptController extends Controller
         ]);
 
         $location = StockLocation::query()->findOrFail($data['location_id']);
-        if (! $location->is_active || in_array($location->type, ['transit', 'blocked'], true)) {
-            throw ValidationException::withMessages(['location_id' => 'Choisis un emplacement actif qui peut recevoir du stock vendable.']);
+        if (! $location->is_active || $location->type !== 'warehouse') {
+            throw ValidationException::withMessages(['location_id' => 'Une réception fournisseur doit être dirigée vers un entrepôt actif.']);
         }
 
         $receipt = DB::transaction(function () use ($data, $request): StockReceipt {
@@ -79,9 +81,9 @@ class StockReceiptController extends Controller
                 'location_id' => $data['location_id'],
                 'status' => 'draft',
                 'origin_name' => $data['origin_name'] ?? null,
-                'source_reference' => $data['source_reference'] ?? null,
                 'created_by' => $request->user()->id,
-                'occurred_at' => $data['occurred_at'],
+                'occurred_at' => now(),
+                'expected_at' => $data['expected_at'],
                 'notes' => $data['notes'] ?? null,
             ]);
             $receipt->receipt_number = sprintf('ST-REC-%s-%06d', now()->format('Y'), $receipt->id);
@@ -194,6 +196,11 @@ class StockReceiptController extends Controller
             throw ValidationException::withMessages(['receipt' => 'Cette réception ne peut pas recevoir de nouvelle livraison dans son état actuel.']);
         }
 
+        $expectedAt = $receipt->expected_at ?? $receipt->occurred_at;
+        if ($expectedAt && now()->lt($expectedAt)) {
+            throw ValidationException::withMessages(['receipt' => 'La saisie des quantités sera disponible à la date prévue de réception.']);
+        }
+
         if ($receipt->events()->where('status', 'submitted')->exists()) {
             throw ValidationException::withMessages(['receipt' => 'Une livraison attend déjà sa validation.']);
         }
@@ -292,6 +299,29 @@ class StockReceiptController extends Controller
         return redirect()->route('stock-control.receipts.show', $receipt)->with('success', 'Livraison saisie et envoyée en validation. Le stock n’a pas encore changé.');
     }
 
+    public function reschedule(Request $request, StockReceipt $receipt): RedirectResponse
+    {
+        if (! in_array($receipt->status, ['draft', 'partial'], true)) {
+            throw ValidationException::withMessages(['expected_at' => 'La date ne peut plus être modifiée pour cette réception.']);
+        }
+
+        if ($receipt->events()->where('status', 'submitted')->exists()) {
+            throw ValidationException::withMessages(['expected_at' => 'Une livraison attend sa validation. Termine cette validation avant de modifier la date prévue.']);
+        }
+
+        $data = $request->validate(['expected_at' => ['required', 'date']]);
+        $previousDate = ($receipt->expected_at ?? $receipt->occurred_at)?->toDateTimeString();
+        $receipt->expected_at = $data['expected_at'];
+        $receipt->save();
+
+        $this->audit($request, 'receipt.rescheduled', $receipt,
+            ['expected_at' => $previousDate],
+            ['expected_at' => $receipt->expected_at?->toDateTimeString()],
+            'Date prévue de réception modifiée');
+
+        return redirect()->route('stock-control.receipts.show', $receipt)->with('success', 'La date prévue de réception a été mise à jour.');
+    }
+
     public function approveDelivery(Request $request, StockReceipt $receipt, StockReceiptEvent $event, StockModuleSettingsService $settings): RedirectResponse
     {
         if ((int) $event->receipt_id !== (int) $receipt->id || $event->status !== 'submitted') {
@@ -356,10 +386,11 @@ class StockReceiptController extends Controller
                         'unit' => 'piece',
                     ]);
 
-                    // Existing order and product screens still read products.qt_initial.
-                    // Keep it synchronized until those screens move to the stock ledger.
+                    // Keep the legacy field synchronized in the original single-warehouse mode.
                     $product = Product::query()->lockForUpdate()->findOrFail($eventLine->product_id);
-                    $product->qt_initial = (int) $product->qt_initial + (int) $sellable;
+                    if (empty(app(StockModuleSettingsService::class)->rules()['legacy_catalogue_stock_migrated_to_shop'])) {
+                        $product->qt_initial = (int) $product->qt_initial + (int) $sellable;
+                    }
                     $receivedCost = (int) round($sellable * (float) ($eventLine->unit_cost ?? 0));
                     $product->price_by = (int) $product->price_by + $receivedCost;
                     $product->save();

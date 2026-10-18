@@ -5,6 +5,10 @@ namespace App\Http\Livewire\Products;
 use App\Models\Product;
 use Livewire\Component;
 use App\Models\EnterStock;
+use App\Models\StockAuditLog;
+use App\Models\StockLocation;
+use App\Models\StockMovement;
+use App\Services\StockModuleSettingsService;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\File;
@@ -73,6 +77,12 @@ class ProductForm extends Component
         ]);
 
         DB::transaction(function (): void {
+            $stockRules = app(StockModuleSettingsService::class)->rules();
+            $productionShopMode = ! empty($stockRules['legacy_catalogue_stock_migrated_to_shop']);
+            $shop = $productionShopMode
+                ? StockLocation::query()->whereKey($stockRules['default_sales_location_id'] ?? null)->where('type', 'shop')->where('is_active', true)->first()
+                : null;
+
             foreach ($this->products as $productData) {
                 $product = new Product;
                 $product->name = $productData['name'];
@@ -99,6 +109,32 @@ class ProductForm extends Component
                     'amount' => $productData['price_by'],
                     'user_id' => Auth::id(),
                 ]);
+
+                if ($shop && (int) $product->qt_initial > 0) {
+                    $now = now();
+                    $movement = StockMovement::query()->create([
+                        'movement_number' => 'TMP-'.Str::uuid(), 'type' => 'opening_balance', 'status' => 'posted',
+                        'source_type' => 'product_creation', 'source_reference' => (string) $product->id,
+                        'occurred_at' => $now, 'origin' => 'screen',
+                        'reason' => 'Stock initial enregistré lors de la création du produit.',
+                        'created_by' => Auth::id(), 'approved_by' => Auth::id(), 'posted_by' => Auth::id(),
+                        'approved_at' => $now, 'posted_at' => $now,
+                    ]);
+                    $movement->update(['movement_number' => sprintf('ST-MVT-%s-%06d', $now->format('Y'), $movement->id)]);
+                    $movement->lines()->create([
+                        'product_id' => $product->id, 'location_id' => $shop->id,
+                        'quantity_delta' => (int) $product->qt_initial, 'unit_cost' => $product->price_market,
+                        'unit' => 'piece', 'notes' => 'Stock de départ affecté à BOUTIQUE TENACOS.',
+                    ]);
+                    StockAuditLog::query()->create([
+                        'user_id' => Auth::id(), 'actor_role' => Auth::user()?->user_type,
+                        'action' => 'product.opening_stock_added', 'subject_type' => Product::class,
+                        'subject_id' => $product->id,
+                        'after_values' => ['location_id' => $shop->id, 'location_name' => $shop->name, 'quantity' => (int) $product->qt_initial, 'movement_id' => $movement->id],
+                        'reason' => 'Stock initial ajouté à la boutique à la création du produit.',
+                        'origin' => 'screen', 'result' => 'success',
+                    ]);
+                }
             }
         });
 

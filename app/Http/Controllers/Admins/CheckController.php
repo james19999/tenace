@@ -90,13 +90,11 @@ class CheckController extends Controller
              'paid_amount.max' => 'Le montant déjà payé ne peut pas dépasser le total de la commande.',
          ]);
          $paidAmount = (int) $request->input('paid_amount', 0);
-         $customerSelection = (string) $request->input('costumer_id', 'default');
+         $customerSelection = (string) $request->input('costumer_id', '');
          $isAnonymousCustomer = $customerSelection === 'anonymous';
 
-         if (in_array($customerSelection, ['default', 'anonymous'], true)) {
-            # code...
+         if ($isAnonymousCustomer) {
                 $request->validate([
-                    'name'=>$isAnonymousCustomer ? 'nullable|string|max:255' : 'required|string|max:255',
                     'phone'=>'required|string|max:50',
                     'adresse'=>'required|string|max:1000',
                     'tax'=>'required',
@@ -106,7 +104,6 @@ class CheckController extends Controller
                     'follow_up_at'=>'required|date',
                 ],
                 [
-                    'name.required'=>'Le nom du client',
                     'date_order.required'=>'Mettez une date de livraison',
                     'phone.required'=>'Le numéro de téléphone',
                     'adresse.required'=>'L\'adresse de livraison',
@@ -122,37 +119,23 @@ class CheckController extends Controller
                     ->get();
                 $exist = $customersWithPhone->first();
 
-                if ($isAnonymousCustomer) {
-                    $anonymousCustomer = $customersWithPhone->first(
-                        fn (Costumer $customer) => $customer->isAnonymous()
-                    );
+                $anonymousCustomer = $customersWithPhone->first(
+                    fn (Costumer $customer) => $customer->isAnonymous()
+                );
 
-                    if ($anonymousCustomer) {
-                        $constumer = $anonymousCustomer;
-                        $constumer->adresse = $request->adresse;
-                        $constumer->save();
-                    } elseif ($exist) {
-                        return redirect()->route('productcart')
-                            ->withErrors(['phone' => 'Ce numéro appartient déjà à une fiche client. Sélectionne cette fiche dans la liste.'])
-                            ->withInput();
-                    } else {
-                        $constumer = Costumer::create([
-                            'name' => $this->generateAnonymousCustomerName(),
-                            'phone' => $normalizedPhone,
-                            'email' => null,
-                            'adresse' => $request->adresse,
-                            'user_id' => Auth::id(),
-                        ]);
-                    }
+                if ($anonymousCustomer) {
+                    $constumer = $anonymousCustomer;
+                    $constumer->adresse = $request->adresse;
+                    $constumer->save();
                 } elseif ($exist) {
                     return redirect()->route('productcart')
-                        ->with('error', 'Le client existe déjà. Sélectionne-le dans la liste des clients.')
+                        ->withErrors(['phone' => 'Ce numéro appartient déjà à une fiche client. Sélectionne cette fiche dans la liste.'])
                         ->withInput();
                 } else {
                     $constumer = Costumer::create([
-                        'name' => $request->name,
+                        'name' => $this->generateAnonymousCustomerName(),
                         'phone' => $normalizedPhone,
-                        'email' => $request->email,
+                        'email' => null,
                         'adresse' => $request->adresse,
                         'user_id' => Auth::id(),
                     ]);
@@ -217,7 +200,7 @@ class CheckController extends Controller
          } else {
             if (! Costumer::whereKey($customerSelection)->exists()) {
                 return redirect()->route('productcart')
-                    ->withErrors(['costumer_id' => 'Sélectionne un client existant ou choisis une option de création.'])
+                    ->withErrors(['costumer_id' => 'Sélectionne un client existant ou choisis Client anonyme.'])
                     ->withInput();
             }
             $request->validate([

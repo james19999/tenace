@@ -35,8 +35,8 @@
                     @foreach ($receipts as $receipt)
                         @php [$statusText, $statusClass] = $receiptStatuses[$receipt->status] ?? [$receipt->status, 'neutral']; @endphp
                         <a class="receipt-list-row" href="{{ route('stock-control.receipts.show', $receipt) }}">
-                            <div class="receipt-ref"><span class="receipt-ref-icon material-icons">inventory_2</span><div><strong>{{ $receipt->receipt_number }}</strong><small>{{ $receipt->occurred_at?->format('d/m/Y à H:i') ?? '—' }}</small></div></div>
-                            <div class="receipt-list-cell"><span>Origine</span><strong>{{ $receipt->origin_name ?: 'Origine non précisée' }}</strong>@if($receipt->source_reference)<small>Réf. {{ $receipt->source_reference }}</small>@endif</div>
+                            <div class="receipt-ref"><span class="receipt-ref-icon material-icons">inventory_2</span><div><strong>{{ $receipt->receipt_number }}</strong><small>Prévue le {{ ($receipt->expected_at ?? $receipt->occurred_at)?->format('d/m/Y à H:i') ?? '—' }}</small></div></div>
+                            <div class="receipt-list-cell"><span>Origine</span><strong>{{ $receipt->origin_name ?: 'Origine non précisée' }}</strong></div>
                             <div class="receipt-list-cell"><span>Destination</span><strong>{{ $receipt->location?->name ?? 'Emplacement supprimé' }}</strong><small>{{ $receipt->location?->code }}</small></div>
                             <div class="receipt-list-cell"><span>Préparée par</span><strong>{{ $receipt->creator?->name ?? 'Utilisateur inconnu' }}</strong><small>{{ $receipt->lines_count }} référence(s)</small></div>
                             <span class="receipt-status-pill {{ $statusClass }}">{{ $statusText }}</span>

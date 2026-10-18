@@ -46,11 +46,11 @@
         @if($transfer->status === 'submitted')
             <section class="stock-control-card transfer-action-card">
                 <div class="stock-control-section-head"><div><span class="stock-control-kicker">DÉCISION</span><h2>Autoriser cette demande</h2></div></div>
-                <div class="receipt-validation-note"><span class="material-icons">verified_user</span><p>L’autorisation ne modifie pas le stock. La quantité disponible à la source sera vérifiée à nouveau au moment de l’expédition.</p></div>
-                @if($rules['allow_self_approval'] || (int) $transfer->requested_by !== (int) auth()->id())
+                <div class="receipt-validation-note"><span class="material-icons">verified_user</span><p>Un Admin doit autoriser cette demande. Après son accord, le stock source sera vérifié puis l’expédition pourra être enregistrée.</p></div>
+                @if($canAuthorize)
                     <form method="POST" action="{{ route('stock-control.transfers.authorize', $transfer) }}" class="transfer-action-form" data-stock-confirm-title="Autoriser le transfert ?" data-stock-confirm-message="La demande sera autorisée. Le stock ne sera déplacé qu’au moment de l’expédition.">@csrf<button type="submit" class="stock-control-button stock-control-button-primary"><span class="material-icons">task_alt</span>Autoriser le transfert</button></form>
                 @else
-                    <p class="transfer-policy-note">Une autre personne habilitée doit autoriser cette demande.</p>
+                    <p class="transfer-policy-note">Cette demande attend qu’un Admin l’autorise.</p>
                 @endif
             </section>
         @endif
@@ -71,7 +71,7 @@
         @if(in_array($transfer->status, ['in_transit', 'partial'], true))
             <section class="stock-control-card transfer-action-card">
                 <div class="stock-control-section-head"><div><span class="stock-control-kicker">RÉCEPTION · {{ $transfer->destination->name }}</span><h2>Saisir les quantités arrivées</h2></div></div>
-                <div class="receipt-validation-note"><span class="material-icons">inventory</span><p>Une réception partielle laisse le reliquat en transit. Les articles abîmés sont sortis du transit, isolés dans <strong>{{ $blocked?->name ?? 'BLOQUÉ' }}</strong> et ne réintègrent pas le stock global disponible.</p></div>
+                <div class="receipt-validation-note"><span class="material-icons">inventory</span><p>Enregistre directement les quantités réellement arrivées. Une réception partielle laisse le reliquat en transit. Les articles abîmés sont isolés dans <strong>{{ $blocked?->name ?? 'BLOQUÉ' }}</strong> et ne réintègrent pas le stock disponible.</p></div>
                 <form method="POST" action="{{ route('stock-control.transfers.receive', $transfer) }}" enctype="multipart/form-data" class="transfer-receive-form">
                     @csrf
                     <label class="stock-control-field transfer-receive-date"><span>Date et heure réelles d’arrivée</span><input type="datetime-local" name="occurred_at" value="{{ old('occurred_at', now()->format('Y-m-d\TH:i')) }}" max="{{ now()->format('Y-m-d\TH:i') }}" required></label>

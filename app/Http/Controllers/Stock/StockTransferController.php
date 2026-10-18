@@ -13,6 +13,7 @@ use App\Models\StockTransferEvent;
 use App\Notifications\StockControlNotification;
 use App\Services\StockControlNotificationService;
 use App\Services\StockModuleSettingsService;
+use App\Services\StockLegacyWarehouseReconciliationService;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -50,15 +51,35 @@ class StockTransferController extends Controller
         return view('stocks.transfers.index', compact('transfers', 'search', 'status'));
     }
 
-    public function create(): View
+    public function create(Request $request, StockLegacyWarehouseReconciliationService $legacyStock): View
     {
-        return view('stocks.transfers.create', [
-            'locations' => StockLocation::query()->where('is_active', true)->whereNotIn('type', ['blocked', 'transit'])->orderBy('name')->get(['id', 'name', 'code', 'type']),
-            'products' => Product::query()->orderBy('name')->get(['id', 'name', 'price_market', 'qt_initial']),
-        ]);
+        $legacyStock->reconcileSingleWarehouse();
+        $locations = StockLocation::query()->where('is_active', true)->whereIn('type', ['warehouse', 'shop'])->orderBy('name')->get(['id', 'name', 'code', 'type']);
+        $products = Product::query()->orderBy('name')->get(['id', 'name', 'price_market', 'qt_initial']);
+        $locationQuantities = DB::table('stock_movement_lines as sml')
+            ->join('stock_movements as sm', 'sm.id', '=', 'sml.movement_id')
+            ->join('stock_locations as sl', 'sl.id', '=', 'sml.location_id')
+            ->where('sm.status', 'posted')
+            ->whereIn('sl.type', ['warehouse', 'shop'])
+            ->select('sml.product_id', 'sml.location_id')
+            ->selectRaw('SUM(sml.quantity_delta) as quantity')
+            ->groupBy('sml.product_id', 'sml.location_id')
+            ->get()
+            ->groupBy('product_id')
+            ->map(fn ($balances) => $balances->mapWithKeys(fn ($balance) => [(string) $balance->location_id => (float) $balance->quantity])->all())
+            ->all();
+        $requestedProductId = $request->integer('product_id');
+        $selectedProductId = $products->contains('id', $requestedProductId) ? $requestedProductId : null;
+        $productReplenishment = $selectedProductId !== null;
+        $sourceLocations = $productReplenishment ? $locations->where('type', 'warehouse')->values() : $locations;
+        $destinationLocations = $productReplenishment ? $locations->where('type', 'shop')->values() : $locations;
+        $defaultWarehouseId = $sourceLocations->count() === 1 ? $sourceLocations->first()->id : null;
+        $defaultShopId = $destinationLocations->count() === 1 ? $destinationLocations->first()->id : null;
+
+        return view('stocks.transfers.create', compact('locations', 'sourceLocations', 'destinationLocations', 'products', 'locationQuantities', 'selectedProductId', 'productReplenishment', 'defaultWarehouseId', 'defaultShopId'));
     }
 
-    public function store(Request $request): RedirectResponse
+    public function store(Request $request, StockLegacyWarehouseReconciliationService $legacyStock): RedirectResponse
     {
         $data = $request->validate([
             'source_location_id' => ['required', 'integer', 'exists:stock_locations,id', 'different:destination_location_id'],
@@ -73,19 +94,33 @@ class StockTransferController extends Controller
 
         $source = StockLocation::query()->findOrFail($data['source_location_id']);
         $destination = StockLocation::query()->findOrFail($data['destination_location_id']);
-        if (! $source->is_active || ! $destination->is_active || in_array($source->type, ['blocked', 'transit'], true) || in_array($destination->type, ['blocked', 'transit'], true)) {
-            throw ValidationException::withMessages(['source_location_id' => 'Choisis deux emplacements actifs de stock vendable.']);
+        if (! $source->is_active || ! $destination->is_active || ! in_array($source->type, ['warehouse', 'shop'], true) || ! in_array($destination->type, ['warehouse', 'shop'], true)) {
+            throw ValidationException::withMessages(['source_location_id' => 'Choisis un entrepôt ou une boutique active comme départ et destination.']);
+        }
+        if ($source->type === 'warehouse') {
+            $legacyStock->reconcileSingleWarehouse();
+        }
+        $isWarehouseToShop = $source->type === 'warehouse' && $destination->type === 'shop';
+        $requiresAuthorization = $isWarehouseToShop && $request->user()->user_type !== 'ADMINUSER';
+        $shipImmediately = $isWarehouseToShop && $request->user()->user_type === 'ADMINUSER';
+        $transit = $shipImmediately
+            ? StockLocation::query()->where('code', 'TRANSIT')->where('is_active', true)->first()
+            : null;
+        if ($shipImmediately && ! $transit) {
+            throw ValidationException::withMessages(['transfer' => 'L’emplacement système TRANSIT doit être initialisé avant l’expédition.']);
         }
 
-        $transfer = DB::transaction(function () use ($data, $request): StockTransfer {
+        $transfer = DB::transaction(function () use ($data, $request, $requiresAuthorization, $shipImmediately, $transit): StockTransfer {
             $transfer = StockTransfer::query()->create([
                 'transfer_number' => 'TMP-'.Str::uuid(),
                 'source_location_id' => $data['source_location_id'],
                 'destination_location_id' => $data['destination_location_id'],
-                'status' => 'submitted',
+                'status' => $requiresAuthorization ? 'submitted' : 'authorized',
                 'due_at' => $data['due_at'] ?? null,
                 'requested_by' => $request->user()->id,
+                'authorized_by' => $requiresAuthorization ? null : $request->user()->id,
                 'submitted_at' => now(),
+                'authorized_at' => $requiresAuthorization ? null : now(),
                 'reason' => $data['reason'],
                 'notes' => $data['notes'] ?? null,
             ]);
@@ -99,8 +134,15 @@ class StockTransferController extends Controller
                 ]);
             }
 
-            $this->audit($request, 'transfer.submitted', $transfer, null, [
+            if ($shipImmediately) {
+                $transfer->load('lines');
+                $this->postShipment($transfer, $request, now()->toDateTimeString(), $transfer->notes, $transit);
+            }
+
+            $action = $requiresAuthorization ? 'transfer.submitted' : ($shipImmediately ? 'transfer.admin_created_and_shipped' : 'transfer.auto_authorized');
+            $this->audit($request, $action, $transfer, null, [
                 'transfer_number' => $transfer->transfer_number,
+                'status' => $transfer->status,
                 'source_location_id' => $transfer->source_location_id,
                 'destination_location_id' => $transfer->destination_location_id,
                 'line_count' => count($data['lines']),
@@ -109,19 +151,27 @@ class StockTransferController extends Controller
             return $transfer;
         });
 
-        app(StockControlNotificationService::class)->toRoles(['ADMINUSER', 'MNG'], new StockControlNotification(
-            'transfer_submitted',
-            'Transfert à autoriser',
-            'La demande '.$transfer->transfer_number.' attend une autorisation.',
-            route('stock-control.transfers.show', $transfer),
-            'swap_horiz',
-            'transfers',
-        ), $request->user()->id);
+        if ($requiresAuthorization) {
+            app(StockControlNotificationService::class)->toRoles(['ADMINUSER'], new StockControlNotification(
+                'transfer_submitted',
+                'Transfert à autoriser',
+                'La demande '.$transfer->transfer_number.' attend une autorisation.',
+                route('stock-control.transfers.show', $transfer),
+                'swap_horiz',
+                'transfers',
+            ), $request->user()->id);
+        } elseif ($shipImmediately) {
+            $this->notifyDestinationOfShipment($transfer, $request->user()->id);
+        }
 
-        return redirect()->route('stock-control.transfers.show', $transfer)->with('success', 'Demande de transfert soumise. Le stock ne changera qu’à l’expédition.');
+        return redirect()->route('stock-control.transfers.show', $transfer)->with('success', $requiresAuthorization
+            ? 'Demande envoyée à un Admin pour autorisation. Le stock partira en transit après sa validation.'
+            : ($shipImmediately
+                ? 'Transfert expédié directement. Les quantités sont maintenant en transit vers la boutique.'
+                : 'Transfert préparé. Tu peux enregistrer l’expédition.'));
     }
 
-    public function show(StockTransfer $transfer, StockModuleSettingsService $settings): View
+    public function show(StockTransfer $transfer): View
     {
         app(StockControlNotificationService::class)->markTabAsRead(auth()->user(), 'transfers');
         $transfer->load([
@@ -134,9 +184,11 @@ class StockTransferController extends Controller
         ]);
         $transit = StockLocation::query()->where('code', 'TRANSIT')->where('is_active', true)->first(['id', 'name', 'code']);
         $blocked = StockLocation::query()->where('code', 'BLOQUE')->where('is_active', true)->first(['id', 'name', 'code']);
-        $rules = $settings->rules();
+        $canAuthorize = $transfer->status === 'submitted'
+            && auth()->user()->user_type === 'ADMINUSER';
+        $canReceive = in_array($transfer->status, ['in_transit', 'partial'], true);
 
-        return view('stocks.transfers.show', compact('transfer', 'transit', 'blocked', 'rules'));
+        return view('stocks.transfers.show', compact('transfer', 'transit', 'blocked', 'canAuthorize', 'canReceive'));
     }
 
     public function shipmentReceipt(StockTransfer $transfer): View
@@ -194,21 +246,19 @@ class StockTransferController extends Controller
         return view('stocks.operation-receipt', $document);
     }
 
-    public function authorizeTransfer(Request $request, StockTransfer $transfer, StockModuleSettingsService $settings): RedirectResponse
+    public function authorizeTransfer(Request $request, StockTransfer $transfer): RedirectResponse
     {
-        DB::transaction(function () use ($request, $transfer, $settings): void {
+        abort_unless($request->user()->user_type === 'ADMINUSER', 403);
+
+        DB::transaction(function () use ($request, $transfer): void {
             $locked = StockTransfer::query()->lockForUpdate()->findOrFail($transfer->id);
             if ($locked->status !== 'submitted') {
                 throw ValidationException::withMessages(['transfer' => 'Cette demande a déjà été traitée. Recharge la page.']);
-            }
-            if (! $settings->rules()['allow_self_approval'] && (int) $locked->requested_by === (int) $request->user()->id) {
-                throw ValidationException::withMessages(['transfer' => 'La personne ayant demandé le transfert ne peut pas l’autoriser.']);
             }
             $locked->update(['status' => 'authorized', 'authorized_by' => $request->user()->id, 'authorized_at' => now()]);
             $this->audit($request, 'transfer.authorized', $locked, ['status' => 'submitted'], ['status' => 'authorized'], null);
         });
 
-        $sourceManagerId = StockLocation::query()->whereKey($transfer->source_location_id)->value('responsible_user_id');
         $notification = new StockControlNotification(
             'transfer_authorized',
             'Transfert prêt à expédier',
@@ -217,11 +267,7 @@ class StockTransferController extends Controller
             'local_shipping',
             'transfers',
         );
-        if ($sourceManagerId) {
-            app(StockControlNotificationService::class)->toUsers([(int) $sourceManagerId], $notification, $request->user()->id);
-        } else {
-            app(StockControlNotificationService::class)->toRoles(['ADMINUSER', 'MNG'], $notification, $request->user()->id);
-        }
+        app(StockControlNotificationService::class)->toUsers([(int) $transfer->requested_by], $notification, $request->user()->id);
 
         return back()->with('success', 'Transfert autorisé. Le stock sera déplacé au moment de l’expédition.');
     }
@@ -242,61 +288,10 @@ class StockTransferController extends Controller
             if ($locked->status !== 'authorized') {
                 throw ValidationException::withMessages(['transfer' => 'Seul un transfert autorisé peut être expédié.']);
             }
-
-            $productModels = [];
-            foreach ($locked->lines as $line) {
-                $product = Product::query()->lockForUpdate()->findOrFail($line->product_id);
-                $balance = $this->locationBalance($product->id, $locked->source_location_id);
-                if ($balance < (float) $line->quantity_requested) {
-                    throw ValidationException::withMessages([
-                        'transfer' => 'Stock insuffisant à la source pour '.$product->name.' : '.$balance.' disponible(s), '.$line->quantity_requested.' demandé(s).',
-                    ]);
-                }
-                if ((int) $product->qt_initial < (int) $line->quantity_requested) {
-                    throw ValidationException::withMessages(['transfer' => 'Le stock global historique est insuffisant pour '.$product->name.'. Rapproche le stock avant l’expédition.']);
-                }
-                $productModels[$product->id] = $product;
-            }
-
-            $event = $this->createTransferEvent($locked, $request, 'shipment', $data['occurred_at'], $data['notes'] ?? null);
-            $movement = $this->createMovement($locked, $event, $request, 'transfer_shipment', 'Expédition du transfert '.$locked->transfer_number);
-
-            foreach ($locked->lines as $line) {
-                $product = $productModels[$line->product_id];
-                $quantity = (float) $line->quantity_requested;
-                $this->movementLine($movement, $product, $locked->source_location_id, $line->lot_id, -$quantity, 'Sortie vers transit');
-                $this->movementLine($movement, $product, $transit->id, $line->lot_id, $quantity, 'Entrée en transit');
-                $event->lines()->create([
-                    'transfer_line_id' => $line->id, 'product_id' => $product->id, 'lot_id' => $line->lot_id,
-                    'quantity' => $quantity, 'quantity_damaged' => 0,
-                ]);
-                $line->quantity_shipped = $quantity;
-                $line->save();
-
-                $product->qt_initial = (int) $product->qt_initial - (int) $quantity;
-                $product->save();
-            }
-
-            $locked->update(['status' => 'in_transit', 'shipped_by' => $request->user()->id, 'shipped_at' => $data['occurred_at']]);
-            $this->audit($request, 'transfer.shipped', $locked, ['status' => 'authorized'], [
-                'status' => 'in_transit', 'event_number' => $event->event_number, 'movement_number' => $movement->movement_number,
-            ], $data['notes'] ?? null);
+            $this->postShipment($locked, $request, $data['occurred_at'], $data['notes'] ?? null, $transit);
         });
 
-        $destinationManagerId = StockLocation::query()->whereKey($transfer->destination_location_id)->value('responsible_user_id');
-        $notification = new StockControlNotification(
-            'transfer_shipped',
-            'Transfert à réceptionner',
-            'Le transfert '.$transfer->transfer_number.' est en route vers sa destination.',
-            route('stock-control.transfers.show', $transfer),
-            'local_shipping',
-            'transfers',
-        );
-        if ($destinationManagerId) {
-            app(StockControlNotificationService::class)->toUsers([(int) $destinationManagerId], $notification, $request->user()->id);
-        } else {
-            app(StockControlNotificationService::class)->toRoles(['ADMINUSER', 'MNG'], $notification, $request->user()->id);
-        }
+        $this->notifyDestinationOfShipment($transfer, $request->user()->id);
 
         return back()->with('success', 'Expédition enregistrée. Les quantités sont maintenant en transit vers la destination.');
     }
@@ -356,6 +351,7 @@ class StockTransferController extends Controller
             if (! in_array($locked->status, ['in_transit', 'partial'], true)) {
                 throw ValidationException::withMessages(['transfer' => 'Ce transfert n’attend pas de réception. Recharge la page.']);
             }
+            $destinationLocation = StockLocation::query()->findOrFail($locked->destination_location_id);
 
             $event = $this->createTransferEvent($locked, $request, 'receipt', $data['occurred_at'], $data['notes'] ?? null);
             $movement = $this->createMovement($locked, $event, $request, 'transfer_receipt', 'Réception du transfert '.$locked->transfer_number);
@@ -380,8 +376,10 @@ class StockTransferController extends Controller
                 $this->movementLine($movement, $product, $transit->id, $line->lot_id, -$quantity, 'Sortie du transit');
                 if ($quantity - $damaged > 0) {
                     $this->movementLine($movement, $product, $locked->destination_location_id, $line->lot_id, $quantity - $damaged, 'Entrée disponible à destination');
-                    $product->qt_initial = (int) $product->qt_initial + (int) ($quantity - $damaged);
-                    $product->save();
+                    if ($destinationLocation->type === 'warehouse' && empty(app(StockModuleSettingsService::class)->rules()['legacy_catalogue_stock_migrated_to_shop'])) {
+                        $product->qt_initial = (int) $product->qt_initial + (int) ($quantity - $damaged);
+                        $product->save();
+                    }
                 }
                 if ($damaged > 0) {
                     $this->movementLine($movement, $product, $blocked->id, $line->lot_id, $damaged, 'Article abîmé à l’arrivée');
@@ -460,6 +458,77 @@ class StockTransferController extends Controller
         abort_unless(Storage::disk('local')->exists($attachment->path), 404);
 
         return Storage::disk('local')->download($attachment->path, $attachment->original_name);
+    }
+
+    private function postShipment(StockTransfer $transfer, Request $request, string $occurredAt, ?string $notes, StockLocation $transit): StockTransferEvent
+    {
+        if ($transfer->status !== 'authorized') {
+            throw ValidationException::withMessages(['transfer' => 'Seul un transfert autorisé peut être expédié.']);
+        }
+
+        $sourceLocation = StockLocation::query()->lockForUpdate()->findOrFail($transfer->source_location_id);
+        $productModels = [];
+        foreach ($transfer->lines as $line) {
+            $product = Product::query()->lockForUpdate()->findOrFail($line->product_id);
+            $balance = $this->locationBalance($product->id, $transfer->source_location_id);
+            if ($balance < (float) $line->quantity_requested) {
+                throw ValidationException::withMessages([
+                    'transfer' => 'Le journal de « '.$sourceLocation->name.' » indique '.number_format($balance, 3, ',', ' ').' unité(s) pour '.$product->name.', mais '.number_format((float) $line->quantity_requested, 3, ',', ' ').' sont demandées. Le stock catalogue n’est pas automatiquement affecté à cet emplacement : vérifie la source ou enregistre les quantités physiques avec un inventaire initial.',
+                ]);
+            }
+            if ($sourceLocation->type === 'warehouse'
+                && empty(app(StockModuleSettingsService::class)->rules()['legacy_catalogue_stock_migrated_to_shop'])
+                && (int) $product->qt_initial < (int) $line->quantity_requested) {
+                throw ValidationException::withMessages(['transfer' => 'Le stock global historique est insuffisant pour '.$product->name.'. Rapproche le stock avant l’expédition.']);
+            }
+            $productModels[$product->id] = $product;
+        }
+
+        $event = $this->createTransferEvent($transfer, $request, 'shipment', $occurredAt, $notes);
+        $movement = $this->createMovement($transfer, $event, $request, 'transfer_shipment', 'Expédition du transfert '.$transfer->transfer_number);
+
+        foreach ($transfer->lines as $line) {
+            $product = $productModels[$line->product_id];
+            $quantity = (float) $line->quantity_requested;
+            $this->movementLine($movement, $product, $transfer->source_location_id, $line->lot_id, -$quantity, 'Sortie vers transit');
+            $this->movementLine($movement, $product, $transit->id, $line->lot_id, $quantity, 'Entrée en transit');
+            $event->lines()->create([
+                'transfer_line_id' => $line->id, 'product_id' => $product->id, 'lot_id' => $line->lot_id,
+                'quantity' => $quantity, 'quantity_damaged' => 0,
+            ]);
+            $line->quantity_shipped = $quantity;
+            $line->save();
+
+            if ($sourceLocation->type === 'warehouse' && empty(app(StockModuleSettingsService::class)->rules()['legacy_catalogue_stock_migrated_to_shop'])) {
+                $product->qt_initial = (int) $product->qt_initial - (int) $quantity;
+                $product->save();
+            }
+        }
+
+        $transfer->update(['status' => 'in_transit', 'shipped_by' => $request->user()->id, 'shipped_at' => $occurredAt]);
+        $this->audit($request, 'transfer.shipped', $transfer, ['status' => 'authorized'], [
+            'status' => 'in_transit', 'event_number' => $event->event_number, 'movement_number' => $movement->movement_number,
+        ], $notes);
+
+        return $event;
+    }
+
+    private function notifyDestinationOfShipment(StockTransfer $transfer, int $exceptUserId): void
+    {
+        $destinationManagerId = StockLocation::query()->whereKey($transfer->destination_location_id)->value('responsible_user_id');
+        $notification = new StockControlNotification(
+            'transfer_shipped',
+            'Transfert à réceptionner',
+            'Le transfert '.$transfer->transfer_number.' est en route vers sa destination.',
+            route('stock-control.transfers.show', $transfer),
+            'local_shipping',
+            'transfers',
+        );
+        if ($destinationManagerId) {
+            app(StockControlNotificationService::class)->toUsers([(int) $destinationManagerId], $notification, $exceptUserId);
+        } else {
+            app(StockControlNotificationService::class)->toRoles(['ADMINUSER', 'MNG'], $notification, $exceptUserId);
+        }
     }
 
     private function locationBalance(int $productId, int $locationId): float

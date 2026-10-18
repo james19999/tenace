@@ -30,6 +30,7 @@ use App\Http\Controllers\Stock\StockCountController;
 use App\Http\Controllers\Stock\StockAdjustmentController;
 use App\Http\Controllers\Stock\StockMovementController;
 use App\Http\Controllers\Stock\StockAlertController;
+use App\Http\Controllers\Stock\StockAuditController;
 use App\Http\Livewire\Orders\OrderAuthUserList;
 use App\Http\Controllers\Admins\CheckController;
 use App\Http\Controllers\Orders\OrderController;
@@ -122,15 +123,18 @@ Route::middleware(['auth'])->group(function () {
 
     Route::middleware(['role:ADMINUSER,MNG'])->prefix('stock-control')->name('stock-control.')->group(function () {
         Route::get('/', [StockControlController::class, 'index'])->name('index');
+        Route::get('/audit/export', [StockAuditController::class, 'export'])->middleware('role:ADMINUSER')->name('audit.export');
+        Route::get('/audit', [StockAuditController::class, 'index'])->middleware('role:ADMINUSER')->name('audit');
         Route::get('/balances', [StockControlController::class, 'balances'])->name('balances');
-        Route::post('/locations/initialize', [StockControlController::class, 'initializeDefaults'])->name('locations.initialize');
         Route::post('/locations', [StockControlController::class, 'storeLocation'])->name('locations.store');
         Route::put('/locations/{location}', [StockControlController::class, 'updateLocation'])->name('locations.update');
+        Route::delete('/locations/{location}', [StockControlController::class, 'destroyLocation'])->name('locations.destroy');
         Route::put('/rules', [StockControlController::class, 'updateRules'])->name('rules.update');
         Route::get('/receipts', [StockReceiptController::class, 'index'])->name('receipts.index');
         Route::get('/receipts/create', [StockReceiptController::class, 'create'])->name('receipts.create');
         Route::post('/receipts', [StockReceiptController::class, 'store'])->name('receipts.store');
         Route::get('/receipts/{receipt}', [StockReceiptController::class, 'show'])->name('receipts.show');
+        Route::put('/receipts/{receipt}/schedule', [StockReceiptController::class, 'reschedule'])->name('receipts.schedule');
         Route::get('/receipts/{receipt}/deliveries/{event}/print', [StockReceiptController::class, 'deliveryReceipt'])->name('receipts.delivery-receipt');
         Route::post('/receipts/{receipt}/deliveries', [StockReceiptController::class, 'recordDelivery'])->name('receipts.deliveries.store');
         Route::post('/receipts/{receipt}/deliveries/{event}/approve', [StockReceiptController::class, 'approveDelivery'])->name('receipts.deliveries.approve');
@@ -149,10 +153,10 @@ Route::middleware(['auth'])->group(function () {
         Route::get('/counts', [StockCountController::class, 'index'])->name('counts.index');
         Route::get('/counts/create', [StockCountController::class, 'create'])->name('counts.create');
         Route::post('/counts', [StockCountController::class, 'store'])->name('counts.store');
+        Route::get('/counts/{count}/products/search', [StockCountController::class, 'searchProducts'])->name('counts.products.search');
         Route::get('/counts/{count}', [StockCountController::class, 'show'])->name('counts.show');
         Route::get('/counts/{count}/print', [StockCountController::class, 'printReceipt'])->name('counts.print');
         Route::post('/counts/{count}/submit', [StockCountController::class, 'submit'])->name('counts.submit');
-        Route::post('/counts/{count}/second-count', [StockCountController::class, 'secondCount'])->name('counts.second-count');
         Route::post('/counts/{count}/approve', [StockCountController::class, 'approve'])->name('counts.approve');
         Route::get('/adjustments', [StockAdjustmentController::class, 'index'])->name('adjustments.index');
         Route::get('/adjustments/create', [StockAdjustmentController::class, 'create'])->name('adjustments.create');
@@ -219,10 +223,10 @@ Route::middleware(['auth'])->group(function () {
         Route::get('edit/order/{order}', EditOrder::class)->name('edit-order');
         Route::get('order/list', [OrderController::class, 'index'])->name('order');
         Route::get('order/show/{id}', [OrderController::class, 'show'])->name('ordershow');
+        Route::get('order/show/{order}/package-photos/{photo}/download', [LivreurController::class, 'downloadPackagePhoto'])->middleware('role:ADMINUSER,MNG')->name('ordershow.package-photo.download');
         Route::post('order/show/{id}/payment', [OrderController::class, 'updatePayment'])->middleware('role:ADMINUSER,MNG')->name('ordershow.payment');
         Route::get('order/cancel/list', [OrderController::class, 'order_cancel_list'])->name('order-cancel-list');
         Route::get('order/report/list', [OrderController::class, 'order_report_list'])->name('order-report-list');
-        Route::get('order/show/{order}/package-photos/{photo}/download', [LivreurController::class, 'downloadPackagePhoto'])->middleware('role:ADMINUSER,MNG')->name('ordershow.package-photo.download');
         Route::get('ordered/list/ordered', [OrderController::class, 'ordered_list'])->name('ordered-list-orderer');
         Route::put('reporte/order/{id}', [OrderController::class, 'reporte_order'])->name('reporte-order');
         Route::put('refresh/specific/order/{id}', [OrderController::class, 'refresh_specific_order'])->name('refresh-specific-order');

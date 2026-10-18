@@ -7,7 +7,7 @@
     <form method="POST" action="{{ route('stock-control.counts.store') }}" class="stock-control-card stock-count-form">@csrf
         <div class="stock-control-section-head"><div><span class="stock-control-kicker">PARAMÈTRES</span><h2>Nouvelle campagne</h2></div></div>
         <div class="stock-control-form-grid">
-            <label class="stock-control-field"><span>Emplacement à compter</span><select name="location_id" required><option value="">Sélectionner un emplacement</option>@foreach($locations as $location)<option value="{{ $location->id }}" @selected(old('location_id')==$location->id)>{{ $location->name }} · {{ $location->code }}</option>@endforeach</select></label>
+            <label class="stock-control-field"><span>Emplacement à compter</span><select name="location_id" required><option value="">Sélectionner un emplacement</option>@foreach($locations as $location)<option value="{{ $location->id }}" @selected((string) old('location_id', $locationId) === (string) $location->id)>{{ $location->name }} · {{ $location->code }}</option>@endforeach</select></label>
             <label class="stock-control-field"><span>Responsable du comptage</span><select name="counter_id" required><option value="">Sélectionner une personne</option>@foreach($users as $user)<option value="{{ $user->id }}" @selected(old('counter_id',auth()->id())==$user->id)>{{ $user->name }} · {{ $user->user_type }}</option>@endforeach</select></label>
             <label class="stock-control-field"><span>Date prévue</span><input type="datetime-local" name="scheduled_at" value="{{ old('scheduled_at',now()->format('Y-m-d\TH:i')) }}"></label>
             <label class="stock-control-field"><span>Portée (facultatif)</span><input name="scope" value="{{ old('scope') }}" placeholder="Ex. tous les produits ou rayon savons"></label>
@@ -27,7 +27,7 @@
                 <p class="stock-count-reconciliation-clear">Aucun écart entre le stock global et les quantités des emplacements vendables n’a été détecté.</p>
             @endif
         </aside>
-        <label class="stock-count-opening"><input type="checkbox" name="is_opening_balance" value="1" @checked(old('is_opening_balance'))><span><strong>Reprise initiale du stock par comptage</strong><small>À cocher pour inscrire les quantités physiques dans le journal sans augmenter le stock global déjà présent dans les produits.</small></span></label>
+        <label class="stock-count-opening"><input type="checkbox" name="is_opening_balance" value="1" @checked(old('is_opening_balance', $openingBalance))><span><strong>Reprise initiale du stock par comptage</strong><small>À cocher pour enregistrer les quantités réellement comptées et synchroniser le stock global avec le stock de l’entrepôt, sans additionner deux fois les unités.</small></span></label>
         <label class="stock-control-field stock-control-field-notes"><span>Consignes (facultatif)</span><textarea name="notes" rows="3" placeholder="Précisions pour la personne chargée du comptage">{{ old('notes') }}</textarea></label>
         <div class="stock-control-form-footer"><small>Le comptage sera à l’aveugle : les quantités théoriques ne seront pas affichées au responsable.</small><button class="stock-control-button stock-control-button-primary" type="submit"><span class="material-icons">playlist_add_check</span>Créer l’inventaire</button></div>
     </form>

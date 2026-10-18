@@ -2,11 +2,6 @@
 
 @section('content')
     @php
-        $locationTypeLabels = [
-            'warehouse' => 'Magasin', 'shop' => 'Boutique', 'transit' => 'Transit',
-            'blocked' => 'Bloqué / quarantaine', 'sales_rep' => 'Commercial terrain',
-            'wholesaler' => 'Grossiste', 'other' => 'Autre',
-        ];
         $blockedTotal = (int) ($locationTotals['blocked'] ?? 0);
         $transitTotal = (int) ($locationTotals['transit'] ?? 0);
     @endphp
@@ -16,28 +11,41 @@
             <div class="stock-control-hero-copy">
                 <span class="stock-control-kicker">TENACOS · VISIBILITÉ DES QUANTITÉS</span>
                 <h1>État du stock par emplacement</h1>
-                <p>Consulte les quantités suivies dans chaque magasin, boutique et zone de stockage.</p>
+                <p>Le stock global correspond aux entrepôts. Les quantités des boutiques et des zones de contrôle restent affichées séparément.</p>
             </div>
-            <a href="{{ route('stock-control.receipts.index') }}" class="stock-control-hero-action"><span class="material-icons">move_to_inbox</span>Réceptions</a>
+            <div class="transfer-detail-heading-actions">
+                <a href="{{ route('stock-control.counts.create', ['warehouse_only' => 1, 'opening_balance' => 1]) }}" class="stock-control-hero-action"><span class="material-icons">playlist_add_check</span>Saisir le stock réel de l’entrepôt</a>
+                <a href="{{ route('stock-control.receipts.index') }}" class="stock-control-hero-action"><span class="material-icons">move_to_inbox</span>Réceptions</a>
+            </div>
             <div class="stock-control-hero-mark" aria-hidden="true"><span class="material-icons">inventory</span></div>
         </header>
 
-        <section class="stock-control-alert stock-balance-notice" role="status">
-            <span class="material-icons">info</span>
-            <div><strong>Le stock historique reste à rapprocher.</strong><p>Les anciennes quantités ne sont pas encore réparties entre les emplacements et les ventes historiques ne sont pas encore inscrites au journal. Le rapprochement affiché est donc indicatif ; les réceptions validées ici sont bien visibles dans le journal et dans le stock global des produits.</p></div>
-        </section>
+        @if(abs($unallocated) > 0.0005)
+            <section class="stock-control-alert stock-balance-notice" role="status">
+                <span class="material-icons">info</span>
+                <div>
+                    @if($unallocated > 0)
+                        <strong>Il reste {{ number_format($unallocated, 0, ',', ' ') }} unité(s) catalogue à affecter à un entrepôt.</strong>
+                        <p>Quand un seul entrepôt est actif, l’application affecte automatiquement ces quantités au journal. Avec plusieurs entrepôts, il faut indiquer où se trouve le stock.</p>
+                    @else
+                        <strong>Le journal des entrepôts et l’ancien total catalogue présentent un écart de {{ number_format(abs($unallocated), 0, ',', ' ') }} unité(s).</strong>
+                        <p>Le stock affiché ici fait foi : il est calculé à partir des mouvements enregistrés dans les entrepôts.</p>
+                    @endif
+                </div>
+            </section>
+        @endif
 
         <section class="stock-balance-summary" aria-label="Résumé du stock">
-            <article><span class="material-icons">inventory_2</span><div><small>Stock global produit</small><strong>{{ number_format($legacyTotal, 0, ',', ' ') }}</strong><span>Unité(s) actuellement disponibles</span></div></article>
-            <article><span class="material-icons">warehouse</span><div><small>Stock vendable localisé</small><strong>{{ number_format($locatedSellable, 0, ',', ' ') }}</strong><span>Magasins, boutiques et détenteurs</span></div></article>
-            <article class="{{ $unallocated < 0 ? 'is-warning' : '' }}"><span class="material-icons">location_searching</span><div><small>Écart global / journal</small><strong>{{ number_format(abs($unallocated), 0, ',', ' ') }}</strong><span>{{ $unallocated < 0 ? 'Le journal dépasse le stock global' : 'À affecter ou à rapprocher' }}</span></div></article>
+            <article><span class="material-icons">inventory_2</span><div><small>Stock global · entrepôts</small><strong>{{ number_format($warehouseTotal, 0, ',', ' ') }}</strong><span>Somme des quantités journalisées dans les entrepôts</span></div></article>
+            <article><span class="material-icons">storefront</span><div><small>Stock dans les boutiques</small><strong>{{ number_format($shopTotal, 0, ',', ' ') }}</strong><span>Quantités transférées vers les boutiques</span></div></article>
+            <article class="{{ $unallocated < 0 ? 'is-warning' : '' }}"><span class="material-icons">location_searching</span><div><small>{{ $productionCatalogueInShop ? 'Reprise du stock catalogue' : 'Écart catalogue historique / journal' }}</small><strong>{{ number_format(abs($unallocated), 0, ',', ' ') }}</strong><span>{{ $productionCatalogueInShop ? 'Quantités historiques rattachées à la boutique' : ($unallocated < 0 ? 'Le journal dépasse l’ancien total catalogue' : 'Quantité catalogue à rapprocher') }}</span></div></article>
             <article class="is-muted"><span class="material-icons">inventory</span><div><small>Zones de contrôle</small><strong>{{ number_format($blockedTotal, 0, ',', ' ') }} / {{ number_format($transitTotal, 0, ',', ' ') }}</strong><span>Bloqué / en transit</span></div></article>
         </section>
 
         <section class="stock-control-card stock-balance-card">
             <div class="stock-control-section-head">
                 <div><span class="stock-control-kicker">CONSULTATION</span><h2>Quantités enregistrées</h2></div>
-                <span class="stock-control-count">{{ number_format($balances->total(), 0, ',', ' ') }} ligne(s)</span>
+                <span class="stock-control-count">{{ number_format($balances->total(), 0, ',', ' ') }} produit(s)</span>
             </div>
 
             <form method="GET" action="{{ route('stock-control.balances') }}" class="stock-balance-filters">
@@ -52,24 +60,39 @@
             @else
                 <div class="stock-balance-table-wrap">
                     <table class="stock-balance-table">
-                        <thead><tr><th>Produit</th><th>Emplacement</th><th>Type</th><th>Quantité sur place</th><th>Stock global actuel</th><th>Seuil bas</th><th>État global</th><th></th></tr></thead>
+                        <thead><tr><th>Produit</th><th>Entrepôts</th><th>Boutiques</th><th>En transit</th><th>Bloqué</th><th>Seuil bas</th><th>État global</th><th></th></tr></thead>
                         <tbody>
                             @foreach($balances as $row)
                                 @php
-                                    $globalQuantity = (int) $row->global_quantity;
+                                    $productLocations = $locationBreakdowns->get($row->product_id, collect());
+                                    $warehouseLocations = $productLocations->where('location_type', 'warehouse');
+                                    $shopLocations = $productLocations->where('location_type', 'shop');
+                                    $globalQuantity = (int) $row->warehouse_quantity;
                                     $threshold = (int) ($row->low_stock_threshold ?? 0);
-                                    if ($row->location_type === 'blocked') { $stateLabel = 'Bloqué'; $stateClass = 'blocked'; }
-                                    elseif ($row->location_type === 'transit') { $stateLabel = 'En transit'; $stateClass = 'transit'; }
-                                    elseif ($globalQuantity <= 0) { $stateLabel = 'Rupture'; $stateClass = 'out'; }
+                                    if ($globalQuantity <= 0) { $stateLabel = 'Rupture'; $stateClass = 'out'; }
                                     elseif ($threshold > 0 && $globalQuantity <= $threshold) { $stateLabel = 'Stock bas'; $stateClass = 'low'; }
                                     else { $stateLabel = 'Disponible'; $stateClass = 'available'; }
                                 @endphp
                                 <tr>
                                     <td><strong>{{ $row->product_name }}</strong><small>Réf. {{ $row->product_id }}</small></td>
-                                    <td><strong>{{ $row->location_name }}</strong><small>{{ $row->location_code }}</small></td>
-                                    <td>{{ $locationTypeLabels[$row->location_type] ?? 'Autre' }}</td>
-                                    <td class="stock-balance-quantity">{{ number_format((float) $row->quantity_on_hand, 0, ',', ' ') }}</td>
-                                    <td>{{ number_format($globalQuantity, 0, ',', ' ') }}</td>
+                                    <td class="stock-balance-quantity">
+                                        <strong>{{ number_format((float) $row->warehouse_quantity, 0, ',', ' ') }}</strong>
+                                        @forelse($warehouseLocations as $location)
+                                            <small>{{ $location->location_name }} · {{ number_format((float) $location->quantity_on_hand, 0, ',', ' ') }}</small>
+                                        @empty
+                                            <small>{{ $globalQuantity > 0 ? 'À affecter à un entrepôt' : 'Aucun stock localisé' }}</small>
+                                        @endforelse
+                                    </td>
+                                    <td class="stock-balance-quantity">
+                                        <strong>{{ number_format((float) $row->shop_quantity, 0, ',', ' ') }}</strong>
+                                        @forelse($shopLocations as $location)
+                                            <small>{{ $location->location_name }} · {{ number_format((float) $location->quantity_on_hand, 0, ',', ' ') }}</small>
+                                        @empty
+                                            <small>Aucune boutique approvisionnée</small>
+                                        @endforelse
+                                    </td>
+                                    <td>{{ number_format((float) $row->transit_quantity, 0, ',', ' ') }}</td>
+                                    <td>{{ number_format((float) $row->blocked_quantity, 0, ',', ' ') }}</td>
                                     <td>{{ $threshold > 0 ? number_format($threshold, 0, ',', ' ') : '—' }}</td>
                                     <td><span class="stock-balance-state {{ $stateClass }}">{{ $stateLabel }}</span></td>
                                     <td><a href="{{ route('show-product', $row->product_id) }}" class="stock-balance-open" aria-label="Voir le produit"><span class="material-icons">arrow_forward</span></a></td>
@@ -82,4 +105,28 @@
             @endif
         </section>
     </div>
+    <script>
+        (() => {
+            const form = document.querySelector('.stock-balance-filters');
+            if (!form) return;
+
+            const search = form.querySelector('input[name="search"]');
+            const filters = form.querySelectorAll('select');
+            let searchTimer;
+
+            search?.addEventListener('input', () => {
+                window.clearTimeout(searchTimer);
+                searchTimer = window.setTimeout(() => form.requestSubmit(), 300);
+            });
+
+            search?.addEventListener('keydown', (event) => {
+                if (event.key === 'Enter') {
+                    window.clearTimeout(searchTimer);
+                    form.requestSubmit();
+                }
+            });
+
+            filters.forEach((filter) => filter.addEventListener('change', () => form.requestSubmit()));
+        })();
+    </script>
 @endsection

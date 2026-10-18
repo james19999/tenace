@@ -18,7 +18,7 @@ class StockDeliveryService
     }
 
     /**
-     * Applies the legacy global quantity change and posts the location ledger once.
+     * Updates the legacy warehouse quantity only for warehouse sales and posts the location ledger once.
      * Returns false when the order was already delivered.
      */
     public function deliver(Order $order, int $actorId): bool
@@ -77,7 +77,11 @@ class StockDeliveryService
             foreach ($lockedOrder->orderItems as $item) {
                 $product = Product::query()->lockForUpdate()->findOrFail($item->product_id);
                 $quantity = (int) $item->quantity;
-                $product->qt_initial = (int) $product->qt_initial - $quantity;
+                // qt_initial is the legacy warehouse balance. A shop sale changes only
+                // the shop ledger; decrementing this field as well creates a false gap.
+                if (! $location || $location->type === 'warehouse') {
+                    $product->qt_initial = (int) $product->qt_initial - $quantity;
+                }
                 $product->qts_sell = (int) $product->qts_sell + $quantity;
                 $product->benefice = ($product->price - $product->price_market) * $product->qts_sell;
                 $product->save();

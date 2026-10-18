@@ -3,10 +3,13 @@
 namespace App\Http\Livewire\Products;
 
 use Livewire\Component;
+use App\Models\Product;
 use App\Models\Costumer;
 use App\Models\TransportCompany;
 use App\Models\CostumerContactSetting;
 use Illuminate\Support\Carbon;
+use Illuminate\Support\Facades\DB;
+use App\Services\StockModuleSettingsService;
 use Gloudemans\Shoppingcart\Facades\Cart;
 
 class ProductCart extends Component
@@ -50,7 +53,7 @@ class ProductCart extends Component
 
     public function increment($rowId){
         $produit=Cart::instance('cart')->get($rowId);
-        if (!$produit || !$produit->model || (int) $produit->qty >= (int) $produit->model->qt_initial) {
+        if (!$produit || !$produit->model || (int) $produit->qty >= $this->availableShopQuantity($produit->model)) {
             return;
         }
         $qty=$produit->qty+1;
@@ -58,6 +61,19 @@ class ProductCart extends Component
         $this->calculateTotal();
         $this->cartUpdated();
          }
+
+    private function availableShopQuantity(Product $product): int
+    {
+        $locationId = app(StockModuleSettingsService::class)->rules()['default_sales_location_id'] ?? null;
+        if (! $locationId) {
+            return (int) $product->qt_initial;
+        }
+
+        return (int) DB::table('stock_movement_lines as sml')
+            ->join('stock_movements as sm', 'sm.id', '=', 'sml.movement_id')
+            ->where('sm.status', 'posted')->where('sml.location_id', $locationId)
+            ->where('sml.product_id', $product->id)->sum('sml.quantity_delta');
+    }
 
 
     public function decrement($rowId){

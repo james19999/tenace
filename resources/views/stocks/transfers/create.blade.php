@@ -2,7 +2,7 @@
 
 @section('content')
     <div class="stock-control-page stock-transfer-page">
-        <div class="receipt-page-heading"><a href="{{ route('stock-control.transfers.index') }}" class="receipt-back-link"><span class="material-icons">arrow_back</span>Transferts</a><span class="stock-control-kicker">NOUVELLE DEMANDE</span><h1>Transférer du stock</h1><p>La demande sera soumise à autorisation. Les quantités ne quitteront le site source qu’au moment de l’expédition.</p></div>
+        <div class="receipt-page-heading"><a href="{{ route('stock-control.transfers.index') }}" class="receipt-back-link"><span class="material-icons">arrow_back</span>Transferts</a><span class="stock-control-kicker">NOUVEAU TRANSFERT</span><h1>Transférer du stock</h1><p>@if(auth()->user()->user_type === 'ADMINUSER')Pour un transfert entre entrepôt et boutique, la création par un Admin expédie directement les quantités vers TRANSIT.@else Pour un transfert entre entrepôt et boutique, la demande attend l’autorisation d’un Admin. Le stock partira ensuite vers TRANSIT.@endif À l’arrivée, un utilisateur du module pourra saisir les quantités reçues et les éventuels écarts.</p></div>
         @if($errors->any())<div class="stock-control-alert stock-control-alert-error" role="alert"><span class="material-icons">error_outline</span><div><strong>Vérifie les informations du transfert.</strong><ul>@foreach($errors->all() as $error)<li>{{ $error }}</li>@endforeach</ul></div></div>@endif
 
         <form method="POST" action="{{ route('stock-control.transfers.store') }}" class="receipt-form">
@@ -26,16 +26,26 @@
                         <div class="receipt-product-line" data-transfer-line-index="{{ $index }}">
                             <div class="receipt-line-top"><span class="receipt-line-number">Produit {{ str_pad($index + 1, 2, '0', STR_PAD_LEFT) }}</span><button type="button" class="receipt-remove-line" aria-label="Supprimer cette ligne"><span class="material-icons">delete_outline</span></button></div>
                             <div class="transfer-create-line-grid">
-                                <label class="stock-control-field"><span>Produit</span><select name="lines[{{ $index }}][product_id]" required><option value="">Choisir un produit</option>@foreach($products as $product)<option value="{{ $product->id }}" data-global-quantity="{{ (int) $product->qt_initial }}" @selected((string) ($line['product_id'] ?? '') === (string) $product->id)>{{ $product->name }}</option>@endforeach</select><small class="transfer-global-stock-hint">Stock global (tous emplacements) : <strong data-transfer-global-stock>Choisis un produit</strong></small></label>
+                                <label class="stock-control-field"><span>Produit</span><select name="lines[{{ $index }}][product_id]" required><option value="">Choisir un produit</option>@foreach($products as $product)<option value="{{ $product->id }}" @selected((string) ($line['product_id'] ?? '') === (string) $product->id)>{{ $product->name }}</option>@endforeach</select><small class="transfer-global-stock-hint">Stock inscrit dans la source : <strong data-transfer-source-stock>Choisis l’emplacement et le produit</strong></small></label>
                                 <label class="stock-control-field"><span>Quantité à déplacer</span><input type="number" name="lines[{{ $index }}][quantity_requested]" value="{{ $line['quantity_requested'] ?? '' }}" min="1" step="1" placeholder="0" required></label>
                             </div>
                         </div>
                     @endforeach
                 </div>
-                <template id="transfer-line-template"><div class="receipt-product-line" data-transfer-line-index="__INDEX__"><div class="receipt-line-top"><span class="receipt-line-number">Nouveau produit</span><button type="button" class="receipt-remove-line" aria-label="Supprimer cette ligne"><span class="material-icons">delete_outline</span></button></div><div class="transfer-create-line-grid"><label class="stock-control-field"><span>Produit</span><select name="lines[__INDEX__][product_id]" required><option value="">Choisir un produit</option>@foreach($products as $product)<option value="{{ $product->id }}" data-global-quantity="{{ (int) $product->qt_initial }}">{{ $product->name }}</option>@endforeach</select><small class="transfer-global-stock-hint">Stock global (tous emplacements) : <strong data-transfer-global-stock>Choisis un produit</strong></small></label><label class="stock-control-field"><span>Quantité à déplacer</span><input type="number" name="lines[__INDEX__][quantity_requested]" min="1" step="1" placeholder="0" required></label></div></div></template>
+                <template id="transfer-line-template"><div class="receipt-product-line" data-transfer-line-index="__INDEX__"><div class="receipt-line-top"><span class="receipt-line-number">Nouveau produit</span><button type="button" class="receipt-remove-line" aria-label="Supprimer cette ligne"><span class="material-icons">delete_outline</span></button></div><div class="transfer-create-line-grid"><label class="stock-control-field"><span>Produit</span><select name="lines[__INDEX__][product_id]" required><option value="">Choisir un produit</option>@foreach($products as $product)<option value="{{ $product->id }}">{{ $product->name }}</option>@endforeach</select><small class="transfer-global-stock-hint">Stock inscrit dans la source : <strong data-transfer-source-stock>Choisis l’emplacement et le produit</strong></small></label><label class="stock-control-field"><span>Quantité à déplacer</span><input type="number" name="lines[__INDEX__][quantity_requested]" min="1" step="1" placeholder="0" required></label></div></div></template>
             </section>
 
-            <div class="receipt-form-actions"><a href="{{ route('stock-control.transfers.index') }}" class="stock-control-button">Annuler</a><button type="submit" class="stock-control-button stock-control-button-primary"><span class="material-icons">send</span>Soumettre à autorisation</button></div>
+            <div class="receipt-form-actions">
+                <a href="{{ route('stock-control.transfers.index') }}" class="stock-control-button">Annuler</a>
+                <button type="submit" class="stock-control-button stock-control-button-primary">
+                    <span class="material-icons">{{ auth()->user()->user_type === 'ADMINUSER' ? 'local_shipping' : 'send' }}</span>
+                    @if(auth()->user()->user_type === 'ADMINUSER')
+                        Créer et envoyer en transit
+                    @else
+                        Soumettre à l’Admin
+                    @endif
+                </button>
+            </div>
         </form>
     </div>
     <script>
@@ -43,14 +53,20 @@
             const list = document.getElementById('transfer-lines');
             const template = document.getElementById('transfer-line-template');
             const addButton = document.getElementById('add-transfer-line');
+            const sourceSelect = document.querySelector('select[name="source_location_id"]');
+            const locationQuantities = @json($locationQuantities);
             if (!list || !template || !addButton) return;
-            const formatQuantity = (value) => new Intl.NumberFormat('fr-FR', { maximumFractionDigits: 0 }).format(Number(value || 0)) + ' unité(s)';
-            const updateGlobalQuantity = (row) => {
+            const formatQuantity = (value) => new Intl.NumberFormat('fr-FR', { maximumFractionDigits: 3 }).format(Number(value || 0)) + ' unité(s)';
+            const updateSourceQuantity = (row) => {
                 const select = row.querySelector('select[name$="[product_id]"]');
-                const output = row.querySelector('[data-transfer-global-stock]');
+                const output = row.querySelector('[data-transfer-source-stock]');
                 if (!select || !output) return;
-                const option = select.selectedOptions[0];
-                output.textContent = option && option.value ? formatQuantity(option.dataset.globalQuantity) : 'Choisis un produit';
+                if (!sourceSelect || !sourceSelect.value || !select.value) {
+                    output.textContent = 'Choisis l’emplacement et le produit';
+                    return;
+                }
+                const quantity = locationQuantities[select.value]?.[sourceSelect.value] ?? 0;
+                output.textContent = formatQuantity(quantity);
             };
             let nextIndex = Math.max(-1, ...Array.from(list.querySelectorAll('[data-transfer-line-index]')).map((row) => Number(row.dataset.transferLineIndex))) + 1;
             const updateRows = () => {
@@ -58,12 +74,13 @@
                 rows.forEach((row, index) => {
                     row.querySelector('.receipt-line-number').textContent = 'Produit ' + String(index + 1).padStart(2, '0');
                     row.querySelector('.receipt-remove-line').disabled = rows.length === 1;
-                    updateGlobalQuantity(row);
+                    updateSourceQuantity(row);
                 });
             };
             list.addEventListener('change', (event) => {
-                if (event.target.matches('select[name$="[product_id]"]')) updateGlobalQuantity(event.target.closest('.receipt-product-line'));
+                if (event.target.matches('select[name$="[product_id]"]')) updateSourceQuantity(event.target.closest('.receipt-product-line'));
             });
+            sourceSelect?.addEventListener('change', updateRows);
             addButton.addEventListener('click', () => {
                 const wrapper = document.createElement('div');
                 wrapper.appendChild(template.content.cloneNode(true));

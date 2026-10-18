@@ -79,8 +79,8 @@
             <div class="catalog-grid">
                 @foreach ($Products as $product)
                     @php
-                        $stock = (int) ($product->qt_initial ?? 0);
-                        $isOut = $product->qt_initial === null || $stock <= 0;
+                        $stock = (int) ($product->shop_quantity ?? 0);
+                        $isOut = $stock <= 0;
                         $isLow = ! $isOut && $product->qts_seuil !== null && $stock <= (int) $product->qts_seuil;
                     @endphp
                     <article class="product-card">

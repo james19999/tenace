@@ -15,12 +15,13 @@
         $damagedTotal = (float) $receipt->lines->sum('quantity_damaged');
         $pendingEvent = $receipt->events->firstWhere('status', 'submitted');
         $latestApprovedEvent = $receipt->events->where('status', 'approved')->sortByDesc('occurred_at')->first();
+        $expectedReceiptAt = $receipt->expected_at ?? $receipt->occurred_at;
     @endphp
     <div class="stock-control-page stock-receipts-page">
         <div class="receipt-page-heading receipt-detail-heading">
             <a href="{{ route('stock-control.receipts.index') }}" class="receipt-back-link"><span class="material-icons">arrow_back</span>Toutes les réceptions</a>
             <div class="receipt-title-line"><div><span class="stock-control-kicker">RÉCEPTION FOURNISSEUR</span><h1>{{ $receipt->receipt_number }}</h1></div><div class="transfer-detail-heading-actions">@if($latestApprovedEvent)<a class="stock-control-button" href="{{ route('stock-control.receipts.delivery-receipt', [$receipt, $latestApprovedEvent]) }}" target="_blank" rel="noopener"><span class="material-icons">print</span>Dernier bon</a>@endif<span class="receipt-status-pill {{ $statusClass }}">{{ $statusText }}</span></div></div>
-            <p>{{ $receipt->origin_name ?: 'Origine non précisée' }}@if($receipt->source_reference) · Réf. {{ $receipt->source_reference }}@endif · {{ $receipt->occurred_at?->format('d/m/Y à H:i') ?? 'Date non précisée' }}</p>
+            <p>{{ $receipt->origin_name ?: 'Origine non précisée' }} · Réception prévue le {{ ($receipt->expected_at ?? $receipt->occurred_at)?->format('d/m/Y à H:i') ?? 'Date non précisée' }}</p>
         </div>
 
         @if (session('success'))<div class="stock-control-alert stock-control-alert-success" role="status"><span class="material-icons">check_circle</span>{{ session('success') }}</div>@endif
@@ -53,6 +54,18 @@
             @endif
         </section>
 
+        @if(in_array($receipt->status, ['draft', 'partial'], true) && ! $pendingEvent)
+            <section class="stock-control-card receipt-event-card receipt-schedule-card">
+                <div class="stock-control-section-head"><div><span class="stock-control-kicker">PLANIFICATION</span><h2>Date prévue de réception</h2></div></div>
+                <form method="POST" action="{{ route('stock-control.receipts.schedule', $receipt) }}" class="receipt-schedule-form">
+                    @csrf
+                    @method('PUT')
+                    <label class="stock-control-field"><span>Modifier la date et l’heure prévues</span><input type="datetime-local" name="expected_at" value="{{ old('expected_at', $expectedReceiptAt?->format('Y-m-d\\TH:i')) }}" required></label>
+                    <button type="submit" class="stock-control-button"><span class="material-icons">event</span>Enregistrer la date</button>
+                </form>
+            </section>
+        @endif
+
         @if($pendingEvent)
             <section class="stock-control-card receipt-event-card receipt-pending-card">
                 <div class="stock-control-section-head"><div><span class="stock-control-kicker">VALIDATION REQUISE · {{ $pendingEvent->event_number }}</span><h2>Livraison saisie par {{ $pendingEvent->receiver?->name ?? 'un utilisateur' }}</h2></div><span class="receipt-status-pill pending">En attente</span></div>
@@ -76,12 +89,13 @@
         @endif
 
         @if(in_array($receipt->status, ['draft', 'partial'], true) && ! $pendingEvent)
-            <section class="stock-control-card receipt-event-card">
-                <div class="stock-control-section-head"><div><span class="stock-control-kicker">NOUVELLE LIVRAISON</span><h2>Saisir les quantités constatées</h2></div></div>
-                <div class="receipt-validation-note"><span class="material-icons">rule</span><p>La saisie sera envoyée à une autre personne pour validation. Le stock restera inchangé jusque-là. Les quantités abîmées seront dirigées vers <strong>BLOQUÉ</strong>.</p></div>
-                <form method="POST" action="{{ route('stock-control.receipts.deliveries.store', $receipt) }}" enctype="multipart/form-data" class="receipt-delivery-form">
-                    @csrf
-                    <label class="stock-control-field receipt-delivery-date"><span>Date et heure réelles</span><input type="datetime-local" name="occurred_at" value="{{ old('occurred_at', now()->format('Y-m-d\TH:i')) }}" max="{{ now()->format('Y-m-d\TH:i') }}" required></label>
+            @if(now()->greaterThanOrEqualTo($expectedReceiptAt))
+                <section class="stock-control-card receipt-event-card">
+                    <div class="stock-control-section-head"><div><span class="stock-control-kicker">NOUVELLE LIVRAISON</span><h2>Saisir les quantités constatées</h2></div></div>
+                    <div class="receipt-validation-note"><span class="material-icons">rule</span><p>La saisie sera envoyée à une autre personne pour validation. Le stock restera inchangé jusque-là. Les quantités abîmées seront dirigées vers <strong>BLOQUÉ</strong>.</p></div>
+                    <form method="POST" action="{{ route('stock-control.receipts.deliveries.store', $receipt) }}" enctype="multipart/form-data" class="receipt-delivery-form">
+                        @csrf
+                        <label class="stock-control-field receipt-delivery-date"><span>Date et heure réelles de réception</span><input type="datetime-local" name="occurred_at" value="{{ old('occurred_at', $expectedReceiptAt->format('Y-m-d\TH:i')) }}" max="{{ now()->format('Y-m-d\TH:i') }}" required><small>Préremplie avec la date prévue ; modifie-la si la livraison est arrivée à un autre moment.</small></label>
                     <div class="receipt-delivery-lines">
                         @foreach($receipt->lines as $line)
                             @php $remaining = max(0, (float) $line->quantity_expected - (float) $line->quantity_received); @endphp
@@ -103,8 +117,14 @@
                         </div>
                         <button type="submit" class="stock-control-button stock-control-button-primary"><span class="material-icons">send</span>Soumettre pour validation</button>
                     </div>
-                </form>
-            </section>
+                    </form>
+                </section>
+            @else
+                <section class="stock-control-card receipt-event-card">
+                    <div class="stock-control-section-head"><div><span class="stock-control-kicker">RÉCEPTION PLANIFIÉE</span><h2>Comptage disponible à la date prévue</h2></div></div>
+                    <div class="receipt-validation-note"><span class="material-icons">schedule</span><p>La saisie des quantités sera disponible le <strong>{{ $expectedReceiptAt->format('d/m/Y à H:i') }}</strong>. À l’arrivée du fournisseur, tu pourras renseigner et modifier la date et l’heure réelles de réception.</p></div>
+                </section>
+            @endif
         @endif
 
         <section class="stock-control-card receipt-event-card">

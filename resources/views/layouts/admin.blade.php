@@ -21,7 +21,7 @@
         <link rel="stylesheet" href="{{ asset('assets/css/customer-loyalty.css') }}?v=20261010.2">
     @endif
     @if (request()->routeIs('stock-control.*'))
-        <link rel="stylesheet" href="{{ asset('assets/css/stock-control.css') }}?v=20261015.1">
+        <link rel="stylesheet" href="{{ asset('assets/css/stock-control.css') }}?v=20261017.4">
     @endif
     @if (request()->routeIs('show-product'))
         <link rel="stylesheet" href="{{ asset('assets/css/product-detail.css') }}?v=20261012.3">

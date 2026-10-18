@@ -19,9 +19,15 @@
                 <div class="stock-control-section-head"><div><span class="stock-control-kicker">ÉTAPE 1</span><h2>Origine et destination</h2></div></div>
                 <div class="receipt-meta-grid">
                     <label class="stock-control-field"><span>Fournisseur ou origine</span><input name="origin_name" value="{{ old('origin_name') }}" placeholder="Nom du fournisseur" maxlength="160"></label>
-                    <label class="stock-control-field"><span>Référence du document source</span><input name="source_reference" value="{{ old('source_reference') }}" placeholder="Facture, bon fournisseur…" maxlength="100"></label>
-                    <label class="stock-control-field"><span>Emplacement destinataire</span><select name="location_id" required><option value="">Choisir un emplacement</option>@foreach($locations as $location)<option value="{{ $location->id }}" @selected((string) old('location_id') === (string) $location->id)>{{ $location->name }} · {{ $location->code }}</option>@endforeach</select></label>
-                    <label class="stock-control-field"><span>Date et heure du document</span><input type="datetime-local" name="occurred_at" value="{{ old('occurred_at', now()->format('Y-m-d\TH:i')) }}" max="{{ now()->format('Y-m-d\TH:i') }}" required></label>
+                    <label class="stock-control-field"><span>Entrepôt destinataire</span>
+                        @if($locations->count() === 1)
+                            <div class="receipt-location-display"><span class="material-icons" aria-hidden="true">warehouse</span><strong>{{ $locations->first()->name }}</strong><small>{{ $locations->first()->code }}</small></div>
+                            <input type="hidden" name="location_id" value="{{ $locations->first()->id }}">
+                        @else
+                            <select name="location_id" required><option value="">Choisir un entrepôt</option>@foreach($locations as $location)<option value="{{ $location->id }}" @selected((string) old('location_id', $defaultLocationId) === (string) $location->id)>{{ $location->name }} · {{ $location->code }}</option>@endforeach</select>
+                        @endif
+                    </label>
+                    <label class="stock-control-field"><span>Date prévue de réception</span><input type="datetime-local" name="expected_at" value="{{ old('expected_at', now()->format('Y-m-d\TH:i')) }}" required></label>
                 </div>
             </section>
 
@@ -34,9 +40,9 @@
                         <div class="receipt-product-line" data-line-index="{{ $index }}">
                             <div class="receipt-line-top"><span class="receipt-line-number">Référence {{ str_pad($index + 1, 2, '0', STR_PAD_LEFT) }}</span><button type="button" class="receipt-remove-line" aria-label="Supprimer cette ligne"><span class="material-icons">delete_outline</span></button></div>
                             <div class="receipt-line-grid">
-                                <label class="stock-control-field receipt-product-field"><span>Produit</span><select name="lines[{{ $index }}][product_id]" required><option value="">Choisir un produit</option>@foreach($products as $product)<option value="{{ $product->id }}" @selected((string) ($line['product_id'] ?? '') === (string) $product->id)>{{ $product->name }}</option>@endforeach</select></label>
+                                <label class="stock-control-field receipt-product-field"><span>Produit</span><input type="search" class="receipt-product-search" placeholder="Rechercher un produit" autocomplete="off"><select name="lines[{{ $index }}][product_id]" required><option value="">Choisir un produit</option>@foreach($products as $product)<option value="{{ $product->id }}" data-unit-cost="{{ $product->price_market ?? 0 }}" @selected((string) ($line['product_id'] ?? '') === (string) $product->id)>{{ $product->name }}</option>@endforeach</select></label>
                                 <label class="stock-control-field"><span>Quantité attendue</span><input type="number" name="lines[{{ $index }}][quantity_expected]" value="{{ $line['quantity_expected'] ?? '' }}" min="1" step="1" placeholder="0" required></label>
-                                <label class="stock-control-field"><span>Coût unitaire (FCFA)</span><input type="number" name="lines[{{ $index }}][unit_cost]" value="{{ $line['unit_cost'] ?? '' }}" min="0" step="1" placeholder="Coût achat"></label>
+                                <label class="stock-control-field"><span>Coût unitaire (FCFA)</span><input type="number" name="lines[{{ $index }}][unit_cost]" value="{{ $line['unit_cost'] ?? '' }}" min="0" step="1" placeholder="Prix d’achat du produit"></label>
                                 <label class="stock-control-field"><span>Lot (facultatif)</span><input name="lines[{{ $index }}][lot_code]" value="{{ $line['lot_code'] ?? '' }}" maxlength="100" placeholder="N° de lot"></label>
                                 <label class="stock-control-field"><span>Date de fabrication</span><input type="date" name="lines[{{ $index }}][manufactured_at]" value="{{ $line['manufactured_at'] ?? '' }}"></label>
                                 <label class="stock-control-field"><span>Date d’expiration</span><input type="date" name="lines[{{ $index }}][expires_at]" value="{{ $line['expires_at'] ?? '' }}"></label>
@@ -48,9 +54,9 @@
                     <div class="receipt-product-line" data-line-index="__INDEX__">
                         <div class="receipt-line-top"><span class="receipt-line-number">Nouvelle référence</span><button type="button" class="receipt-remove-line" aria-label="Supprimer cette ligne"><span class="material-icons">delete_outline</span></button></div>
                         <div class="receipt-line-grid">
-                            <label class="stock-control-field receipt-product-field"><span>Produit</span><select name="lines[__INDEX__][product_id]" required><option value="">Choisir un produit</option>@foreach($products as $product)<option value="{{ $product->id }}">{{ $product->name }}</option>@endforeach</select></label>
+                            <label class="stock-control-field receipt-product-field"><span>Produit</span><input type="search" class="receipt-product-search" placeholder="Rechercher un produit" autocomplete="off"><select name="lines[__INDEX__][product_id]" required><option value="">Choisir un produit</option>@foreach($products as $product)<option value="{{ $product->id }}" data-unit-cost="{{ $product->price_market ?? 0 }}">{{ $product->name }}</option>@endforeach</select></label>
                             <label class="stock-control-field"><span>Quantité attendue</span><input type="number" name="lines[__INDEX__][quantity_expected]" min="1" step="1" placeholder="0" required></label>
-                            <label class="stock-control-field"><span>Coût unitaire (FCFA)</span><input type="number" name="lines[__INDEX__][unit_cost]" min="0" step="1" placeholder="Coût achat"></label>
+                            <label class="stock-control-field"><span>Coût unitaire (FCFA)</span><input type="number" name="lines[__INDEX__][unit_cost]" min="0" step="1" placeholder="Prix d’achat du produit"></label>
                             <label class="stock-control-field"><span>Lot (facultatif)</span><input name="lines[__INDEX__][lot_code]" maxlength="100" placeholder="N° de lot"></label>
                             <label class="stock-control-field"><span>Date de fabrication</span><input type="date" name="lines[__INDEX__][manufactured_at]"></label>
                             <label class="stock-control-field"><span>Date d’expiration</span><input type="date" name="lines[__INDEX__][expires_at]"></label>
@@ -87,11 +93,40 @@
                     if (remove) remove.disabled = rows.length === 1;
                 });
             };
+            const fillProductCost = (select, force = false) => {
+                const row = select.closest('.receipt-product-line');
+                const input = row?.querySelector('input[name$="[unit_cost]"]');
+                const cost = select.selectedOptions[0]?.dataset.unitCost;
+                if (input && cost !== undefined && (force || input.value === '')) input.value = cost;
+            };
+            const setupProductRow = (row) => {
+                const select = row.querySelector('select[name$="[product_id]"]');
+                const search = row.querySelector('.receipt-product-search');
+                if (!select || !search) return;
+                const filterOptions = () => {
+                    const term = search.value.trim().toLocaleLowerCase();
+                    Array.from(select.options).forEach((option) => {
+                        option.hidden = Boolean(term && option.value && !option.textContent.toLocaleLowerCase().includes(term) && option.value !== select.value);
+                    });
+                };
+                if (select.value) search.value = select.selectedOptions[0]?.textContent.trim() || '';
+                filterOptions();
+                search.addEventListener('input', filterOptions);
+                select.addEventListener('change', () => {
+                    search.value = select.selectedOptions[0]?.textContent.trim() || '';
+                    filterOptions();
+                    fillProductCost(select, true);
+                });
+                fillProductCost(select);
+            };
+            list.querySelectorAll('.receipt-product-line').forEach(setupProductRow);
             addButton.addEventListener('click', () => {
                 const fragment = template.content.cloneNode(true);
                 const wrapper = document.createElement('div');
                 wrapper.appendChild(fragment);
                 list.insertAdjacentHTML('beforeend', wrapper.innerHTML.replaceAll('__INDEX__', String(nextIndex++)));
+                const newRow = list.lastElementChild;
+                if (newRow) setupProductRow(newRow);
                 updateRows();
             });
             list.addEventListener('click', (event) => {

@@ -11,11 +11,12 @@ class StockReceipt extends Model
 {
     protected $fillable = [
         'receipt_number', 'location_id', 'status', 'origin_name', 'source_reference',
-        'movement_id', 'created_by', 'validated_by', 'occurred_at', 'validated_at', 'notes',
+        'movement_id', 'created_by', 'validated_by', 'occurred_at', 'expected_at', 'validated_at', 'notes',
     ];
 
     protected $casts = [
         'occurred_at' => 'datetime',
+        'expected_at' => 'datetime',
         'validated_at' => 'datetime',
     ];
 

@@ -3,6 +3,7 @@
 namespace App\Services;
 
 use App\Models\StockModuleSetting;
+use App\Models\StockLocation;
 use Illuminate\Support\Facades\Auth;
 
 class StockModuleSettingsService
@@ -12,9 +13,9 @@ class StockModuleSettingsService
         return [
             'prevent_negative_stock' => true,
             'require_reason_for_outbound' => true,
-            'adjustments_require_approval' => true,
+            'adjustments_require_approval' => false,
             'allow_self_approval' => false,
-            'second_count_on_difference' => true,
+            'second_count_on_difference' => false,
             'approval_threshold_quantity' => 0,
             'approval_threshold_value' => 0,
             'transfer_overdue_days' => 2,
@@ -28,14 +29,34 @@ class StockModuleSettingsService
     public function rules(): array
     {
         $stored = StockModuleSetting::query()->latest('id')->first()?->rules;
+        $rules = array_replace($this->defaults(), is_array($stored) ? $stored : []);
+        $rules['adjustments_require_approval'] = false;
+        $rules['second_count_on_difference'] = false;
 
-        return array_replace($this->defaults(), is_array($stored) ? $stored : []);
+        $configuredShop = ! empty($rules['default_sales_location_id'])
+            ? StockLocation::query()->whereKey($rules['default_sales_location_id'])
+                ->where('type', 'shop')->where('is_active', true)->first()
+            : null;
+
+        if ($configuredShop) {
+            $rules['default_sales_location_id'] = (int) $configuredShop->id;
+            return $rules;
+        }
+
+        $activeShops = StockLocation::query()->where('type', 'shop')->where('is_active', true)->limit(2)->get(['id']);
+        $rules['default_sales_location_id'] = $activeShops->count() === 1 ? (int) $activeShops->first()->id : null;
+
+        return $rules;
     }
 
     public function save(array $rules): StockModuleSetting
     {
         $setting = StockModuleSetting::query()->latest('id')->first() ?? new StockModuleSetting();
-        $setting->rules = array_replace($this->defaults(), $rules);
+        $storedRules = is_array($setting->rules) ? $setting->rules : [];
+        $setting->rules = array_replace($this->defaults(), $storedRules, $rules, [
+            'adjustments_require_approval' => false,
+            'second_count_on_difference' => false,
+        ]);
         $setting->updated_by = Auth::id();
         $setting->save();
 

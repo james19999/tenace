@@ -6,6 +6,7 @@ use App\Models\Product;
 use Livewire\Component;
 use App\Models\Orders\Order;
 use App\Models\Orders\OrderItem;
+use App\Services\StockModuleSettingsService;
 use Illuminate\Support\Facades\DB;
 
 class EditOrder extends Component
@@ -74,13 +75,20 @@ class EditOrder extends Component
         }
 
 
+        $salesLocationId = app(StockModuleSettingsService::class)->rules()['default_sales_location_id'] ?? null;
+        $shopStock = DB::table('stock_movement_lines as sml')
+            ->join('stock_movements as sm', 'sm.id', '=', 'sml.movement_id')
+            ->where('sm.status', 'posted')->where('sml.location_id', $salesLocationId)
+            ->select('sml.product_id')->selectRaw('SUM(sml.quantity_delta) as quantity')->groupBy('sml.product_id');
+
         $this->products = Product::where(function($query){
 
                 $query->where('name','like','%'.$this->search.'%')
                       ;
 
             })
-            ->where('qt_initial','>',0)
+            ->when($salesLocationId, fn ($query) => $query->whereIn('id', (clone $shopStock)->havingRaw('SUM(sml.quantity_delta) > 0')),
+                fn ($query) => $query->where('qt_initial','>',0))
             ->limit(10)
             ->get();
 
@@ -219,7 +227,12 @@ class EditOrder extends Component
 
 
 
-        if($this->items[$index]['quantity'] >= $product->qt_initial){
+        $salesLocationId = app(StockModuleSettingsService::class)->rules()['default_sales_location_id'] ?? null;
+        $available = $salesLocationId
+            ? (float) DB::table('stock_movement_lines as sml')->join('stock_movements as sm', 'sm.id', '=', 'sml.movement_id')
+                ->where('sm.status', 'posted')->where('sml.location_id', $salesLocationId)->where('sml.product_id', $product->id)->sum('sml.quantity_delta')
+            : (float) $product->qt_initial;
+        if($this->items[$index]['quantity'] >= $available){
 
             return;
 
