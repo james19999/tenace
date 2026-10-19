@@ -1,4 +1,7 @@
 <div class="product-cart-page">
+    @if ($isPartner)
+        @include('partners.orders.cart')
+    @else
     @php
         $cartItems = Cart::instance('cart')->content();
         $cartSubtotal = (float) Cart::instance('cart')->subtotal(2, '.', '');
@@ -603,3 +606,4 @@
         })();
     </script>
 </div>
+    @endif

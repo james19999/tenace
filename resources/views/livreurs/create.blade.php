@@ -16,7 +16,7 @@
                     </h4>
                 </div>
                 <div class="card-body">
-                <form  method="POST" action="{{ route('livreurs.store') }}" >
+                <form method="POST" action="{{ route('livreurs.store') }}" enctype="multipart/form-data">
                     @csrf
                         <div class="form-group">
                             <label for="name">Nom:</label>
@@ -63,7 +63,7 @@
                         <div class="form-group">
                         <label for="password-confirm">Type:</label>
 
-                         <select name="user_type" id="user_type" class="form-control" required>
+                        <select name="user_type" id="user_type" class="form-control" required>
                              <option value="LVS" @selected(old('user_type', 'LVS') === 'LVS')>Livreur</option>
                              <option value="PT" @selected(old('user_type') === 'PT')>Partenaire</option>
                              <option value="VDS" @selected(old('user_type') === 'VDS')>Vendeur</option>
@@ -75,6 +75,30 @@
                              <option value="ADMINUSER" @selected(old('user_type') === 'ADMINUSER')>Administrateur</option>
                          </select>
                          @error('user_type') <span class="text-danger">{{ $message }}</span>@enderror
+                        </div>
+
+                        <div class="form-group" id="country-code-group">
+                            <label for="country_code">Pays du partenaire ou du livreur</label>
+                            <select name="country_code" id="country_code" class="form-control">
+                                <option value="">Choisir un pays</option>
+                                @foreach ($countries as $code => $country)
+                                    <option value="{{ $code }}" @selected(old('country_code') === $code)>{{ $country['label'] }}</option>
+                                @endforeach
+                            </select>
+                            @error('country_code') <span class="text-danger">{{ $message }}</span>@enderror
+                        </div>
+
+                        <div class="form-group" id="identity-card-group">
+                            <label for="identity_card_photo">Photo de la carte d’identité du livreur</label>
+                            <input type="file" name="identity_card_photo" id="identity_card_photo" class="form-control-file" accept="image/jpeg,image/png,image/webp">
+                            <small class="form-text text-muted">Le document est conservé dans un espace privé.</small>
+                            @error('identity_card_photo') <span class="text-danger">{{ $message }}</span>@enderror
+                        </div>
+
+                        <div id="emergency-contact-group" class="border rounded p-3 mb-3">
+                            <strong class="d-block mb-2">Personne à prévenir</strong>
+                            <div class="form-group"><label for="emergency_contact_name">Nom complet</label><input class="form-control" id="emergency_contact_name" name="emergency_contact_name" value="{{ old('emergency_contact_name') }}" maxlength="160">@error('emergency_contact_name')<span class="text-danger">{{ $message }}</span>@enderror</div>
+                            <div class="form-group mb-0"><label for="emergency_contact_phone">Téléphone</label><input class="form-control" id="emergency_contact_phone" name="emergency_contact_phone" type="tel" value="{{ old('emergency_contact_phone') }}" maxlength="32">@error('emergency_contact_phone')<span class="text-danger">{{ $message }}</span>@enderror</div>
                         </div>
 
                         <a  href="{{ route('useradminlist') }}" class="btn btn-danger">Annuler</a>
@@ -92,5 +116,30 @@
 
 </div>
 
+<script>
+    document.addEventListener('DOMContentLoaded', function () {
+        const role = document.getElementById('user_type');
+        const countryGroup = document.getElementById('country-code-group');
+        const country = document.getElementById('country_code');
+        const documentGroup = document.getElementById('identity-card-group');
+        const documentInput = document.getElementById('identity_card_photo');
+        const emergencyGroup = document.getElementById('emergency-contact-group');
+        const emergencyName = document.getElementById('emergency_contact_name');
+        const emergencyPhone = document.getElementById('emergency_contact_phone');
+        const updateFields = () => {
+            const countryRequired = ['LVS', 'PT'].includes(role.value);
+            const courier = role.value === 'LVS';
+            countryGroup.hidden = !countryRequired;
+            country.required = countryRequired;
+            documentGroup.hidden = !courier;
+            documentInput.required = courier;
+            emergencyGroup.hidden = !courier;
+            emergencyName.required = courier;
+            emergencyPhone.required = courier;
+        };
+        role.addEventListener('change', updateFields);
+        updateFields();
+    });
+</script>
 
 @endsection

@@ -24,6 +24,14 @@
         </div>
         <ul>
 
+            @if (Auth::user()->user_type == 'LVS' && Auth::user()->country_code)
+                <li>
+                    <a href="{{ route('courier.public-orders.index') }}" class="{{ $active('courier.public-orders.*') }}">
+                        <span class="icon material-icons">local_shipping</span>
+                        <span class="text">Commandes partenaires</span>
+                    </a>
+                </li>
+            @endif
 
             @if (Auth::user()->user_type == 'ADMINUSER')
                 <li>
@@ -72,6 +80,12 @@
                         <span class="icon material-icons">store
                         </span>
                         <span class="text">Produits</span>
+                    </a>
+                </li>
+                <li>
+                    <a href="{{ route('partner-ordering.links') }}" class="{{ $active('partner-ordering.*') }}">
+                        <span class="icon material-icons">public</span>
+                        <span class="text">Commandes partenaires</span>
                     </a>
                 </li>
                 <li>
@@ -279,41 +293,10 @@
                 </li>
             @elseif (Auth::user()->user_type == 'PT')
                 <li>
-                    <a href="#ptHistoryCollapse" class="{{ $active('history', 'ordered-list-orderer', 'order-report-list', 'order-cancel-list') }}" data-toggle="collapse">
-                        <span class="caret material-icons">arrow_right</span>
-                        <span class="icon material-icons">history</span>
-                        <span class="text">Historiques</span>
+                    <a href="{{ route('partner.orders.index') }}" class="{{ $active('partner.orders.*') }}">
+                        <span class="icon material-icons">inventory</span>
+                        <span class="text">Commandes à traiter</span>
                     </a>
-
-                    <ul class="collapse {{ $active('history', 'ordered-list-orderer', 'order-report-list', 'order-cancel-list') ? 'show' : '' }}" id="ptHistoryCollapse">
-
-                        <li>
-                            <a href="{{ route('history') }}" class="{{ $active('history') }}">
-                                <span class="icon material-icons">remove</span>
-                                <span class="text">Commandes & produits</span>
-                            </a>
-                        </li>
-                        <li>
-                            <a href="{{ route('ordered-list-orderer') }}" class="{{ $active('ordered-list-orderer') }}">
-                                <span class="icon material-icons">remove</span>
-                                <span class="text">Commandes en cours</span>
-                            </a>
-                        </li>
-                        <li>
-                            <a href="{{ route('order-report-list') }}" class="{{ $active('order-report-list') }}">
-                                <span class="icon material-icons">remove</span>
-                                <span class="text">Commandes reprogrammées</span>
-                            </a>
-                        </li>
-                        <li>
-                            <a href="{{ route('order-cancel-list') }}" class="{{ $active('order-cancel-list') }}">
-                                <span class="icon material-icons">remove</span>
-                                <span class="text">Commandes annulées</span>
-                            </a>
-                        </li>
-
-
-                    </ul>
                 </li>
                 <li>
                     <a href="{{ route('product') }}" class="{{ $active('product') }}">
@@ -330,7 +313,7 @@
                 </li>
                 <li>
                     <a href="{{ route('parthnersorder') }}" class="{{ $active('parthnersorder') }}">
-                        <span class="icon material-icons">history</span>
+                        <span class="icon material-icons">receipt_long</span>
                         <span class="text">Mes commandes</span>
                     </a>
                 </li>
@@ -417,6 +400,12 @@
                     <a href="{{ route('Admin') }}" class="{{ $active('Admin') }}">
                         <span class="icon material-icons">dashboard</span>
                         <span class="text">Dashboard</span>
+                    </a>
+                </li>
+                <li>
+                    <a href="{{ route('partner-ordering.links') }}" class="{{ $active('partner-ordering.*') }}">
+                        <span class="icon material-icons">public</span>
+                        <span class="text">Commandes partenaires</span>
                     </a>
                 </li>
                 <li>

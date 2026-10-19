@@ -50,4 +50,15 @@ class Product extends Model
     {
         return $this->hasMany(StockAdjustmentLine::class);
     }
+
+    public function countryPrices(): HasMany
+    {
+        return $this->hasMany(ProductCountryPrice::class);
+    }
+
+    public function publicOrderLinks(): \Illuminate\Database\Eloquent\Relations\BelongsToMany
+    {
+        return $this->belongsToMany(PublicOrderLink::class, 'public_order_link_products')
+            ->withPivot('sort_order')->withTimestamps();
+    }
 }

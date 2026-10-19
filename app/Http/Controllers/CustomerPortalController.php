@@ -1,0 +1,180 @@
+<?php
+
+namespace App\Http\Controllers;
+
+use App\Models\CustomerLoyaltyProfile;
+use App\Models\CustomerPortalAccount;
+use App\Models\Orders\Order;
+use App\Models\Orders\OrderItem;
+use App\Support\CustomerPortalPhone;
+use App\Support\WestAfricaShippingCatalog;
+use Illuminate\Http\RedirectResponse;
+use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\RateLimiter;
+use Illuminate\View\View;
+
+class CustomerPortalController extends Controller
+{
+    public function index(Request $request): View
+    {
+        $account = $this->currentAccount($request);
+        if (! $account) {
+            return view('customer-portal.index', [
+                'account' => null,
+                'countries' => WestAfricaShippingCatalog::countries(),
+                'dialCodes' => CustomerPortalPhone::dialCodes(),
+            ]);
+        }
+
+        $customerIds = $account->customers()->pluck('costumers.id');
+        $orders = Order::query()
+            ->with(['orderItems.product', 'partner:id,name'])
+            ->whereIn('costumer_id', $customerIds)
+            ->latest('created_at')
+            ->paginate(8);
+        $recentProducts = OrderItem::query()
+            ->with(['product', 'order:id,created_at'])
+            ->whereHas('order', fn ($query) => $query->whereIn('costumer_id', $customerIds))
+            ->latest('id')
+            ->limit(10)
+            ->get()
+            ->unique('product_id')
+            ->values();
+        $profile = CustomerLoyaltyProfile::query()
+            ->whereIn('costumer_id', $customerIds)
+            ->latest('calculated_at')
+            ->first();
+        $deliveredCount = Order::query()->whereIn('costumer_id', $customerIds)
+            ->where(fn ($query) => $query->where('status', 'delivered')->orWhere('partner_order_status', 'delivered'))
+            ->count();
+
+        return view('customer-portal.index', [
+            'account' => $account,
+            'orders' => $orders,
+            'recentProducts' => $recentProducts,
+            'profile' => $profile,
+            'deliveredCount' => $deliveredCount,
+            'customerName' => $account->customers()->orderBy('costumers.id')->value('name'),
+            'statusLabels' => [
+                'awaiting_delivery_quote' => 'Frais de livraison à confirmer',
+                'awaiting_customer_confirmation' => 'En attente de votre accord',
+                'awaiting_prepayment' => 'En attente du paiement avant livraison',
+                'preparing' => 'Commande en préparation',
+                'ready_for_courier' => 'Prête, en attente d’un livreur',
+                'assigned_to_courier' => 'Un livreur a été affecté',
+                'handed_to_courier' => 'Le colis a été remis au livreur',
+                'out_for_delivery' => 'Le livreur est en route',
+                'delivered' => 'Livrée',
+                'canceled' => 'Annulée',
+            ],
+            'categoryLabels' => [
+                'new' => 'Nouvelle cliente', 'occasional' => 'Occasionnelle', 'regular' => 'Régulière',
+                'faithful' => 'Fidèle', 'vip' => 'VIP', 'inactive' => 'Inactive', 'no_purchase' => 'Nouveau client',
+            ],
+        ]);
+    }
+
+    public function login(Request $request): RedirectResponse
+    {
+        $validated = $request->validate([
+            'country_code' => ['required', 'string', 'size:2', 'in:'.implode(',', array_keys(WestAfricaShippingCatalog::countries()))],
+            'phone' => ['required', 'string', 'max:50'],
+            'password' => ['required', 'string', 'max:200'],
+        ]);
+
+        $key = 'customer-portal-login:'.sha1($request->ip().'|'.CustomerPortalPhone::toE164($validated['country_code'], $validated['phone']));
+        if (RateLimiter::tooManyAttempts($key, 8)) {
+            return back()->withErrors(['phone' => 'Trop de tentatives. Réessaie dans quelques minutes.'])->onlyInput('phone', 'country_code');
+        }
+
+        $account = CustomerPortalAccount::query()
+            ->where('phone_e164', CustomerPortalPhone::toE164($validated['country_code'], $validated['phone']))
+            ->first();
+
+        if (! $account || ! Hash::check($validated['password'], $account->password)) {
+            RateLimiter::hit($key, 600);
+            return back()->withErrors(['phone' => 'Numéro ou mot de passe incorrect.'])->onlyInput('phone', 'country_code');
+        }
+
+        RateLimiter::clear($key);
+        $request->session()->regenerate();
+        $request->session()->put('customer_portal_account_id', $account->id);
+
+        $pendingCustomerId = $request->session()->get('customer_portal_pending_customer_id');
+        $pendingPhone = $request->session()->get('customer_portal_pending_phone');
+        if ($pendingCustomerId && $pendingPhone && hash_equals($account->phone_e164, $pendingPhone)) {
+            $account->customers()->syncWithoutDetaching([(int) $pendingCustomerId]);
+            $request->session()->forget(['customer_portal_pending_customer_id', 'customer_portal_pending_phone']);
+        }
+
+        return redirect()->route('customer-portal.index');
+    }
+
+    public function logout(Request $request): RedirectResponse
+    {
+        $request->session()->forget('customer_portal_account_id');
+        $request->session()->regenerateToken();
+
+        return redirect()->route('customer-portal.index');
+    }
+
+    public function activate(Request $request, string $trackingToken): View|RedirectResponse
+    {
+        $order = $this->trackedOrder($trackingToken);
+        $account = $this->currentAccount($request);
+        $phone = CustomerPortalPhone::toE164((string) $order->country_code, (string) $order->costumer?->phone);
+
+        if ($account) {
+            abort_unless(hash_equals($account->phone_e164, $phone), 403);
+            $account->customers()->syncWithoutDetaching([$order->costumer_id]);
+
+            return redirect()->route('customer-portal.index')->with('success', 'Cette commande est maintenant rattachée à ton espace client.');
+        }
+
+        $accountExists = CustomerPortalAccount::query()->where('phone_e164', $phone)->exists();
+        if ($accountExists) {
+            $request->session()->put('customer_portal_pending_customer_id', $order->costumer_id);
+            $request->session()->put('customer_portal_pending_phone', $phone);
+        }
+
+        return view('customer-portal.activate', [
+            'order' => $order,
+            'accountExists' => $accountExists,
+        ]);
+    }
+
+    public function storeAccount(Request $request, string $trackingToken): RedirectResponse
+    {
+        $order = $this->trackedOrder($trackingToken);
+        $validated = $request->validate([
+            'password' => ['required', 'string', 'min:8', 'max:200', 'confirmed'],
+        ]);
+        $phone = CustomerPortalPhone::toE164((string) $order->country_code, (string) $order->costumer?->phone);
+
+        $account = CustomerPortalAccount::firstOrNew(['phone_e164' => $phone]);
+        $account->password = Hash::make($validated['password']);
+        $account->save();
+        $account->customers()->syncWithoutDetaching([$order->costumer_id]);
+        $request->session()->regenerate();
+        $request->session()->put('customer_portal_account_id', $account->id);
+        $request->session()->forget(['customer_portal_pending_customer_id', 'customer_portal_pending_phone']);
+
+        return redirect()->route('customer-portal.index')->with('success', 'Ton espace client est créé. Tu peux maintenant retrouver tes commandes ici.');
+    }
+
+    private function currentAccount(Request $request): ?CustomerPortalAccount
+    {
+        $accountId = $request->session()->get('customer_portal_account_id');
+
+        return $accountId ? CustomerPortalAccount::with('customers')->find($accountId) : null;
+    }
+
+    private function trackedOrder(string $trackingToken): Order
+    {
+        return Order::query()
+            ->with('costumer')
+            ->where('public_tracking_token', $trackingToken)
+            ->firstOrFail();
+    }
+}

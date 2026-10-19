@@ -5,6 +5,9 @@ namespace App\Models\Orders;
 use App\Models\User;
 use App\Models\Costumer;
 use App\Models\TransportCompany;
+use App\Models\OrderPayment;
+use App\Models\OrderCourierHandoff;
+use App\Models\PublicOrderLink;
 use App\Models\Orders\OrderItem;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
@@ -59,6 +62,13 @@ class Order extends Model
         'order_by',
         'date_order',
         'delivered_at',
+        'country_code',
+        'partner_id',
+        'public_order_link_id',
+        'payment_timing',
+        'requested_payment_method',
+        'public_tracking_token',
+        'partner_order_status',
     ];
 
 
@@ -89,5 +99,25 @@ class Order extends Model
     public function deliveryPhotos()
     {
         return $this->hasMany(OrderDeliveryPhoto::class)->latest();
+    }
+
+    public function partner()
+    {
+        return $this->belongsTo(User::class, 'partner_id');
+    }
+
+    public function publicOrderLink()
+    {
+        return $this->belongsTo(PublicOrderLink::class);
+    }
+
+    public function payments()
+    {
+        return $this->hasMany(OrderPayment::class);
+    }
+
+    public function courierHandoffs()
+    {
+        return $this->hasMany(OrderCourierHandoff::class)->latest();
     }
 }

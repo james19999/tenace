@@ -1,13 +1,14 @@
 <div class="col-12 product-catalog-page">
     @php
         $isAdmin = Auth::user()->isAdmin();
+        $isPartner = $isPartner ?? false;
     @endphp
 
     <div class="catalog-header">
         <div>
             <span class="catalog-eyebrow">GESTION DU CATALOGUE</span>
             <h1>Produits</h1>
-            <p>Retrouve rapidement un produit, vérifie son stock et ajoute-le à une commande.</p>
+            <p>{{ $isPartner ? 'Consulte les produits proposés et leurs prix dans ' . ($countryNames[$partnerCountryCode] ?? 'ton pays') . '.' : 'Retrouve rapidement un produit, vérifie son stock et ajoute-le à une commande.' }}</p>
         </div>
         @if ($isAdmin)
             <div class="catalog-header-actions">
@@ -29,7 +30,7 @@
         <div class="catalog-alert" role="status"><span class="material-icons">check_circle</span>{{ session('messages') }}</div>
     @endif
 
-    <section class="catalog-metrics" aria-label="Résumé du stock">
+    @unless ($isPartner)<section class="catalog-metrics" aria-label="Résumé du stock">
         <article class="catalog-metric">
             <span class="catalog-metric-icon"><span class="material-icons">inventory_2</span></span>
             <div><small>Produits référencés</small><strong>{{ number_format((int) $inventory->total_products, 0, ',', ' ') }}</strong></div>
@@ -52,7 +53,7 @@
                 <div><small>Valeur potentielle de vente</small><strong>{{ number_format((float) $inventory->retail_stock_value, 0, ',', ' ') }} F</strong></div>
             </article>
         @endif
-    </section>
+    </section>@endunless
 
     <section class="catalog-panel">
         <div class="catalog-toolbar">
@@ -66,12 +67,12 @@
                     <input type="search" wire:model.debounce.300ms="search" placeholder="Rechercher un produit…" aria-label="Rechercher un produit">
                     <span wire:loading wire:target="search" class="spinner-border spinner-border-sm" role="status"></span>
                 </label>
-                <select wire:model="stockFilter" class="catalog-stock-filter" aria-label="Filtrer par niveau de stock">
+                @unless ($isPartner)<select wire:model="stockFilter" class="catalog-stock-filter" aria-label="Filtrer par niveau de stock">
                     <option value="all">Tous les stocks</option>
                     <option value="available">Disponibles</option>
                     <option value="low">Stock faible</option>
                     <option value="out">En rupture</option>
-                </select>
+                </select>@endunless
             </div>
         </div>
 
@@ -80,8 +81,8 @@
                 @foreach ($Products as $product)
                     @php
                         $stock = (int) ($product->shop_quantity ?? 0);
-                        $isOut = $stock <= 0;
-                        $isLow = ! $isOut && $product->qts_seuil !== null && $stock <= (int) $product->qts_seuil;
+                        $isOut = ! $isPartner && $stock <= 0;
+                        $isLow = ! $isPartner && ! $isOut && $product->qts_seuil !== null && $stock <= (int) $product->qts_seuil;
                     @endphp
                     <article class="product-card">
                         <div class="product-card-top">
@@ -91,7 +92,9 @@
                                 @endif
                                 <span class="material-icons product-image-fallback">inventory_2</span>
                             </div>
-                            @if ($isOut)
+                            @if ($isPartner)
+                                <span class="stock-badge stock-available"><span></span>Disponible dans {{ $countryNames[$partnerCountryCode] ?? $partnerCountryCode }}</span>
+                            @elseif ($isOut)
                                 <span class="stock-badge stock-out"><span></span>Rupture</span>
                             @elseif ($isLow)
                                 <span class="stock-badge stock-low"><span></span>Stock faible</span>
@@ -106,21 +109,45 @@
                                     <span class="product-reference">Réf. {{ $product->id }}</span>
                                     <h3>{{ $product->name }}</h3>
                                 </div>
-                                <span class="product-stock-number {{ $isOut ? 'text-danger' : ($isLow ? 'text-warning' : '') }}">
+                                @unless ($isPartner)<span class="product-stock-number {{ $isOut ? 'text-danger' : ($isLow ? 'text-warning' : '') }}">
                                     {{ $stock }} <small>en stock</small>
-                                </span>
+                                </span>@endunless
                             </div>
 
                             @if ($product->description)
                                 <p class="product-description">{{ \Illuminate\Support\Str::limit($product->description, 100) }}</p>
                             @endif
 
+                            @if ($isPartner)
+                                @php($countryPrice = $product->countryPrices->first())
+                                <div class="product-prices product-partner-price"><div><small>Prix de vente · {{ $countryNames[$partnerCountryCode] ?? $partnerCountryCode }}</small><strong>{{ number_format((float) $countryPrice->price, 0, ',', ' ') }} <span>F</span></strong></div></div>
+                            @else
                             <div class="product-prices">
-                                <div><small>Prix de vente</small><strong>{{ number_format((float) $product->price, 0, ',', ' ') }} <span>F</span></strong></div>
+                                <div><small>Prix de vente boutique</small><strong>{{ number_format((float) $product->price, 0, ',', ' ') }} <span>F</span></strong></div>
                                 <div><small>Prix en gros</small><strong>{{ $product->high_price ? number_format((float) $product->high_price, 0, ',', ' ') . ' F' : 'Non défini' }}</strong></div>
                             </div>
-                            <div class="product-commission"><span>Commission</span><strong>{{ number_format((float) $product->commission_amount, 0, ',', ' ') }} F</strong></div>
+                            <div class="product-country-prices">
+                                <div class="product-country-prices-heading"><span>Prix de vente par pays</span><small>Catalogue partenaire</small></div>
+                                @forelse ($product->countryPrices as $countryPrice)
+                                    <div class="product-country-price {{ $countryPrice->is_available ? '' : 'is-disabled' }}">
+                                        <span>{{ $countryNames[$countryPrice->country_code] ?? $countryPrice->country_code }}</span>
+                                        <strong>{{ number_format((float) $countryPrice->price, 0, ',', ' ') }} F</strong>
+                                        @unless ($countryPrice->is_available)<small>Inactif</small>@endunless
+                                    </div>
+                                @empty
+                                    <p class="product-country-prices-empty">Aucun prix pays configuré</p>
+                                @endforelse
+                            </div>
+                            @endif
+                            @unless ($isPartner)<div class="product-commission"><span>Commission</span><strong>{{ number_format((float) $product->commission_amount, 0, ',', ' ') }} F</strong></div>@endunless
 
+                            @if ($isPartner)
+                                <div class="product-cart-actions product-partner-cart-action">
+                                    <button type="button" class="btn product-add-button" wire:click="AddToCart({{ $product->id }})" wire:loading.attr="disabled" wire:target="AddToCart({{ $product->id }})">
+                                        <span class="material-icons">add_shopping_cart</span> Ajouter au panier
+                                    </button>
+                                </div>
+                            @else
                             <div class="product-cart-actions">
                                 <button type="button" class="btn product-add-button" wire:click="AddToCart({{ $product->id }})" wire:loading.attr="disabled" wire:target="AddToCart({{ $product->id }})" @disabled($isOut)>
                                     <span class="material-icons">add_shopping_cart</span> Ajouter
@@ -129,6 +156,7 @@
                                     Gros · {{ $product->high_price ? number_format((float) $product->high_price, 0, ',', ' ') . ' F' : 'Non défini' }}
                                 </button>
                             </div>
+                            @endif
 
                             @if ($isAdmin)
                                 <div class="product-admin-actions">
@@ -156,7 +184,7 @@
             <div class="catalog-empty">
                 <span class="material-icons">search_off</span>
                 <h3>Aucun produit trouvé</h3>
-                <p>Essaie un autre nom ou modifie le filtre de stock.</p>
+                <p>{{ $isPartner ? 'Aucun produit n’est actuellement proposé dans ton pays.' : 'Essaie un autre nom ou modifie le filtre de stock.' }}</p>
                 @if ($search || $stockFilter !== 'all')
                     <button class="btn catalog-reset-button" wire:click="resetFilters">Effacer les filtres</button>
                 @endif
@@ -257,6 +285,15 @@
         .product-prices small{display:block;color:var(--catalog-muted);font-size:10px;margin-bottom:4px}
         .product-prices strong{font-size:15px;color:var(--catalog-ink);font-weight:800;overflow-wrap:anywhere}
         .product-prices strong span{font-size:11px;color:var(--catalog-muted)}
+        .product-country-prices{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:6px;margin-top:10px}
+        .product-country-prices-heading{grid-column:1/-1;display:flex;justify-content:space-between;align-items:center;gap:8px;margin-bottom:1px;color:var(--catalog-ink);font-size:11px;font-weight:750}
+        .product-country-prices-heading small{color:var(--catalog-muted);font-size:9px;font-weight:500}
+        .product-country-price{display:flex;justify-content:space-between;align-items:center;gap:6px;min-width:0;padding:6px 8px;border:1px solid #eee;border-radius:8px;background:#fafafa;font-size:10px}
+        .product-country-price>span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:var(--catalog-muted)}
+        .product-country-price strong{white-space:nowrap;color:var(--catalog-ink);font-size:10px;font-weight:800}
+        .product-country-price.is-disabled{opacity:.58}
+        .product-country-price>small{color:#9a6810;font-size:9px}
+        .product-country-prices-empty{grid-column:1/-1;margin:0;padding:7px 8px;border-radius:8px;background:#f7f7f9;color:var(--catalog-muted);font-size:10px}
         .product-commission{display:flex;justify-content:space-between;gap:8px;padding:8px 0;color:var(--catalog-muted);font-size:11px}
         .product-commission strong{color:#525865;font-weight:700}
         .product-cart-actions{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:7px;margin-top:auto;padding-top:8px}

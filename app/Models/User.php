@@ -27,6 +27,9 @@ class User extends Authenticatable
         'phone',
         'adresse',
         'active',
+        'country_code',
+        'emergency_contact_name',
+        'emergency_contact_phone',
     ];
 
     /**
@@ -108,6 +111,21 @@ class User extends Authenticatable
     public function orders()
     {
         return $this->hasMany(Order::class);
+    }
+
+    public function partnerOrders(): HasMany
+    {
+        return $this->hasMany(Order::class, 'partner_id');
+    }
+
+    public function courierDocuments(): HasMany
+    {
+        return $this->hasMany(CourierDocument::class);
+    }
+
+    public function createdPublicOrderLinks(): HasMany
+    {
+        return $this->hasMany(PublicOrderLink::class, 'created_by');
     }
 
     public function commissions(){

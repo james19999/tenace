@@ -3,12 +3,14 @@
 namespace App\Http\Livewire\Products;
 
 use App\Models\Product;
+use App\Models\ProductCountryPrice;
 use Livewire\Component;
 use Livewire\WithPagination;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Gloudemans\Shoppingcart\Facades\Cart;
 use App\Services\StockModuleSettingsService;
+use App\Support\WestAfricaShippingCatalog;
 
 class ProductList extends Component
 {
@@ -40,12 +42,19 @@ class ProductList extends Component
     public function AddToCart($id): void
     {
         $product = Product::findOrFail($id);
-        Cart::instance('cart')->add($product->id, $product->name, 1, $product->price)->associate(Product::class);
+        $price = $product->price;
+        if (Auth::user()?->user_type === \App\Models\User::ROLE_PARTNER) {
+            $countryPrice = ProductCountryPrice::query()->where('product_id', $product->id)
+                ->where('country_code', Auth::user()->country_code)->where('is_available', true)->firstOrFail();
+            $price = $countryPrice->price;
+        }
+        Cart::instance('cart')->add($product->id, $product->name, 1, $price)->associate(Product::class);
         $this->cartUpdated();
     }
 
     public function AddToCartHighPrice($id): void
     {
+        abort_unless(Auth::user()?->user_type !== \App\Models\User::ROLE_PARTNER, 403);
         $product = Product::findOrFail($id);
         Cart::instance('cart')->add($product->id, $product->name, 1, $product->high_price)->associate(Product::class);
         $this->cartUpdated();
@@ -61,6 +70,9 @@ class ProductList extends Component
 
     public function render()
     {
+        $user = Auth::user();
+        $isPartner = $user?->user_type === \App\Models\User::ROLE_PARTNER;
+        $partnerCountryCode = $isPartner ? strtoupper((string) $user->country_code) : null;
         $salesLocationId = app(StockModuleSettingsService::class)->rules()['default_sales_location_id'] ?? null;
         $shopStock = DB::table('stock_movement_lines as sml')
             ->join('stock_movements as sm', 'sm.id', '=', 'sml.movement_id')
@@ -89,9 +101,14 @@ class ProductList extends Component
         $inventory = $inventoryQuery->first();
 
         $productsQuery = Product::query()
+            ->with(['countryPrices' => fn ($query) => $query
+                ->when($isPartner, fn ($prices) => $prices->where('country_code', $partnerCountryCode)->where('is_available', true))
+                ->orderBy('country_code')])
             ->leftJoinSub(clone $shopStock, 'shop_stock', 'shop_stock.product_id', '=', 'products.id')
             ->select('products.*')
             ->selectRaw('COALESCE(shop_stock.quantity, 0) as shop_quantity')
+            ->when($isPartner, fn ($query) => $query->whereHas('countryPrices', fn ($prices) => $prices
+                ->where('country_code', $partnerCountryCode)->where('is_available', true)))
             ->when(trim($this->search) !== '', function ($query) {
                 $term = '%'.trim($this->search).'%';
                 $query->where(function ($search) use ($term) {
@@ -112,6 +129,9 @@ class ProductList extends Component
         return view('livewire.products.product-list', [
             'Products' => $Products,
             'inventory' => $inventory,
+            'countryNames' => collect(WestAfricaShippingCatalog::countries())->map(fn ($country) => $country['label']),
+            'isPartner' => $isPartner,
+            'partnerCountryCode' => $partnerCountryCode,
         ])
             ->extends('layouts.admin')
             ->section('content');

@@ -10,9 +10,16 @@
         ];
         [$statusLabel, $statusTone] = $statusLabels[$Orders->status] ?? ['Statut inconnu', 'secondary'];
         $orderDate = $Orders->created_at ? $Orders->created_at->format('d/m/Y à H:i') : '—';
-        $amountDue = (float) ($Orders->montant ?? ((float) $Orders->total + (float) $Orders->tax));
+        $itemsSubtotal = (float) $Orders->orderItems->sum(fn ($item) => (float) $item->price * (int) $item->quantity);
+        $discountRate = min(100, max(0, (float) $Orders->remis));
+        $itemsTotal = (int) round($itemsSubtotal * (1 - $discountRate / 100));
+        $amountDue = (float) ($Orders->montant ?? ($itemsTotal + (float) $Orders->tax));
         $paidAmount = $Orders->paid_amount;
         $remainingAmount = $paidAmount === null ? null : max(0, $amountDue - (float) $paidAmount);
+        $needsPartnerCommissionSync = $Orders->status === 'delivered'
+            && $Orders->partner_id
+            && ! $Orders->created_user
+            && in_array(auth()->user()?->user_type, ['ADMINUSER', 'MNG'], true);
     @endphp
 
     <style>
@@ -47,6 +54,7 @@
         .dd-items-heading h2 { margin:0; font-size:18px; font-weight:800; }
         .dd-items-heading span { color:var(--dd-muted); font-size:13px; }
         .dd-table-wrap { overflow-x:auto; }
+        .dd-unit-price + small { margin-left:4px; }
         .dd-table { width:100%; border-collapse:collapse; min-width:560px; }
         .dd-table th { padding:11px 12px; color:var(--dd-muted); background:#f7f8fa; font-size:11px; letter-spacing:.06em; text-align:left; text-transform:uppercase; }
         .dd-table td { padding:14px 12px; border-bottom:1px solid var(--dd-line); vertical-align:middle; }
@@ -348,17 +356,28 @@
                     @if ($Orders->avis)<strong>Note</strong><br>{{ $Orders->avis }}@else Merci pour votre achat chez TENACOS Cosmétiques.@endif
                 </div>
                 <div>
-                    <div class="dd-total-row"><span>Sous-total</span><strong>{{ number_format($Orders->subtotal, 0, ',', ' ') }} F</strong></div>
+                    <div class="dd-total-row"><span>Sous-total</span><strong>{{ number_format($itemsSubtotal, 0, ',', ' ') }} F</strong></div>
                     <div class="dd-total-row"><span>Remise</span><strong>{{ $Orders->remis }} %</strong></div>
-                    <div class="dd-total-row"><span>Total articles</span><strong>{{ number_format($Orders->total, 0, ',', ' ') }} F</strong></div>
+                    <div class="dd-total-row"><span>Total articles</span><strong>{{ number_format($itemsTotal, 0, ',', ' ') }} F</strong></div>
                     <div class="dd-total-row"><span>Frais de livraison</span><strong>{{ number_format($Orders->tax, 0, ',', ' ') }} F</strong></div>
-                    <div class="dd-total-row dd-total-final"><span>Montant à payer</span><strong>{{ number_format($Orders->total + $Orders->tax, 0, ',', ' ') }} F</strong></div>
+                    <div class="dd-total-row dd-total-final"><span>Montant à payer</span><strong>{{ number_format($amountDue, 0, ',', ' ') }} F</strong></div>
                 </div>
             </section>
 
         </div>
 
-        @if ($Orders->status !== 'delivered')
+        @if ($needsPartnerCommissionSync)
+            <section class="dd-actions no-print">
+                <form action="{{ route('changestatususer', $Orders->id) }}" method="POST" class="dd-panel">
+                    @csrf
+                    @method('PUT')
+                    <input type="hidden" name="status" value="delivered">
+                    <h2>Synchroniser la commission du partenaire</h2>
+                    <p>La livraison et la sortie de stock sont déjà validées. Cette action complète uniquement la commission qui n’a pas été enregistrée.</p>
+                    <button type="submit" class="dd-btn dd-btn-primary">Synchroniser la commission</button>
+                </form>
+            </section>
+        @elseif ($Orders->status !== 'delivered')
             <section class="dd-actions no-print">
                 <form action="{{ route('changestatususer', $Orders->id) }}" method="POST" class="dd-panel">
                     @csrf

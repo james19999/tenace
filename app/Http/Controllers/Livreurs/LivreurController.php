@@ -10,17 +10,21 @@ use App\Traits\MyTrait;
 use App\Traits\NewTrait;
 use App\Models\Orders\Order;
 use App\Models\Orders\OrderDeliveryPhoto;
+use App\Models\CourierDocument;
 use App\Models\CustomerServiceCase;
 use App\Models\CustomerServiceCaseArchiveAccessRequest;
 use App\Notifications\CustomerServiceCaseNotification;
 use Illuminate\Http\Request;
 use App\Http\Controllers\Controller;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
 use App\Models\PourcentageCommission;
 use App\Services\StockDeliveryService;
 use Illuminate\Support\Facades\Redirect;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Validation\Rule;
+use App\Support\WestAfricaShippingCatalog;
 
 class LivreurController extends Controller
 {
@@ -41,7 +45,7 @@ class LivreurController extends Controller
      */
     public function create()
     {
-        return view('livreurs.create');
+        return view('livreurs.create', ['countries' => WestAfricaShippingCatalog::countries()]);
     }
 
     /**
@@ -56,18 +60,34 @@ class LivreurController extends Controller
                  'adresse' => ['required', 'string'],
                  'phone' => ['required', 'string', 'max:32', 'unique:users,phone'],
                  'user_type' => ['required', 'in:LVS,PT,VDS,CSA,MNG,SCR,CALLCENTER,ADMINUSER,COMPTABLE'],
+                 'country_code' => [Rule::requiredIf(in_array($request->input('user_type'), ['LVS', 'PT'], true)), 'nullable', Rule::in(array_keys(WestAfricaShippingCatalog::countries()))],
+                 'emergency_contact_name' => [Rule::requiredIf($request->input('user_type') === 'LVS'), 'nullable', 'string', 'max:160'],
+                 'emergency_contact_phone' => [Rule::requiredIf($request->input('user_type') === 'LVS'), 'nullable', 'string', 'max:32'],
+                 'identity_card_photo' => [Rule::requiredIf($request->input('user_type') === 'LVS'), 'nullable', 'image', 'mimes:jpg,jpeg,png,webp', 'max:10240'],
                ]);
 
 
 
-               User::create([
+               $user = User::create([
                 'name' => $data['name'],
                 'email' => $data['email'],
                 'password' => Hash::make($data['password']),
                 'adresse' => $data['adresse'],
                 'phone' => $data['phone'],
                 'user_type' => $data['user_type'],
+                'country_code' => in_array($data['user_type'], ['LVS', 'PT'], true) ? $data['country_code'] : null,
+                'emergency_contact_name' => $data['user_type'] === 'LVS' ? $data['emergency_contact_name'] : null,
+                'emergency_contact_phone' => $data['user_type'] === 'LVS' ? $data['emergency_contact_phone'] : null,
                ]);
+
+               if (! empty($data['identity_card_photo'])) {
+                   $user->courierDocuments()->create([
+                       'document_type' => 'identity_card',
+                       'path' => $data['identity_card_photo']->store('courier-documents', 'local'),
+                       'original_name' => $data['identity_card_photo']->getClientOriginalName(),
+                       'uploaded_by' => $request->user()->id,
+                   ]);
+               }
 
          return redirect()->route('useradminlist', ['user_type' => $data['user_type']])->with('messages','utilisateur créer');
     }
@@ -98,7 +118,20 @@ class LivreurController extends Controller
     {
         $users=User::findOrfail($id);
 
-        return view('livreurs.edit',compact('users'));
+        return view('livreurs.edit', [
+            'users' => $users->load('courierDocuments'),
+            'countries' => WestAfricaShippingCatalog::countries(),
+        ]);
+    }
+
+    public function showCourierDocument(string $userId, string $documentId)
+    {
+        $document = CourierDocument::query()->where('user_id', $userId)->findOrFail($documentId);
+        abort_unless(Storage::disk('local')->exists($document->path), 404);
+
+        return response()->file(Storage::disk('local')->path($document->path), [
+            'Content-Disposition' => 'inline; filename="' . addslashes($document->original_name ?: basename($document->path)) . '"',
+        ]);
     }
 
     /**
@@ -109,22 +142,40 @@ class LivreurController extends Controller
 
 
 
-        $request->validate([
+        $data = $request->validate([
             'name' => ['required', 'string', 'max:255'],
+            'email' => ['required', 'string', 'email', 'max:255', Rule::unique('users', 'email')->ignore($id)],
             'adresse' => ['required', 'string'],
-            'phone' => ['required', 'integer'],
+            'phone' => ['required', 'string', 'max:32', Rule::unique('users', 'phone')->ignore($id)],
+            'user_type' => ['required', 'in:LVS,PT,VDS,CSA,MNG,SCR,CALLCENTER,ADMINUSER,COMPTABLE'],
+            'country_code' => [Rule::requiredIf(in_array($request->input('user_type'), ['LVS', 'PT'], true)), 'nullable', Rule::in(array_keys(WestAfricaShippingCatalog::countries()))],
+            'emergency_contact_name' => [Rule::requiredIf($request->input('user_type') === 'LVS'), 'nullable', 'string', 'max:160'],
+            'emergency_contact_phone' => [Rule::requiredIf($request->input('user_type') === 'LVS'), 'nullable', 'string', 'max:32'],
+            'identity_card_photo' => ['nullable', 'image', 'mimes:jpg,jpeg,png,webp', 'max:10240'],
           ]);
         $users=User::findOrfail($id);
 
 
 
         $users->update([
-           'name' => $request->name,
-           'email' =>$request->email ,
-           'adresse' => $request->adresse,
-           'phone' => $request->phone,
-           'user_type' => $request->user_type,
+           'name' => $data['name'],
+           'email' => $data['email'],
+           'adresse' => $data['adresse'],
+           'phone' => $data['phone'],
+           'user_type' => $data['user_type'],
+           'country_code' => in_array($data['user_type'], ['LVS', 'PT'], true) ? $data['country_code'] : null,
+           'emergency_contact_name' => $data['user_type'] === 'LVS' ? $data['emergency_contact_name'] : null,
+           'emergency_contact_phone' => $data['user_type'] === 'LVS' ? $data['emergency_contact_phone'] : null,
           ]);
+
+        if (! empty($data['identity_card_photo'])) {
+            $users->courierDocuments()->create([
+                'document_type' => 'identity_card',
+                'path' => $data['identity_card_photo']->store('courier-documents', 'local'),
+                'original_name' => $data['identity_card_photo']->getClientOriginalName(),
+                'uploaded_by' => $request->user()->id,
+            ]);
+        }
 
          return redirect()->route('livreurs.index')->with('messages','utilisateur modifier');
 
@@ -310,6 +361,15 @@ class LivreurController extends Controller
                 }
                 $order=Order::with('orderItems')->findOrFail($orders->id);
                 if (! $stockDelivery->deliver($order, (int) Auth::id())) {
+                    $orders->refresh();
+                    if ($orders->status === 'delivered'
+                        && $orders->partner_id
+                        && ! $orders->created_user
+                        && in_array($request->user()?->user_type, ['ADMINUSER', 'MNG'], true)) {
+                        $this->processSellerCommissionOnce($orders, true);
+
+                        return redirect()->back()->with('success', 'La livraison était déjà validée. La commission du partenaire a été synchronisée.');
+                    }
                     return redirect()->back()->with('success','Cette commande a déjà été validée comme livrée.');
                 }
                $orders->status=$request->status;
@@ -325,7 +385,7 @@ class LivreurController extends Controller
                $this->CalculTauxEpargne($order);
                $this->CalculTauxFond($order);
                $this->CalculTauxPub($order);
-               $this->processCommissions($order);
+               $this->processSellerCommissionOnce($order);
 
 
                $orders->save();
@@ -337,6 +397,28 @@ class LivreurController extends Controller
 
          }
   }
+
+    private function processSellerCommissionOnce(Order $order, bool $recoverOnly = false): void
+    {
+        DB::transaction(function () use ($order, $recoverOnly): void {
+            $lockedOrder = Order::query()->with('orderItems.product')->lockForUpdate()->findOrFail($order->id);
+            if ($lockedOrder->partner_id && ! $order->created_user && $lockedOrder->created_user) {
+                return;
+            }
+            if ($recoverOnly && $lockedOrder->created_user) {
+                return;
+            }
+            $this->processCommissions($lockedOrder);
+
+            // For public partner orders this field is empty until delivery.
+            // Recording the partner after the wallet update makes a failed
+            // commission recoverable on retry, while preventing a second credit.
+            if ($lockedOrder->partner_id && ! $lockedOrder->created_user) {
+                $lockedOrder->created_user = $lockedOrder->partner_id;
+                $lockedOrder->save();
+            }
+        });
+    }
 
 
   public function auth_user_livrable($id = null){

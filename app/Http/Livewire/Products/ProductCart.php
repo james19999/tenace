@@ -64,6 +64,9 @@ class ProductCart extends Component
 
     private function availableShopQuantity(Product $product): int
     {
+        if (auth()->user()?->user_type === \App\Models\User::ROLE_PARTNER) {
+            return PHP_INT_MAX;
+        }
         $locationId = app(StockModuleSettingsService::class)->rules()['default_sales_location_id'] ?? null;
         if (! $locationId) {
             return (int) $product->qt_initial;
@@ -98,6 +101,8 @@ class ProductCart extends Component
 
     public function render()
     {
+        $user = auth()->user();
+        $isPartner = $user?->user_type === \App\Models\User::ROLE_PARTNER;
         return view('livewire.products.product-cart', [
             'selectedCostumer' => old('costumer_id') && ! in_array(old('costumer_id'), ['default', 'anonymous'], true)
                 ? Costumer::find(old('costumer_id'))
@@ -109,6 +114,10 @@ class ProductCart extends Component
             'defaultFollowUpDays' => $this->defaultFollowUpDays,
             'defaultFollowUpAt' => $this->defaultFollowUpAt,
             'transportCompanies' => TransportCompany::query()->orderBy('name')->pluck('name'),
+            'isPartner' => $isPartner,
+            'partnerCountryCode' => $isPartner ? $user->country_code : null,
+            'partnerCountry' => $isPartner ? (\App\Support\WestAfricaShippingCatalog::countries()[$user->country_code]['label'] ?? $user->country_code) : null,
+            'partnerCities' => $isPartner ? (\App\Support\WestAfricaShippingCatalog::countries()[$user->country_code]['cities'] ?? []) : [],
         ])
         ->extends('layouts.admin')
         ->section('content');

@@ -39,6 +39,11 @@ use App\Http\Controllers\Livreurs\LivreurController;
 use App\Http\Controllers\Costumers\CostumerController;
 use App\Http\Controllers\CustomerServiceCaseAttachmentController;
 use App\Http\Controllers\PublicReviewController;
+use App\Http\Controllers\PartnerOrderingSetupController;
+use App\Http\Controllers\PublicOrderController;
+use App\Http\Controllers\CustomerPortalController;
+use App\Http\Controllers\PartnerOrderController;
+use App\Http\Controllers\CourierPublicOrderController;
 use App\Http\Controllers\Expensive\ExpensiveController;
 use App\Http\Controllers\Brouillons\BrouillonController;
 use App\Http\Controllers\TypeExpensive\TypeExpensiveController;
@@ -62,6 +67,22 @@ Auth::routes();
 
 Route::get('/home', [App\Http\Controllers\HomeController::class, 'index'])->name('home');
 Route::get('/avis-clients', [PublicReviewController::class, 'index'])->name('public-reviews.index');
+Route::get('/espace-client', [CustomerPortalController::class, 'index'])->name('customer-portal.index');
+Route::post('/espace-client/connexion', [CustomerPortalController::class, 'login'])->middleware('throttle:12,1')->name('customer-portal.login');
+Route::post('/espace-client/deconnexion', [CustomerPortalController::class, 'logout'])->name('customer-portal.logout');
+Route::get('/commande/suivi/{trackingToken}/espace-client', [CustomerPortalController::class, 'activate'])->name('customer-portal.activate');
+Route::post('/commande/suivi/{trackingToken}/espace-client', [CustomerPortalController::class, 'storeAccount'])->middleware('throttle:8,1')->name('customer-portal.store');
+Route::get('/commander/manifest.json', [PublicOrderController::class, 'manifest'])->name('public-order.app.manifest');
+Route::get('/commander/catalog', [PublicOrderController::class, 'catalog'])->middleware('throttle:60,1')->name('public-order.app.catalog');
+Route::post('/commander', [PublicOrderController::class, 'placeOrder'])->middleware('throttle:10,1')->name('public-order.app.store');
+Route::get('/commander', [PublicOrderController::class, 'app'])->name('public-order.app');
+Route::get('/commander/{token}/manifest.json', [PublicOrderController::class, 'manifest'])->name('public-order.manifest');
+Route::get('/commander/{token}/catalog', [PublicOrderController::class, 'catalog'])->middleware('throttle:60,1')->name('public-order.catalog');
+Route::post('/commander/{token}', [PublicOrderController::class, 'placeOrder'])->middleware('throttle:10,1')->name('public-order.store');
+Route::get('/commander/{token}', [PublicOrderController::class, 'show'])->name('public-order.show');
+Route::get('/commande/suivi/{trackingToken}', [PublicOrderController::class, 'track'])->name('public-order.track');
+Route::post('/commande/suivi/{trackingToken}/confirmer-devis', [PublicOrderController::class, 'confirmQuote'])->middleware('throttle:10,1')->name('public-order.quote.confirm');
+Route::post('/commande/suivi/{trackingToken}/paiement', [PublicOrderController::class, 'submitPrepayment'])->middleware('throttle:5,1')->name('public-order.payment');
 
 Route::get('/tenacos/parthner',[DashboarController::class,'register']);
 Route::get('/space',[EcomController::class,'space']);
@@ -85,6 +106,7 @@ Route::middleware(['auth'])->group(function () {
 
         // Gestion Membres & Livreurs
         Route::resource('livreurs', LivreurController::class)->except(['index', 'show']);
+        Route::get('livreurs/{user}/documents/{document}', [LivreurController::class, 'showCourierDocument'])->name('livreurs.documents.show');
         Route::get('user/admin/list', [LivreurController::class, 'user_admin_list'])->name('useradminlist');
         Route::get('user/show/{id}', [LivreurController::class, 'user_show'])->name('user-show');
 
@@ -124,6 +146,14 @@ Route::middleware(['auth'])->group(function () {
     Route::middleware(['role:ADMINUSER,MNG'])->group(function () {
         Route::get('livreurs', [LivreurController::class, 'index'])->name('livreurs.index');
         Route::get('livreurs/{livreur}', [LivreurController::class, 'show'])->name('livreurs.show');
+    });
+
+    Route::middleware(['role:ADMINUSER,MNG'])->prefix('partner-ordering')->name('partner-ordering.')->group(function () {
+        Route::get('/prices/{country}', [PartnerOrderingSetupController::class, 'prices'])->where('country', '[A-Za-z]{2}')->name('prices');
+        Route::put('/prices/{country}', [PartnerOrderingSetupController::class, 'savePrices'])->where('country', '[A-Za-z]{2}')->name('prices.save');
+        Route::get('/links', [PartnerOrderingSetupController::class, 'links'])->name('links');
+        Route::post('/links', [PartnerOrderingSetupController::class, 'createLink'])->name('links.create');
+        Route::put('/links/{link}/toggle', [PartnerOrderingSetupController::class, 'toggleLink'])->name('links.toggle');
     });
 
     Route::middleware(['role:ADMINUSER,MNG'])->prefix('stock-control')->name('stock-control.')->group(function () {
@@ -211,6 +241,25 @@ Route::middleware(['auth'])->group(function () {
         Route::get('trie/order/parther', [OrderController::class, 'trie_order_parther'])->name('trie-order-parther');
         Route::get('with/auth/user/list', [VirementController::class, 'createform'])->name('with-auth-user-list');
         Route::get('virement/auth/user/list', [VirementController::class, 'virementverify'])->name('virementverify');
+    });
+
+    Route::middleware(['role:PT'])->prefix('partner')->name('partner.')->group(function () {
+        Route::get('/orders', [PartnerOrderController::class, 'index'])->name('orders.index');
+        Route::get('/orders/{order}', [PartnerOrderController::class, 'show'])->name('orders.show');
+        Route::post('/orders/{order}/delivery-fee', [PartnerOrderController::class, 'setDeliveryFee'])->name('orders.delivery-fee');
+        Route::post('/orders/from-cart', [PartnerOrderController::class, 'storeFromCart'])->name('orders.from-cart');
+        Route::post('/orders/{order}/payments/{payment}/confirm', [PartnerOrderController::class, 'confirmPayment'])->name('orders.payments.confirm');
+        Route::post('/orders/{order}/ready', [PartnerOrderController::class, 'markReady'])->name('orders.ready');
+        Route::post('/orders/{order}/assign', [PartnerOrderController::class, 'assignCourier'])->name('orders.assign');
+        Route::post('/orders/{order}/handover', [PartnerOrderController::class, 'handover'])->name('orders.handover');
+        Route::post('/orders/{order}/remittances/{payment}/confirm', [PartnerOrderController::class, 'confirmCashRemittance'])->name('orders.remittance.confirm');
+    });
+
+    Route::middleware(['role:LVS'])->prefix('courier/public-orders')->name('courier.public-orders.')->group(function () {
+        Route::get('/', [CourierPublicOrderController::class, 'index'])->name('index');
+        Route::post('/{order}/claim', [CourierPublicOrderController::class, 'claim'])->name('claim');
+        Route::post('/{order}/receive', [CourierPublicOrderController::class, 'receive'])->name('receive');
+        Route::post('/{order}/deliver', [CourierPublicOrderController::class, 'deliver'])->name('deliver');
     });
 
     // -------------------------------------------------------------------------

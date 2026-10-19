@@ -198,12 +198,17 @@ trait MyTrait
 
     foreach ($order->orderItems as $item) {
         $product = $item->product;
-        $commission = $product->commission_amount * $item->quantity;
+        $commission = (float) ($product?->commission_amount ?? 0) * (int) $item->quantity;
         $totalCommission += $commission;
     }
 
-    // Mettre à jour le portefeuille du vendeur
-    $wallet = Wallet::firstOrCreate(['user_id' => $order->created_user]);
+    // Publicly submitted orders belong to the partner assigned to the country.
+    $sellerId = $order->created_user ?: $order->partner_id;
+    if (! $sellerId || ! User::query()->whereKey($sellerId)->exists() || $totalCommission <= 0) {
+        return;
+    }
+
+    $wallet = Wallet::firstOrCreate(['user_id' => $sellerId], ['balance' => 0]);
     $wallet->balance += $totalCommission;
     $wallet->save();
 
@@ -215,5 +220,4 @@ trait MyTrait
     // ]);
 }
 }
-
 
