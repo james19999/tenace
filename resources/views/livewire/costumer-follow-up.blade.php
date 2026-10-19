@@ -199,7 +199,7 @@
                     <div class="d-flex justify-content-between align-items-center mb-3">
                         <h6 class="text-uppercase text-muted mb-0 font-weight-bold">Courbe des contacts réalisés (7 derniers jours)</h6>
                         <div class="small text-muted">
-                            <span class="mr-3"><span style="color: #7e1615;">●</span> Contacts réalisés</span>
+                            <span class="mr-3"><span style="color: var(--app-primary, #7e1615);">●</span> Contacts réalisés</span>
                             <span><span style="color: #f0ad4e;">- -</span> Contacts prévus</span>
                         </div>
                     </div>
@@ -223,7 +223,7 @@
                             <polyline points="{{ $lineScheduled }}" fill="none" stroke="#f0ad4e" stroke-width="2" stroke-dasharray="4 4" stroke-linecap="round" stroke-linejoin="round" />
 
                             {{-- Courbe des réalisés (continue Tenace brand #7e1615) --}}
-                            <polyline points="{{ $lineDone }}" fill="none" stroke="#7e1615" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" />
+                            <polyline points="{{ $lineDone }}" fill="none" stroke="var(--app-primary, #7e1615)" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" />
 
                             {{-- Points de chaque jour --}}
                             @foreach ($chartPoints as $point)
@@ -231,7 +231,7 @@
                                     {{-- Zone de sélection --}}
                                     <rect x="{{ $point['x'] - 28 }}" y="10" width="56" height="165" rx="4"
                                           fill="{{ $point['is_selected'] ? 'rgba(126, 22, 21, 0.08)' : 'transparent' }}"
-                                          stroke="{{ $point['is_selected'] ? '#7e1615' : 'transparent' }}"
+                                          stroke="{{ $point['is_selected'] ? 'var(--app-primary, #7e1615)' : 'transparent' }}"
                                           stroke-width="{{ $point['is_selected'] ? '1' : '0' }}">
                                         <title>{{ $point['full_date'] }} : {{ $point['done'] }} réalisé(s) / {{ $point['scheduled'] }} prévu(s)</title>
                                     </rect>
@@ -241,18 +241,18 @@
 
                                     {{-- Point réalisés --}}
                                     <circle cx="{{ $point['x'] }}" cy="{{ $point['y_done'] }}" r="{{ $point['is_selected'] ? '6' : '4.5' }}"
-                                            fill="#7e1615"
+                                            fill="var(--app-primary, #7e1615)"
                                             stroke="#fff" stroke-width="{{ $point['is_selected'] ? '2.5' : '1.5' }}" />
 
                                     {{-- Valeur réalisée au dessus du point --}}
-                                    <text x="{{ $point['x'] }}" y="{{ max(18, $point['y_done'] - 8) }}" text-anchor="middle" font-size="11" font-weight="bold" fill="{{ $point['is_selected'] ? '#7e1615' : '#495057' }}">
+                                    <text x="{{ $point['x'] }}" y="{{ max(18, $point['y_done'] - 8) }}" text-anchor="middle" font-size="11" font-weight="bold" fill="{{ $point['is_selected'] ? 'var(--app-primary, #7e1615)' : '#495057' }}">
                                         {{ $point['done'] }}
                                     </text>
 
                                     {{-- Label du jour sur l'axe X --}}
                                     <text x="{{ $point['x'] }}" y="162" text-anchor="middle" font-size="11"
                                           font-weight="{{ $point['is_selected'] ? 'bold' : 'normal' }}"
-                                          fill="{{ $point['is_selected'] ? '#7e1615' : ($point['is_today'] ? '#212529' : '#6c757d') }}">
+                                          fill="{{ $point['is_selected'] ? 'var(--app-primary, #7e1615)' : ($point['is_today'] ? '#212529' : '#6c757d') }}">
                                         {{ $point['label'] }}
                                     </text>
                                 </g>
@@ -953,7 +953,7 @@
         .quick-case-products { display:grid; grid-template-columns:repeat(auto-fit,minmax(190px,1fr)); gap:8px; margin-top:7px; }
         .quick-case-product { display:flex; align-items:center; gap:9px; min-width:0; margin:0; padding:10px 11px; border:1px solid #e6e7ec; border-radius:8px; background:#fff; cursor:pointer; }
         .quick-case-product:has(input:checked) { border-color:#c99a97; background:#fcf5f4; }
-        .quick-case-product input { flex:none; accent-color:#7e1615; }
+        .quick-case-product input { flex:none; accent-color:var(--app-primary, #7e1615); }
         .quick-case-product span { flex:1; min-width:0; overflow-wrap:anywhere; color:#42434d; font-size:12px; }
         .quick-case-product small { flex:none; color:#81828c; font-size:11px; }
         .follow-up-modal.is-closing {

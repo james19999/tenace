@@ -101,7 +101,7 @@
     </form>
 
     <style>
-        .product-form-page{--form-burgundy:#7e1615;--form-ink:#292d37;--form-muted:#7a8290;--form-line:#e4e6eb;max-width:1040px;margin:0 auto;padding:18px 12px 36px;color:var(--form-ink)}
+        .product-form-page{--form-burgundy:var(--app-primary, #7e1615);--form-ink:#292d37;--form-muted:#7a8290;--form-line:#e4e6eb;max-width:1040px;margin:0 auto;padding:18px 12px 36px;color:var(--form-ink)}
         .product-form-heading{margin-bottom:20px}
         .product-form-back{display:inline-flex;align-items:center;gap:5px;margin-bottom:19px;color:#687080;font-size:13px;font-weight:650;text-decoration:none}
         .product-form-back:hover{color:var(--form-burgundy)}

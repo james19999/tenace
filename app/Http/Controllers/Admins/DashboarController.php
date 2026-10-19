@@ -6,6 +6,7 @@ use Carbon\Carbon;
 use App\Models\User;
 use App\Models\Product;
 use App\Models\Setting;
+use App\Models\AppThemeSetting;
 use App\Traits\MyTrait;
 use App\Models\Expensive;
 use App\Models\Orders\Order;
@@ -446,6 +447,7 @@ class DashboarController extends Controller
 
     public function settings(Request $request){
         $settings = Setting::limit(1)->get();
+        $appTheme = AppThemeSetting::currentTheme();
 
         // Recherche utilisateurs pour la gestion des rôles
         $search = $request->input('user_search');
@@ -458,7 +460,24 @@ class DashboarController extends Controller
         }
         $users = $usersQuery->orderBy('name')->paginate(5, ['*'], 'users_page');
 
-        return view('dashboard.settings', compact('settings', 'users', 'search'));
+        return view('dashboard.settings', compact('settings', 'users', 'search', 'appTheme'));
+    }
+
+    public function updateTheme(Request $request)
+    {
+        $validated = $request->validate([
+            'primary_color' => ['required', 'regex:/^#[0-9a-fA-F]{6}$/'],
+            'secondary_color' => ['required', 'regex:/^#[0-9a-fA-F]{6}$/'],
+            'accent_color' => ['required', 'regex:/^#[0-9a-fA-F]{6}$/'],
+            'background_color' => ['required', 'regex:/^#[0-9a-fA-F]{6}$/'],
+            'surface_color' => ['required', 'regex:/^#[0-9a-fA-F]{6}$/'],
+            'text_color' => ['required', 'regex:/^#[0-9a-fA-F]{6}$/'],
+            'corner_style' => ['required', 'in:square,soft,rounded'],
+        ]);
+
+        AppThemeSetting::query()->updateOrCreate(['id' => 1], $validated);
+
+        return back()->with('theme_success', 'Le thème personnalisé a été appliqué à l’application.');
     }
 
     public function updateUserRole(Request $request, $id)

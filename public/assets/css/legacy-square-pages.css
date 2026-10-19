@@ -91,8 +91,8 @@
 }
 
 .legacy-square-pages .page-item.active .page-link {
-    border-color: #7e1615;
-    background: #7e1615;
+    border-color: var(--app-primary, #7e1615);
+    background: var(--app-primary, #7e1615);
     color: #fff;
 }
 

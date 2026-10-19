@@ -2,6 +2,18 @@
 
 @section('content')
 
+<div class="settings-page">
+    <div class="settings-page-heading">
+        <span class="material-icons" aria-hidden="true">tune</span>
+        <div><h1>Paramètres</h1><p>Gère les informations de l’entreprise, l’apparence et les accès.</p></div>
+    </div>
+    <nav class="settings-tabs" role="tablist" aria-label="Sections des paramètres">
+        <button type="button" class="settings-tab is-active" role="tab" aria-selected="true" aria-controls="settings-company" id="tab-company" data-settings-tab="company"><span class="material-icons">business</span>Entreprise</button>
+        <button type="button" class="settings-tab" role="tab" aria-selected="false" aria-controls="settings-theme" id="tab-theme" data-settings-tab="theme"><span class="material-icons">palette</span>Apparence</button>
+        <button type="button" class="settings-tab" role="tab" aria-selected="false" aria-controls="settings-users" id="tab-users" data-settings-tab="users"><span class="material-icons">manage_accounts</span>Utilisateurs et rôles</button>
+    </nav>
+
+    <section class="config-tab-panel is-active" id="settings-company" role="tabpanel" aria-labelledby="tab-company" data-settings-panel="company">
 <div class="col-12 ">
     <div  style="padding-top: 10px">
         <div class="card-body">
@@ -142,13 +154,75 @@
            </div>
        </div>
    </div>
+    </section>
+<section class="config-tab-panel" id="settings-theme" role="tabpanel" aria-labelledby="tab-theme" data-settings-panel="theme" hidden>
+<section class="card shadow mt-4 theme-settings-card">
+    <div class="card-header bg-white d-flex align-items-center">
+        <span class="material-icons mr-2" style="color:{{ $appTheme['primary_color'] }};">palette</span>
+        <div><h5 class="mb-0 font-weight-bold">Thème de l’application</h5><small class="text-muted">Personnalise les couleurs et l’arrondi des éléments dans les espaces connectés.</small></div>
+    </div>
+    <div class="card-body">
+        @if(session('theme_success'))<div class="alert alert-success">{{ session('theme_success') }}</div>@endif
+        @if($errors->any())<div class="alert alert-danger">{{ $errors->first() }}</div>@endif
+        <form method="POST" action="{{ route('setting-theme') }}" id="app-theme-form">
+            @csrf
+            @method('PUT')
+            <div class="theme-presets mb-4">
+                <span class="font-weight-bold">Palettes de départ</span>
+                <button type="button" class="theme-preset" data-theme-preset='{"primary_color":"#7e1615","secondary_color":"#343a40","accent_color":"#5fb49c"}'><i style="--swatch:#7e1615"></i><span>TENACOS</span></button>
+                <button type="button" class="theme-preset" data-theme-preset='{"primary_color":"#1d4ed8","secondary_color":"#172554","accent_color":"#38bdf8"}'><i style="--swatch:#1d4ed8"></i><span>Bleu profond</span></button>
+                <button type="button" class="theme-preset" data-theme-preset='{"primary_color":"#166534","secondary_color":"#183b2b","accent_color":"#84cc16"}'><i style="--swatch:#166534"></i><span>Vert forêt</span></button>
+                <small>Choisis une palette comme point de départ, puis ajuste chaque couleur librement.</small>
+            </div>
+            <div class="row">
+                @php
+                    $themeFields = [
+                        'primary_color' => ['Couleur principale', 'Boutons principaux, navigation et identité visuelle.'],
+                        'secondary_color' => ['Couleur secondaire', 'Barres et éléments secondaires de l’interface.'],
+                        'accent_color' => ['Couleur de validation', 'Actions positives et confirmation.'],
+                        'background_color' => ['Fond de page', 'Arrière-plan général des espaces connectés.'],
+                        'surface_color' => ['Fond des cartes', 'Cartes, fenêtres et panneaux.'],
+                        'text_color' => ['Couleur du texte', 'Texte principal de l’application.'],
+                    ];
+                @endphp
+                @foreach($themeFields as $field => [$label, $help])
+                    <div class="col-12 col-sm-6 col-lg-4 mb-3">
+                        <label class="theme-color-field" for="{{ $field }}"><span>{{ $label }}</span><small>{{ $help }}</small>
+                            <span class="theme-color-input"><input type="color" id="{{ $field }}" name="{{ $field }}" value="{{ old($field, $appTheme[$field]) }}" data-theme-color="{{ str_replace('_color', '', $field) }}"><code>{{ old($field, $appTheme[$field]) }}</code></span>
+                        </label>
+                    </div>
+                @endforeach
+                <div class="col-12 col-sm-6 col-lg-4 mb-3">
+                    <label for="corner-style">Style des angles</label>
+                    <select class="form-control" id="corner-style" name="corner_style" data-theme-corners>
+                        <option value="square" @selected(old('corner_style', $appTheme['corner_style']) === 'square')>Carré</option>
+                        <option value="soft" @selected(old('corner_style', $appTheme['corner_style']) === 'soft')>Légèrement arrondi</option>
+                        <option value="rounded" @selected(old('corner_style', $appTheme['corner_style']) === 'rounded')>Arrondi</option>
+                    </select>
+                    <small class="form-text text-muted">S’applique aux cartes, boutons et champs.</small>
+                </div>
+            </div>
+
+            <div class="theme-preview" id="theme-preview" style="--preview-primary:{{ $appTheme['primary_color'] }};--preview-secondary:{{ $appTheme['secondary_color'] }};--preview-accent:{{ $appTheme['accent_color'] }};--preview-background:{{ $appTheme['background_color'] }};--preview-surface:{{ $appTheme['surface_color'] }};--preview-text:{{ $appTheme['text_color'] }};--preview-radius:{{ ['square' => '0px', 'soft' => '8px', 'rounded' => '16px'][$appTheme['corner_style']] ?? '8px' }}">
+                <div class="theme-preview-sidebar"><strong>TENACOS</strong><span>Accueil</span><span class="active">Tableau de bord</span></div>
+                <div class="theme-preview-content"><small>Aperçu</small><strong>Votre espace de gestion</strong><div class="theme-preview-card"><span>Chiffre d’affaires du jour</span><b>125 000 XOF</b><button type="button">Action principale</button><i>Validation réussie</i></div></div>
+            </div>
+            <div class="d-flex justify-content-between align-items-center flex-wrap mt-3" style="gap:10px">
+                <button type="button" class="btn btn-outline-secondary" id="theme-reset-defaults">Rétablir le thème TENACOS</button>
+                <button type="submit" class="btn btn-primary"><span class="material-icons align-middle mr-1">save</span>Enregistrer le thème</button>
+            </div>
+        </form>
+    </div>
+</section>
+    </section>
 {{-- ============================================================ --}}
 {{-- Section : Gestion des rôles utilisateurs (Admin uniquement) --}}
 {{-- ============================================================ --}}
+<section class="config-tab-panel" id="settings-users" role="tabpanel" aria-labelledby="tab-users" data-settings-panel="users" hidden>
 <div class="card shadow mt-4">
     <div class="card-header bg-white py-3 d-flex align-items-center justify-content-between">
         <h5 class="mb-0 font-weight-bold text-dark">
-            <span class="material-icons align-middle mr-2" style="color:#7e1615;">manage_accounts</span>
+            <span class="material-icons align-middle mr-2" style="color:var(--app-primary);">manage_accounts</span>
             Gestion des rôles utilisateurs
         </h5>
     </div>
@@ -301,14 +375,14 @@
                     flex-wrap: wrap;
                 }
                 #users-table-container .pagination .page-item .page-link {
-                    color: #7e1615;
+                    color: var(--app-primary);
                     border-color: #dee2e6;
                     padding: 6px 12px;
                     font-size: 0.9rem;
                 }
                 #users-table-container .pagination .page-item.active .page-link {
-                    background-color: #7e1615;
-                    border-color: #7e1615;
+                    background-color: var(--app-primary);
+                    border-color: var(--app-primary);
                     color: #ffffff;
                 }
                 #users-table-container .pagination .page-item.disabled .page-link {
@@ -337,6 +411,7 @@
 
     </div>
 </div>
+    </section>
 
 </div>
 
@@ -411,6 +486,122 @@
                 }
             });
         }
+    });
+</script>
+<style>
+    .theme-settings-card .theme-color-field { display:block; margin-bottom:0; }
+    .theme-color-field > span:first-child { display:block; margin-bottom:3px; color:#292d38; font-weight:750; }
+    .theme-color-field > small { display:block; min-height:34px; margin-bottom:8px; color:#778091; font-weight:400; }
+    .theme-color-input { display:flex; align-items:center; gap:10px; min-height:44px; padding:5px 9px; border:1px solid #dce1e8; border-radius:7px; background:#fff; }
+    .theme-color-input input { width:38px; height:32px; padding:0; border:0; background:transparent; cursor:pointer; }
+    .theme-color-input code { color:#4d5868; font-size:13px; }
+    .theme-preview { display:grid; grid-template-columns:190px minmax(0,1fr); min-height:205px; overflow:hidden; border:1px solid #dfe3e9; border-radius:var(--preview-radius); background:var(--preview-background); color:var(--preview-text); }
+    .theme-preview-sidebar { display:flex; flex-direction:column; gap:8px; padding:18px 12px; background:var(--preview-secondary); color:#fff; }
+    .theme-preview-sidebar strong { margin:0 0 10px 6px; letter-spacing:.08em; }
+    .theme-preview-sidebar span { padding:8px; border-radius:var(--preview-radius); font-size:12px; }
+    .theme-preview-sidebar .active { background:var(--preview-primary); }
+    .theme-preview-content { display:flex; flex-direction:column; gap:8px; padding:18px; }
+    .theme-preview-content > small { color:#778091; font-weight:700; text-transform:uppercase; letter-spacing:.1em; }
+    .theme-preview-content > strong { font-size:17px; }
+    .theme-preview-card { display:grid; grid-template-columns:1fr auto; gap:9px; align-items:center; max-width:520px; padding:13px; border:1px solid rgba(80,90,110,.13); border-radius:var(--preview-radius); background:var(--preview-surface); }
+    .theme-preview-card span { color:#778091; font-size:12px; }
+    .theme-preview-card b { color:var(--preview-text); }
+    .theme-preview-card button { grid-column:1; width:max-content; padding:7px 11px; border:0; border-radius:var(--preview-radius); background:var(--preview-primary); color:#fff; font-weight:700; }
+    .theme-preview-card i { grid-column:2; grid-row:2; color:var(--preview-accent); font-size:12px; font-style:normal; font-weight:700; }
+    @media(max-width:575.98px){.theme-preview{grid-template-columns:105px minmax(0,1fr)}.theme-preview-content{padding:12px}.theme-preview-card{grid-template-columns:1fr}.theme-preview-card button,.theme-preview-card i{grid-column:1;grid-row:auto}.theme-preview-sidebar{padding:14px 8px}}
+</style>
+<script>
+    document.addEventListener('DOMContentLoaded', function () {
+        const preview = document.getElementById('theme-preview');
+        const colorInputs = document.querySelectorAll('[data-theme-color]');
+        const cornerSelect = document.querySelector('[data-theme-corners]');
+        const radiusByStyle = { square: '0px', soft: '8px', rounded: '16px' };
+        colorInputs.forEach((input) => input.addEventListener('input', function () {
+            const variable = input.dataset.themeColor;
+            preview.style.setProperty('--preview-' + variable, input.value);
+            document.documentElement.style.setProperty('--app-' + variable, input.value);
+            if (variable === 'primary') document.querySelector('meta[name="theme-color"]')?.setAttribute('content', input.value);
+            const value = input.parentElement.querySelector('code');
+            if (value) value.textContent = input.value;
+        }));
+        cornerSelect?.addEventListener('change', () => {
+            const radius = radiusByStyle[cornerSelect.value] || '8px';
+            preview.style.setProperty('--preview-radius', radius);
+            document.documentElement.style.setProperty('--app-radius', radius);
+        });
+        document.getElementById('theme-reset-defaults')?.addEventListener('click', function () {
+            const defaults = { primary_color:'#7e1615', secondary_color:'#343a40', accent_color:'#5fb49c', background_color:'#f8f9fa', surface_color:'#ffffff', text_color:'#292d38' };
+            Object.entries(defaults).forEach(([name, value]) => {
+                const input = document.getElementById(name);
+                if (!input) return;
+                input.value = value;
+                input.dispatchEvent(new Event('input', { bubbles: true }));
+            });
+            if (cornerSelect) { cornerSelect.value = 'soft'; cornerSelect.dispatchEvent(new Event('change', { bubbles: true })); }
+        });
+        document.querySelectorAll('[data-theme-preset]').forEach((button) => button.addEventListener('click', function () {
+            const palette = JSON.parse(button.dataset.themePreset);
+            Object.entries(palette).forEach(([name, value]) => {
+                const input = document.getElementById(name);
+                if (!input) return;
+                input.value = value;
+                input.dispatchEvent(new Event('input', { bubbles: true }));
+            });
+        }));
+    });
+</script>
+<style>
+    .settings-page { max-width: 1500px; margin: 0 auto; padding: 8px 14px 30px; }
+    .settings-page-heading { display:flex; align-items:center; gap:14px; margin: 8px 0 22px; }
+    .settings-page-heading > .material-icons { display:grid; place-items:center; width:48px; height:48px; border-radius:12px; background:var(--app-primary-soft); color:var(--app-primary); font-size:27px; }
+    .settings-page-heading h1 { margin:0; color:#292d38; font-size:26px; font-weight:800; }
+    .settings-page-heading p { margin:4px 0 0; color:#778091; }
+    .settings-tabs { display:flex; gap:8px; overflow-x:auto; margin-bottom:20px; padding:5px; border:1px solid #e3e6eb; border-radius:12px; background:#fff; }
+    .theme-presets { display:flex; align-items:center; flex-wrap:wrap; gap:8px; padding:12px; border:1px solid #e5e8ed; border-radius:9px; background:#fafbfc; }
+    .theme-presets > span { margin-right:4px; color:#343a40; }
+    .theme-presets > small { flex-basis:100%; color:#778091; }
+    .theme-preset { display:inline-flex; align-items:center; gap:7px; padding:7px 10px; border:1px solid #dfe3e9; border-radius:7px; background:#fff; color:#343a40; font-weight:650; cursor:pointer; }
+    .theme-preset:hover { border-color:var(--app-primary-border); background:var(--app-primary-soft); }
+    .theme-preset i { width:15px; height:15px; border-radius:50%; background:var(--swatch); }
+    .settings-tab { display:inline-flex; align-items:center; justify-content:center; gap:8px; flex:0 0 auto; padding:11px 16px; border:0; border-radius:8px; background:transparent; color:#606a7a; font-weight:700; cursor:pointer; transition:background .18s,color .18s; }
+    .settings-tab .material-icons { font-size:19px; }
+    .settings-tab:hover { background:var(--app-primary-soft); color:var(--app-primary); }
+    .settings-tab.is-active { background:var(--app-primary); color:#fff; }
+    .config-tab-panel[hidden] { display:none !important; }
+    .config-tab-panel > .col-12 { padding:0; }
+    @media(max-width:575.98px) { .settings-page { padding:6px 8px 22px; } .settings-page-heading { margin-bottom:15px; } .settings-page-heading h1 { font-size:22px; } .settings-tabs { gap:4px; } .settings-tab { padding:10px 12px; font-size:13px; } }
+</style>
+<script>
+    document.addEventListener('DOMContentLoaded', function () {
+        const tabs = [...document.querySelectorAll('[data-settings-tab]')];
+        const panels = [...document.querySelectorAll('[data-settings-panel]')];
+        function activate(name, updateHash = true) {
+            tabs.forEach(tab => {
+                const active = tab.dataset.settingsTab === name;
+                tab.classList.toggle('is-active', active);
+                tab.setAttribute('aria-selected', active ? 'true' : 'false');
+                tab.tabIndex = active ? 0 : -1;
+            });
+            panels.forEach(panel => {
+                const active = panel.dataset.settingsPanel === name;
+                panel.hidden = !active;
+                panel.classList.toggle('is-active', active);
+            });
+            if (updateHash) history.replaceState(null, '', '#' + name);
+        }
+        tabs.forEach((tab, index) => {
+            tab.addEventListener('click', () => activate(tab.dataset.settingsTab));
+            tab.addEventListener('keydown', event => {
+                if (!['ArrowLeft', 'ArrowRight'].includes(event.key)) return;
+                event.preventDefault();
+                const step = event.key === 'ArrowRight' ? 1 : -1;
+                const next = tabs[(index + step + tabs.length) % tabs.length];
+                activate(next.dataset.settingsTab);
+                next.focus();
+            });
+        });
+        const initial = window.location.hash.replace('#', '');
+        activate(panels.some(panel => panel.dataset.settingsPanel === initial) ? initial : 'company', false);
     });
 </script>
 @endsection

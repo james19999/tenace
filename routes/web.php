@@ -77,6 +77,7 @@ Route::middleware(['auth'])->group(function () {
         Route::post('/avis-clients/phone-display', [PublicReviewController::class, 'updatePhoneDisplay'])->name('public-reviews.phone-display');
         // Paramètres & Rôles & Sécurité
         Route::get('settings/config', [DashboarController::class, 'settings'])->name('setting');
+        Route::put('settings/theme', [DashboarController::class, 'updateTheme'])->name('setting-theme');
         Route::post('settinginfo/config', [DashboarController::class, 'settinginfo'])->name('setting-info');
         Route::put('settinginfo/update/config/{id}', [DashboarController::class, 'settinginfoupdate'])->name('setting-update');
         Route::put('/user/role/{id}', [DashboarController::class, 'updateUserRole'])->name('user.update-role');

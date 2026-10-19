@@ -9,7 +9,7 @@
     <div class="row d-flex justify-content-center">
         <div class="col-12 col-sm-7 ">
             <div class="card shadow">
-                <div class="card-header" style="background-color: #7e1615">
+                <div class="card-header" style="background-color: var(--app-primary, #7e1615)">
                     <h4 style="text-align: center;font-weight: 900 ;color: white">
 
                     Modifier un membre
@@ -82,7 +82,7 @@
                     </form>
                 </div>
             </div>
-            <div class="card-footer" style="background-color: #7e1615" >
+            <div class="card-footer" style="background-color: var(--app-primary, #7e1615)" >
 
             </div>
         </div>

@@ -11,7 +11,7 @@
         border-radius: 12px;
         box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.2), 0 8px 10px -6px rgba(0, 0, 0, 0.1);
         border: 1px solid #e2e8f0;
-        border-left: 5px solid #7e1615;
+        border-left: 5px solid var(--app-primary, #7e1615);
         padding: 16px;
         display: none;
         align-items: flex-start;
@@ -46,8 +46,8 @@
         width: 44px;
         height: 44px;
         border-radius: 10px;
-        background: #fdf2f2;
-        color: #7e1615;
+        background: var(--app-primary-soft, #fdf2f2);
+        color: var(--app-primary, #7e1615);
         display: flex;
         align-items: center;
         justify-content: center;
@@ -81,7 +81,7 @@
     }
 
     .pwa-btn-primary {
-        background-color: #7e1615;
+        background-color: var(--app-primary, #7e1615);
         color: #ffffff !important;
         border: none;
         border-radius: 6px;
@@ -97,7 +97,7 @@
     }
 
     .pwa-btn-primary:hover {
-        background-color: #631110;
+        background-color: var(--app-primary-hover, #631110);
         color: #ffffff;
     }
 
@@ -175,7 +175,7 @@
             <p class="pwa-toast-desc" style="margin-bottom:10px;">Pour installer sur votre iPhone&nbsp;:</p>
             <ol style="font-size:13px; color:#334155; padding-left:18px; margin:0 0 12px 0; line-height:1.7;">
                 <li>Appuyez sur <strong style="white-space:nowrap;">
-                    <svg style="vertical-align:middle;margin:0 2px;" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#7e1615" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M4 12v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8"/><polyline points="16 6 12 2 8 6"/><line x1="12" y1="2" x2="12" y2="15"/></svg>
+                    <svg style="vertical-align:middle;margin:0 2px;" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--app-primary, #7e1615)" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M4 12v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8"/><polyline points="16 6 12 2 8 6"/><line x1="12" y1="2" x2="12" y2="15"/></svg>
                     Partager</strong> en bas de Safari</li>
                 <li>Faites défiler et appuyez sur <strong>« Sur l'écran d'accueil »</strong></li>
                 <li>Appuyez sur <strong>Ajouter</strong> en haut à droite</li>

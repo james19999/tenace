@@ -12,10 +12,10 @@
 
     <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
 
-    <link rel="stylesheet" href="{{ asset('assets/css/style.css') }}?v=20261015.6">
-    <link rel="stylesheet" href="{{ asset('assets/css/customer-service-notifications.css') }}?v=20261008.1">
+    <link rel="stylesheet" href="{{ asset('assets/css/style.css') }}?v=20261019.1">
+    <link rel="stylesheet" href="{{ asset('assets/css/customer-service-notifications.css') }}?v=20261019.1">
     @if (request()->routeIs('service-cases.*'))
-        <link rel="stylesheet" href="{{ asset('assets/css/customer-service-cases.css') }}?v=20261009.4">
+        <link rel="stylesheet" href="{{ asset('assets/css/customer-service-cases.css') }}?v=20261019.1">
     @endif
     @if (request()->routeIs('customer-loyalty.*'))
         <link rel="stylesheet" href="{{ asset('assets/css/customer-loyalty.css') }}?v=20261010.2">
@@ -26,7 +26,77 @@
     @if (request()->routeIs('show-product'))
         <link rel="stylesheet" href="{{ asset('assets/css/product-detail.css') }}?v=20261012.3">
     @endif
-    <link rel="stylesheet" href="{{ asset('assets/css/legacy-square-pages.css') }}?v=20261013.8">
+    <link rel="stylesheet" href="{{ asset('assets/css/legacy-square-pages.css') }}?v=20261019.1">
+
+    <style>
+        :root {
+            --app-primary: {{ $appTheme['primary_color'] }};
+            --app-secondary: {{ $appTheme['secondary_color'] }};
+            --app-accent: {{ $appTheme['accent_color'] }};
+            --app-background: {{ $appTheme['background_color'] }};
+            --app-surface: {{ $appTheme['surface_color'] }};
+            --app-text: {{ $appTheme['text_color'] }};
+            --app-primary-contrast: {{ $appTheme['primary_contrast_color'] }};
+            --app-accent-contrast: {{ $appTheme['accent_contrast_color'] }};
+            --app-primary-hover: color-mix(in srgb, var(--app-primary) 84%, #000);
+            --app-primary-soft: color-mix(in srgb, var(--app-primary) 8%, #fff);
+            --app-primary-border: color-mix(in srgb, var(--app-primary) 30%, #fff);
+            --app-radius: {{ ['square' => '0px', 'soft' => '8px', 'rounded' => '16px'][$appTheme['corner_style']] ?? '8px' }};
+            --primary: var(--app-primary);
+            --indigo: var(--app-primary);
+            --secondary: var(--app-secondary);
+            --success: var(--app-accent);
+        }
+        body { color: var(--app-text); background-color: var(--app-background); }
+        .main-wrapper, .right-area, .right-area .main-content { background-color: var(--app-background); }
+        .main-wrapper .sidebar { background-color: var(--app-surface); }
+        .main-wrapper .sidebar .navigation > ul li a.active {
+            border-radius: var(--app-radius) !important;
+            background: var(--app-primary) !important;
+            color: #fff !important;
+            box-shadow: inset 3px 0 0 rgba(255,255,255,.45) !important;
+        }
+        .main-wrapper .sidebar .navigation > ul li a.active .icon,
+        .main-wrapper .sidebar .navigation > ul li a.active .caret,
+        .main-wrapper .sidebar .navigation > ul li a.active .text { color: #fff !important; }
+        .main-wrapper .sidebar .navigation > ul li ul li a[href*="stock-control"].active,
+        .main-wrapper .sidebar .navigation > ul li > a[href="#adminStockControlMenu"].active,
+        .main-wrapper .sidebar .navigation > ul li > a[href="#mngStockControlMenu"].active {
+            border-radius: var(--app-radius) !important;
+            background: var(--app-primary) !important;
+            color: #fff !important;
+            box-shadow: inset 3px 0 0 rgba(255,255,255,.45) !important;
+        }
+        .main-wrapper .sidebar .navigation > ul li ul li a[href*="stock-control"].active .icon,
+        .main-wrapper .sidebar .navigation > ul li ul li a[href*="stock-control"].active .text,
+        .main-wrapper .sidebar .navigation > ul li > a[href="#adminStockControlMenu"].active .icon,
+        .main-wrapper .sidebar .navigation > ul li > a[href="#adminStockControlMenu"].active .text,
+        .main-wrapper .sidebar .navigation > ul li > a[href="#adminStockControlMenu"].active .caret,
+        .main-wrapper .sidebar .navigation > ul li > a[href="#mngStockControlMenu"].active .icon,
+        .main-wrapper .sidebar .navigation > ul li > a[href="#mngStockControlMenu"].active .text,
+        .main-wrapper .sidebar .navigation > ul li > a[href="#mngStockControlMenu"].active .caret { color: #fff !important; }
+        .right-area header { background-color: var(--app-primary) !important; color: var(--app-primary-contrast) !important; }
+        .right-area header a, .right-area header button, .right-area header .btn { color: var(--app-primary-contrast) !important; }
+        .btn-primary, .badge-primary, .page-item.active .page-link {
+            background-color: var(--app-primary) !important;
+            border-color: var(--app-primary) !important;
+            color: var(--app-primary-contrast) !important;
+        }
+        .btn-outline-primary { color: var(--app-primary) !important; border-color: var(--app-primary) !important; }
+        .btn-outline-primary:hover { color: var(--app-primary-contrast) !important; background-color: var(--app-primary) !important; }
+        .btn-primary:hover, .btn-primary:focus, .page-item.active .page-link:hover { background-color: var(--app-primary-hover) !important; border-color: var(--app-primary-hover) !important; }
+        .btn-outline-primary:focus, .form-check-input:focus { box-shadow: 0 0 0 .2rem color-mix(in srgb, var(--app-primary) 25%, transparent) !important; }
+        ::selection { background: color-mix(in srgb, var(--app-primary) 24%, transparent); }
+        .btn-secondary { background-color: var(--app-secondary) !important; border-color: var(--app-secondary) !important; }
+        .btn-success, .badge-success { background-color: var(--app-accent) !important; border-color: var(--app-accent) !important; color: var(--app-accent-contrast) !important; }
+        .text-primary, .right-area .main-content a:not(.btn):not(.nav-link) { color: var(--app-primary); }
+        .card, .modal-content, .dropdown-menu, .list-group-item { background-color: var(--app-surface); color: var(--app-text); }
+        .card, .modal-content, .dropdown-menu, .form-control, .custom-select, .btn, .badge,
+        .page-link, .input-group-text, .nav-tabs .nav-link, .rounded, .rounded-sm, .rounded-lg {
+            border-radius: var(--app-radius) !important;
+        }
+        .form-control:focus, .custom-select:focus { border-color: var(--app-primary); box-shadow: 0 0 0 .15rem color-mix(in srgb, var(--app-primary) 18%, transparent); }
+    </style>
 
     <link rel="shortcut icon" href="{{ asset('assets/images/tena.png') }}" type="image/png">
     <link rel="icon" href="{{ asset('assets/images/tena.png') }}" type="image/png">
