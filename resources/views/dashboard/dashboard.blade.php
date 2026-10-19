@@ -293,6 +293,23 @@
                     <div class="card-body">
                         <div class="row">
                             <div class="col">
+                                <h5 class="text-uppercase text-muted mb-0 card-title">Chiffre d’affaires du jour</h5>
+                                <span style="font-size: 130%" class="h1 font-weight-bold mb-0">{{ number_format((float) $OrderdeAmount, 0, ',', ' ') }} XOF</span>
+                            </div>
+                            <div class="col-auto col">
+                                <div class="btn btn-transparent-primary btn-lg btn-circle">
+                                    <img src="{{ asset('assets/images/money.png') }}" width="40" height="40" alt="">
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="col-12 col-sm-6 col-md-6 col-lg-3">
+                <div class="card shadow">
+                    <div class="card-body">
+                        <div class="row">
+                            <div class="col">
                                 <h5 class="text-uppercase text-muted mb-0 card-title">Total des commandes</h5><span
                                     style="font-size: 130%" class="h1 font-weight-bold mb-0">{{ $Orderall }}</span>
                             </div>
