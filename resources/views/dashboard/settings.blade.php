@@ -203,7 +203,7 @@
                 </div>
             </div>
 
-            <div class="theme-preview" id="theme-preview" style="--preview-primary:{{ $appTheme['primary_color'] }};--preview-secondary:{{ $appTheme['secondary_color'] }};--preview-accent:{{ $appTheme['accent_color'] }};--preview-background:{{ $appTheme['background_color'] }};--preview-surface:{{ $appTheme['surface_color'] }};--preview-text:{{ $appTheme['text_color'] }};--preview-radius:{{ ['square' => '0px', 'soft' => '8px', 'rounded' => '16px'][$appTheme['corner_style']] ?? '8px' }}">
+            <div class="theme-preview" id="theme-preview" style="--preview-primary:{{ $appTheme['primary_color'] }};--preview-primary-contrast:{{ $appTheme['primary_contrast_color'] }};--preview-secondary:{{ $appTheme['secondary_color'] }};--preview-accent:{{ $appTheme['accent_color'] }};--preview-background:{{ $appTheme['background_color'] }};--preview-surface:{{ $appTheme['surface_color'] }};--preview-text:{{ $appTheme['text_color'] }};--preview-radius:{{ ['square' => '0px', 'soft' => '8px', 'rounded' => '16px'][$appTheme['corner_style']] ?? '8px' }}">
                 <div class="theme-preview-sidebar"><strong>TENACOS</strong><span>Accueil</span><span class="active">Tableau de bord</span></div>
                 <div class="theme-preview-content"><small>Aperçu</small><strong>Votre espace de gestion</strong><div class="theme-preview-card"><span>Chiffre d’affaires du jour</span><b>125 000 XOF</b><button type="button">Action principale</button><i>Validation réussie</i></div></div>
             </div>
@@ -506,7 +506,7 @@
     .theme-preview-card { display:grid; grid-template-columns:1fr auto; gap:9px; align-items:center; max-width:520px; padding:13px; border:1px solid rgba(80,90,110,.13); border-radius:var(--preview-radius); background:var(--preview-surface); }
     .theme-preview-card span { color:#778091; font-size:12px; }
     .theme-preview-card b { color:var(--preview-text); }
-    .theme-preview-card button { grid-column:1; width:max-content; padding:7px 11px; border:0; border-radius:var(--preview-radius); background:var(--preview-primary); color:#fff; font-weight:700; }
+    .theme-preview-card button { grid-column:1; width:max-content; padding:7px 11px; border:0; border-radius:var(--preview-radius); background:var(--preview-primary); color:var(--preview-primary-contrast); font-weight:700; }
     .theme-preview-card i { grid-column:2; grid-row:2; color:var(--preview-accent); font-size:12px; font-style:normal; font-weight:700; }
     @media(max-width:575.98px){.theme-preview{grid-template-columns:105px minmax(0,1fr)}.theme-preview-content{padding:12px}.theme-preview-card{grid-template-columns:1fr}.theme-preview-card button,.theme-preview-card i{grid-column:1;grid-row:auto}.theme-preview-sidebar{padding:14px 8px}}
 </style>
@@ -516,11 +516,22 @@
         const colorInputs = document.querySelectorAll('[data-theme-color]');
         const cornerSelect = document.querySelector('[data-theme-corners]');
         const radiusByStyle = { square: '0px', soft: '8px', rounded: '16px' };
+        const contrastColor = (hex) => {
+            const channels = hex.match(/[0-9a-f]{2}/gi)?.map(value => parseInt(value, 16) / 255) || [0.5, 0.5, 0.5];
+            const linear = channels.map(value => value <= 0.04045 ? value / 12.92 : ((value + 0.055) / 1.055) ** 2.4);
+            return 0.2126 * linear[0] + 0.7152 * linear[1] + 0.0722 * linear[2] > 0.42 ? '#20242c' : '#ffffff';
+        };
         colorInputs.forEach((input) => input.addEventListener('input', function () {
             const variable = input.dataset.themeColor;
             preview.style.setProperty('--preview-' + variable, input.value);
             document.documentElement.style.setProperty('--app-' + variable, input.value);
-            if (variable === 'primary') document.querySelector('meta[name="theme-color"]')?.setAttribute('content', input.value);
+            if (variable === 'primary') {
+                const contrast = contrastColor(input.value);
+                preview.style.setProperty('--preview-primary-contrast', contrast);
+                document.documentElement.style.setProperty('--app-primary-contrast', contrast);
+                document.querySelector('meta[name="theme-color"]')?.setAttribute('content', input.value);
+            }
+            if (variable === 'accent') document.documentElement.style.setProperty('--app-accent-contrast', contrastColor(input.value));
             const value = input.parentElement.querySelector('code');
             if (value) value.textContent = input.value;
         }));
@@ -566,7 +577,7 @@
     .settings-tab { display:inline-flex; align-items:center; justify-content:center; gap:8px; flex:0 0 auto; padding:11px 16px; border:0; border-radius:8px; background:transparent; color:#606a7a; font-weight:700; cursor:pointer; transition:background .18s,color .18s; }
     .settings-tab .material-icons { font-size:19px; }
     .settings-tab:hover { background:var(--app-primary-soft); color:var(--app-primary); }
-    .settings-tab.is-active { background:var(--app-primary); color:#fff; }
+    .settings-tab.is-active { background:var(--app-primary); color:var(--app-primary-contrast); }
     .config-tab-panel[hidden] { display:none !important; }
     .config-tab-panel > .col-12 { padding:0; }
     @media(max-width:575.98px) { .settings-page { padding:6px 8px 22px; } .settings-page-heading { margin-bottom:15px; } .settings-page-heading h1 { font-size:22px; } .settings-tabs { gap:4px; } .settings-tab { padding:10px 12px; font-size:13px; } }
