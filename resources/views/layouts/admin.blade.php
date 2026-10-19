@@ -24,7 +24,7 @@
         <link rel="stylesheet" href="{{ asset('assets/css/stock-control.css') }}?v=20261017.4">
     @endif
     @if (request()->routeIs('show-product'))
-        <link rel="stylesheet" href="{{ asset('assets/css/product-detail.css') }}?v=20261012.3">
+        <link rel="stylesheet" href="{{ asset('assets/css/product-detail.css') }}?v=20261019.2">
     @endif
     <link rel="stylesheet" href="{{ asset('assets/css/legacy-square-pages.css') }}?v=20261019.1">
 
@@ -75,15 +75,15 @@
         .main-wrapper .sidebar .navigation > ul li > a[href="#mngStockControlMenu"].active .icon,
         .main-wrapper .sidebar .navigation > ul li > a[href="#mngStockControlMenu"].active .text,
         .main-wrapper .sidebar .navigation > ul li > a[href="#mngStockControlMenu"].active .caret { color: #fff !important; }
-        .right-area header { background-color: var(--app-primary) !important; color: var(--app-primary-contrast) !important; }
-        .right-area header a:not(.dropdown-item), .right-area header button:not(.dropdown-item), .right-area header .btn:not(.dropdown-item) { color: var(--app-primary-contrast) !important; }
-        .right-area header .dropdown-menu { background: var(--app-surface) !important; color: var(--app-text) !important; }
-        .right-area header .dropdown-menu .dropdown-item,
-        .right-area header .dropdown-menu .dropdown-item-text,
-        .right-area header .dropdown-menu a,
-        .right-area header .dropdown-menu span { color: var(--app-text) !important; }
-        .right-area header .dropdown-menu a:hover,
-        .right-area header .dropdown-menu a:focus { background: var(--app-primary-soft) !important; color: var(--app-primary) !important; }
+        .right-area > header { background-color: var(--app-primary) !important; color: var(--app-primary-contrast) !important; }
+        .right-area > header a:not(.dropdown-item), .right-area > header button:not(.dropdown-item), .right-area > header .btn:not(.dropdown-item) { color: var(--app-primary-contrast) !important; }
+        .right-area > header .dropdown-menu { background: var(--app-surface) !important; color: var(--app-text) !important; }
+        .right-area > header .dropdown-menu .dropdown-item,
+        .right-area > header .dropdown-menu .dropdown-item-text,
+        .right-area > header .dropdown-menu a,
+        .right-area > header .dropdown-menu span { color: var(--app-text) !important; }
+        .right-area > header .dropdown-menu a:hover,
+        .right-area > header .dropdown-menu a:focus { background: var(--app-primary-soft) !important; color: var(--app-primary) !important; }
         .btn-primary, .badge-primary, .page-item.active .page-link {
             background-color: var(--app-primary) !important;
             border-color: var(--app-primary) !important;
@@ -92,6 +92,7 @@
         .btn-outline-primary { color: var(--app-primary) !important; border-color: var(--app-primary) !important; }
         .btn-outline-primary:hover { color: var(--app-primary-contrast) !important; background-color: var(--app-primary) !important; }
         .btn-primary:hover, .btn-primary:focus, .page-item.active .page-link:hover { background-color: var(--app-primary-hover) !important; border-color: var(--app-primary-hover) !important; }
+        .right-area .main-content a.product-detail-edit { color: var(--app-primary-contrast) !important; }
         .btn-outline-primary:focus, .form-check-input:focus { box-shadow: 0 0 0 .2rem color-mix(in srgb, var(--app-primary) 25%, transparent) !important; }
         ::selection { background: color-mix(in srgb, var(--app-primary) 24%, transparent); }
         .btn-secondary { background-color: var(--app-secondary) !important; border-color: var(--app-secondary) !important; }

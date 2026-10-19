@@ -1,6 +1,6 @@
 .product-detail-page {
-    --pd-red: #851b1b;
-    --pd-ink: #292d38;
+    --pd-red: var(--app-primary, #851b1b);
+    --pd-ink: var(--app-text, #292d38);
     --pd-muted: #747b89;
     --pd-line: #e2e5eb;
     width: 100%;
@@ -20,7 +20,7 @@
 .product-detail-eyebrow { display: block; margin-bottom: 7px; color: var(--pd-red); font-size: 10px; font-weight: 850; letter-spacing: .13em; line-height: 1.5; text-transform: uppercase; }
 .product-detail-title h1 { margin: 0; color: var(--pd-ink); font-size: clamp(23px, 3vw, 32px); font-weight: 850; line-height: 1.2; overflow-wrap: anywhere; }
 .product-detail-title p, .product-detail-section-head p { margin: 8px 0 0; color: var(--pd-muted); font-size: 13px; line-height: 1.6; }
-.product-detail-edit, .product-detail-button { display: inline-flex; min-height: 42px; flex: 0 0 auto; align-items: center; justify-content: center; gap: 8px; padding: 0 14px; border: 1px solid var(--pd-red); background: var(--pd-red); color: #fff; font-size: 12px; font-weight: 750; text-decoration: none; cursor: pointer; }
+.product-detail-edit, .product-detail-button { display: inline-flex; min-height: 42px; flex: 0 0 auto; align-items: center; justify-content: center; gap: 8px; padding: 0 14px; border: 1px solid var(--pd-red); background: var(--pd-red); color: var(--app-primary-contrast, #fff); font-size: 12px; font-weight: 750; text-decoration: none; cursor: pointer; }
 .product-detail-edit .material-icons, .product-detail-button .material-icons { font-size: 18px; }
 .product-detail-metrics { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 12px; margin-bottom: 20px; }
 .product-detail-metrics article { display: flex; min-height: 88px; align-items: center; gap: 13px; min-width: 0; padding: 16px; border: 1px solid var(--pd-line); background: #fff; }
