@@ -1,4 +1,4 @@
-const CACHE_NAME = 'tenace-pwa-v1.0.0';
+const CACHE_NAME = 'tenace-pwa-v1.0.1';
 
 const PRECACHE_ASSETS = [
   '/icons/icon-192x192.png',
@@ -48,6 +48,13 @@ self.addEventListener('fetch', (event) => {
   }
 
   const url = new URL(request.url);
+
+  // Never serve or store a cached login page: it must always reflect the
+  // current server-side theme and authentication state.
+  if (request.mode === 'navigate' && (url.pathname === '/' || url.pathname === '/login')) {
+    event.respondWith(fetch(request, { cache: 'no-store' }));
+    return;
+  }
 
   // Bypass Livewire, API, and admin action routes to guarantee live, fresh transactions
   if (

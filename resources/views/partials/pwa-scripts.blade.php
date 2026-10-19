@@ -318,7 +318,7 @@
         // 2. Gestion du Service Worker et de la notification de mise à jour
         if ('serviceWorker' in navigator) {
             window.addEventListener('load', () => {
-                navigator.serviceWorker.register('/sw.js').then((registration) => {
+                navigator.serviceWorker.register('/sw.js?v=1.0.2', { updateViaCache: 'none' }).then((registration) => {
                     function promptUserForUpdate(waitingWorker) {
                         const updateBanner = document.getElementById('pwa-update-banner');
                         const btnUpdate = document.getElementById('pwa-btn-update');

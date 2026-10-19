@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="fr" data-app-theme="{{ $appTheme['appearance_mode'] ?? 'light' }}">
 
 
 <!-- Mirrored from htmlthemes.gitlab.io/admin/login.html by HTTrack Website Copier/3.x [XR&CO'2014], Thu, 18 May 2023 21:04:31 GMT -->
@@ -11,6 +11,27 @@
     <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
 
     <link rel="stylesheet" href="{{ asset('assets/css/style.css') }}">
+    <style>
+        :root {
+            --app-primary: {{ $appTheme['primary_color'] }};
+            --app-secondary: {{ $appTheme['secondary_color'] }};
+            --app-accent: {{ $appTheme['accent_color'] }};
+            --app-background: {{ $appTheme['background_color'] }};
+            --app-surface: {{ $appTheme['surface_color'] }};
+            --app-text: {{ $appTheme['text_color'] }};
+            --app-primary-contrast: {{ $appTheme['primary_contrast_color'] }};
+            --app-radius: {{ ['square' => '0px', 'soft' => '8px', 'rounded' => '16px'][$appTheme['corner_style']] ?? '8px' }};
+        }
+        body { background:var(--app-background); color:var(--app-text); }
+        .welcome-login-background { background:{{ $appTheme['primary_color'] }} !important; }
+        .welcome-login-card { background:var(--app-surface); color:var(--app-text); }
+        .welcome-login-card .btn-primary { background:{{ $appTheme['primary_color'] }} !important; border-color:{{ $appTheme['primary_color'] }} !important; color:{{ $appTheme['primary_contrast_color'] }} !important; }
+        .welcome-login-credit { color:var(--app-primary) !important; }
+        html[data-app-theme="dark"] body { background:#14171c; }
+        html[data-app-theme="dark"] .welcome-login-card { background:#20252d; color:#edf1f5; border-color:#373f4b; }
+        html[data-app-theme="dark"] .welcome-login-card .form-control { background:#171b21; color:#edf1f5; border-color:#373f4b; }
+        html[data-app-theme="dark"] .welcome-login-card .form-control::placeholder { color:#a8b1bd; }
+    </style>
 
     <link rel="shortcut icon" href="{{ asset('assets/images/tena.png') }}" type="image/png">
     <link rel="icon" href="{{ asset('assets/images/tena.png') }}" type="image/png">
@@ -24,9 +45,9 @@
     <div class="overlay-mask"></div>
     <div class="main-wrapper ">
         <div class="main-content container-fluid h-100 bg-primary">
-            <div  style="background-color: #7e1615" class="row h-100">
+            <div class="row h-100 welcome-login-background">
 
-                <div class="col-10 col-sm-8 col-md-6 col-lg-4 col-xl-3 m-auto px-3 pt-5 pb-4 card shadow m-3">
+                <div class="col-10 col-sm-8 col-md-6 col-lg-4 col-xl-3 m-auto px-3 pt-5 pb-4 card shadow m-3 welcome-login-card">
                     @php
                     $settings=App\Models\Setting::all();
                     @endphp
@@ -65,7 +86,7 @@
                             Connectez-vous
                         </button>
                         <hr style="padding-top: 8px">
-                        <a href="https://digital-services-home.com/" style="color: black" class="d-block text-center">@ DIGITAL SERVCICES</a>
+                        <a href="https://digital-services-home.com/" class="d-block text-center welcome-login-credit">@ DIGITAL SERVCICES</a>
                     </form>
                 </div>
             </div>

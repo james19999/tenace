@@ -24,7 +24,7 @@
         }
         html, body, .main-wrapper, .login-shell { min-height:100%; }
         body { background:var(--app-background); color:var(--app-text); }
-        .login-shell { display:flex; min-height:100vh; padding:28px 16px; background:linear-gradient(135deg,var(--app-primary),var(--app-secondary)); }
+        .login-shell { display:flex; min-height:100vh; padding:28px 16px; background:linear-gradient(135deg,var(--login-primary,var(--app-primary)),var(--login-secondary,var(--app-secondary))) !important; }
         .login-card { width:100%; max-width:430px; align-self:center; margin:0 auto !important; padding:34px 30px 24px !important; border:1px solid rgba(255,255,255,.28); border-radius:var(--app-radius) !important; background:var(--app-surface); color:var(--app-text); box-shadow:0 22px 60px rgba(0,0,0,.2); }
         .login-card h4 { color:var(--app-text); font-weight:750; }
         .login-card .form-control { min-height:46px; border-radius:var(--app-radius); }
@@ -32,7 +32,7 @@
         .login-card .form-check-label { color:var(--app-text); }
         .login-card .login-credit { color:var(--app-primary); font-size:12px; font-weight:700; }
         html[data-app-theme="dark"] body { background:#14171c; }
-        html[data-app-theme="dark"] .login-shell { background:radial-gradient(ellipse at top left,color-mix(in srgb,var(--app-primary) 24%,#14171c),transparent 55%),#14171c; }
+        html[data-app-theme="dark"] .login-shell { background:radial-gradient(ellipse at top left,color-mix(in srgb,var(--login-primary,var(--app-primary)) 24%,#14171c),transparent 55%),#14171c !important; }
         html[data-app-theme="dark"] .login-card { border-color:#373f4b; }
         html[data-app-theme="dark"] .login-card .form-control { background:#171b21; color:#edf1f5; border-color:#373f4b; }
         html[data-app-theme="dark"] .login-card .form-control::placeholder { color:#a8b1bd; }
@@ -50,7 +50,7 @@
 <body>
     <div class="overlay-mask"></div>
     <div class="main-wrapper ">
-        <div class="main-content container-fluid login-shell">
+        <div class="main-content container-fluid login-shell" style="--login-primary:{{ $appTheme['primary_color'] }};--login-secondary:{{ $appTheme['secondary_color'] }};background:{{ ($appTheme['appearance_mode'] ?? 'light') === 'dark' ? '#14171c' : 'linear-gradient(135deg, '.$appTheme['primary_color'].','.$appTheme['secondary_color'].')' }} !important">
             @if (session()->has('messages'))
             <div class="alert alert-success">{{ session('messages') }}</div>
            @endif
@@ -100,7 +100,7 @@
                             <label class="form-check-label" for="showPassword" style="cursor: pointer;">Voir le mot de passe</label>
                         </div>
 
-                        <button id="login-submit" type="submit" class="btn btn-primary btn-block my-4 d-flex align-items-center justify-content-center" style="min-height: 44px; font-weight: 600;">
+                        <button id="login-submit" type="submit" class="btn btn-primary btn-block my-4 d-flex align-items-center justify-content-center" style="min-height:44px;font-weight:600;background-color:{{ $appTheme['primary_color'] }} !important;border-color:{{ $appTheme['primary_color'] }} !important;color:{{ $appTheme['primary_contrast_color'] }} !important">
                             <span id="login-spinner" class="spinner-border spinner-border-sm mr-2" style="display: none;" role="status" aria-hidden="true"></span>
                             <span id="login-submit-label">Connectez-vous</span>
                         </button>
