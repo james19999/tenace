@@ -388,5 +388,57 @@
             .product-cart-actions .btn{white-space:normal;line-height:1.25}
             .catalog-pagination{padding:12px}
         }
+        html[data-app-theme="dark"] .product-catalog-page { --catalog-ink:#edf1f5; --catalog-muted:#a8b1bd; --catalog-line:#373f4b; --catalog-bg:#14171c; color:#edf1f5 !important; }
+        html[data-app-theme="dark"] .catalog-header,
+        html[data-app-theme="dark"] .catalog-panel,
+        html[data-app-theme="dark"] .catalog-metric,
+        html[data-app-theme="dark"] .product-card { background:#1e232b !important; border-color:#373f4b !important; color:#edf1f5 !important; }
+        html[data-app-theme="dark"] .catalog-header h1,
+        html[data-app-theme="dark"] .catalog-toolbar h2,
+        html[data-app-theme="dark"] .product-title-row h3,
+        html[data-app-theme="dark"] .catalog-metric strong,
+        html[data-app-theme="dark"] .product-prices strong,
+        html[data-app-theme="dark"] .product-commission strong,
+        html[data-app-theme="dark"] .catalog-empty h3 { color:#edf1f5 !important; }
+        html[data-app-theme="dark"] .catalog-header p,
+        html[data-app-theme="dark"] .catalog-toolbar p,
+        html[data-app-theme="dark"] .catalog-metric small,
+        html[data-app-theme="dark"] .product-reference,
+        html[data-app-theme="dark"] .product-stock-number small,
+        html[data-app-theme="dark"] .product-description,
+        html[data-app-theme="dark"] .product-prices small,
+        html[data-app-theme="dark"] .product-prices strong span,
+        html[data-app-theme="dark"] .product-commission,
+        html[data-app-theme="dark"] .catalog-pagination > span,
+        html[data-app-theme="dark"] .catalog-empty p { color:#a8b1bd !important; }
+        html[data-app-theme="dark"] .catalog-report-link,
+        html[data-app-theme="dark"] .catalog-search,
+        html[data-app-theme="dark"] .catalog-stock-filter,
+        html[data-app-theme="dark"] .product-wholesale-button,
+        html[data-app-theme="dark"] .product-admin-actions a,
+        html[data-app-theme="dark"] .product-admin-actions button,
+        html[data-app-theme="dark"] .catalog-pagination .page-link { background:#252b34 !important; border-color:#414a57 !important; color:#edf1f5 !important; }
+        html[data-app-theme="dark"] .catalog-report-link small { color:#a8b1bd !important; }
+        html[data-app-theme="dark"] .catalog-search input,
+        html[data-app-theme="dark"] .catalog-stock-filter { color:#edf1f5 !important; }
+        html[data-app-theme="dark"] .catalog-search input::placeholder { color:#929dab !important; }
+        html[data-app-theme="dark"] .catalog-metric-icon,
+        html[data-app-theme="dark"] .product-image { background:#252b34 !important; border-color:#414a57 !important; color:#c5cbd4 !important; }
+        html[data-app-theme="dark"] .catalog-metric-good .catalog-metric-icon { background:#173b2a !important; color:#75d6a2 !important; }
+        html[data-app-theme="dark"] .catalog-metric-warning .catalog-metric-icon { background:#423414 !important; color:#f1c66c !important; }
+        html[data-app-theme="dark"] .stock-available { background:#173b2a !important; color:#75d6a2 !important; }
+        html[data-app-theme="dark"] .stock-low { background:#423414 !important; color:#f1c66c !important; }
+        html[data-app-theme="dark"] .stock-out { background:#482525 !important; color:#ff9994 !important; }
+        html[data-app-theme="dark"] .product-add-button { background:var(--app-primary) !important; color:var(--app-primary-contrast) !important; }
+        html[data-app-theme="dark"] .product-add-button:hover:not(:disabled) { background:var(--app-primary-hover) !important; }
+        html[data-app-theme="dark"] .product-admin-actions { border-color:#373f4b !important; }
+        html[data-app-theme="dark"] .product-prices { border-color:#373f4b !important; }
+        html[data-app-theme="dark"] .catalog-pagination { border-color:#373f4b !important; }
+        html[data-app-theme="dark"] .catalog-alert { background:#173b2a !important; border-color:#285b40 !important; color:#a7e4bf !important; }
+        html[data-app-theme="dark"] .catalog-pagination .page-item.active .page-link { background:var(--app-primary) !important; border-color:var(--app-primary) !important; color:var(--app-primary-contrast) !important; }
+        html[data-app-theme="dark"] .product-delete-dialog { background:#1e232b !important; border-color:#373f4b !important; color:#edf1f5 !important; }
+        html[data-app-theme="dark"] .product-delete-dialog p { color:#a8b1bd !important; }
+        html[data-app-theme="dark"] .product-delete-dialog-mark button,
+        html[data-app-theme="dark"] .product-delete-dialog-actions .product-delete-cancel { background:#252b34 !important; border-color:#414a57 !important; color:#edf1f5 !important; }
     </style>
 </div>

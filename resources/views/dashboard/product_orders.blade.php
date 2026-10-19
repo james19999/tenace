@@ -112,6 +112,9 @@
                 var gradient = context.createLinearGradient(0, 0, Math.max(canvas.parentElement.clientWidth || 700, 1), 0);
                 gradient.addColorStop(0, '#8b2524');
                 gradient.addColorStop(1, '#d58b75');
+                var isDark = document.documentElement.dataset.appTheme === 'dark';
+                var labelColor = isDark ? '#a8b1bd' : '#4d5360';
+                var gridColor = isDark ? '#3b434f' : '#eef0f3';
                 new Chart(context, {
                     type: 'bar',
                     data: {
@@ -120,10 +123,10 @@
                     },
                     options: {
                         indexAxis: 'y', responsive: true, maintainAspectRatio: false,
-                        plugins: { legend: { display: false }, tooltip: { callbacks: { label: function (context) { return ' ' + context.formattedValue + ' ligne(s)'; } } } },
+                        plugins: { legend: { display: false }, tooltip: { backgroundColor: isDark ? '#252b34' : '#252936', titleColor: '#edf1f5', bodyColor: '#edf1f5', callbacks: { label: function (context) { return ' ' + context.formattedValue + ' ligne(s)'; } } } },
                         scales: {
-                            x: { beginAtZero: true, ticks: { precision: 0 }, grid: { color: '#eef0f3' }, title: { display: true, text: 'Nombre de lignes de commande' } },
-                            y: { grid: { display: false }, ticks: { color: '#4d5360', autoSkip: false, font: { size: 11 }, callback: function (value) { var label = this.getLabelForValue(value); return label.length > 28 ? label.slice(0, 26) + '…' : label; } } }
+                            x: { beginAtZero: true, ticks: { precision: 0, color: labelColor }, grid: { color: gridColor }, title: { display: true, text: 'Nombre de lignes de commande', color: labelColor } },
+                            y: { grid: { display: false }, ticks: { color: labelColor, autoSkip: false, font: { size: 11 }, callback: function (value) { var label = this.getLabelForValue(value); return label.length > 28 ? label.slice(0, 26) + '…' : label; } } }
                         }
                     }
                 });

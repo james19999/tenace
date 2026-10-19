@@ -606,6 +606,27 @@
     .settings-tab.is-active { background:var(--app-primary); color:var(--app-primary-contrast); }
     .config-tab-panel[hidden] { display:none !important; }
     .config-tab-panel > .col-12 { padding:0; }
+    html[data-app-theme="dark"] .settings-page-heading h1 { color:var(--app-text) !important; }
+    html[data-app-theme="dark"] .settings-page-heading p { color:var(--app-muted) !important; }
+    html[data-app-theme="dark"] .settings-tabs { background:var(--app-surface) !important; border-color:var(--app-border) !important; }
+    html[data-app-theme="dark"] .settings-tab { color:var(--app-muted) !important; }
+    html[data-app-theme="dark"] .settings-tab:hover { background:var(--app-primary-soft) !important; color:var(--app-text) !important; }
+    html[data-app-theme="dark"] .settings-tab.is-active { background:var(--app-primary) !important; color:var(--app-primary-contrast) !important; }
+    html[data-app-theme="dark"] .settings-page .card,
+    html[data-app-theme="dark"] .settings-page .card-body { color:var(--app-text); }
+    html[data-app-theme="dark"] .settings-page .theme-presets,
+    html[data-app-theme="dark"] .settings-page .appearance-switch { background:#171b21 !important; border-color:var(--app-border) !important; }
+    html[data-app-theme="dark"] .settings-page .theme-presets > span,
+    html[data-app-theme="dark"] .settings-page .theme-preset { color:var(--app-text) !important; }
+    html[data-app-theme="dark"] .settings-page .theme-presets > small { color:var(--app-muted) !important; }
+    html[data-app-theme="dark"] .settings-page .theme-preset { background:#252b34 !important; border-color:var(--app-border) !important; }
+    html[data-app-theme="dark"] .settings-page .appearance-switch button:not([aria-pressed="true"]) { color:var(--app-muted) !important; }
+    html[data-app-theme="dark"] .settings-page .dataTables_wrapper .dt-buttons .dt-button,
+    html[data-app-theme="dark"] .settings-page .dataTables_wrapper button.dt-button,
+    html[data-app-theme="dark"] .settings-page .dataTables_wrapper a.dt-button { background:#252b34 !important; background-image:none !important; color:var(--app-text) !important; border:1px solid var(--app-border) !important; box-shadow:none !important; }
+    html[data-app-theme="dark"] .settings-page .dataTables_wrapper .dt-buttons .dt-button:hover,
+    html[data-app-theme="dark"] .settings-page .dataTables_wrapper button.dt-button:hover,
+    html[data-app-theme="dark"] .settings-page .dataTables_wrapper a.dt-button:hover { background:var(--app-primary) !important; color:var(--app-primary-contrast) !important; border-color:var(--app-primary) !important; }
     @media(max-width:575.98px) { .settings-page { padding:6px 8px 22px; } .settings-page-heading { margin-bottom:15px; } .settings-page-heading h1 { font-size:22px; } .settings-tabs { gap:4px; } .settings-tab { padding:10px 12px; font-size:13px; } }
 </style>
 <script>
