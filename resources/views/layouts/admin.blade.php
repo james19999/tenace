@@ -76,7 +76,14 @@
         .main-wrapper .sidebar .navigation > ul li > a[href="#mngStockControlMenu"].active .text,
         .main-wrapper .sidebar .navigation > ul li > a[href="#mngStockControlMenu"].active .caret { color: #fff !important; }
         .right-area header { background-color: var(--app-primary) !important; color: var(--app-primary-contrast) !important; }
-        .right-area header a, .right-area header button, .right-area header .btn { color: var(--app-primary-contrast) !important; }
+        .right-area header a:not(.dropdown-item), .right-area header button:not(.dropdown-item), .right-area header .btn:not(.dropdown-item) { color: var(--app-primary-contrast) !important; }
+        .right-area header .dropdown-menu { background: var(--app-surface) !important; color: var(--app-text) !important; }
+        .right-area header .dropdown-menu .dropdown-item,
+        .right-area header .dropdown-menu .dropdown-item-text,
+        .right-area header .dropdown-menu a,
+        .right-area header .dropdown-menu span { color: var(--app-text) !important; }
+        .right-area header .dropdown-menu a:hover,
+        .right-area header .dropdown-menu a:focus { background: var(--app-primary-soft) !important; color: var(--app-primary) !important; }
         .btn-primary, .badge-primary, .page-item.active .page-link {
             background-color: var(--app-primary) !important;
             border-color: var(--app-primary) !important;
