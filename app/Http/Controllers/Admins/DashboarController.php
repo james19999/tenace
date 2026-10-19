@@ -473,6 +473,7 @@ class DashboarController extends Controller
             'surface_color' => ['required', 'regex:/^#[0-9a-fA-F]{6}$/'],
             'text_color' => ['required', 'regex:/^#[0-9a-fA-F]{6}$/'],
             'corner_style' => ['required', 'in:square,soft,rounded'],
+            'appearance_mode' => ['required', 'in:light,dark'],
         ]);
 
         AppThemeSetting::query()->updateOrCreate(['id' => 1], $validated);

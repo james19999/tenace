@@ -201,9 +201,18 @@
                     </select>
                     <small class="form-text text-muted">S’applique aux cartes, boutons et champs.</small>
                 </div>
+                <div class="col-12 col-sm-6 col-lg-4 mb-3">
+                    <span class="d-block font-weight-bold mb-2">Mode d’affichage</span>
+                    <input type="hidden" name="appearance_mode" id="appearance-mode" value="{{ old('appearance_mode', $appTheme['appearance_mode'] ?? 'light') }}">
+                    <div class="appearance-switch" role="group" aria-label="Choisir le mode d’affichage">
+                        <button type="button" data-appearance-choice="light" aria-pressed="{{ old('appearance_mode', $appTheme['appearance_mode'] ?? 'light') === 'light' ? 'true' : 'false' }}"><span class="material-icons">light_mode</span>Mode clair</button>
+                        <button type="button" data-appearance-choice="dark" aria-pressed="{{ old('appearance_mode', $appTheme['appearance_mode'] ?? 'light') === 'dark' ? 'true' : 'false' }}"><span class="material-icons">dark_mode</span>Mode sombre</button>
+                    </div>
+                    <small class="form-text text-muted">Les cartes, tableaux, menus et champs gardent un contraste lisible.</small>
+                </div>
             </div>
 
-            <div class="theme-preview" id="theme-preview" style="--preview-primary:{{ $appTheme['primary_color'] }};--preview-primary-contrast:{{ $appTheme['primary_contrast_color'] }};--preview-secondary:{{ $appTheme['secondary_color'] }};--preview-accent:{{ $appTheme['accent_color'] }};--preview-background:{{ $appTheme['background_color'] }};--preview-surface:{{ $appTheme['surface_color'] }};--preview-text:{{ $appTheme['text_color'] }};--preview-radius:{{ ['square' => '0px', 'soft' => '8px', 'rounded' => '16px'][$appTheme['corner_style']] ?? '8px' }}">
+            <div class="theme-preview" id="theme-preview" data-preview-mode="{{ old('appearance_mode', $appTheme['appearance_mode'] ?? 'light') }}" style="--preview-primary:{{ $appTheme['primary_color'] }};--preview-primary-contrast:{{ $appTheme['primary_contrast_color'] }};--preview-secondary:{{ $appTheme['secondary_color'] }};--preview-accent:{{ $appTheme['accent_color'] }};--preview-background:{{ $appTheme['background_color'] }};--preview-surface:{{ $appTheme['surface_color'] }};--preview-text:{{ $appTheme['text_color'] }};--preview-radius:{{ ['square' => '0px', 'soft' => '8px', 'rounded' => '16px'][$appTheme['corner_style']] ?? '8px' }}">
                 <div class="theme-preview-sidebar"><strong>TENACOS</strong><span>Accueil</span><span class="active">Tableau de bord</span></div>
                 <div class="theme-preview-content"><small>Aperçu</small><strong>Votre espace de gestion</strong><div class="theme-preview-card"><span>Chiffre d’affaires du jour</span><b>125 000 XOF</b><button type="button">Action principale</button><i>Validation réussie</i></div></div>
             </div>
@@ -515,6 +524,7 @@
         const preview = document.getElementById('theme-preview');
         const colorInputs = document.querySelectorAll('[data-theme-color]');
         const cornerSelect = document.querySelector('[data-theme-corners]');
+        const appearanceInput = document.getElementById('appearance-mode');
         const radiusByStyle = { square: '0px', soft: '8px', rounded: '16px' };
         const contrastColor = (hex) => {
             const channels = hex.match(/[0-9a-f]{2}/gi)?.map(value => parseInt(value, 16) / 255) || [0.5, 0.5, 0.5];
@@ -540,6 +550,13 @@
             preview.style.setProperty('--preview-radius', radius);
             document.documentElement.style.setProperty('--app-radius', radius);
         });
+        document.querySelectorAll('[data-appearance-choice]').forEach((button) => button.addEventListener('click', function () {
+            const mode = button.dataset.appearanceChoice;
+            appearanceInput.value = mode;
+            preview.dataset.previewMode = mode;
+            document.documentElement.dataset.appTheme = mode;
+            document.querySelectorAll('[data-appearance-choice]').forEach(choice => choice.setAttribute('aria-pressed', choice === button ? 'true' : 'false'));
+        }));
         document.getElementById('theme-reset-defaults')?.addEventListener('click', function () {
             const defaults = { primary_color:'#7e1615', secondary_color:'#343a40', accent_color:'#5fb49c', background_color:'#f8f9fa', surface_color:'#ffffff', text_color:'#292d38' };
             Object.entries(defaults).forEach(([name, value]) => {
@@ -571,6 +588,15 @@
     .theme-presets { display:flex; align-items:center; flex-wrap:wrap; gap:8px; padding:12px; border:1px solid #e5e8ed; border-radius:9px; background:#fafbfc; }
     .theme-presets > span { margin-right:4px; color:#343a40; }
     .theme-presets > small { flex-basis:100%; color:#778091; }
+    .appearance-switch { display:flex; gap:7px; padding:4px; border:1px solid #dfe3e9; border-radius:8px; background:#f6f7f9; }
+    .appearance-switch button { display:flex; flex:1; align-items:center; justify-content:center; gap:6px; min-height:39px; padding:7px 9px; border:1px solid transparent; border-radius:6px; background:transparent; color:#555e6c; font-size:12px; font-weight:700; cursor:pointer; }
+    .appearance-switch button[aria-pressed="true"] { border-color:var(--app-primary); background:var(--app-primary); color:var(--app-primary-contrast); }
+    .appearance-switch .material-icons { font-size:17px; }
+    .theme-preview[data-preview-mode="dark"] { --preview-background:#14171c !important; --preview-surface:#1e232b !important; --preview-text:#edf1f5 !important; border-color:#373f4b; }
+    .theme-preview[data-preview-mode="dark"] .theme-preview-content > small,
+    .theme-preview[data-preview-mode="dark"] .theme-preview-card span { color:#a8b1bd; }
+    .theme-preview[data-preview-mode="dark"] .theme-preview-card { border-color:#373f4b; background:#171b21; }
+    .theme-preview[data-preview-mode="dark"] .theme-preview-card b { color:#edf1f5; }
     .theme-preset { display:inline-flex; align-items:center; gap:7px; padding:7px 10px; border:1px solid #dfe3e9; border-radius:7px; background:#fff; color:#343a40; font-weight:650; cursor:pointer; }
     .theme-preset:hover { border-color:var(--app-primary-border); background:var(--app-primary-soft); }
     .theme-preset i { width:15px; height:15px; border-radius:50%; background:var(--swatch); }

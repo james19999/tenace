@@ -10,6 +10,7 @@ class AppThemeSetting extends Model
     protected $fillable = [
         'primary_color', 'secondary_color', 'accent_color',
         'background_color', 'surface_color', 'text_color', 'corner_style',
+        'appearance_mode',
     ];
 
     public static function currentTheme(): array
@@ -17,7 +18,7 @@ class AppThemeSetting extends Model
         $theme = [
             'primary_color' => '#7e1615', 'secondary_color' => '#343a40',
             'accent_color' => '#5fb49c', 'background_color' => '#f8f9fa',
-            'surface_color' => '#ffffff', 'text_color' => '#292d38', 'corner_style' => 'soft',
+            'surface_color' => '#ffffff', 'text_color' => '#292d38', 'corner_style' => 'soft', 'appearance_mode' => 'light',
         ];
 
         if (! Schema::hasTable('app_theme_settings')) {
@@ -31,6 +32,10 @@ class AppThemeSetting extends Model
             }
             if ($key === 'corner_style') {
                 if (in_array($stored[$key], ['square', 'soft', 'rounded'], true)) {
+                    $theme[$key] = $stored[$key];
+                }
+            } elseif ($key === 'appearance_mode') {
+                if (in_array($stored[$key], ['light', 'dark'], true)) {
                     $theme[$key] = $stored[$key];
                 }
             } elseif (is_string($stored[$key]) && preg_match('/^#[0-9a-fA-F]{6}$/', $stored[$key])) {

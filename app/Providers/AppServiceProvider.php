@@ -22,7 +22,7 @@ class AppServiceProvider extends ServiceProvider
     public function boot(): void
     {
         Paginator::useBootstrap();
-        view()->composer('layouts.admin', function ($view): void {
+        view()->composer(['layouts.admin', 'auth.login', 'layouts.app'], function ($view): void {
             $view->with('appTheme', AppThemeSetting::currentTheme());
         });
     }

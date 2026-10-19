@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="{{ str_replace('_', '-', app()->getLocale()) }}">
+<html lang="{{ str_replace('_', '-', app()->getLocale()) }}" data-app-theme="{{ $appTheme['appearance_mode'] ?? 'light' }}">
 
 
 
@@ -53,18 +53,18 @@
         .main-wrapper .sidebar .navigation > ul li a.active {
             border-radius: var(--app-radius) !important;
             background: var(--app-primary) !important;
-            color: #fff !important;
+            color: var(--app-primary-contrast) !important;
             box-shadow: inset 3px 0 0 rgba(255,255,255,.45) !important;
         }
         .main-wrapper .sidebar .navigation > ul li a.active .icon,
         .main-wrapper .sidebar .navigation > ul li a.active .caret,
-        .main-wrapper .sidebar .navigation > ul li a.active .text { color: #fff !important; }
+        .main-wrapper .sidebar .navigation > ul li a.active .text { color: var(--app-primary-contrast) !important; }
         .main-wrapper .sidebar .navigation > ul li ul li a[href*="stock-control"].active,
         .main-wrapper .sidebar .navigation > ul li > a[href="#adminStockControlMenu"].active,
         .main-wrapper .sidebar .navigation > ul li > a[href="#mngStockControlMenu"].active {
             border-radius: var(--app-radius) !important;
             background: var(--app-primary) !important;
-            color: #fff !important;
+            color: var(--app-primary-contrast) !important;
             box-shadow: inset 3px 0 0 rgba(255,255,255,.45) !important;
         }
         .main-wrapper .sidebar .navigation > ul li ul li a[href*="stock-control"].active .icon,
@@ -74,7 +74,7 @@
         .main-wrapper .sidebar .navigation > ul li > a[href="#adminStockControlMenu"].active .caret,
         .main-wrapper .sidebar .navigation > ul li > a[href="#mngStockControlMenu"].active .icon,
         .main-wrapper .sidebar .navigation > ul li > a[href="#mngStockControlMenu"].active .text,
-        .main-wrapper .sidebar .navigation > ul li > a[href="#mngStockControlMenu"].active .caret { color: #fff !important; }
+        .main-wrapper .sidebar .navigation > ul li > a[href="#mngStockControlMenu"].active .caret { color: var(--app-primary-contrast) !important; }
         .right-area > header { background-color: var(--app-primary) !important; color: var(--app-primary-contrast) !important; }
         .right-area > header a:not(.dropdown-item), .right-area > header button:not(.dropdown-item), .right-area > header .btn:not(.dropdown-item) { color: var(--app-primary-contrast) !important; }
         .right-area > header .dropdown-menu { background: var(--app-surface) !important; color: var(--app-text) !important; }
@@ -125,6 +125,168 @@
     @livewireStyles
 
     @include('partials.pwa-head')
+
+    <style>
+        html[data-app-theme="dark"] {
+            color-scheme: dark;
+            --app-background: #14171c;
+            --app-surface: #1e232b;
+            --app-text: #edf1f5;
+            --app-muted: #a8b1bd;
+            --app-border: #373f4b;
+            --app-primary-soft: color-mix(in srgb, var(--app-primary) 20%, #1e232b);
+            --app-primary-border: color-mix(in srgb, var(--app-primary) 58%, #1e232b);
+        }
+        html[data-app-theme="dark"] body,
+        html[data-app-theme="dark"] .main-wrapper,
+        html[data-app-theme="dark"] .right-area,
+        html[data-app-theme="dark"] .right-area .main-content { background-color: var(--app-background) !important; color: var(--app-text); }
+        html[data-app-theme="dark"] .main-wrapper .sidebar,
+        html[data-app-theme="dark"] .card,
+        html[data-app-theme="dark"] .modal-content,
+        html[data-app-theme="dark"] .dropdown-menu,
+        html[data-app-theme="dark"] .list-group-item,
+        html[data-app-theme="dark"] .page-header,
+        html[data-app-theme="dark"] .product-detail-hero,
+        html[data-app-theme="dark"] .product-detail-workspace,
+        html[data-app-theme="dark"] .product-detail-metrics article,
+        html[data-app-theme="dark"] .stock-control-card,
+        html[data-app-theme="dark"] .stock-control-table-wrap { background-color: var(--app-surface) !important; color: var(--app-text) !important; border-color: var(--app-border) !important; }
+        html[data-app-theme="dark"] .card-header,
+        html[data-app-theme="dark"] .card-footer,
+        html[data-app-theme="dark"] .table thead th,
+        html[data-app-theme="dark"] .table tfoot th,
+        html[data-app-theme="dark"] .table .thead-light th,
+        html[data-app-theme="dark"] .product-detail-tabs,
+        html[data-app-theme="dark"] .product-detail-table th { background-color: #252b34 !important; color: var(--app-muted) !important; border-color: var(--app-border) !important; }
+        html[data-app-theme="dark"] .table,
+        html[data-app-theme="dark"] .table tbody tr,
+        html[data-app-theme="dark"] .table td,
+        html[data-app-theme="dark"] .product-detail-table td,
+        html[data-app-theme="dark"] .dropdown-item,
+        html[data-app-theme="dark"] .dropdown-item-text { background-color: transparent; color: var(--app-text) !important; border-color: var(--app-border) !important; }
+        html[data-app-theme="dark"] .table-hover tbody tr:hover,
+        html[data-app-theme="dark"] .dropdown-item:hover,
+        html[data-app-theme="dark"] .dropdown-item:focus { background-color: var(--app-primary-soft) !important; color: var(--app-text) !important; }
+        html[data-app-theme="dark"] .table-striped tbody tr:nth-of-type(odd),
+        html[data-app-theme="dark"] .dataTable tbody tr:nth-of-type(odd) { background-color: #222831 !important; }
+        html[data-app-theme="dark"] .dataTables_wrapper,
+        html[data-app-theme="dark"] .dataTables_wrapper label,
+        html[data-app-theme="dark"] .dataTables_info,
+        html[data-app-theme="dark"] .dataTables_length,
+        html[data-app-theme="dark"] .dataTables_filter { color: var(--app-muted) !important; }
+        html[data-app-theme="dark"] .main-wrapper .sidebar .navigation > ul li a:not(.active),
+        html[data-app-theme="dark"] .main-wrapper .sidebar .navigation > ul li a:not(.active) .text,
+        html[data-app-theme="dark"] .main-wrapper .sidebar .navigation > ul li a:not(.active) .icon { color: var(--app-text) !important; }
+        html[data-app-theme="dark"] .form-control,
+        html[data-app-theme="dark"] .custom-select,
+        html[data-app-theme="dark"] select,
+        html[data-app-theme="dark"] textarea,
+        html[data-app-theme="dark"] input:not([type="color"]):not([type="checkbox"]):not([type="radio"]),
+        html[data-app-theme="dark"] .select2-container--default .select2-selection--single,
+        html[data-app-theme="dark"] .select2-dropdown { background-color: #171b21 !important; color: var(--app-text) !important; border-color: var(--app-border) !important; }
+        html[data-app-theme="dark"] input::placeholder,
+        html[data-app-theme="dark"] textarea::placeholder { color: #929dab !important; opacity: 1; }
+        html[data-app-theme="dark"] .text-dark,
+        html[data-app-theme="dark"] .text-body,
+        html[data-app-theme="dark"] .product-detail-title h1,
+        html[data-app-theme="dark"] .product-detail-section-head h2 { color: var(--app-text) !important; }
+        html[data-app-theme="dark"] .text-muted,
+        html[data-app-theme="dark"] .product-detail-title p,
+        html[data-app-theme="dark"] .product-detail-metrics small { color: var(--app-muted) !important; }
+        html[data-app-theme="dark"] .border,
+        html[data-app-theme="dark"] .border-top,
+        html[data-app-theme="dark"] .border-bottom { border-color: var(--app-border) !important; }
+        html[data-app-theme="dark"] .bg-white,
+        html[data-app-theme="dark"] .bg-light { background-color: var(--app-surface) !important; color: var(--app-text) !important; }
+        html[data-app-theme="dark"] .settings-tabs,
+        html[data-app-theme="dark"] .theme-presets,
+        html[data-app-theme="dark"] .theme-preview { background-color: var(--app-surface); border-color: var(--app-border); }
+        html[data-app-theme="dark"] .theme-preview-card { background-color: #171b21; border-color: var(--app-border); }
+        html[data-app-theme="dark"] .theme-preview-card span,
+        html[data-app-theme="dark"] .theme-preview-content > small { color: var(--app-muted); }
+        html[data-app-theme="dark"] .theme-preview-card b,
+        html[data-app-theme="dark"] .theme-preview-content > strong { color: var(--app-text); }
+        /* Surfaces partagées des différents modules */
+        html[data-app-theme="dark"] [class$="-card"]:not(.btn):not(.badge),
+        html[data-app-theme="dark"] [class*="-panel"]:not(.dropdown-panel),
+        html[data-app-theme="dark"] [class*="-section-card"],
+        html[data-app-theme="dark"] [class$="-hero"],
+        html[data-app-theme="dark"] [class$="-header"],
+        html[data-app-theme="dark"] .well,
+        html[data-app-theme="dark"] .jumbotron,
+        html[data-app-theme="dark"] .popover { background-color: var(--app-surface) !important; color: var(--app-text) !important; border-color: var(--app-border) !important; }
+        html[data-app-theme="dark"] [class$="-card"] p,
+        html[data-app-theme="dark"] [class$="-card"] label,
+        html[data-app-theme="dark"] [class$="-card"] h1,
+        html[data-app-theme="dark"] [class$="-card"] h2,
+        html[data-app-theme="dark"] [class$="-card"] h3,
+        html[data-app-theme="dark"] [class$="-card"] h4,
+        html[data-app-theme="dark"] [class$="-panel"] p,
+        html[data-app-theme="dark"] [class$="-panel"] label,
+        html[data-app-theme="dark"] [class$="-panel"] h1,
+        html[data-app-theme="dark"] [class$="-panel"] h2,
+        html[data-app-theme="dark"] [class$="-panel"] h3,
+        html[data-app-theme="dark"] [class$="-panel"] h4,
+        html[data-app-theme="dark"] [class$="-hero"] h1,
+        html[data-app-theme="dark"] [class$="-hero"] h2,
+        html[data-app-theme="dark"] [class$="-hero"] p { color: var(--app-text) !important; }
+        html[data-app-theme="dark"] [class$="-card"] small,
+        html[data-app-theme="dark"] [class$="-panel"] small,
+        html[data-app-theme="dark"] [class$="-header"] small { color: var(--app-muted) !important; }
+        html[data-app-theme="dark"] .table,
+        html[data-app-theme="dark"] table,
+        html[data-app-theme="dark"] .dataTable { color: var(--app-text) !important; border-color: var(--app-border) !important; }
+        html[data-app-theme="dark"] .table thead,
+        html[data-app-theme="dark"] .table tfoot,
+        html[data-app-theme="dark"] table thead,
+        html[data-app-theme="dark"] table tfoot { background-color: #252b34 !important; }
+        html[data-app-theme="dark"] .table th,
+        html[data-app-theme="dark"] .table td,
+        html[data-app-theme="dark"] table th,
+        html[data-app-theme="dark"] table td,
+        html[data-app-theme="dark"] .dataTable th,
+        html[data-app-theme="dark"] .dataTable td { color: var(--app-text) !important; border-color: var(--app-border) !important; }
+        html[data-app-theme="dark"] table tbody td { background-color: transparent !important; }
+        html[data-app-theme="dark"] table tbody tr,
+        html[data-app-theme="dark"] .dataTable tbody tr { background-color: var(--app-surface) !important; }
+        html[data-app-theme="dark"] .table-striped tbody tr:nth-of-type(odd),
+        html[data-app-theme="dark"] .dataTable tbody tr:nth-of-type(odd) { background-color: #252b34 !important; }
+        html[data-app-theme="dark"] .table-responsive,
+        html[data-app-theme="dark"] [class*="table-wrap"],
+        html[data-app-theme="dark"] [class*="table-container"] { background-color: transparent !important; border-color: var(--app-border) !important; }
+        html[data-app-theme="dark"] .form-control,
+        html[data-app-theme="dark"] .custom-select,
+        html[data-app-theme="dark"] select,
+        html[data-app-theme="dark"] textarea,
+        html[data-app-theme="dark"] input:not([type="color"]):not([type="checkbox"]):not([type="radio"]):not([type="submit"]):not([type="button"]):not([type="reset"]) { background-color: #171b21 !important; color: var(--app-text) !important; border-color: var(--app-border) !important; }
+        html[data-app-theme="dark"] .form-control:disabled,
+        html[data-app-theme="dark"] .custom-select:disabled,
+        html[data-app-theme="dark"] input:disabled,
+        html[data-app-theme="dark"] textarea:disabled { background-color: #252b34 !important; color: var(--app-muted) !important; }
+        html[data-app-theme="dark"] .modal-header,
+        html[data-app-theme="dark"] .modal-footer,
+        html[data-app-theme="dark"] .list-group-item,
+        html[data-app-theme="dark"] .nav-tabs,
+        html[data-app-theme="dark"] .dropdown-divider { border-color: var(--app-border) !important; }
+        html[data-app-theme="dark"] .btn-light,
+        html[data-app-theme="dark"] .btn-outline-secondary,
+        html[data-app-theme="dark"] .page-link { background-color: #252b34 !important; color: var(--app-text) !important; border-color: var(--app-border) !important; }
+        html[data-app-theme="dark"] .btn-light:hover,
+        html[data-app-theme="dark"] .btn-outline-secondary:hover,
+        html[data-app-theme="dark"] .page-link:hover { background-color: var(--app-primary-soft) !important; color: var(--app-text) !important; }
+        html[data-app-theme="dark"] .text-dark,
+        html[data-app-theme="dark"] .text-body { color: var(--app-text) !important; }
+        html[data-app-theme="dark"] .text-muted,
+        html[data-app-theme="dark"] small.text-muted,
+        html[data-app-theme="dark"] .form-text { color: var(--app-muted) !important; }
+        html[data-app-theme="dark"] .right-area .main-content a:not(.btn):not(.nav-link):not(.dropdown-item) { color: color-mix(in srgb, var(--app-primary) 45%, #fff) !important; }
+        html[data-app-theme="dark"] .right-area .main-content a:not(.btn):not(.nav-link):not(.dropdown-item):hover { color: #fff !important; }
+        html[data-app-theme="dark"] .select2-container--default .select2-selection--single,
+        html[data-app-theme="dark"] .select2-dropdown,
+        html[data-app-theme="dark"] .select2-results__option { background-color: #171b21 !important; color: var(--app-text) !important; border-color: var(--app-border) !important; }
+        html[data-app-theme="dark"] .select2-container--default .select2-results__option--highlighted[aria-selected] { background-color: var(--app-primary) !important; color: var(--app-primary-contrast) !important; }
+    </style>
 
 </head>
 
