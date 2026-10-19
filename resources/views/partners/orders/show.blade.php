@@ -1,6 +1,7 @@
 @extends('layouts.admin')
 
 @section('content')
+@include('partners.partials.styles')
 @php
     $statusLabels = [
         'awaiting_delivery_quote' => 'Frais de livraison à définir', 'awaiting_customer_confirmation' => 'En attente de l’accord du client',
@@ -8,7 +9,7 @@
         'assigned_to_courier' => 'Livreur affecté', 'handed_to_courier' => 'Colis remis au livreur', 'out_for_delivery' => 'En livraison', 'delivered' => 'Livrée', 'canceled' => 'Annulée',
     ];
 @endphp
-<div class="container-fluid py-4">
+<div class="container-fluid py-4 partner-portal partner-order-detail">
     <div class="d-flex justify-content-between align-items-start flex-wrap mb-4"><div><a href="{{ route('partner.orders.index') }}">← Mes commandes</a><div class="small text-uppercase text-danger font-weight-bold mt-3">COMMANDE {{ $order->code }}</div><h1 class="h2">{{ $order->costumer?->name }}</h1><p class="text-muted mb-2">{{ $order->costumer?->phone }} · {{ $order->costumer?->adresse }}</p><a href="{{ route('public-order.track', $order->public_tracking_token) }}" target="_blank" rel="noopener">Ouvrir / partager le suivi client</a></div><span class="badge badge-danger p-2">{{ $statusLabels[$order->partner_order_status] ?? 'Statut à vérifier' }}</span></div>
     @if (session('success'))<div class="alert alert-success">{{ session('success') }}</div>@endif
     @if ($errors->any())<div class="alert alert-danger">{{ $errors->first() }}</div>@endif

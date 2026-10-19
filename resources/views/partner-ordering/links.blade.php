@@ -1,10 +1,11 @@
 @extends('layouts.admin')
 
 @section('content')
+@include('partners.partials.styles')
 <style>
     .partner-link-product[hidden] { display: none !important; }
 </style>
-<div class="container-fluid py-3">
+<div class="container-fluid py-3 partner-portal partner-links-page">
     <div class="d-flex flex-wrap justify-content-between align-items-center mb-4">
         <div>
             <span class="text-uppercase text-danger font-weight-bold small">COMMANDES PARTENAIRES</span>

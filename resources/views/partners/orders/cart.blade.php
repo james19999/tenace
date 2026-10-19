@@ -1,5 +1,6 @@
 @php($partnerCartItems = \Gloudemans\Shoppingcart\Facades\Cart::instance('cart')->content())
-<div class="container-fluid py-4">
+@include('partners.partials.styles')
+<div class="container-fluid py-4 partner-portal partner-cart-page">
     <div class="d-flex justify-content-between align-items-start flex-wrap mb-4">
         <div><span class="small text-uppercase text-danger font-weight-bold">PANIER PARTENAIRE · {{ $partnerCountry }}</span><h1 class="h2 mb-1">Préparer une commande</h1><p class="text-muted">Les prix du panier sont recalculés selon le catalogue de {{ $partnerCountry }}.</p></div>
         <a href="{{ route('product') }}" class="btn btn-outline-danger">← Retour au catalogue</a>

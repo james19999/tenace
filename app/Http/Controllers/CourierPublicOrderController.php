@@ -84,6 +84,10 @@ class CourierPublicOrderController extends Controller
             $locked = Order::query()->whereKey($order->id)->lockForUpdate()->firstOrFail();
             abort_unless((string) $locked->user_id === (string) $courier->id
                 && $locked->partner_order_status === 'out_for_delivery' && $locked->status !== 'delivered', 409);
+            $handoff = OrderCourierHandoff::query()->where('order_id', $locked->id)
+                ->where('courier_id', $courier->id)->where('status', 'received')
+                ->where('received_by_courier', $courier->id)->latest()->lockForUpdate()->first();
+            abort_unless($handoff, 409, 'Confirme d’abord la réception du colis avant de valider la livraison.');
             $balance = max(0, (int) $locked->montant - (int) $locked->paid_amount);
             if ($locked->payment_timing === 'on_delivery' && $balance > 0) {
                 abort_unless(in_array($validated['payment_method'] ?? '', ['cash', 'mobile_money'], true), 422, 'Indique le moyen de paiement reçu.');

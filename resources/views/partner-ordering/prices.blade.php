@@ -1,7 +1,8 @@
 @extends('layouts.admin')
 
 @section('content')
-<div class="container-fluid py-3">
+@include('partners.partials.styles')
+<div class="container-fluid py-3 partner-portal partner-prices-page">
     <div class="d-flex flex-wrap justify-content-between align-items-center mb-4">
         <div>
             <span class="text-uppercase text-danger font-weight-bold small">COMMANDES PARTENAIRES</span>

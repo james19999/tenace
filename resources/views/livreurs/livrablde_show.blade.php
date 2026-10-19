@@ -377,7 +377,7 @@
                     <button type="submit" class="dd-btn dd-btn-primary">Synchroniser la commission</button>
                 </form>
             </section>
-        @elseif ($Orders->status !== 'delivered')
+        @elseif ($Orders->status !== 'delivered' && $handoffConfirmed)
             <section class="dd-actions no-print">
                 <form action="{{ route('changestatususer', $Orders->id) }}" method="POST" class="dd-panel">
                     @csrf
@@ -399,6 +399,14 @@
                         <button type="submit" class="dd-btn dd-btn-primary">Enregistrer</button>
                     </div>
                 </form>
+            </section>
+        @elseif ($Orders->status !== 'delivered' && $isPartnerPublicOrder)
+            <section class="dd-actions no-print">
+                <div class="dd-panel" role="status">
+                    <h2>Réception du colis à confirmer</h2>
+                    <p>Tu pourras valider la livraison après avoir confirmé la réception du colis remis par le partenaire.</p>
+                    <a class="dd-btn dd-btn-primary" href="{{ route('courier.public-orders.index') }}">Ouvrir mes commandes partenaires</a>
+                </div>
             </section>
         @endif
     </div>

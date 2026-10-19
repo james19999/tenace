@@ -10,6 +10,7 @@ use App\Traits\MyTrait;
 use App\Traits\NewTrait;
 use App\Models\Orders\Order;
 use App\Models\Orders\OrderDeliveryPhoto;
+use App\Models\OrderCourierHandoff;
 use App\Models\CourierDocument;
 use App\Models\CustomerServiceCase;
 use App\Models\CustomerServiceCaseArchiveAccessRequest;
@@ -233,8 +234,15 @@ class LivreurController extends Controller
     public function livrable_show($id){
 
         $Orders=Order::with(['costumer', 'user', 'createduser', 'transportCompany', 'deliveryPhotos.user', 'orderItems.product'])->findOrfail($id);
+        $isCourier = auth()->user()?->user_type === 'LVS';
+        $isPartnerPublicOrder = $Orders->partner_id && $Orders->public_tracking_token;
+        $handoffConfirmed = ! ($isCourier && $isPartnerPublicOrder)
+            || OrderCourierHandoff::query()->where('order_id', $Orders->id)
+                ->where('courier_id', auth()->id())
+                ->where('received_by_courier', auth()->id())
+                ->where('status', 'received')->exists();
 
-        return view('livreurs.livrablde_show',compact('Orders'));
+        return view('livreurs.livrablde_show', compact('Orders', 'handoffConfirmed', 'isPartnerPublicOrder'));
     }
 
     public function updateOrderPayment(Request $request, string $id)
@@ -354,6 +362,21 @@ class LivreurController extends Controller
               return redirect()->back()->with('success','commande annuler');
 
              }else if($request->status=="delivered"){
+                if ($request->user()?->user_type === 'LVS'
+                    && $orders->partner_id
+                    && $orders->public_tracking_token) {
+                    $handoffReceived = $orders->partner_order_status === 'out_for_delivery'
+                        && OrderCourierHandoff::query()->where('order_id', $orders->id)
+                            ->where('courier_id', $request->user()->id)
+                            ->where('received_by_courier', $request->user()->id)
+                            ->where('status', 'received')->exists();
+
+                    if (! $handoffReceived) {
+                        return redirect()->back()->withErrors([
+                            'delivery' => 'Tu dois d’abord confirmer la réception du colis avant de valider sa livraison.',
+                        ]);
+                    }
+                }
                 if ($orders->delivery_mode === 'expedition' && ! $orders->deliveryPhotos()->exists()) {
                     return redirect()->back()->withErrors([
                         'photos' => 'Ajoute au moins une photo des colis avant de valider cette expédition.',

@@ -1,6 +1,7 @@
 @extends('layouts.admin')
 
 @section('content')
+@include('partners.partials.styles')
 @php
     $statusLabels = [
         'awaiting_delivery_quote' => 'Frais de livraison à définir',
@@ -15,7 +16,7 @@
         'canceled' => 'Annulée',
     ];
 @endphp
-<div class="container-fluid py-4">
+<div class="container-fluid py-4 partner-portal partner-orders-page">
     <div class="mb-4"><span class="text-uppercase text-danger font-weight-bold small">ESPACE PARTENAIRE · {{ $countryName }}</span><h1 class="h2 mb-1">Commandes de mon pays</h1><p class="text-muted">Confirme les frais, prépare les colis et remets-les aux livreurs.</p></div>
     <div class="row mb-4"><div class="col-md-4"><div class="card card-body"><small>À traiter</small><strong class="h3 mb-0">{{ (int) $counts->attention_count }}</strong></div></div><div class="col-md-4"><div class="card card-body"><small>En cours</small><strong class="h3 mb-0">{{ (int) $counts->active_count }}</strong></div></div><div class="col-md-4"><div class="card card-body"><small>Livrées</small><strong class="h3 mb-0">{{ (int) $counts->delivered_count }}</strong></div></div></div>
     @if (session('success'))<div class="alert alert-success">{{ session('success') }}</div>@endif
