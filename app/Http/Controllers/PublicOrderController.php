@@ -8,6 +8,7 @@ use App\Models\PublicOrderLink;
 use App\Models\User;
 use App\Models\Costumer;
 use App\Models\CustomerPortalAccount;
+use App\Models\CustomerPortalProfile;
 use App\Models\Orders\Order;
 use App\Models\Orders\OrderItem;
 use App\Support\WestAfricaShippingCatalog;
@@ -24,28 +25,36 @@ use Illuminate\View\View;
 
 class PublicOrderController extends Controller
 {
+    private const CUSTOMER_PORTAL_COOKIE = 'tenacos_customer_portal_account';
+
     public function app(Request $request): View
     {
-        $savedCustomer = $this->portalCustomer($request);
+        $portalAccount = $this->portalAccount($request);
+        $savedCustomer = $portalAccount?->customers()->orderByDesc('costumers.id')->first();
+        $savedProfiles = $this->portalProfiles($request);
 
         return view('public-orders.show', [
             'link' => null,
             'countries' => WestAfricaShippingCatalog::countries(),
             'savedCustomer' => $savedCustomer,
-            'savedAddress' => $this->portalAddress($savedCustomer),
+            'savedProfiles' => $savedProfiles,
+            'savedAddress' => $savedProfiles->first()?->checkout_address ?? $this->portalAddress($savedCustomer),
         ]);
     }
 
     public function show(Request $request, string $token): View
     {
         $link = $this->availableLink($token);
-        $savedCustomer = $this->portalCustomer($request);
+        $portalAccount = $this->portalAccount($request);
+        $savedCustomer = $portalAccount?->customers()->orderByDesc('costumers.id')->first();
+        $savedProfiles = $this->portalProfiles($request);
 
         return view('public-orders.show', [
             'link' => $link,
             'countries' => WestAfricaShippingCatalog::countries(),
             'savedCustomer' => $savedCustomer,
-            'savedAddress' => $this->portalAddress($savedCustomer),
+            'savedProfiles' => $savedProfiles,
+            'savedAddress' => $savedProfiles->first()?->checkout_address ?? $this->portalAddress($savedCustomer),
         ]);
     }
 
@@ -142,12 +151,12 @@ class PublicOrderController extends Controller
         $countries = WestAfricaShippingCatalog::countries();
         $countryCode = strtoupper((string) $request->input('country_code'));
         $cities = $countries[$countryCode]['cities'] ?? [];
-        $portalAccountId = $request->session()->get('customer_portal_account_id');
-        $portalAccount = $portalAccountId ? CustomerPortalAccount::find($portalAccountId) : null;
+        $portalAccount = $this->portalAccount($request);
+        $savedProfiles = $portalAccount?->profiles()->orderBy('name')->orderBy('id')->get() ?? collect();
         $portalCustomer = $portalAccount?->customers()->orderByDesc('costumers.id')->first();
-        $customerDetailsRequired = ! $portalCustomer;
+        $customerDetailsRequired = $savedProfiles->isEmpty() && ! $portalCustomer;
 
-        $validated = $request->validate([
+        $rules = [
             'country_code' => ['required', Rule::in(array_keys($countries))],
             'city' => ['required', Rule::in($cities)],
             'name' => [$customerDetailsRequired ? 'required' : 'nullable', 'string', 'max:160'],
@@ -159,10 +168,23 @@ class PublicOrderController extends Controller
             'items' => ['required', 'array', 'min:1', 'max:50'],
             'items.*.product_id' => ['required', 'integer', 'distinct', 'exists:products,id'],
             'items.*.quantity' => ['required', 'integer', 'min:1', 'max:500'],
-        ], [
+        ];
+        if ($savedProfiles->isNotEmpty()) {
+            $rules['customer_profile_id'] = [
+                'required',
+                'integer',
+                Rule::exists('customer_portal_profiles', 'id')->where('customer_portal_account_id', $portalAccount->id),
+            ];
+        }
+
+        $validated = $request->validate($rules, [
             'city.in' => 'Choisis une ville proposée pour le pays sélectionné.',
             'items.required' => 'Ajoute au moins un produit à ta commande.',
         ]);
+        $selectedProfile = ! empty($validated['customer_profile_id'])
+            ? $savedProfiles->firstWhere('id', (int) $validated['customer_profile_id'])
+            : null;
+        $orderCustomer = $selectedProfile ?? $portalCustomer;
 
         $partner = User::query()
             ->where('user_type', User::ROLE_PARTNER)
@@ -193,7 +215,7 @@ class PublicOrderController extends Controller
         }
 
         $trackingToken = (string) Str::uuid();
-        $order = DB::transaction(function () use ($validated, $countryCode, $partner, $link, $prices, $quantities, $trackingToken, $portalAccount, $portalCustomer): Order {
+        $order = DB::transaction(function () use ($validated, $countryCode, $partner, $link, $prices, $quantities, $trackingToken, $portalAccount, $orderCustomer): Order {
             $deliverySetting = PartnerCountryDeliverySetting::query()->where('country_code', $countryCode)->lockForUpdate()->first();
             $subtotal = 0;
             $deliveryFee = 0;
@@ -211,9 +233,9 @@ class PublicOrderController extends Controller
             }
 
             $customer = Costumer::create([
-                'name' => $portalCustomer?->name ?? ($validated['name'] ?? ''),
-                'phone' => $portalCustomer?->phone ?? trim((string) ($validated['phone'] ?? '')),
-                'email' => $portalCustomer?->email ?? ($validated['email'] ?? null),
+                'name' => $orderCustomer?->name ?? ($validated['name'] ?? ''),
+                'phone' => $orderCustomer?->phone ?? trim((string) ($validated['phone'] ?? '')),
+                'email' => $orderCustomer?->email ?? ($validated['email'] ?? null),
                 'adresse' => $validated['address'].', '.$validated['city'].', '.$countryCode,
                 'user_id' => null,
             ]);
@@ -342,21 +364,44 @@ class PublicOrderController extends Controller
         return $link;
     }
 
-    private function portalCustomer(Request $request): ?Costumer
+    private function portalAccount(Request $request): ?CustomerPortalAccount
     {
         $accountId = $request->session()->get('customer_portal_account_id');
-        if (! $accountId) {
-            return null;
+        $account = $accountId ? CustomerPortalAccount::find($accountId) : null;
+        if (! $account) {
+            $rememberedAccountId = $request->cookie(self::CUSTOMER_PORTAL_COOKIE);
+            $account = $rememberedAccountId ? CustomerPortalAccount::find($rememberedAccountId) : null;
+        }
+        if ($account) {
+            $request->session()->put('customer_portal_account_id', $account->id);
         }
 
-        $account = CustomerPortalAccount::find($accountId);
+        return $account;
+    }
 
-        return $account?->customers()->orderByDesc('costumers.id')->first();
+    private function portalProfiles(Request $request)
+    {
+        $account = $this->portalAccount($request);
+        if (! $account) {
+            return collect();
+        }
+
+        return CustomerPortalProfile::query()
+            ->where('customer_portal_account_id', $account->id)
+            ->orderBy('name')->orderBy('id')->get()
+            ->each(function (CustomerPortalProfile $profile): void {
+                $profile->setAttribute('checkout_address', $this->portalAddressFromString($profile->address));
+            });
     }
 
     private function portalAddress(?Costumer $customer): string
     {
-        $address = trim((string) ($customer?->adresse ?? ''));
+        return $this->portalAddressFromString((string) ($customer?->adresse ?? ''));
+    }
+
+    private function portalAddressFromString(?string $value): string
+    {
+        $address = trim((string) $value);
         if ($address === '') {
             return '';
         }

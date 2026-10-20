@@ -45,11 +45,18 @@
 
         <form id="order-form" method="POST" action="{{ $link ? route('public-order.store', $link->token) : route('public-order.app.store') }}" class="mt-3">
             @csrf
+            @php
+                $selectedSavedProfile = $savedProfiles->firstWhere('id', (int) old('customer_profile_id', $savedProfiles->first()?->id)) ?? $savedProfiles->first();
+            @endphp
             <input type="hidden" name="country_code" id="order-country">
             <input type="hidden" name="city" id="order-city">
             <div id="order-items" class="hidden-inputs"></div>
             <div class="checkout">
-                @if ($savedCustomer)
+                @if ($savedProfiles->isNotEmpty())
+                    <div class="field wide"><label for="customer-profile">Commander au nom de</label><select id="customer-profile" name="customer_profile_id" required>@foreach($savedProfiles as $profile)<option value="{{ $profile->id }}" data-name="{{ $profile->name }}" data-phone="{{ $profile->phone }}" data-address="{{ $profile->checkout_address }}" @selected((string) old('customer_profile_id', $selectedSavedProfile->id) === (string) $profile->id)>{{ $profile->name }}{{ $profile->phone ? ' · '.$profile->phone : '' }}</option>@endforeach</select></div>
+                    <div class="customer-summary wide">Commande au nom de <strong id="selected-profile-name">{{ $selectedSavedProfile->name }}</strong><span id="selected-profile-phone">{{ $selectedSavedProfile->phone }}</span></div>
+                    <div class="field wide"><label for="customer-address">Adresse de livraison</label><input id="customer-address" name="address" maxlength="180" value="{{ old('address', $selectedSavedProfile->checkout_address) }}" placeholder="Rue, quartier, repère" autocomplete="street-address" required><small>Tu peux modifier l’adresse pour cette commande.</small></div>
+                @elseif ($savedCustomer)
                     <div class="customer-summary wide">Commande au nom de <strong>{{ $savedCustomer->name }}</strong><span>{{ $savedCustomer->phone }}</span></div>
                     <div class="field wide"><label for="customer-address">Adresse de livraison</label><input id="customer-address" name="address" maxlength="180" value="{{ old('address', $savedAddress) }}" placeholder="Rue, quartier, repère" autocomplete="street-address" required><small>Tu peux modifier l’adresse pour cette commande.</small></div>
                 @else
@@ -180,6 +187,16 @@
     if (savedCountry && Array.from(country.options).some((option) => option.value === savedCountry)) {
         country.value = savedCountry;
         country.dispatchEvent(new Event('change'));
+    }
+
+    const customerProfile = document.getElementById('customer-profile');
+    if (customerProfile) {
+        customerProfile.addEventListener('change', () => {
+            const selected = customerProfile.selectedOptions[0];
+            document.getElementById('selected-profile-name').textContent = selected.dataset.name || '';
+            document.getElementById('selected-profile-phone').textContent = selected.dataset.phone || '';
+            document.getElementById('customer-address').value = selected.dataset.address || '';
+        });
     }
 
     document.getElementById('order-form').addEventListener('submit', (event) => {

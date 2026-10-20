@@ -69,6 +69,7 @@ Auth::routes();
 Route::get('/home', [App\Http\Controllers\HomeController::class, 'index'])->name('home');
 Route::get('/avis-clients', [PublicReviewController::class, 'index'])->name('public-reviews.index');
 Route::get('/espace-client', [CustomerPortalController::class, 'index'])->name('customer-portal.index');
+Route::post('/espace-client/profils', [CustomerPortalController::class, 'storeProfile'])->middleware('throttle:10,1')->name('customer-portal.profiles.store');
 Route::post('/espace-client/connexion', [CustomerPortalController::class, 'login'])->middleware('throttle:12,1')->name('customer-portal.login');
 Route::post('/espace-client/deconnexion', [CustomerPortalController::class, 'logout'])->name('customer-portal.logout');
 Route::get('/commande/suivi/{trackingToken}/espace-client', [CustomerPortalController::class, 'activate'])->name('customer-portal.activate');

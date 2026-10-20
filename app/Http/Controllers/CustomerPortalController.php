@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\CustomerLoyaltyProfile;
 use App\Models\CustomerPortalAccount;
+use App\Models\Costumer;
 use App\Models\Orders\Order;
 use App\Models\Orders\OrderItem;
 use App\Support\CustomerPortalPhone;
@@ -31,6 +32,7 @@ class CustomerPortalController extends Controller
         }
 
         $customerIds = $account->customers()->pluck('costumers.id');
+        $profiles = $account->profiles()->orderBy('name')->orderBy('id')->get();
         $orders = Order::query()
             ->with(['orderItems.product', 'partner:id,name'])
             ->whereIn('costumer_id', $customerIds)
@@ -54,11 +56,13 @@ class CustomerPortalController extends Controller
 
         return view('customer-portal.index', [
             'account' => $account,
+            'profiles' => $profiles,
+            'countries' => WestAfricaShippingCatalog::countries(),
             'orders' => $orders,
             'recentProducts' => $recentProducts,
             'profile' => $profile,
             'deliveredCount' => $deliveredCount,
-            'customerName' => $account->customers()->orderBy('costumers.id')->value('name'),
+            'customerName' => $profiles->first()?->name ?? $account->customers()->orderBy('costumers.id')->value('name'),
             'statusLabels' => [
                 'awaiting_delivery_quote' => 'Frais de livraison à confirmer',
                 'awaiting_customer_confirmation' => 'En attente de votre accord',
@@ -108,7 +112,7 @@ class CustomerPortalController extends Controller
         $pendingCustomerId = $request->session()->get('customer_portal_pending_customer_id');
         $pendingPhone = $request->session()->get('customer_portal_pending_phone');
         if ($pendingCustomerId && $pendingPhone && hash_equals($account->phone_e164, $pendingPhone)) {
-            $account->customers()->syncWithoutDetaching([(int) $pendingCustomerId]);
+            $this->attachCustomerProfile($account, (int) $pendingCustomerId);
             $request->session()->forget(['customer_portal_pending_customer_id', 'customer_portal_pending_phone']);
         }
 
@@ -124,6 +128,23 @@ class CustomerPortalController extends Controller
         return redirect()->route('customer-portal.index');
     }
 
+    public function storeProfile(Request $request): RedirectResponse
+    {
+        $account = $this->currentAccount($request);
+        abort_unless($account, 403, 'Connecte-toi à ton espace client pour ajouter un profil.');
+
+        $validated = $request->validate([
+            'name' => ['required', 'string', 'max:160'],
+            'phone' => ['required', 'string', 'max:50'],
+            'email' => ['nullable', 'email', 'max:160'],
+            'address' => ['nullable', 'string', 'max:180'],
+        ]);
+
+        $account->profiles()->create($validated);
+
+        return redirect()->route('customer-portal.index')->with('success', 'Le profil de commande a été ajouté à ton espace.');
+    }
+
     public function activate(Request $request, string $trackingToken): View|RedirectResponse
     {
         $order = $this->trackedOrder($trackingToken);
@@ -132,7 +153,7 @@ class CustomerPortalController extends Controller
 
         if ($account) {
             abort_unless(hash_equals($account->phone_e164, $phone), 403);
-            $account->customers()->syncWithoutDetaching([$order->costumer_id]);
+            $this->attachCustomerProfile($account, (int) $order->costumer_id);
 
             return redirect()->route('customer-portal.index')->with('success', 'Cette commande est maintenant rattachée à ton espace client.');
         }
@@ -160,7 +181,7 @@ class CustomerPortalController extends Controller
         $account = CustomerPortalAccount::firstOrNew(['phone_e164' => $phone]);
         $account->password = Hash::make($validated['password']);
         $account->save();
-        $account->customers()->syncWithoutDetaching([$order->costumer_id]);
+        $this->attachCustomerProfile($account, (int) $order->costumer_id);
         $request->session()->regenerate();
         $request->session()->put('customer_portal_account_id', $account->id);
         $this->rememberAccount($account);
@@ -193,6 +214,31 @@ class CustomerPortalController extends Controller
     private function rememberAccount(CustomerPortalAccount $account): void
     {
         Cookie::queue(Cookie::forever(self::REMEMBER_COOKIE, (string) $account->id));
+    }
+
+    private function attachCustomerProfile(CustomerPortalAccount $account, int $customerId): void
+    {
+        $account->customers()->syncWithoutDetaching([$customerId]);
+        $customer = Costumer::find($customerId);
+        if (! $customer) {
+            return;
+        }
+
+        $identity = [
+            'name' => $customer->name ?: 'Client',
+            'phone' => $customer->phone,
+            'email' => $customer->email,
+            'address' => $customer->adresse,
+        ];
+        $existingProfile = $account->profiles()
+            ->where('name', $identity['name'])
+            ->where('phone', $identity['phone'])
+            ->where('email', $identity['email'])
+            ->first();
+
+        if (! $existingProfile) {
+            $account->profiles()->firstOrCreate(['source_costumer_id' => $customer->id], $identity);
+        }
     }
 
     private function trackedOrder(string $trackingToken): Order
