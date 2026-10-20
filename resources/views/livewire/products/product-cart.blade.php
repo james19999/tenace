@@ -95,6 +95,10 @@
         .cart-summary-note{padding:11px 12px;background:#f8f8fa;border-radius:9px;color:var(--cart-muted);font-size:12px;line-height:1.5;margin-top:12px}
         .cart-primary-btn{width:100%;margin-top:16px;min-height:48px;font-size:15px;cursor:pointer}
         .cart-primary-btn:disabled{opacity:.48;cursor:not-allowed}
+        .cart-submit-spinner{display:inline-block;width:18px;height:18px;flex:0 0 18px;border:2px solid rgba(255,255,255,.45);border-top-color:#fff;border-radius:50%;animation:cart-submit-spin .7s linear infinite}
+        .cart-submit-spinner[hidden]{display:none}
+        .cart-primary-btn[aria-busy="true"]{opacity:.88;cursor:wait}
+        @keyframes cart-submit-spin{to{transform:rotate(360deg)}}
         .cart-paid-field{margin-top:14px;padding:13px;border:1px solid #f0c7c7;background:#fff8f8}
         .cart-paid-field label{display:block;margin:0 0 7px;color:#861b1b;font-size:12px;font-weight:800}
         .cart-paid-field .form-control{height:42px;border:1px solid #dfb9b9;border-radius:0}
@@ -291,7 +295,7 @@
                             <div class="cart-paid-field"><label for="paid_amount">Déjà payé par la cliente (F CFA)</label><input type="number" min="0" step="1" class="form-control" id="paid_amount" name="paid_amount" value="{{ old('paid_amount', 0) }}" data-has-old-value="{{ old('paid_amount') !== null ? '1' : '0' }}"><small>Indique ce qui a déjà été encaissé. Mets 0 si le paiement se fera à la livraison.</small>@error('paid_amount')<span class="cart-field-error">{{ $message }}</span>@enderror</div>
                             <div class="cart-summary-line cart-balance-line"><span>Reste à encaisser</span><strong id="cart-balance-display">{{ number_format(max(0, $cartSubtotal * (1 - min(100, max(0, (int) old('remis', 0))) / 100) + (float) old('tax', 0) - (float) old('paid_amount', 0)), 0, ',', ' ') }} F</strong></div>
                             <div class="cart-summary-note">Le total inclut les frais de livraison et la remise saisie. Vérifie le numéro, l’adresse et la date avant validation.</div>
-                            <button type="submit" class="cart-primary-btn" @disabled($cartItems->isEmpty())><span class="material-icons" aria-hidden="true">check_circle</span>Valider la commande</button>
+                            <button type="submit" class="cart-primary-btn" aria-busy="false" @disabled($cartItems->isEmpty())><span class="material-icons" aria-hidden="true">check_circle</span><span class="cart-submit-spinner" aria-hidden="true" hidden></span><span class="cart-submit-label">Valider la commande</span></button>
                         </div>
                     </section>
                 </aside>
@@ -420,9 +424,26 @@
                 }, 0);
             });
             var orderForm = root.querySelector('#product-cart-order-form');
-            if (orderForm) orderForm.addEventListener('submit', function () {
-                try { sessionStorage.removeItem(storageKey); } catch (error) {}
-            });
+            if (orderForm) {
+                var submitButton = orderForm.querySelector('.cart-primary-btn');
+                var submitSpinner = submitButton && submitButton.querySelector('.cart-submit-spinner');
+                var submitLabel = submitButton && submitButton.querySelector('.cart-submit-label');
+                var submitInProgress = false;
+                orderForm.addEventListener('submit', function (event) {
+                    if (submitInProgress) {
+                        event.preventDefault();
+                        return;
+                    }
+                    submitInProgress = true;
+                    if (submitButton) {
+                        submitButton.disabled = true;
+                        submitButton.setAttribute('aria-busy', 'true');
+                    }
+                    if (submitSpinner) submitSpinner.hidden = false;
+                    if (submitLabel) submitLabel.textContent = 'Validation en cours…';
+                    try { sessionStorage.removeItem(storageKey); } catch (error) {}
+                });
+            }
 
             function toggleNewCustomerFields(selectionOverride) {
                 var customerSelect = root.querySelector('#order-costumer-id');
