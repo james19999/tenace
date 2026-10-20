@@ -5,6 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <meta name="theme-color" content="{{ $appTheme['primary_color'] }}">
     <title>Mon espace client · TENACOS</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css">
     <style>
         :root{--red:{{ $appTheme['primary_color'] }};--red-dark:color-mix(in srgb,var(--red) 84%,#000);--red-contrast:{{ $appTheme['primary_contrast_color'] }};--ink:{{ $appTheme['text_color'] }};--muted:#70798a;--line:#e5e8ee;--paper:{{ $appTheme['surface_color'] }};--bg:{{ $appTheme['background_color'] }};--green:{{ $appTheme['accent_color'] }};--gold:{{ $appTheme['accent_color'] }}}
         *{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--ink);font:15px/1.55 system-ui,-apple-system,"Segoe UI",sans-serif}
@@ -48,6 +49,8 @@
         html[data-app-theme="dark"] .login-main{color:var(--ink)}
         html[data-app-theme="dark"] .field input,html[data-app-theme="dark"] .field select{background:#171b21;color:var(--ink);border-color:var(--line)}
         html[data-app-theme="dark"] .field input:focus,html[data-app-theme="dark"] .field select:focus{outline-color:color-mix(in srgb,var(--red) 45%,transparent)}
+        .select2-container{width:100%!important}.select2-container--default .select2-selection--single{height:47px;border:1px solid #d6dbe4;border-radius:0;background:#fff}.select2-container--default .select2-selection--single .select2-selection__rendered{line-height:45px;padding-left:12px;color:var(--ink)}.select2-container--default .select2-selection--single .select2-selection__arrow{height:45px}.select2-dropdown{border-color:var(--line);border-radius:0;background:var(--paper);color:var(--ink)}.select2-search--dropdown .select2-search__field{min-height:38px;padding:7px 9px;background:var(--paper);color:var(--ink);border-color:var(--line)}.select2-container--default .select2-results__option{background:var(--paper);color:var(--ink)}.select2-container--default .select2-results__option--highlighted[aria-selected]{background:var(--red);color:var(--red-contrast)}
+        html[data-app-theme="dark"] .select2-container--default .select2-selection--single{background:#171b21;border-color:var(--line)}
     </style>
 </head>
 <body>
@@ -77,7 +80,7 @@
                 <h2>Se connecter</h2><p>Utilisez le numéro indiqué lors de votre commande.</p>
                 <form method="POST" action="{{ route('customer-portal.login') }}">@csrf
                     <div class="field-row">
-                        <div class="field"><label for="country_code">Pays</label><select id="country_code" name="country_code" required>@foreach($countries as $code=>$country)<option value="{{ $code }}" @selected(old('country_code')===$code)>{{ $country['label'] }} (+{{ $dialCodes[$code] }})</option>@endforeach</select></div>
+                        <div class="field"><label for="country_code">Pays</label><select id="country_code" class="js-country-search" name="country_code" required>@foreach($countries as $code=>$country)<option value="{{ $code }}" @selected(old('country_code')===$code)>{{ $country['label'] }} (+{{ $dialCodes[$code] }})</option>@endforeach</select></div>
                         <div class="field"><label for="phone">Téléphone</label><input id="phone" name="phone" type="tel" autocomplete="tel" value="{{ old('phone') }}" required></div>
                     </div>
                     <div class="field"><label for="password">Mot de passe</label><input id="password" name="password" type="password" autocomplete="current-password" required></div>
@@ -190,5 +193,12 @@
         })();
     </script>
 @endif
+<script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
+<script>
+    if (window.jQuery && jQuery.fn.select2) {
+        jQuery('#country_code').select2({width:'100%', placeholder:'Rechercher un pays…', language:{noResults:()=>'Aucun pays trouvé',searching:()=>'Recherche…'}});
+    }
+</script>
 </body>
 </html>

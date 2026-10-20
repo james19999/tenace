@@ -8,6 +8,8 @@ use App\Models\Costumer;
 use App\Models\Orders\Order;
 use App\Models\Orders\OrderItem;
 use App\Models\ProductCountryPrice;
+use App\Models\PartnerProductStock;
+use App\Models\PartnerCourierStockIssueLine;
 use App\Models\PartnerCountryDeliverySetting;
 use App\Models\User;
 use App\Support\WestAfricaShippingCatalog;
@@ -17,6 +19,7 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Str;
 use Illuminate\Support\Facades\Storage;
+use App\Services\PartnerCourierStockService;
 use Illuminate\View\View;
 use Illuminate\Validation\Rule;
 use Gloudemans\Shoppingcart\Facades\Cart;
@@ -30,8 +33,44 @@ class PartnerOrderController extends Controller
             ->where('user_type', User::ROLE_LIVREUR)
             ->where('country_code', strtoupper((string) $partner->country_code))
             ->orderBy('name')->paginate(20);
+        $partnerStockProducts = PartnerProductStock::query()->with('product:id,name')
+            ->where('partner_id', $partner->id)->where('country_code', strtoupper((string) $partner->country_code))
+            ->whereHas('product.countryPrices', fn ($query) => $query->where('country_code', strtoupper((string) $partner->country_code))->where('is_available', true))
+            ->orderBy('product_id')->get();
+        $courierStock = PartnerCourierStockIssueLine::query()->selectRaw('partner_courier_stock_issues.courier_id, partner_courier_stock_issue_lines.product_id, SUM(partner_courier_stock_issue_lines.quantity_remaining) as quantity')
+            ->join('partner_courier_stock_issues', 'partner_courier_stock_issues.id', '=', 'partner_courier_stock_issue_lines.issue_id')
+            ->where('partner_courier_stock_issues.partner_id', $partner->id)
+            ->whereIn('partner_courier_stock_issues.courier_id', $couriers->getCollection()->pluck('id'))
+            ->groupBy('partner_courier_stock_issues.courier_id', 'partner_courier_stock_issue_lines.product_id')
+            ->get()->groupBy('courier_id');
 
-        return view('partners.couriers.index', compact('partner', 'couriers'));
+        return view('partners.couriers.index', compact('partner', 'couriers', 'partnerStockProducts', 'courierStock'));
+    }
+
+    public function issueCourierStock(Request $request, int $courierId): RedirectResponse
+    {
+        $partner = $this->partner($request);
+        $courier = $this->courierInPartnerCountry($partner, $courierId);
+        $validated = $request->validate([
+            'quantities' => ['required', 'array', 'min:1'],
+            'quantities.*' => ['required', 'integer', 'min:0', 'max:999999'],
+        ]);
+        $quantities = array_filter($validated['quantities'], fn ($quantity) => (int) $quantity > 0);
+        if (! $quantities) return back()->withErrors(['quantities' => 'Indique au moins une quantité à remettre.']);
+        foreach (array_keys($quantities) as $productId) {
+            abort_unless(PartnerProductStock::query()->where('partner_id', $partner->id)->where('product_id', $productId)
+                ->where('country_code', strtoupper((string) $partner->country_code))
+                ->whereHas('product.countryPrices', fn ($query) => $query->where('country_code', strtoupper((string) $partner->country_code))->where('is_available', true))
+                ->exists(), 422);
+        }
+
+        try {
+            app(PartnerCourierStockService::class)->issue($partner, $courier, $request->user(), $quantities);
+        } catch (\DomainException $exception) {
+            return back()->withErrors(['quantities' => $exception->getMessage()]);
+        }
+
+        return back()->with('success', 'Les quantités ont été remises au livreur. Le stock disponible du partenaire a été mis à jour.');
     }
 
     public function createCourier(Request $request): View
@@ -217,7 +256,7 @@ class PartnerOrderController extends Controller
             $totals = (clone $revenueBase)
                 ->where('delivered_at', '>=', $period['start'])
                 ->where('delivered_at', '<', $period['end'])
-                ->selectRaw('COUNT(*) as orders_count, COALESCE(SUM(total), 0) as amount')
+                ->selectRaw("COUNT(*) as orders_count, COALESCE(SUM(CAST(COALESCE(NULLIF(subtotal, ''), '0') AS DECIMAL(15,2))), 0) as amount")
                 ->first();
 
             return $period + ['orders_count' => (int) $totals->orders_count, 'amount' => (int) $totals->amount];
@@ -226,7 +265,7 @@ class PartnerOrderController extends Controller
         $monthlyValues = array_fill(1, 12, 0);
         $monthlyRows = Order::query()->where('partner_id', $partner->id)->where('partner_order_status', 'delivered')
             ->where('delivered_at', '>=', $yearStart)->where('delivered_at', '<', $nextYear)
-            ->selectRaw('MONTH(delivered_at) as period_month, COALESCE(SUM(total), 0) as amount')
+            ->selectRaw("MONTH(delivered_at) as period_month, COALESCE(SUM(CAST(COALESCE(NULLIF(subtotal, ''), '0') AS DECIMAL(15,2))), 0) as amount")
             ->groupByRaw('MONTH(delivered_at)')->get();
         foreach ($monthlyRows as $row) {
             $monthlyValues[(int) $row->period_month] = (int) $row->amount;
@@ -502,13 +541,17 @@ class PartnerOrderController extends Controller
         abort_unless((int) $order->partner_id === (int) $partner->id, 404);
         $validated = $request->validate(['courier_id' => ['required', 'integer', 'exists:users,id']]);
 
-        DB::transaction(function () use ($order, $partner, $validated): void {
+        $stockService = app(PartnerCourierStockService::class);
+        DB::transaction(function () use ($order, $partner, $validated, $stockService): void {
             $courier = User::query()->whereKey($validated['courier_id'])
                 ->where('user_type', User::ROLE_LIVREUR)
                 ->where('country_code', $partner->country_code)
                 ->where('active', 1)->firstOrFail();
             $locked = Order::query()->whereKey($order->id)->lockForUpdate()->firstOrFail();
             abort_unless((int) $locked->partner_id === (int) $partner->id && $locked->partner_order_status === 'ready_for_courier' && ! $locked->user_id, 409);
+            $locked->load('orderItems');
+            abort_unless($stockService->hasForOrder($courier, $locked), 409,
+                'Le stock remis à ce livreur ne suffit pas pour cette commande.');
 
             $locked->user_id = (string) $courier->id;
             $locked->assigned_at = now();

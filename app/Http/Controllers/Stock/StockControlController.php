@@ -42,6 +42,7 @@ class StockControlController extends Controller
             'users' => \App\Models\User::query()->where('active', true)->whereIn('user_type', ['ADMINUSER', 'MNG'])->orderBy('name')->get(['id', 'name', 'user_type']),
             'rules' => $settings->rules(),
             'locationTypes' => self::LOCATION_TYPES,
+            'countries' => \App\Support\WestAfricaShippingCatalog::countries(),
             'systemLocationCodes' => array_column(self::SYSTEM_LOCATIONS, 'code'),
             'isAdmin' => auth()->user()?->user_type === 'ADMINUSER',
         ]);
@@ -134,15 +135,18 @@ class StockControlController extends Controller
 
     public function storeLocation(Request $request): RedirectResponse
     {
-        $allowedTypes = StockLocation::query()->where('type', 'warehouse')->exists()
-            ? ['shop']
-            : self::LOCATION_TYPES;
         $data = $request->validate([
             'name' => ['required', 'string', 'max:120'],
-            'type' => ['required', Rule::in($allowedTypes)],
+            'type' => ['required', Rule::in(self::LOCATION_TYPES)],
+            'country_code' => ['nullable', 'string', 'size:2', Rule::in(array_keys(\App\Support\WestAfricaShippingCatalog::countries()))],
             'responsible_user_id' => ['nullable', 'integer', 'exists:users,id'],
             'notes' => ['nullable', 'string', 'max:2000'],
         ]);
+
+        if ($data['type'] === 'warehouse' && StockLocation::query()->where('type', 'warehouse')
+            ->where('country_code', $data['country_code'] ?? null)->exists()) {
+            throw ValidationException::withMessages(['country_code' => 'Un entrepôt existe déjà pour ce pays. Attribue ce pays à l’entrepôt existant ou choisis-en un autre.']);
+        }
 
         $this->validateLocationResponsible($data['responsible_user_id'] ?? null);
 
@@ -150,7 +154,7 @@ class StockControlController extends Controller
         $data['is_active'] = true;
         $this->ensureTechnicalLocations();
         $location = StockLocation::query()->create($data);
-        $this->audit($request, 'location.created', $location, null, $location->only(['name', 'code', 'type', 'responsible_user_id', 'is_active', 'notes']));
+        $this->audit($request, 'location.created', $location, null, $location->only(['name', 'code', 'type', 'country_code', 'responsible_user_id', 'is_active', 'notes']));
 
         return back()->with('success', 'Emplacement créé. Aucun stock n’y a été affecté.');
     }
@@ -159,10 +163,16 @@ class StockControlController extends Controller
     {
         $data = $request->validate([
             'name' => ['required', 'string', 'max:120'],
+            'country_code' => ['nullable', 'string', 'size:2', Rule::in(array_keys(\App\Support\WestAfricaShippingCatalog::countries()))],
             'responsible_user_id' => ['nullable', 'integer', 'exists:users,id'],
             'is_active' => ['required', 'boolean'],
             'notes' => ['nullable', 'string', 'max:2000'],
         ]);
+
+        if ($location->type === 'warehouse' && StockLocation::query()->where('type', 'warehouse')
+            ->where('country_code', $data['country_code'] ?? null)->where('id', '<>', $location->id)->exists()) {
+            throw ValidationException::withMessages(['country_code' => 'Un autre entrepôt existe déjà pour ce pays.']);
+        }
 
         $this->validateLocationResponsible($data['responsible_user_id'] ?? null);
 
@@ -170,9 +180,9 @@ class StockControlController extends Controller
             $data['is_active'] = true;
         }
 
-        $before = $location->only(['name', 'code', 'type', 'responsible_user_id', 'is_active', 'notes']);
+        $before = $location->only(['name', 'code', 'type', 'country_code', 'responsible_user_id', 'is_active', 'notes']);
         $location->update($data);
-        $this->audit($request, 'location.updated', $location, $before, $location->fresh()->only(['name', 'code', 'type', 'responsible_user_id', 'is_active', 'notes']));
+        $this->audit($request, 'location.updated', $location, $before, $location->fresh()->only(['name', 'code', 'type', 'country_code', 'responsible_user_id', 'is_active', 'notes']));
 
         return back()->with('success', 'Emplacement mis à jour.');
     }

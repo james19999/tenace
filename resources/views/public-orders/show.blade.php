@@ -5,11 +5,14 @@
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <meta name="csrf-token" content="{{ csrf_token() }}">
     <meta name="theme-color" content="#7e1615">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css">
     <link rel="manifest" href="{{ $link ? route('public-order.manifest', $link->token) : route('public-order.app.manifest') }}">
     <link rel="apple-touch-icon" href="{{ asset('icons/icon-192x192.png') }}">
     <title>{{ $link?->title ?: 'Catalogue TENACOS' }}</title>
     <style>
         :root{--red:#7e1615;--ink:#252a34;--muted:#687386;--line:#e5e8ee;--bg:#f6f7f9;--green:#16794b}*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--ink);font:16px/1.5 system-ui,-apple-system,"Segoe UI",sans-serif}.wrap{max-width:1100px;margin:auto;padding:24px 18px 70px}.head{background:white;border-radius:0;padding:28px;display:flex;justify-content:space-between;align-items:center;gap:20px;box-shadow:0 8px 28px #1720330b}.brand{color:var(--red);font-size:13px;font-weight:800;letter-spacing:.16em}.head h1{font-size:clamp(26px,4vw,40px);line-height:1.15;margin:8px 0}.head p{color:var(--muted);margin:0}.install{display:inline-flex;align-items:center;justify-content:center;border:0;background:var(--red);color:#fff;border-radius:0;padding:13px 17px;font:inherit;font-weight:700;white-space:nowrap;cursor:pointer}.install[hidden],.install-help[hidden]{display:none!important}.install-help{margin-top:10px;padding:11px 13px;background:#fdf5e8;border-left:4px solid #d49a30;border-radius:0;color:#73551b;font-size:14px}.controls,.panel{background:white;border:1px solid var(--line);border-radius:0;padding:20px;margin-top:20px}.controls{display:grid;grid-template-columns:1fr;gap:16px}.field label{display:block;font-weight:700;font-size:14px;margin-bottom:7px}.field input,.field select,.field textarea{width:100%;min-height:46px;border:1px solid #d8dce5;background:white;padding:11px 12px;border-radius:0;font:inherit}.section-title{display:flex;justify-content:space-between;align-items:end;margin:26px 0 12px}.section-title h2{font-size:21px;margin:0}.section-title p{color:var(--muted);margin:3px 0 0}.grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:14px}.product{background:white;border:1px solid var(--line);border-radius:0;padding:14px;display:flex;flex-direction:column;min-width:0}.product img{width:100%;height:175px;object-fit:cover;background:#f0f1f3;border-radius:0;margin:12px 0 8px}.product h3{font-size:16px;line-height:1.35;margin:4px 0 8px;overflow-wrap:anywhere}.product p{color:var(--muted);font-size:13px;line-height:1.45;margin:0 0 10px}.price{font-size:19px;font-weight:800;color:var(--red);margin-top:auto}.product button,.checkout-button{display:flex;align-items:center;justify-content:center;width:100%;min-height:46px;border:0;background:var(--red);color:#fff;border-radius:0;padding:11px 12px;font:inherit;font-weight:750;margin-top:12px;cursor:pointer}.suggestions{margin-top:28px}.empty{color:var(--muted);padding:18px;border:1px solid var(--line);border-radius:0;margin-top:15px;background:#fff}.cart{background:#fff;border:1px solid var(--line);padding:22px;margin-top:22px}.cart h2{font-size:20px;margin:0 0 12px}.cart-row{display:grid;grid-template-columns:minmax(0,1fr) auto auto;align-items:center;gap:14px;border-bottom:1px solid var(--line);padding:12px 0}.cart-product-name{min-width:0;overflow-wrap:anywhere;font-size:14px}.qty{display:flex;align-items:center;gap:9px}.qty button{display:grid;place-items:center;width:38px;height:38px;border:1px solid var(--line);background:#fff;border-radius:0;font-size:20px;line-height:1;font-weight:700;padding:0;cursor:pointer}.qty span{min-width:20px;text-align:center;font-weight:750}.line-total{min-width:90px;text-align:right;font-weight:800;white-space:nowrap}.cart-total{display:flex;justify-content:space-between;gap:12px;padding:16px 0;font-size:16px;font-weight:800}.notice{background:#fdf5e8;color:#73551b;border-left:4px solid #d49a30;padding:12px 14px;border-radius:0;font-size:14px}.checkout{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-top:16px}.checkout .wide{grid-column:1/-1}.checkout .field{min-width:0}.customer-summary{display:flex;align-items:center;gap:5px 8px;flex-wrap:wrap;padding:12px 14px;background:#f7f8fa;border-left:3px solid var(--red);font-size:13px}.customer-summary span{color:var(--muted)}.checkout .field small{display:block;margin-top:5px;color:var(--muted);font-size:12px}.checkout-button{font-size:15px}.errors{background:#fff0f0;color:#8c1e1b;padding:12px;border-radius:0;margin-top:16px}.status{color:var(--muted);text-align:center;padding:20px}.hidden-inputs{display:none}
+        .select2-container{width:100%!important}.select2-container--default .select2-selection--single{height:46px;border:1px solid #d8dce5;border-radius:0;background:#fff}.select2-container--default .select2-selection--single .select2-selection__rendered{line-height:44px;padding-left:12px;color:var(--ink)}.select2-container--default .select2-selection--single .select2-selection__arrow{height:44px}.select2-dropdown{border-color:#d8dce5;border-radius:0}.select2-search--dropdown .select2-search__field{min-height:38px;padding:7px 9px}
+        .quantity-price-hint{display:block;color:var(--muted);font-size:12px;margin-top:3px}.cart-product-name small{display:block;margin-top:3px;color:var(--muted);font-size:11px;font-weight:500}.product button:disabled,.qty button:disabled{opacity:.55;cursor:not-allowed}
         @media(max-width:760px){.wrap{padding:12px 12px 36px}.head{padding:18px;align-items:stretch;flex-direction:column;gap:15px}.head h1{font-size:27px;overflow-wrap:anywhere}.head p{font-size:14px}.install-area{width:100%;justify-content:flex-start!important}.install-area>a,.install-area>.install{flex:1;min-width:0;white-space:normal;text-align:center;font-size:13px;padding:11px 9px}.install-help{width:100%;margin-top:0}.controls{grid-template-columns:1fr;gap:12px;padding:15px;margin-top:12px}.field label{font-size:13px}.field input,.field select,.field textarea{min-height:48px;font-size:16px}.section-title{align-items:flex-start;margin:22px 0 10px}.section-title h2{font-size:19px}.section-title p{font-size:13px}.grid{grid-template-columns:repeat(2,minmax(0,1fr));gap:9px}.product{padding:10px}.product img{height:clamp(105px,32vw,150px);margin:8px 0 7px}.product h3{font-size:14px}.product p{font-size:12px}.price{font-size:17px}.product button{min-height:43px;padding:9px 7px;font-size:12px;line-height:1.25}.cart{padding:16px;margin-top:17px}.cart h2{font-size:19px}.cart-row{grid-template-columns:minmax(0,1fr) auto;grid-template-areas:"name total" "qty total";gap:5px 9px;padding:12px 0}.cart-product-name{grid-area:name}.cart-row .qty{grid-area:qty}.line-total{grid-area:total;min-width:0;align-self:center;font-size:14px}.qty button{width:40px;height:40px}.cart-total{font-size:15px;padding:14px 0}.notice{font-size:13px;padding:11px 12px}.checkout{grid-template-columns:1fr;gap:12px;margin-top:14px}.checkout .wide{grid-column:auto}.checkout-button{min-height:49px;font-size:14px}.empty{font-size:14px}.status{padding:16px 8px;font-size:14px}}
         @media(max-width:390px){.wrap{padding-left:10px;padding-right:10px}.head{padding:15px}.head h1{font-size:24px}.grid{grid-template-columns:1fr;gap:10px}.product{display:grid;grid-template-columns:82px minmax(0,1fr);grid-template-rows:auto auto 1fr auto;column-gap:12px;align-items:start}.product img{grid-column:1;grid-row:1/5;width:82px;height:82px;margin:0;object-fit:cover}.product h3{grid-column:2;margin:1px 0 4px}.product p{grid-column:2;margin:0 0 5px}.product .price{grid-column:2;align-self:end}.product button{grid-column:1/-1;margin-top:10px}.install-area{gap:7px!important}.install-area>a,.install-area>.install{font-size:12px;padding:10px 6px}}
     </style>
@@ -26,7 +29,7 @@
     </header>
 
     <section class="controls" aria-label="Destination">
-        <div class="field"><label for="country">Pays de livraison</label><select id="country" @disabled($link?->country_code)>@unless($link?->country_code)<option value="">Choisir un pays</option>@endunless @foreach ($countries as $code => $country)<option value="{{ $code }}" @selected(strtoupper((string) $link?->country_code) === $code || (! $link?->country_code && old('country_code') === $code))>{{ $country['label'] }}</option>@endforeach</select></div>
+        <div class="field"><label for="country">Pays de livraison</label><select id="country" class="js-country-search" @disabled($link?->country_code)>@unless($link?->country_code)<option value="">Choisir un pays</option>@endunless @foreach ($countries as $code => $country)<option value="{{ $code }}" @selected(strtoupper((string) $link?->country_code) === $code || (! $link?->country_code && old('country_code') === $code))>{{ $country['label'] }}</option>@endforeach</select></div>
     </section>
 
     @if ($errors->any())<div class="errors"><strong>Vérifie ta commande :</strong><ul>@foreach ($errors->all() as $error)<li>{{ $error }}</li>@endforeach</ul></div>@endif
@@ -61,14 +64,17 @@
                     <div class="field"><label for="customer-phone">Téléphone</label><input id="customer-phone" name="phone" type="tel" maxlength="50" value="{{ old('phone') }}" autocomplete="tel" required></div>
                     <div class="field wide"><label for="customer-address">Adresse de livraison</label><input id="customer-address" name="address" maxlength="180" value="{{ old('address') }}" placeholder="Ville, quartier, rue ou repère" autocomplete="street-address" required><small>Indique la ville et un repère pour faciliter la livraison.</small></div>
                 @endif
-                <div class="field"><label for="payment-timing">Quand souhaites-tu payer ?</label><select id="payment-timing" name="payment_timing" required><option value="on_delivery">À la livraison</option><option value="before_delivery">Avant la livraison</option></select></div>
-                <div class="field"><label for="payment-method">Mode de paiement prévu</label><select id="payment-method" name="payment_method" required><option value="mobile_money">Mobile money</option><option value="cash">Espèces</option></select></div>
-                <div class="field wide"><button class="checkout-button" type="submit">Envoyer la demande au partenaire</button></div>
+                <div class="field wide"><button class="checkout-button" type="submit">Envoyer ma commande</button></div>
             </div>
         </form>
     </section>
 </main>
+<script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
 <script>
+if (window.jQuery && jQuery.fn.select2) {
+    jQuery('#country').select2({width:'100%', placeholder:'Rechercher un pays…', language:{noResults:()=>'Aucun pays trouvé',searching:()=>'Recherche…'}});
+}
 (() => {
     const country = document.getElementById('country');
     const status = document.getElementById('catalog-status');
@@ -83,33 +89,60 @@
     const basket = new Map();
     let catalog = [];
     const money = (amount) => new Intl.NumberFormat('fr-FR').format(amount) + ' F';
+    const priceForQuantity = (product, quantity) => {
+        const eligible = (product.quantity_prices || []).filter((tier) => Number(tier.min_quantity) <= quantity);
+        if (!eligible.length) return Number(product.price) || 0;
+        return Number(eligible.reduce((best, tier) => Number(tier.min_quantity) > Number(best.min_quantity) ? tier : best).unit_price) || Number(product.price) || 0;
+    };
+    const maxQuantityForProduct = (product) => {
+        const configured = (product.quantity_prices || []).reduce((maximum, tier) => Math.max(maximum, Number(tier.min_quantity) || 0), 0);
+        return configured || 500;
+    };
+
+    function updateProductButtons() {
+        document.querySelectorAll('[data-add-product]').forEach((button) => {
+            const product = catalog.find((item) => Number(item.id) === Number(button.dataset.addProduct));
+            const quantity = basket.get(Number(button.dataset.addProduct))?.quantity || 0;
+            const reachedLimit = product && quantity >= maxQuantityForProduct(product);
+            button.disabled = Boolean(reachedLimit);
+            button.textContent = reachedLimit ? 'Quantité maximale atteinte' : 'Ajouter au panier';
+        });
+    }
 
     function renderBasket() {
         cartItems.replaceChildren();
         let subtotal = 0;
         basket.forEach((entry, id) => {
-            subtotal += entry.product.price * entry.quantity;
+            const unitPrice = priceForQuantity(entry.product, entry.quantity);
+            const lineTotal = unitPrice * entry.quantity;
+            subtotal += lineTotal;
             const row = document.createElement('div');
             row.className = 'cart-row';
-            const name = document.createElement('strong'); name.className = 'cart-product-name'; name.textContent = entry.product.name;
+            const name = document.createElement('div'); name.className = 'cart-product-name';
+            const productName = document.createElement('strong'); productName.textContent = entry.product.name; name.append(productName);
+            if ((entry.product.quantity_prices || []).length) { const maxNote = document.createElement('small'); maxNote.textContent = `Maximum commandable : ${maxQuantityForProduct(entry.product)} unité(s)`; name.append(maxNote); }
             const controls = document.createElement('div'); controls.className = 'qty';
             const minus = document.createElement('button'); minus.type = 'button'; minus.textContent = '−'; minus.setAttribute('aria-label', 'Retirer une unité');
             minus.addEventListener('click', () => changeQuantity(id, -1));
             const count = document.createElement('span'); count.textContent = entry.quantity;
             const plus = document.createElement('button'); plus.type = 'button'; plus.textContent = '+'; plus.setAttribute('aria-label', 'Ajouter une unité');
+            plus.disabled = entry.quantity >= maxQuantityForProduct(entry.product);
             plus.addEventListener('click', () => changeQuantity(id, 1));
             controls.append(minus, count, plus);
-            const line = document.createElement('span'); line.className = 'line-total'; line.textContent = money(entry.product.price * entry.quantity);
+            const line = document.createElement('span'); line.className = 'line-total';
+            line.textContent = entry.quantity > 1 ? `${money(unitPrice)} / unité · ${money(lineTotal)}` : money(lineTotal);
             row.append(name, controls, line); cartItems.append(row);
         });
         cartEmpty.hidden = basket.size > 0;
         cartSection.hidden = !country.value;
         subtotalNode.textContent = money(subtotal);
+        updateProductButtons();
     }
 
     function changeQuantity(id, delta) {
         const entry = basket.get(Number(id));
         if (!entry) return;
+        if (delta > 0 && entry.quantity >= maxQuantityForProduct(entry.product)) return;
         entry.quantity += delta;
         if (entry.quantity <= 0) basket.delete(Number(id));
         renderBasket();
@@ -117,6 +150,7 @@
 
     function addProduct(product) {
         const entry = basket.get(product.id);
+        if (entry && entry.quantity >= maxQuantityForProduct(product)) return;
         if (entry) entry.quantity += 1;
         else basket.set(product.id, { product, quantity: 1 });
         renderBasket();
@@ -129,7 +163,9 @@
         const heading = document.createElement('h3'); heading.textContent = product.name; card.append(heading);
         if (product.description) { const description = document.createElement('p'); description.textContent = product.description.slice(0, 100); card.append(description); }
         const price = document.createElement('div'); price.className = 'price'; price.textContent = money(product.price); card.append(price);
-        const button = document.createElement('button'); button.type = 'button'; button.textContent = 'Ajouter au panier'; button.addEventListener('click', () => addProduct(product)); card.append(button);
+        const firstTier = (product.quantity_prices || []).slice().sort((a, b) => Number(a.min_quantity) - Number(b.min_quantity))[0];
+        if (firstTier) { const tierHint = document.createElement('small'); tierHint.className = 'quantity-price-hint'; tierHint.textContent = `Dès ${firstTier.min_quantity} unités : ${money(firstTier.unit_price)} / unité`; card.append(tierHint); }
+        const button = document.createElement('button'); button.type = 'button'; button.dataset.addProduct = product.id; button.textContent = 'Ajouter au panier'; button.addEventListener('click', () => addProduct(product)); card.append(button);
         return card;
     }
 
@@ -149,6 +185,7 @@
             const suggestions = catalog.filter((item) => !item.featured);
             featured.forEach((item) => featuredProducts.append(productCard(item)));
             suggestions.forEach((item) => suggestionProducts.append(productCard(item)));
+            renderBasket();
             featuredSection.hidden = featured.length === 0;
             suggestionsSection.hidden = suggestions.length === 0;
             status.hidden = catalog.length > 0;
@@ -159,7 +196,9 @@
     });
 
     const savedCountry = localStorage.getItem('tenacos_public_country');
-    if (!country.disabled && savedCountry && Array.from(country.options).some((option) => option.value === savedCountry)) {
+    if (country.disabled && country.value) {
+        country.dispatchEvent(new Event('change'));
+    } else if (savedCountry && Array.from(country.options).some((option) => option.value === savedCountry)) {
         country.value = savedCountry;
         country.dispatchEvent(new Event('change'));
     }

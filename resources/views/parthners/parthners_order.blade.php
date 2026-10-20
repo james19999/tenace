@@ -74,9 +74,9 @@
                                     <td style="color: black ">{{ $order->total }} F </td>
                                     <td style="color: black ">
                                         @if ($order->status == 'ordered')
-                                            <span class="badge badge-warning"> En cours</span>
+                                            <span class="badge badge-warning">En cours </span>
                                         @elseif($order->status == 'delivered')
-                                            <span class="badge badge-success"> Terminé</span>
+                                            <span class="badge badge-success">Terminé </span>
 
                                             {{-- @endif --}}
                                         @elseif ($order->status == 'canceled')

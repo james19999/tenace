@@ -4,6 +4,7 @@ namespace App\Http\Livewire\Products;
 
 use App\Models\Product;
 use App\Models\ProductCountryPrice;
+use App\Models\PartnerProductStock;
 use Livewire\Component;
 use Livewire\WithPagination;
 use Illuminate\Support\Facades\Auth;
@@ -125,6 +126,33 @@ class ProductList extends Component
                 }));
 
         $Products = $productsQuery->orderBy('name')->paginate(12);
+        $partnerStockSummary = collect();
+        if ($isPartner) {
+            $productIds = $Products->getCollection()->modelKeys();
+            $reserveStocks = PartnerProductStock::query()
+                ->where('partner_id', $user->id)
+                ->where('country_code', $partnerCountryCode)
+                ->whereIn('product_id', $productIds)
+                ->pluck('quantity', 'product_id');
+            $courierStocks = DB::table('partner_courier_stock_issue_lines as lines')
+                ->join('partner_courier_stock_issues as issues', 'issues.id', '=', 'lines.issue_id')
+                ->where('issues.partner_id', $user->id)
+                ->where('issues.country_code', $partnerCountryCode)
+                ->whereIn('lines.product_id', $productIds)
+                ->groupBy('lines.product_id')
+                ->selectRaw('lines.product_id, SUM(lines.quantity_remaining) as quantity')
+                ->pluck('quantity', 'product_id');
+
+            foreach ($productIds as $productId) {
+                $reserve = (int) ($reserveStocks[$productId] ?? 0);
+                $withCouriers = (int) ($courierStocks[$productId] ?? 0);
+                $partnerStockSummary[$productId] = [
+                    'reserve' => $reserve,
+                    'couriers' => $withCouriers,
+                    'available' => $reserve + $withCouriers,
+                ];
+            }
+        }
 
         return view('livewire.products.product-list', [
             'Products' => $Products,
@@ -132,6 +160,7 @@ class ProductList extends Component
             'countryNames' => collect(WestAfricaShippingCatalog::countries())->map(fn ($country) => $country['label']),
             'isPartner' => $isPartner,
             'partnerCountryCode' => $partnerCountryCode,
+            'partnerStockSummary' => $partnerStockSummary,
         ])
             ->extends('layouts.admin')
             ->section('content');

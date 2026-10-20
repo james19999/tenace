@@ -79,7 +79,7 @@
 
                         <div class="form-group" id="country-code-group">
                             <label for="country_code">Pays du partenaire ou du livreur <span class="text-muted">(facultatif)</span></label>
-                            <select name="country_code" id="country_code" class="form-control">
+                            <select name="country_code" id="country_code" class="form-control js-country-search">
                                 <option value="">Choisir un pays</option>
                                 @foreach ($countries as $code => $country)
                                     <option value="{{ $code }}" @selected(old('country_code') === $code)>{{ $country['label'] }}</option>

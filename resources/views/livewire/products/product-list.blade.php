@@ -81,6 +81,7 @@
                 @foreach ($Products as $product)
                     @php
                         $stock = (int) ($product->shop_quantity ?? 0);
+                        $partnerStock = $partnerStockSummary[$product->id] ?? ['reserve' => 0, 'couriers' => 0, 'available' => 0];
                         $isOut = ! $isPartner && $stock <= 0;
                         $isLow = ! $isPartner && ! $isOut && $product->qts_seuil !== null && $stock <= (int) $product->qts_seuil;
                     @endphp
@@ -109,9 +110,15 @@
                                     <span class="product-reference">Réf. {{ $product->id }}</span>
                                     <h3>{{ $product->name }}</h3>
                                 </div>
-                                @unless ($isPartner)<span class="product-stock-number {{ $isOut ? 'text-danger' : ($isLow ? 'text-warning' : '') }}">
+                                @if ($isPartner)
+                                    <span class="product-stock-number product-partner-stock-number {{ $partnerStock['available'] < 1 ? 'text-danger' : '' }}" aria-label="{{ $partnerStock['available'] }} unité(s) disponibles pour ce partenaire">
+                                        {{ number_format($partnerStock['available'], 0, ',', ' ') }}
+                                        <small>disponible(s)</small>
+                                        <small>Réserve {{ number_format($partnerStock['reserve'], 0, ',', ' ') }} · Livreurs {{ number_format($partnerStock['couriers'], 0, ',', ' ') }}</small>
+                                    </span>
+                                @else<span class="product-stock-number {{ $isOut ? 'text-danger' : ($isLow ? 'text-warning' : '') }}">
                                     {{ $stock }} <small>en stock</small>
-                                </span>@endunless
+                                </span>@endif
                             </div>
 
                             @if ($product->description)
@@ -280,6 +287,8 @@
         .product-title-row h3{margin:0;color:var(--catalog-ink);font-size:16px;line-height:1.3;font-weight:800;overflow-wrap:anywhere}
         .product-stock-number{flex:0 0 auto;padding-top:12px;text-align:right;font-weight:800;font-size:14px}
         .product-stock-number small{display:block;color:var(--catalog-muted);font-size:9px;font-weight:500;white-space:nowrap}
+        .product-partner-stock-number{max-width:145px;padding-top:2px;color:#26764d;font-size:16px}
+        .product-partner-stock-number small{white-space:normal;line-height:1.35}
         .product-description{min-height:34px;margin:8px 0 0;color:var(--catalog-muted);font-size:11px;line-height:1.5}
         .product-prices{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:13px;padding:11px 0;border-top:1px solid #f0f0f2;border-bottom:1px solid #f0f0f2}
         .product-prices small{display:block;color:var(--catalog-muted);font-size:10px;margin-bottom:4px}
@@ -437,6 +446,7 @@
         html[data-app-theme="dark"] .product-prices strong,
         html[data-app-theme="dark"] .product-commission strong,
         html[data-app-theme="dark"] .catalog-empty h3 { color:#edf1f5 !important; }
+        html[data-app-theme="dark"] .product-partner-stock-number:not(.text-danger){color:#75d6a2 !important}
         html[data-app-theme="dark"] .catalog-header p,
         html[data-app-theme="dark"] .catalog-toolbar p,
         html[data-app-theme="dark"] .catalog-metric small,

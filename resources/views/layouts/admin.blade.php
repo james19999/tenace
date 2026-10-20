@@ -506,6 +506,26 @@
         // In your Javascript (external .js resource or <script> tag)
         $(document).ready(function() {
             $('.js-example-basic-single').select2();
+            function initCountrySearch(root) {
+                var $root = root ? $(root) : $(document);
+                $root.find('select.js-country-search').addBack('select.js-country-search').each(function() {
+                    var $country = $(this);
+                    if ($country.hasClass('select2-hidden-accessible')) return;
+                    $country.select2({
+                        width: 'resolve',
+                        language: {
+                            noResults: function() { return 'Aucun pays trouvé'; },
+                            searching: function() { return 'Recherche…'; }
+                        }
+                    });
+                });
+            }
+            initCountrySearch(document);
+            document.addEventListener('livewire:load', function() {
+                if (window.Livewire && typeof Livewire.hook === 'function') {
+                    Livewire.hook('message.processed', function() { initCountrySearch(document); });
+                }
+            });
             $('.js-customer-search').each(function() {
                 var $customerSelect = $(this);
                 $customerSelect.select2({

@@ -158,12 +158,14 @@ Route::middleware(['auth'])->group(function () {
     Route::middleware(['role:PT,ADMINUSER,MNG'])->prefix('partner-ordering')->name('partner-ordering.')->group(function () {
         Route::get('/prices/{country}', [PartnerOrderingSetupController::class, 'prices'])->where('country', '[A-Za-z]{2}')->name('prices');
         Route::put('/prices/{country}', [PartnerOrderingSetupController::class, 'savePrices'])->where('country', '[A-Za-z]{2}')->name('prices.save');
+        Route::post('/prices/{country}/replenish', [PartnerOrderingSetupController::class, 'replenishStock'])->where('country', '[A-Za-z]{2}')->name('prices.replenish');
     });
 
     Route::middleware(['role:ADMINUSER,MNG'])->prefix('partner-ordering')->name('partner-ordering.')->group(function () {
         Route::get('/links', [PartnerOrderingSetupController::class, 'links'])->name('links');
         Route::post('/links', [PartnerOrderingSetupController::class, 'createLink'])->name('links.create');
         Route::put('/links/{link}/toggle', [PartnerOrderingSetupController::class, 'toggleLink'])->name('links.toggle');
+        Route::delete('/links/{link}', [PartnerOrderingSetupController::class, 'deleteLink'])->name('links.destroy');
     });
 
     Route::middleware(['role:ADMINUSER,MNG'])->prefix('stock-control')->name('stock-control.')->group(function () {
@@ -259,6 +261,7 @@ Route::middleware(['auth'])->group(function () {
         Route::get('/couriers', [PartnerOrderController::class, 'couriers'])->name('couriers.index');
         Route::get('/couriers/create', [PartnerOrderController::class, 'createCourier'])->name('couriers.create');
         Route::post('/couriers', [PartnerOrderController::class, 'storeCourier'])->name('couriers.store');
+        Route::post('/couriers/{courier}/stock', [PartnerOrderController::class, 'issueCourierStock'])->whereNumber('courier')->name('couriers.stock.issue');
         Route::get('/couriers/{courier}/edit', [PartnerOrderController::class, 'editCourier'])->whereNumber('courier')->name('couriers.edit');
         Route::put('/couriers/{courier}', [PartnerOrderController::class, 'updateCourier'])->whereNumber('courier')->name('couriers.update');
         Route::delete('/couriers/{courier}', [PartnerOrderController::class, 'deactivateCourier'])->whereNumber('courier')->name('couriers.destroy');

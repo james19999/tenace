@@ -23,6 +23,7 @@
     @if (session('success'))<div class="alert alert-success">{{ session('success') }}</div>@endif
     @if (session('error'))<div class="alert alert-danger">{{ session('error') }}</div>@endif
     @if ($errors->any())<div class="alert alert-danger">{{ $errors->first() }}</div>@endif
+    <section class="courier-stock-summary"><div><span class="courier-detail-label">STOCK À TA DISPOSITION</span><strong>Produits remis par le partenaire</strong></div>@forelse($courierStock as $stockItem)<span class="courier-stock-chip">{{ $stockItem->product?->name ?? 'Produit' }} <b>{{ $stockItem->quantity }}</b></span>@empty<span class="courier-stock-empty">Aucun stock remis pour le moment.</span>@endforelse</section>
     <section class="courier-order-section">
         <div class="courier-section-heading"><div><span>À PRENDRE</span><h2>Commandes disponibles</h2></div><small>{{ $available->total() }} disponible(s) · premier livreur à accepter</small></div>
         <div class="courier-orders-grid">
@@ -32,7 +33,7 @@
                     <div class="courier-customer"><strong>{{ $order->costumer?->name }}</strong><a href="tel:{{ $order->costumer?->phone }}">{{ $order->costumer?->phone }}</a><span>{{ $order->costumer?->adresse }}</span></div>
                     <div class="courier-order-items"><span class="courier-detail-label">PRODUITS</span><ul>@foreach($order->orderItems as $item)<li><span>{{ $item->product?->name ?? 'Produit' }}</span><strong>× {{ $item->quantity }}</strong></li>@endforeach</ul></div>
                     <div class="courier-payment-note"><span class="courier-detail-label">PAIEMENT</span><strong>{{ $order->payment_timing === 'on_delivery' ? 'À la livraison · '.($order->requested_payment_method === 'mobile_money' ? 'Mobile Money' : 'Espèces') : 'Prévu avant livraison' }}</strong></div>
-                    <form method="POST" action="{{ route('courier.public-orders.claim', $order) }}">@csrf<button class="btn btn-danger courier-action-button">Prendre cette commande</button></form>
+                    @if($order->courier_has_stock)<form method="POST" action="{{ route('courier.public-orders.claim', $order) }}">@csrf<button class="btn btn-danger courier-action-button">Prendre cette commande</button></form>@else<p class="courier-waiting-note">Stock insuffisant pour cette commande. Contacte le partenaire pour compléter ton stock.</p>@endif
                 </article>
             @empty
                 <div class="courier-empty">Aucune commande disponible pour le moment.</div>

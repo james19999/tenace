@@ -8,7 +8,7 @@
             @if ($canSelectDeliveryCountry)
                 <form method="GET" action="{{ route('show-deliveries') }}" class="d-flex align-items-center flex-wrap" style="gap:10px;margin:14px 0;">
                     <label for="delivery-ranking-country" class="mb-0">Pays du classement</label>
-                    <select id="delivery-ranking-country" name="country_code" class="form-control" style="max-width:260px" onchange="this.form.submit()">
+                    <select id="delivery-ranking-country" name="country_code" class="form-control js-country-search" style="max-width:260px" onchange="this.form.submit()">
                         <option value="ALL" @selected($selectedCountry === null)>Tous les pays</option>
                         @foreach ($countryOptions as $code => $country)
                             <option value="{{ $code }}" @selected($selectedCountry === $code)>{{ $country['label'] }}</option>

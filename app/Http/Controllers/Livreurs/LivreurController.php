@@ -511,6 +511,9 @@ class LivreurController extends Controller
 
                $orders->status=$request->status;
                $orders->motif=$request->motif;
+               if ($orders->partner_id && $orders->public_tracking_token) {
+                   $orders->partner_order_status = 'canceled';
+               }
                $orders->user_id=Auth::user()->id;
                $orders->status_order=false;
                $orders->take=false;

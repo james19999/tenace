@@ -4,6 +4,7 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class ProductCountryPrice extends Model
 {
@@ -14,5 +15,22 @@ class ProductCountryPrice extends Model
     public function product(): BelongsTo
     {
         return $this->belongsTo(Product::class);
+    }
+
+    public function quantityTiers(): HasMany
+    {
+        return $this->hasMany(ProductCountryPriceTier::class)->orderBy('min_quantity');
+    }
+
+    public function unitPriceForQuantity(int $quantity): int
+    {
+        $tiers = $this->relationLoaded('quantityTiers')
+            ? $this->quantityTiers
+            : $this->quantityTiers()->get();
+
+        $tier = $tiers->filter(fn (ProductCountryPriceTier $tier) => $tier->min_quantity <= $quantity)
+            ->sortByDesc('min_quantity')->first();
+
+        return (int) ($tier?->unit_price ?? $this->price);
     }
 }

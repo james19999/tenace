@@ -6,6 +6,8 @@ use App\Models\OrderCourierHandoff;
 use App\Models\OrderPayment;
 use App\Models\Orders\Order;
 use App\Models\User;
+use App\Models\PartnerCourierStockIssueLine;
+use App\Services\PartnerCourierStockService;
 use App\Services\Payments\FedaPayPaymentProcessor;
 use App\Services\Payments\FedaPayService;
 use Illuminate\Http\JsonResponse;
@@ -24,22 +26,36 @@ class CourierPublicOrderController extends Controller
             ->where('country_code', $courier->country_code)
             ->where('partner_order_status', 'ready_for_courier')->whereNull('user_id')
             ->latest()->paginate(20, ['*'], 'available_page');
+        $stockService = app(PartnerCourierStockService::class);
+        $available->getCollection()->each(function (Order $order) use ($courier, $stockService): void {
+            $order->setAttribute('courier_has_stock', $stockService->hasForOrder($courier, $order));
+        });
         $assigned = Order::query()->with(['costumer', 'partner:id,name,phone', 'orderItems.product', 'payments'])
             ->where('user_id', (string) $courier->id)
             ->whereIn('partner_order_status', ['assigned_to_courier', 'handed_to_courier', 'out_for_delivery'])
             ->latest()->get();
+        $courierStock = PartnerCourierStockIssueLine::query()->selectRaw('partner_courier_stock_issue_lines.product_id, SUM(partner_courier_stock_issue_lines.quantity_remaining) as quantity')
+            ->join('partner_courier_stock_issues', 'partner_courier_stock_issues.id', '=', 'partner_courier_stock_issue_lines.issue_id')
+            ->where('partner_courier_stock_issues.courier_id', $courier->id)
+            ->where('partner_courier_stock_issues.country_code', $courier->country_code)
+            ->where('partner_courier_stock_issue_lines.quantity_remaining', '>', 0)
+            ->groupBy('partner_courier_stock_issue_lines.product_id')->with('product:id,name')->get();
 
-        return view('livreurs.public-orders.index', compact('available', 'assigned'));
+        return view('livreurs.public-orders.index', compact('available', 'assigned', 'courierStock'));
     }
 
     public function claim(Request $request, Order $order): RedirectResponse
     {
         $courier = $this->courier($request);
-        DB::transaction(function () use ($order, $courier): void {
+        $stockService = app(PartnerCourierStockService::class);
+        DB::transaction(function () use ($order, $courier, $stockService): void {
             $locked = Order::query()->whereKey($order->id)->lockForUpdate()->firstOrFail();
             abort_unless($locked->country_code === $courier->country_code
                 && $locked->partner_order_status === 'ready_for_courier' && $locked->user_id === null, 409,
                 'Un autre livreur a déjà pris cette commande.');
+            $locked->load('orderItems');
+            abort_unless($stockService->hasForOrder($courier, $locked), 409,
+                'Ton stock remis par le partenaire ne suffit pas pour cette commande.');
 
             $locked->user_id = (string) $courier->id;
             $locked->assigned_at = now();
@@ -57,7 +73,7 @@ class CourierPublicOrderController extends Controller
             ]);
         });
 
-        return back()->with('success', 'La commande t’est affectée. Le partenaire va te remettre le colis.');
+        return back()->with('success', 'La commande t’est affectée. Ton stock de départ est débité à la confirmation de la livraison.');
     }
 
     public function receive(Request $request, Order $order): RedirectResponse
@@ -92,7 +108,8 @@ class CourierPublicOrderController extends Controller
             ]);
         }
 
-        $deliveryError = DB::transaction(function () use ($order, $courier, $validated): ?string {
+        $stockService = app(PartnerCourierStockService::class);
+        $deliveryError = DB::transaction(function () use ($order, $courier, $validated, $stockService): ?string {
             $locked = Order::query()->whereKey($order->id)->lockForUpdate()->firstOrFail();
             if ((string) $locked->user_id !== (string) $courier->id) {
                 return 'Cette commande ne t’est pas affectée. Actualise la liste de tes livraisons.';
@@ -115,7 +132,9 @@ class CourierPublicOrderController extends Controller
             if (! $handoff) {
                 return 'Confirme d’abord la réception du colis avant de valider la livraison.';
             }
+            $locked->load('orderItems');
             $balance = max(0, (int) $locked->montant - (int) $locked->paid_amount);
+            $collectCash = false;
             if ($locked->payment_timing === 'on_delivery' && $balance > 0) {
                 if (! in_array($validated['payment_method'] ?? '', ['cash', 'mobile_money'], true)) {
                     return 'Choisis le moyen de paiement reçu pour cette commande.';
@@ -132,19 +151,24 @@ class CourierPublicOrderController extends Controller
                         ->whereIn('status', ['initiating', 'pending'])->exists()) {
                         return 'Une demande Mobile Money est encore en cours. Vérifie son résultat FedaPay avant de choisir les espèces.';
                     }
-                    OrderPayment::create([
-                        'order_id' => $locked->id,
-                        'stage' => 'on_delivery',
-                        'method' => 'cash',
-                        'amount' => $balance,
-                        'status' => 'collected',
-                        'transaction_reference' => $validated['transaction_reference'] ?? null,
-                        'collected_by' => $courier->id,
-                        'collected_at' => now(),
-                        'notes' => $validated['notes'] ?? null,
-                    ]);
-                    $locked->paid_amount = (int) $locked->paid_amount + $balance;
+                    $collectCash = true;
                 }
+            }
+            $stockError = $stockService->consumeForOrder($courier, $locked);
+            if ($stockError !== null) return $stockError;
+            if ($collectCash) {
+                OrderPayment::create([
+                    'order_id' => $locked->id,
+                    'stage' => 'on_delivery',
+                    'method' => 'cash',
+                    'amount' => $balance,
+                    'status' => 'collected',
+                    'transaction_reference' => $validated['transaction_reference'] ?? null,
+                    'collected_by' => $courier->id,
+                    'collected_at' => now(),
+                    'notes' => $validated['notes'] ?? null,
+                ]);
+                $locked->paid_amount = (int) $locked->paid_amount + $balance;
             }
             $locked->status = 'delivered';
             $locked->partner_order_status = 'delivered';

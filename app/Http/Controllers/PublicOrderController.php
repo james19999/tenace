@@ -44,6 +44,7 @@ class PublicOrderController extends Controller
     public function show(Request $request, string $token): View
     {
         $link = $this->availableLink($token);
+        $this->recordLinkVisit($request, $link);
         $portalAccount = $this->portalAccount($request);
         $savedCustomer = $portalAccount?->customers()->orderByDesc('costumers.id')->first();
         $savedProfiles = $this->portalProfiles($request);
@@ -115,7 +116,7 @@ class PublicOrderController extends Controller
             ? $link->products()->pluck('products.id')->map(fn ($id) => (int) $id)->all()
             : [];
         $prices = ProductCountryPrice::query()
-            ->with('product:id,name,description,img')
+            ->with(['product:id,name,description,img', 'quantityTiers'])
             ->where('country_code', $countryCode)
             ->where('is_available', true)
             ->whereHas('product')
@@ -129,6 +130,10 @@ class PublicOrderController extends Controller
                 'description' => $price->product->description,
                 'image' => $price->product->img ? url('image/'.$price->product->img) : null,
                 'price' => (int) $price->price,
+                'quantity_prices' => $price->quantityTiers->map(fn ($tier) => [
+                    'min_quantity' => (int) $tier->min_quantity,
+                    'unit_price' => (int) $tier->unit_price,
+                ])->values(),
                 'featured' => in_array((int) $price->product_id, $featuredIds, true),
             ]);
 
@@ -153,8 +158,8 @@ class PublicOrderController extends Controller
             'name' => [$customerDetailsRequired ? 'required' : 'nullable', 'string', 'max:160'],
             'phone' => [$customerDetailsRequired ? 'required' : 'nullable', 'string', 'max:50'],
             'address' => ['required', 'string', 'max:180'],
-            'payment_timing' => ['required', Rule::in(['before_delivery', 'on_delivery'])],
-            'payment_method' => ['required', Rule::in(['cash', 'mobile_money'])],
+            'payment_timing' => ['nullable', Rule::in(['before_delivery', 'on_delivery'])],
+            'payment_method' => ['nullable', Rule::in(['cash', 'mobile_money'])],
             'items' => ['required', 'array', 'min:1', 'max:50'],
             'items.*.product_id' => ['required', 'integer', 'distinct', 'exists:products,id'],
             'items.*.quantity' => ['required', 'integer', 'min:1', 'max:500'],
@@ -193,7 +198,7 @@ class PublicOrderController extends Controller
         }
 
         $prices = ProductCountryPrice::query()
-            ->with('product')
+            ->with(['product', 'quantityTiers'])
             ->where('country_code', $countryCode)
             ->where('is_available', true)
             ->whereIn('product_id', $quantities->keys())
@@ -204,11 +209,18 @@ class PublicOrderController extends Controller
             return back()->withErrors(['items' => 'Un produit sélectionné n’est plus disponible dans ce pays.'])->withInput();
         }
 
+        foreach ($quantities as $productId => $item) {
+            $maximumQuantity = (int) $prices[$productId]->quantityTiers->max('min_quantity');
+            if ($maximumQuantity > 0 && (int) $item['quantity'] > $maximumQuantity) {
+                return back()->withErrors(['items' => 'La quantité maximale commandable pour '.$prices[$productId]->product->name.' est de '.$maximumQuantity.' unité(s).'])->withInput();
+            }
+        }
+
         $trackingToken = (string) Str::uuid();
         $order = DB::transaction(function () use ($validated, $countryCode, $partner, $link, $prices, $quantities, $trackingToken, $portalAccount, $orderCustomer): Order {
             $subtotal = 0;
             foreach ($quantities as $productId => $item) {
-                $subtotal += (int) $prices[$productId]->price * (int) $item['quantity'];
+                $subtotal += $prices[$productId]->unitPriceForQuantity((int) $item['quantity']) * (int) $item['quantity'];
             }
 
             $customer = Costumer::create([
@@ -250,8 +262,8 @@ class PublicOrderController extends Controller
             $order->shipping_city = null;
             $order->partner_id = $partner->id;
             $order->public_order_link_id = $link?->id;
-            $order->payment_timing = $validated['payment_timing'];
-            $order->requested_payment_method = $validated['payment_method'];
+            $order->payment_timing = $validated['payment_timing'] ?? 'on_delivery';
+            $order->requested_payment_method = $validated['payment_method'] ?? 'cash';
             $order->public_tracking_token = $trackingToken;
             $order->partner_order_status = 'awaiting_delivery_quote';
             $order->save();
@@ -260,7 +272,7 @@ class PublicOrderController extends Controller
                 OrderItem::create([
                     'product_id' => (int) $productId,
                     'order_id' => $order->id,
-                    'price' => (int) $prices[$productId]->price,
+                    'price' => $prices[$productId]->unitPriceForQuantity((int) $item['quantity']),
                     'quantity' => (int) $item['quantity'],
                     'high_price' => 0,
                     'delivery_fee' => 0,
@@ -341,6 +353,25 @@ class PublicOrderController extends Controller
         abort_unless($link->isAvailable(), 404);
 
         return $link;
+    }
+
+    private function recordLinkVisit(Request $request, PublicOrderLink $link): void
+    {
+        $now = now();
+        $visitorHash = hash_hmac('sha256', $request->session()->getId(), (string) config('app.key'));
+        $visits = DB::table('public_order_link_visits');
+        $visits->insertOrIgnore([
+            'public_order_link_id' => $link->id,
+            'visitor_hash' => $visitorHash,
+            'visits' => 0,
+            'first_seen_at' => $now,
+            'last_seen_at' => $now,
+            'created_at' => $now,
+            'updated_at' => $now,
+        ]);
+        $visits->where('public_order_link_id', $link->id)
+            ->where('visitor_hash', $visitorHash)
+            ->increment('visits', 1, ['last_seen_at' => $now, 'updated_at' => $now]);
     }
 
     private function portalAccount(Request $request): ?CustomerPortalAccount

@@ -9,7 +9,7 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 class StockLocation extends Model
 {
     protected $fillable = [
-        'code', 'name', 'type', 'responsible_user_id', 'parent_location_id',
+        'code', 'name', 'type', 'country_code', 'responsible_user_id', 'parent_location_id',
         'is_active', 'valid_from', 'valid_until', 'notes',
     ];
 

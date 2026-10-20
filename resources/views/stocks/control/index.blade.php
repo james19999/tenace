@@ -2,7 +2,6 @@
 
 @section('content')
     @php
-        $warehouseConfigured = $warehouseConfigured ?? $locations->contains(fn ($location) => $location->type === 'warehouse');
         $typeLabels = [
             'warehouse' => 'Entrepôt',
             'shop' => 'Boutique',
@@ -40,7 +39,7 @@
             <div class="stock-control-intro-icon"><span class="material-icons">verified_user</span></div>
             <div>
                 <h2>Commence par créer tes sites</h2>
-                <p>Ajoute ton entrepôt et tes boutiques. Les zones techniques de transit et de quarantaine seront préparées automatiquement, sans stock initial.</p>
+                <p>Ajoute un entrepôt par pays et tes boutiques. Les zones techniques de transit et de quarantaine seront préparées automatiquement, sans stock initial.</p>
             </div>
         </section>
 
@@ -56,7 +55,8 @@
                     <h3>Ajouter un entrepôt ou une boutique</h3>
                     <div class="stock-control-form-grid stock-location-create-fields">
                         <label class="stock-control-field"><span>Nom affiché</span><input name="name" value="{{ old('name') }}" placeholder="Boutique Djidjolé" maxlength="120" required></label>
-                        <label class="stock-control-field"><span>Type d’emplacement</span><select name="type" required>@if (! $warehouseConfigured)<option value="warehouse" @selected(old('type') === 'warehouse')>Entrepôt</option>@endif<option value="shop" @selected(old('type', 'shop') === 'shop')>Boutique</option></select>@if ($warehouseConfigured)<small>Un entrepôt est déjà configuré. Tu peux toujours ajouter des boutiques.</small>@endif</label>
+                        <label class="stock-control-field"><span>Type d’emplacement</span><select name="type" required><option value="warehouse" @selected(old('type') === 'warehouse')>Entrepôt</option><option value="shop" @selected(old('type', 'shop') === 'shop')>Boutique</option></select><small>Un seul entrepôt peut être créé par pays.</small></label>
+                        <label class="stock-control-field"><span>Pays de l’emplacement</span><select class="js-country-search" name="country_code"><option value="">Pays non précisé</option>@foreach($countries as $code => $country)<option value="{{ $code }}" @selected(old('country_code') === $code)>{{ $country['label'] }}</option>@endforeach</select></label>
                         <label class="stock-control-field"><span>Responsable</span><select name="responsible_user_id"><option value="">À désigner</option>@foreach ($users as $user)<option value="{{ $user->id }}" @selected((string) old('responsible_user_id') === (string) $user->id)>{{ $user->name }} · {{ $user->user_type }}</option>@endforeach</select></label>
                     </div>
                     <div class="stock-control-form-footer"><small>Le code unique sera généré automatiquement. Réceptionne les achats dans un entrepôt, puis transfère les quantités vers les boutiques. Créer un site ne lui attribue aucun stock.</small><button class="stock-control-button stock-control-button-primary" type="submit"><span class="material-icons">add</span>Ajouter le site</button></div>
@@ -70,7 +70,7 @@
                             <article class="stock-location-item">
                                 <div class="stock-location-heading">
                                     <div class="stock-location-symbol"><span class="material-icons">{{ $location->type === 'shop' ? 'storefront' : 'warehouse' }}</span></div>
-                                    <div class="stock-location-title"><div class="stock-location-name">{{ $location->name }} @if (in_array($location->code, $systemLocationCodes, true))<span class="stock-control-system-tag">Système</span>@endif</div><div class="stock-location-meta"><code>{{ $location->code }}</code><span>{{ $typeLabels[$location->type] ?? ($legacyTypeLabels[$location->type] ?? 'Site historique') }}</span></div></div>
+                                    <div class="stock-location-title"><div class="stock-location-name">{{ $location->name }} @if (in_array($location->code, $systemLocationCodes, true))<span class="stock-control-system-tag">Système</span>@endif</div><div class="stock-location-meta"><code>{{ $location->code }}</code><span>{{ $typeLabels[$location->type] ?? ($legacyTypeLabels[$location->type] ?? 'Site historique') }}</span>@if($location->country_code)<span>{{ $countries[$location->country_code]['label'] ?? $location->country_code }}</span>@endif</div></div>
                                     <span class="stock-control-state {{ $location->is_active ? 'is-active' : 'is-inactive' }}">{{ $location->is_active ? 'Actif' : 'Inactif' }}</span>
                                 </div>
                                 <div class="stock-location-responsible"><span>Responsable</span><strong>{{ $location->responsible?->name ?? 'À désigner' }}</strong></div>
@@ -82,6 +82,7 @@
                                         <div class="stock-control-form-grid">
                                             <label class="stock-control-field"><span>Code</span><input value="{{ $location->code }}" disabled></label>
                                             <label class="stock-control-field"><span>Nom affiché</span><input name="name" value="{{ $location->name }}" maxlength="120" required></label>
+                                            <label class="stock-control-field"><span>Pays de l’emplacement</span><select class="js-country-search" name="country_code"><option value="">Pays non précisé</option>@foreach($countries as $code => $country)<option value="{{ $code }}" @selected($location->country_code === $code)>{{ $country['label'] }}</option>@endforeach</select></label>
                                             <label class="stock-control-field"><span>Responsable</span><select name="responsible_user_id"><option value="">À désigner</option>@foreach ($users as $user)<option value="{{ $user->id }}" @selected((string) $location->responsible_user_id === (string) $user->id)>{{ $user->name }} · {{ $user->user_type }}</option>@endforeach</select></label>
                                             <label class="stock-control-field"><span>État</span>
                                                 @if (in_array($location->code, $systemLocationCodes, true))
