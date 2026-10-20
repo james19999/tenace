@@ -31,4 +31,13 @@ return [
         'region' => env('AWS_DEFAULT_REGION', 'us-east-1'),
     ],
 
+    'fedapay' => [
+        // This integration is deliberately locked to Sandbox until Live is
+        // explicitly implemented and approved.
+        'environment' => env('FEDAPAY_ENVIRONMENT', 'sandbox'),
+        'secret_key' => env('FEDAPAY_SECRET_KEY'),
+        'webhook_secret' => env('FEDAPAY_WEBHOOK_SECRET'),
+        'base_url' => 'https://sandbox-api.fedapay.com/v1',
+    ],
+
 ];

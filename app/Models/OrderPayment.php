@@ -10,6 +10,7 @@ class OrderPayment extends Model
 {
     protected $fillable = [
         'order_id', 'stage', 'method', 'amount', 'status', 'transaction_reference',
+        'gateway', 'gateway_transaction_id', 'gateway_reference', 'gateway_method', 'gateway_status',
         'proof_path', 'collected_by', 'confirmed_by', 'collected_at', 'confirmed_at', 'notes',
     ];
 

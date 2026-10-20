@@ -45,6 +45,7 @@ use App\Http\Controllers\CustomerPortalController;
 use App\Http\Controllers\PartnerOrderController;
 use App\Http\Controllers\PartnerMonitoringController;
 use App\Http\Controllers\CourierPublicOrderController;
+use App\Http\Controllers\FedaPayWebhookController;
 use App\Http\Controllers\Expensive\ExpensiveController;
 use App\Http\Controllers\Brouillons\BrouillonController;
 use App\Http\Controllers\TypeExpensive\TypeExpensiveController;
@@ -85,6 +86,7 @@ Route::get('/commander/{token}', [PublicOrderController::class, 'show'])->name('
 Route::get('/commande/suivi/{trackingToken}', [PublicOrderController::class, 'track'])->name('public-order.track');
 Route::post('/commande/suivi/{trackingToken}/confirmer-devis', [PublicOrderController::class, 'confirmQuote'])->middleware('throttle:10,1')->name('public-order.quote.confirm');
 Route::post('/commande/suivi/{trackingToken}/paiement', [PublicOrderController::class, 'submitPrepayment'])->middleware('throttle:5,1')->name('public-order.payment');
+Route::post('/fedapay/webhook', FedaPayWebhookController::class)->middleware('throttle:120,1')->name('fedapay.webhook');
 
 Route::get('/tenacos/parthner',[DashboarController::class,'register']);
 Route::get('/space',[EcomController::class,'space']);
@@ -277,6 +279,8 @@ Route::middleware(['auth'])->group(function () {
         Route::post('/{order}/claim', [CourierPublicOrderController::class, 'claim'])->name('claim');
         Route::post('/{order}/receive', [CourierPublicOrderController::class, 'receive'])->name('receive');
         Route::post('/{order}/deliver', [CourierPublicOrderController::class, 'deliver'])->name('deliver');
+        Route::post('/{order}/mobile-payment', [CourierPublicOrderController::class, 'startMobilePayment'])->middleware('throttle:8,1')->name('mobile-payment.start');
+        Route::get('/{order}/mobile-payment/{payment}/status', [CourierPublicOrderController::class, 'mobilePaymentStatus'])->middleware('throttle:30,1')->name('mobile-payment.status');
     });
 
     // -------------------------------------------------------------------------
