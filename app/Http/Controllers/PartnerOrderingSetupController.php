@@ -41,17 +41,31 @@ class PartnerOrderingSetupController extends Controller
         $this->authorizeCountry($request, $country);
         abort_unless(isset(WestAfricaShippingCatalog::countries()[$country]), 404);
 
-        $validated = $request->validate([
-            'order_delivery_fee' => ['nullable', 'integer', 'min:0', 'max:999999999'],
+        $isPartner = $request->user()->user_type === User::ROLE_PARTNER;
+        $isAdmin = $request->user()->user_type === User::ROLE_ADMIN;
+        $rules = [
             'available' => ['sometimes', 'array'],
             'available.*' => ['boolean'],
+        ];
+        if ($isAdmin) {
+            $rules += [
+                'prices' => ['sometimes', 'array'],
+                'prices.*' => ['required', 'integer', 'min:0', 'max:999999999'],
+            ];
+        }
+        if ($isPartner) {
+            $rules += [
+                'order_delivery_fee' => ['nullable', 'integer', 'min:0', 'max:999999999'],
             'delivery_fees' => ['sometimes', 'array'],
             'delivery_fees.*' => ['nullable', 'integer', 'min:0', 'max:999999999'],
-        ]);
+            ];
+        }
+        $validated = $request->validate($rules);
 
         $productIds = array_map('intval', array_unique(array_merge(
             array_keys($validated['available'] ?? []),
-            array_keys($validated['delivery_fees'] ?? [])
+            array_keys($validated['delivery_fees'] ?? []),
+            array_keys($validated['prices'] ?? [])
         )));
         $productsById = Product::query()->whereIn('id', $productIds)->get(['id', 'price'])->keyBy('id');
         $knownIds = $productsById->keys()->map(fn ($id) => (int) $id)->all();
@@ -68,22 +82,32 @@ class PartnerOrderingSetupController extends Controller
                 $record->price = (int) $productsById[$productId]->price;
             }
 
-            $specificFee = $validated['delivery_fees'][$productId] ?? null;
-            $record->has_delivery_fee_override = $specificFee !== null && $specificFee !== '';
-            $record->delivery_fee = $record->has_delivery_fee_override ? (int) $specificFee : 0;
+            if ($isAdmin && array_key_exists($productId, $validated['prices'] ?? [])) {
+                $record->price = (int) $validated['prices'][$productId];
+            }
+
+            if ($isPartner) {
+                $specificFee = $validated['delivery_fees'][$productId] ?? null;
+                $record->has_delivery_fee_override = $specificFee !== null && $specificFee !== '';
+                $record->delivery_fee = $record->has_delivery_fee_override ? (int) $specificFee : 0;
+            }
             $record->is_available = (bool) ($validated['available'][$productId] ?? false);
             $record->save();
         }
 
-        PartnerCountryDeliverySetting::query()->updateOrCreate(
-            ['country_code' => $country],
-            [
-                'delivery_mode' => 'per_order',
-                'order_delivery_fee' => (int) ($validated['order_delivery_fee'] ?? 0),
-            ],
-        );
+        if ($isPartner) {
+            PartnerCountryDeliverySetting::query()->updateOrCreate(
+                ['country_code' => $country],
+                [
+                    'delivery_mode' => 'per_order',
+                    'order_delivery_fee' => (int) ($validated['order_delivery_fee'] ?? 0),
+                ],
+            );
+        }
 
-        return back()->with('success', 'La disponibilité et les frais de livraison ont été enregistrés.');
+        return back()->with('success', $isPartner
+            ? 'La disponibilité et les frais de livraison ont été enregistrés.'
+            : ($isAdmin ? 'Les prix et disponibilités de ce pays ont été enregistrés.' : 'Les produits disponibles dans ce pays ont été enregistrés.'));
     }
 
     public function links(): View
@@ -99,7 +123,9 @@ class PartnerOrderingSetupController extends Controller
             ->orderBy('name')
             ->get(['id', 'name']);
 
-        return view('partner-ordering.links', compact('links', 'products'));
+        $countries = WestAfricaShippingCatalog::countries();
+
+        return view('partner-ordering.links', compact('links', 'products', 'countries'));
     }
 
     public function createLink(Request $request): RedirectResponse
@@ -146,7 +172,9 @@ class PartnerOrderingSetupController extends Controller
     private function authorizeCountry(Request $request, string $country): void
     {
         $user = $request->user();
-        abort_unless($user?->user_type === User::ROLE_PARTNER, 403);
-        abort_unless(strtoupper((string) $user->country_code) === $country, 403, 'Tu peux modifier uniquement les prix de ton pays.');
+        abort_unless(in_array($user?->user_type, [User::ROLE_PARTNER, User::ROLE_ADMIN, User::ROLE_MANAGER], true), 403);
+        if ($user->user_type === User::ROLE_PARTNER) {
+            abort_unless(strtoupper((string) $user->country_code) === $country, 403, 'Tu peux modifier uniquement les prix de ton pays.');
+        }
     }
 }

@@ -152,7 +152,7 @@ Route::middleware(['auth'])->group(function () {
         Route::get('livreurs/{livreur}', [LivreurController::class, 'show'])->name('livreurs.show');
     });
 
-    Route::middleware(['role:PT'])->prefix('partner-ordering')->name('partner-ordering.')->group(function () {
+    Route::middleware(['role:PT,ADMINUSER,MNG'])->prefix('partner-ordering')->name('partner-ordering.')->group(function () {
         Route::get('/prices/{country}', [PartnerOrderingSetupController::class, 'prices'])->where('country', '[A-Za-z]{2}')->name('prices');
         Route::put('/prices/{country}', [PartnerOrderingSetupController::class, 'savePrices'])->where('country', '[A-Za-z]{2}')->name('prices.save');
     });
