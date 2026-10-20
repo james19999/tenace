@@ -123,6 +123,7 @@ class PartnerOrderingSetupController extends Controller
             ->paginate(20);
 
         $products = Product::query()
+            ->with(['countryPrices' => fn ($query) => $query->where('is_available', true)])
             ->whereHas('countryPrices', fn ($query) => $query->where('is_available', true))
             ->orderBy('name')
             ->get(['id', 'name']);
@@ -135,24 +136,32 @@ class PartnerOrderingSetupController extends Controller
     public function createLink(Request $request): RedirectResponse
     {
         $validated = $request->validate([
+            'country_code' => ['required', 'string', 'size:2', 'in:'.implode(',', array_keys(WestAfricaShippingCatalog::countries()))],
             'title' => ['nullable', 'string', 'max:160'],
             'expires_at' => ['nullable', 'date', 'after:now'],
             'product_ids' => ['required', 'array', 'min:1'],
             'product_ids.*' => ['required', 'integer', 'distinct', 'exists:products,id'],
         ]);
 
+        if (PublicOrderLink::query()->where('country_code', strtoupper($validated['country_code']))->exists()) {
+            return back()->withErrors(['country_code' => 'Un lien de commande existe déjà pour ce pays. Tu peux le copier ou le réactiver.'])->withInput();
+        }
+
         $pricedProductIds = Product::query()
             ->whereIn('id', $validated['product_ids'])
-            ->whereHas('countryPrices', fn ($query) => $query->where('is_available', true))
+            ->whereHas('countryPrices', fn ($query) => $query
+                ->where('country_code', strtoupper($validated['country_code']))
+                ->where('is_available', true))
             ->pluck('id')->map(fn ($id) => (int) $id)->all();
 
         if (count($pricedProductIds) !== count($validated['product_ids'])) {
-            return back()->withErrors(['product_ids' => 'Chaque produit du lien doit avoir un prix actif dans au moins un pays.'])->withInput();
+            return back()->withErrors(['product_ids' => 'Chaque produit du lien doit être disponible dans le pays choisi.'])->withInput();
         }
 
         $link = PublicOrderLink::create([
             'token' => (string) Str::uuid(),
-            'title' => $validated['title'] ?: 'Sélection de produits',
+            'title' => $validated['title'] ?: 'Catalogue '.(WestAfricaShippingCatalog::countries()[strtoupper($validated['country_code'])]['label'] ?? strtoupper($validated['country_code'])),
+            'country_code' => strtoupper($validated['country_code']),
             'expires_at' => $validated['expires_at'] ?? null,
             'created_by' => $request->user()->id,
         ]);

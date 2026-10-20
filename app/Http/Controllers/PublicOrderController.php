@@ -3,7 +3,6 @@
 namespace App\Http\Controllers;
 
 use App\Models\ProductCountryPrice;
-use App\Models\PartnerCountryDeliverySetting;
 use App\Models\PublicOrderLink;
 use App\Models\User;
 use App\Models\Costumer;
@@ -92,7 +91,10 @@ class PublicOrderController extends Controller
     {
         $link = $token !== null ? $this->availableLink($token) : null;
         $countries = WestAfricaShippingCatalog::countries();
-        $countryCode = strtoupper((string) $request->query('country', ''));
+        $countryCode = strtoupper((string) ($link?->country_code ?: $request->query('country', '')));
+        if ($link?->country_code) {
+            abort_unless($countryCode === strtoupper($link->country_code), 404);
+        }
         abort_unless(isset($countries[$countryCode]), 422, 'Choisis un pays valide.');
 
         $partner = User::query()
@@ -106,14 +108,12 @@ class PublicOrderController extends Controller
             return response()->json([
                 'message' => 'Aucun partenaire ne prend actuellement les commandes dans ce pays.',
                 'products' => [],
-                'cities' => $countries[$countryCode]['cities'],
             ], 422);
         }
 
         $featuredIds = $link
             ? $link->products()->pluck('products.id')->map(fn ($id) => (int) $id)->all()
             : [];
-        $deliverySetting = PartnerCountryDeliverySetting::query()->where('country_code', $countryCode)->first();
         $prices = ProductCountryPrice::query()
             ->with('product:id,name,description,img')
             ->where('country_code', $countryCode)
@@ -129,18 +129,11 @@ class PublicOrderController extends Controller
                 'description' => $price->product->description,
                 'image' => $price->product->img ? url('image/'.$price->product->img) : null,
                 'price' => (int) $price->price,
-                'delivery_fee' => (int) $price->delivery_fee,
-                'delivery_fee_override' => (bool) $price->has_delivery_fee_override,
                 'featured' => in_array((int) $price->product_id, $featuredIds, true),
             ]);
 
         return response()->json([
             'country' => ['code' => $countryCode, 'name' => $countries[$countryCode]['label']],
-            'delivery' => [
-                'mode' => 'priority',
-                'order_fee' => (int) ($deliverySetting?->order_delivery_fee ?? 0),
-            ],
-            'cities' => $countries[$countryCode]['cities'],
             'products' => $prices,
         ])->header('Cache-Control', 'no-store');
     }
@@ -150,18 +143,15 @@ class PublicOrderController extends Controller
         $link = $token !== null ? $this->availableLink($token) : null;
         $countries = WestAfricaShippingCatalog::countries();
         $countryCode = strtoupper((string) $request->input('country_code'));
-        $cities = $countries[$countryCode]['cities'] ?? [];
         $portalAccount = $this->portalAccount($request);
         $savedProfiles = $portalAccount?->profiles()->orderBy('name')->orderBy('id')->get() ?? collect();
         $portalCustomer = $portalAccount?->customers()->orderByDesc('costumers.id')->first();
         $customerDetailsRequired = $savedProfiles->isEmpty() && ! $portalCustomer;
 
         $rules = [
-            'country_code' => ['required', Rule::in(array_keys($countries))],
-            'city' => ['required', Rule::in($cities)],
+            'country_code' => ['required', Rule::in($link?->country_code ? [strtoupper($link->country_code)] : array_keys($countries))],
             'name' => [$customerDetailsRequired ? 'required' : 'nullable', 'string', 'max:160'],
             'phone' => [$customerDetailsRequired ? 'required' : 'nullable', 'string', 'max:50'],
-            'email' => ['nullable', 'email', 'max:160'],
             'address' => ['required', 'string', 'max:180'],
             'payment_timing' => ['required', Rule::in(['before_delivery', 'on_delivery'])],
             'payment_method' => ['required', Rule::in(['cash', 'mobile_money'])],
@@ -178,9 +168,9 @@ class PublicOrderController extends Controller
         }
 
         $validated = $request->validate($rules, [
-            'city.in' => 'Choisis une ville proposée pour le pays sélectionné.',
             'items.required' => 'Ajoute au moins un produit à ta commande.',
         ]);
+        $countryCode = strtoupper($validated['country_code']);
         $selectedProfile = ! empty($validated['customer_profile_id'])
             ? $savedProfiles->firstWhere('id', (int) $validated['customer_profile_id'])
             : null;
@@ -216,27 +206,16 @@ class PublicOrderController extends Controller
 
         $trackingToken = (string) Str::uuid();
         $order = DB::transaction(function () use ($validated, $countryCode, $partner, $link, $prices, $quantities, $trackingToken, $portalAccount, $orderCustomer): Order {
-            $deliverySetting = PartnerCountryDeliverySetting::query()->where('country_code', $countryCode)->lockForUpdate()->first();
             $subtotal = 0;
-            $deliveryFee = 0;
-            $hasFallbackProducts = false;
             foreach ($quantities as $productId => $item) {
                 $subtotal += (int) $prices[$productId]->price * (int) $item['quantity'];
-                if ($prices[$productId]->has_delivery_fee_override) {
-                    $deliveryFee += (int) $prices[$productId]->delivery_fee * (int) $item['quantity'];
-                } else {
-                    $hasFallbackProducts = true;
-                }
-            }
-            if ($hasFallbackProducts) {
-                $deliveryFee += (int) ($deliverySetting?->order_delivery_fee ?? 0);
             }
 
             $customer = Costumer::create([
                 'name' => $orderCustomer?->name ?? ($validated['name'] ?? ''),
                 'phone' => $orderCustomer?->phone ?? trim((string) ($validated['phone'] ?? '')),
-                'email' => $orderCustomer?->email ?? ($validated['email'] ?? null),
-                'adresse' => $validated['address'].', '.$validated['city'].', '.$countryCode,
+                'email' => $orderCustomer?->email,
+                'adresse' => $validated['address'],
                 'user_id' => null,
             ]);
             if ($portalAccount) {
@@ -246,9 +225,9 @@ class PublicOrderController extends Controller
             $order = new Order();
             $order->costumer_id = $customer->id;
             $order->subtotal = $subtotal;
-            $order->tax = $deliveryFee;
+            $order->tax = 0;
             $order->total = $subtotal;
-            $order->montant = $subtotal + $deliveryFee;
+            $order->montant = $subtotal;
             $order->paid_amount = 0;
             $order->code = 'WEB-'.Str::upper(Str::random(10));
             $order->time = 'À confirmer';
@@ -265,16 +244,16 @@ class PublicOrderController extends Controller
             $order->order_by = null;
             $order->remis = 0;
             $order->country_code = $countryCode;
-            $order->delivery_fee_mode = $hasFallbackProducts ? 'per_order' : 'per_product';
+            $order->delivery_fee_mode = 'per_order';
             $order->delivery_mode = 'local';
             $order->shipping_country = $countryCode;
-            $order->shipping_city = $validated['city'];
+            $order->shipping_city = null;
             $order->partner_id = $partner->id;
             $order->public_order_link_id = $link?->id;
             $order->payment_timing = $validated['payment_timing'];
             $order->requested_payment_method = $validated['payment_method'];
             $order->public_tracking_token = $trackingToken;
-            $order->partner_order_status = $validated['payment_timing'] === 'before_delivery' ? 'awaiting_prepayment' : 'preparing';
+            $order->partner_order_status = 'awaiting_delivery_quote';
             $order->save();
 
             foreach ($quantities as $productId => $item) {
@@ -284,8 +263,8 @@ class PublicOrderController extends Controller
                     'price' => (int) $prices[$productId]->price,
                     'quantity' => (int) $item['quantity'],
                     'high_price' => 0,
-                    'delivery_fee' => $prices[$productId]->has_delivery_fee_override ? (int) $prices[$productId]->delivery_fee : 0,
-                    'delivery_fee_is_override' => (bool) $prices[$productId]->has_delivery_fee_override,
+                    'delivery_fee' => 0,
+                    'delivery_fee_is_override' => false,
                 ]);
             }
 
@@ -406,12 +385,10 @@ class PublicOrderController extends Controller
             return '';
         }
 
-        foreach (WestAfricaShippingCatalog::countries() as $code => $country) {
-            foreach ($country['cities'] as $city) {
-                $suffix = ', '.$city.', '.$code;
-                if (str_ends_with(mb_strtolower($address), mb_strtolower($suffix))) {
-                    return trim(substr($address, 0, -strlen($suffix)));
-                }
+        foreach (array_keys(WestAfricaShippingCatalog::countries()) as $code) {
+            $suffix = ', '.$code;
+            if (str_ends_with(mb_strtolower($address), mb_strtolower($suffix))) {
+                return trim(substr($address, 0, -strlen($suffix)));
             }
         }
 

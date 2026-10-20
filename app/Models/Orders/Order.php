@@ -69,6 +69,7 @@ class Order extends Model
         'requested_payment_method',
         'public_tracking_token',
         'partner_order_status',
+        'delivery_location_url',
     ];
 
 

@@ -9,7 +9,7 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class PublicOrderLink extends Model
 {
-    protected $fillable = ['token', 'title', 'is_active', 'expires_at', 'created_by'];
+    protected $fillable = ['token', 'title', 'country_code', 'is_active', 'expires_at', 'created_by'];
 
     protected $casts = ['is_active' => 'boolean', 'expires_at' => 'datetime'];
 

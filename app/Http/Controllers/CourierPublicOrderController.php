@@ -45,13 +45,15 @@ class CourierPublicOrderController extends Controller
             $locked->assigned_at = now();
             $locked->take = true;
             $locked->status_order = true;
-            $locked->partner_order_status = 'assigned_to_courier';
+            $locked->partner_order_status = 'out_for_delivery';
             $locked->save();
             OrderCourierHandoff::create([
                 'order_id' => $locked->id,
                 'partner_id' => $locked->partner_id,
                 'courier_id' => $courier->id,
-                'status' => 'assigned',
+                'status' => 'received',
+                'received_by_courier' => $courier->id,
+                'received_at' => now(),
             ]);
         });
 

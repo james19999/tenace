@@ -31,7 +31,7 @@
         <div>
             <span class="text-uppercase text-danger font-weight-bold small">COMMANDES PARTENAIRES</span>
             <h1 class="h3 mb-1">Liens de commande</h1>
-            <p class="text-muted mb-0">Crée une sélection à partager. Le client choisira son pays et les prix configurés s’afficheront.</p>
+            <p class="text-muted mb-0">Un lien réutilisable par pays, à partager avec tous tes clients.</p>
         </div>
     </div>
 
@@ -49,14 +49,16 @@
             <form method="POST" action="{{ route('partner-ordering.links.create') }}">
                 @csrf
                 <div class="form-row">
-                    <div class="form-group col-md-7"><label for="link-title">Nom de la sélection</label><input class="form-control" id="link-title" name="title" value="{{ old('title') }}" maxlength="160" placeholder="Ex. Produits recommandés"></div>
-                    <div class="form-group col-md-5"><label for="link-expiry">Expiration (facultative)</label><input class="form-control" id="link-expiry" type="datetime-local" name="expires_at" value="{{ old('expires_at') }}"></div>
+                    <div class="form-group col-md-4"><label for="link-country">Pays du lien</label><select class="form-control" id="link-country" name="country_code" required><option value="">Choisir un pays</option>@foreach($countries as $code => $country)<option value="{{ $code }}" @selected(old('country_code') === $code)>{{ $country['label'] }}</option>@endforeach</select></div>
+                    <div class="form-group col-md-4"><label for="link-title">Nom du lien (facultatif)</label><input class="form-control" id="link-title" name="title" value="{{ old('title') }}" maxlength="160" placeholder="Ex. Catalogue Bénin"></div>
+                    <div class="form-group col-md-4"><label for="link-expiry">Expiration (facultative)</label><input class="form-control" id="link-expiry" type="datetime-local" name="expires_at" value="{{ old('expires_at') }}"></div>
                 </div>
-                <label for="product-search">Produits de départ <span class="text-danger">*</span></label>
-                <input id="product-search" type="search" class="form-control mb-2" placeholder="Filtrer les produits…">
+                <label for="product-search">Produits à mettre en avant <span class="text-danger">*</span></label>
+                <input id="product-search" type="search" class="form-control mb-2" placeholder="Choisis d’abord le pays">
                 <div id="product-search-results" class="border rounded p-3" style="max-height: 320px; overflow: auto">
                     @forelse ($products as $product)
-                        <label class="d-flex align-items-center py-1 partner-link-product" data-name="{{ mb_strtolower($product->name) }}" @unless (in_array($product->id, old('product_ids', []))) hidden @endunless>
+                        @php($productCountries = $product->countryPrices->pluck('country_code')->implode(','))
+                        <label class="d-flex align-items-center py-1 partner-link-product" data-name="{{ mb_strtolower($product->name) }}" data-countries="{{ $productCountries }}" hidden>
                             <input class="mr-2" type="checkbox" name="product_ids[]" value="{{ $product->id }}" @checked(in_array($product->id, old('product_ids', [])))>
                             <span>{{ $product->name }}</span>
                         </label>
@@ -77,11 +79,11 @@
         <div class="card-header"><h2 class="h5 mb-0">Liens créés</h2></div>
         <div class="table-responsive">
             <table class="table table-hover mb-0">
-                <thead class="thead-light"><tr><th>Sélection</th><th>Produits</th><th>Commandes</th><th>État</th><th>Lien public</th><th></th></tr></thead>
+                <thead class="thead-light"><tr><th>Pays</th><th>Lien</th><th>Produits</th><th>Commandes</th><th>État</th><th>Lien public</th><th></th></tr></thead>
                 <tbody>
                 @forelse ($links as $link)
                     <tr>
-                        <td><strong>{{ $link->title }}</strong><small class="d-block text-muted">Créé par {{ $link->creator?->name ?? 'Compte supprimé' }}</small></td>
+                        <td>{{ $countries[$link->country_code]['label'] ?? 'À rattacher' }}</td><td><strong>{{ $link->title }}</strong><small class="d-block text-muted">Créé par {{ $link->creator?->name ?? 'Compte supprimé' }}</small></td>
                         <td>{{ $link->products_count }}</td><td>{{ $link->orders_count }}</td>
                         <td>{{ $link->isAvailable() ? 'Actif' : ($link->is_active ? 'Expiré' : 'Désactivé') }}</td>
                         <td><a href="{{ route('public-order.show', $link->token) }}" target="_blank" rel="noopener">{{ route('public-order.show', $link->token) }}</a></td>
@@ -92,7 +94,7 @@
                         </div></td>
                     </tr>
                 @empty
-                    <tr><td colspan="6" class="text-center text-muted py-4">Aucun lien public créé pour le moment.</td></tr>
+                    <tr><td colspan="7" class="text-center text-muted py-4">Aucun lien public créé pour le moment.</td></tr>
                 @endforelse
                 </tbody>
             </table>
@@ -119,21 +121,29 @@
         }));
         const search = document.getElementById('product-search');
         if (!search) return;
+        const country = document.getElementById('link-country');
         const items = Array.from(document.querySelectorAll('.partner-link-product'));
         const prompt = document.getElementById('product-search-prompt');
         const empty = document.getElementById('product-search-empty');
         const filterProducts = function () {
             const query = search.value.trim().toLocaleLowerCase();
+            const countryCode = country?.value || '';
             let visibleCount = 0;
             items.forEach((item) => {
+                const productIsAvailable = countryCode !== '' && item.dataset.countries.split(',').includes(countryCode);
                 const checked = item.querySelector('input[type="checkbox"]')?.checked;
                 const matches = query !== '' && item.dataset.name.includes(query);
-                item.hidden = !checked && !matches;
+                item.hidden = !productIsAvailable || (!checked && !matches);
                 if (!item.hidden) visibleCount++;
             });
             if (prompt) prompt.hidden = query !== '' || visibleCount > 0;
             if (empty) empty.hidden = query === '' || visibleCount > 0;
         };
+        country?.addEventListener('change', () => {
+            items.forEach((item) => { item.querySelector('input[type="checkbox"]').checked = false; });
+            search.placeholder = country.value ? 'Filtrer les produits disponibles dans ce pays…' : 'Choisis d’abord le pays';
+            filterProducts();
+        });
         search.addEventListener('input', filterProducts);
         items.forEach((item) => item.querySelector('input[type="checkbox"]')?.addEventListener('change', filterProducts));
         filterProducts();

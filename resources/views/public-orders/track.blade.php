@@ -11,14 +11,15 @@
         @case('awaiting_customer_confirmation') Confirme le montant final auprès du partenaire. @break
         @case('awaiting_prepayment') Paiement avant livraison attendu. @break
         @case('preparing') Le partenaire prépare ta commande. @break
-        @case('ready_for_courier') La commande attend un livreur. @break
+        @case('ready_for_courier') La commande est confirmée et attend un livreur. @break
         @case('assigned_to_courier') Un livreur a été affecté à ta commande. @break
         @case('handed_to_courier') Le colis a été confié au livreur. @break
         @case('out_for_delivery') Le livreur est en route. @break
         @case('delivered') Commande livrée. @break
         @case('canceled') Commande annulée. @break
         @default Demande envoyée au partenaire. @endswitch</p>
-        @if ($order->partner_order_status === 'awaiting_delivery_quote')<div class="alert">Les frais de livraison ne sont pas encore inclus. Le partenaire te communiquera le montant total à confirmer.</div>@endif
+        @if ($order->partner_order_status === 'awaiting_delivery_quote')<div class="alert">Le partenaire va t’appeler pour confirmer l’adresse et te communiquer les frais de livraison avant de valider la commande.</div>@endif
+        @if ($order->delivery_location_url)<p><a href="{{ $order->delivery_location_url }}" target="_blank" rel="noopener noreferrer">Ouvrir la position de livraison</a></p>@endif
         @if ($order->partner)<p class="muted">Partenaire : <strong>{{ $order->partner->name }}</strong> · {{ $order->partner->phone }}</p>@endif
         @if ($order->partner_order_status === 'awaiting_customer_confirmation')
             <form method="POST" action="{{ route('public-order.quote.confirm', $order->public_tracking_token) }}">@csrf
@@ -35,15 +36,16 @@
         @foreach ($order->orderItems as $item)
             <li>
                 {{ $item->product?->name ?? 'Produit' }} × {{ $item->quantity }} — produits {{ number_format((float) $item->price * (int) $item->quantity, 0, ',', ' ') }} F
-                @if ($item->delivery_fee_is_override)
-                    , frais de livraison {{ number_format((float) $item->delivery_fee * (int) $item->quantity, 0, ',', ' ') }} F
-                @endif
             </li>
         @endforeach
     </ul>
         <div class="row"><span>Sous-total produits</span><strong>{{ number_format((float) $order->subtotal, 0, ',', ' ') }} F</strong></div>
-        <div class="row"><span>Livraison</span><strong>{{ number_format((float) $order->tax, 0, ',', ' ') }} F</strong></div>
-        <div class="row total"><span>Total</span><span>{{ number_format((float) ($order->montant ?? ((float) $order->total + (float) $order->tax)), 0, ',', ' ') }} F</span></div>
+        @if ($order->partner_order_status === 'awaiting_delivery_quote')
+            <div class="row"><span>Frais de livraison</span><strong>Communiqués après l’appel du partenaire</strong></div>
+        @else
+            <div class="row"><span>Frais de livraison</span><strong>{{ number_format((float) $order->tax, 0, ',', ' ') }} F</strong></div>
+            <div class="row total"><span>Total</span><span>{{ number_format((float) ($order->montant ?? ((float) $order->total + (float) $order->tax)), 0, ',', ' ') }} F</span></div>
+        @endif
     </section>
     @if ($order->payments->isNotEmpty())<section class="card"><h2>Paiements</h2>@foreach ($order->payments as $payment)<div class="row"><span>{{ $payment->stage === 'before_delivery' ? 'Avant livraison' : 'À la livraison' }} · {{ $payment->gateway_method === 'togocel' ? 'Mixx by Yas' : ($payment->gateway_method === 'moov_tg' ? 'Moov Money' : ($payment->method === 'mobile_money' ? 'Mobile Money' : 'Espèces')) }}<br><small class="muted">{{ $payment->status === 'confirmed' ? 'Confirmé par FedaPay' : ($payment->status === 'collected' ? 'Collecté par le livreur, remise au partenaire en attente' : ($payment->status === 'failed' ? 'Paiement échoué ou annulé' : 'En attente de confirmation du client')) }}</small></span><strong>{{ number_format((int) $payment->amount, 0, ',', ' ') }} F</strong></div>@endforeach</section>@endif
 </main></body></html>

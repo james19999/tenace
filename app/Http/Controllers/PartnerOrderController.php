@@ -419,7 +419,11 @@ class PartnerOrderController extends Controller
     {
         $partner = $this->partner($request);
         abort_unless((int) $order->partner_id === (int) $partner->id, 404);
-        $validated = $request->validate(['delivery_fee' => ['required', 'integer', 'min:0', 'max:999999999']]);
+        $validated = $request->validate([
+            'delivery_fee' => ['required', 'integer', 'min:0', 'max:999999999'],
+            'customer_informed' => ['accepted'],
+            'delivery_location_url' => ['nullable', 'url', 'starts_with:https://', 'max:2048'],
+        ]);
 
         DB::transaction(function () use ($order, $partner, $validated): void {
             $locked = Order::query()->whereKey($order->id)->lockForUpdate()->firstOrFail();
@@ -428,11 +432,31 @@ class PartnerOrderController extends Controller
             $locked->tax = (int) $validated['delivery_fee'];
             $locked->total = (int) $locked->subtotal + (int) $validated['delivery_fee'];
             $locked->montant = $locked->total;
-            $locked->partner_order_status = 'awaiting_customer_confirmation';
+            $locked->delivery_location_url = $validated['delivery_location_url'] ?? $locked->delivery_location_url;
+            $locked->partner_order_status = $locked->payment_timing === 'before_delivery'
+                ? 'awaiting_prepayment'
+                : 'ready_for_courier';
             $locked->save();
         });
 
-        return back()->with('success', 'Les frais de livraison sont envoyés au client pour confirmation.');
+        return back()->with('success', 'Le total communiqué au client est enregistré.'.($order->payment_timing === 'before_delivery'
+            ? ' La commande attend la confirmation du paiement.'
+            : ' La commande est maintenant visible par les livreurs du pays.'));
+    }
+
+    public function updateDeliveryLocation(Request $request, Order $order): RedirectResponse
+    {
+        $partner = $this->partner($request);
+        abort_unless((int) $order->partner_id === (int) $partner->id, 404);
+        $validated = $request->validate([
+            'delivery_location_url' => ['nullable', 'url', 'starts_with:https://', 'max:2048'],
+        ]);
+
+        abort_unless(! in_array($order->partner_order_status, ['delivered', 'canceled'], true), 409);
+        $order->delivery_location_url = $validated['delivery_location_url'] ?? null;
+        $order->save();
+
+        return back()->with('success', 'La position de livraison est enregistrée.');
     }
 
     public function confirmPayment(Request $request, Order $order, OrderPayment $payment): RedirectResponse
@@ -452,7 +476,7 @@ class PartnerOrderController extends Controller
 
             $lockedOrder->paid_amount = (int) $lockedOrder->paid_amount + (int) $lockedPayment->amount;
             if ($lockedOrder->paid_amount >= (int) $lockedOrder->montant) {
-                $lockedOrder->partner_order_status = 'preparing';
+                $lockedOrder->partner_order_status = 'ready_for_courier';
             }
             $lockedOrder->save();
         });
@@ -490,14 +514,16 @@ class PartnerOrderController extends Controller
             $locked->assigned_at = now();
             $locked->take = true;
             $locked->status_order = true;
-            $locked->partner_order_status = 'assigned_to_courier';
+            $locked->partner_order_status = 'out_for_delivery';
             $locked->save();
 
             OrderCourierHandoff::create([
                 'order_id' => $locked->id,
                 'partner_id' => $partner->id,
                 'courier_id' => $courier->id,
-                'status' => 'assigned',
+                'status' => 'received',
+                'received_by_courier' => $courier->id,
+                'received_at' => now(),
             ]);
         });
 
