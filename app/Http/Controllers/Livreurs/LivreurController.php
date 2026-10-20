@@ -12,6 +12,7 @@ use App\Models\Orders\Order;
 use App\Models\Orders\OrderDeliveryPhoto;
 use App\Models\OrderCourierHandoff;
 use App\Models\CourierDocument;
+use App\Models\OrderPayment;
 use App\Models\CustomerServiceCase;
 use App\Models\CustomerServiceCaseArchiveAccessRequest;
 use App\Notifications\CustomerServiceCaseNotification;
@@ -26,6 +27,9 @@ use Illuminate\Support\Facades\Redirect;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Validation\Rule;
 use App\Support\WestAfricaShippingCatalog;
+use App\Services\Payments\FedaPayPaymentProcessor;
+use App\Services\Payments\FedaPayService;
+use Illuminate\Support\Facades\Log;
 
 class LivreurController extends Controller
 {
@@ -61,10 +65,10 @@ class LivreurController extends Controller
                  'adresse' => ['required', 'string'],
                  'phone' => ['required', 'string', 'max:32', 'unique:users,phone'],
                  'user_type' => ['required', 'in:LVS,PT,VDS,CSA,MNG,SCR,CALLCENTER,ADMINUSER,COMPTABLE'],
-                 'country_code' => [Rule::requiredIf(in_array($request->input('user_type'), ['LVS', 'PT'], true)), 'nullable', Rule::in(array_keys(WestAfricaShippingCatalog::countries()))],
-                 'emergency_contact_name' => [Rule::requiredIf($request->input('user_type') === 'LVS'), 'nullable', 'string', 'max:160'],
-                 'emergency_contact_phone' => [Rule::requiredIf($request->input('user_type') === 'LVS'), 'nullable', 'string', 'max:32'],
-                 'identity_card_photo' => [Rule::requiredIf($request->input('user_type') === 'LVS'), 'nullable', 'image', 'mimes:jpg,jpeg,png,webp', 'max:10240'],
+                 'country_code' => ['nullable', Rule::in(array_keys(WestAfricaShippingCatalog::countries()))],
+                 'emergency_contact_name' => ['nullable', 'string', 'max:160'],
+                 'emergency_contact_phone' => ['nullable', 'string', 'max:32'],
+                 'identity_card_photo' => ['nullable', 'image', 'mimes:jpg,jpeg,png,webp', 'max:10240'],
                ]);
 
 
@@ -76,9 +80,9 @@ class LivreurController extends Controller
                 'adresse' => $data['adresse'],
                 'phone' => $data['phone'],
                 'user_type' => $data['user_type'],
-                'country_code' => in_array($data['user_type'], ['LVS', 'PT'], true) ? $data['country_code'] : null,
-                'emergency_contact_name' => $data['user_type'] === 'LVS' ? $data['emergency_contact_name'] : null,
-                'emergency_contact_phone' => $data['user_type'] === 'LVS' ? $data['emergency_contact_phone'] : null,
+                'country_code' => in_array($data['user_type'], ['LVS', 'PT'], true) ? ($data['country_code'] ?? null) : null,
+                'emergency_contact_name' => $data['user_type'] === 'LVS' ? ($data['emergency_contact_name'] ?? null) : null,
+                'emergency_contact_phone' => $data['user_type'] === 'LVS' ? ($data['emergency_contact_phone'] ?? null) : null,
                ]);
 
                if (! empty($data['identity_card_photo'])) {
@@ -149,9 +153,9 @@ class LivreurController extends Controller
             'adresse' => ['required', 'string'],
             'phone' => ['required', 'string', 'max:32', Rule::unique('users', 'phone')->ignore($id)],
             'user_type' => ['required', 'in:LVS,PT,VDS,CSA,MNG,SCR,CALLCENTER,ADMINUSER,COMPTABLE'],
-            'country_code' => [Rule::requiredIf(in_array($request->input('user_type'), ['LVS', 'PT'], true)), 'nullable', Rule::in(array_keys(WestAfricaShippingCatalog::countries()))],
-            'emergency_contact_name' => [Rule::requiredIf($request->input('user_type') === 'LVS'), 'nullable', 'string', 'max:160'],
-            'emergency_contact_phone' => [Rule::requiredIf($request->input('user_type') === 'LVS'), 'nullable', 'string', 'max:32'],
+            'country_code' => ['nullable', Rule::in(array_keys(WestAfricaShippingCatalog::countries()))],
+            'emergency_contact_name' => ['nullable', 'string', 'max:160'],
+            'emergency_contact_phone' => ['nullable', 'string', 'max:32'],
             'identity_card_photo' => ['nullable', 'image', 'mimes:jpg,jpeg,png,webp', 'max:10240'],
           ]);
         $users=User::findOrfail($id);
@@ -164,9 +168,9 @@ class LivreurController extends Controller
            'adresse' => $data['adresse'],
            'phone' => $data['phone'],
            'user_type' => $data['user_type'],
-           'country_code' => in_array($data['user_type'], ['LVS', 'PT'], true) ? $data['country_code'] : null,
-           'emergency_contact_name' => $data['user_type'] === 'LVS' ? $data['emergency_contact_name'] : null,
-           'emergency_contact_phone' => $data['user_type'] === 'LVS' ? $data['emergency_contact_phone'] : null,
+           'country_code' => in_array($data['user_type'], ['LVS', 'PT'], true) ? ($data['country_code'] ?? null) : null,
+           'emergency_contact_name' => $data['user_type'] === 'LVS' ? ($data['emergency_contact_name'] ?? null) : null,
+           'emergency_contact_phone' => $data['user_type'] === 'LVS' ? ($data['emergency_contact_phone'] ?? null) : null,
           ]);
 
         if (! empty($data['identity_card_photo'])) {
@@ -218,14 +222,23 @@ class LivreurController extends Controller
 
     public function livrable() {
 
-        $orders = Order::with('costumer')
+        $query = Order::with('costumer')
             ->where('status', 'ordered')
             ->where('brouillon', 1)
             ->where('type', 'PU')
             ->where('status_order', false)
-            ->whereDate('created_at', Carbon::today())
-            ->latest()
-            ->get();
+            ->whereDate('created_at', Carbon::today());
+
+        if (Auth::user()?->user_type === User::ROLE_LIVREUR) {
+            $courierCountry = $this->courierCountryCode(Auth::user());
+            $defaultCountry = strtoupper((string) config('services.fedapay.country_code', 'TG'));
+            $query->whereRaw(
+                "UPPER(COALESCE(NULLIF(country_code, ''), NULLIF(shipping_country, ''), ?)) = ?",
+                [$defaultCountry, $courierCountry]
+            );
+        }
+
+        $orders = $query->latest()->get();
 
         return view('livreurs.livrable',compact('orders'));
     }
@@ -235,14 +248,26 @@ class LivreurController extends Controller
 
         $Orders=Order::with(['costumer', 'user', 'createduser', 'transportCompany', 'deliveryPhotos.user', 'orderItems.product'])->findOrfail($id);
         $isCourier = auth()->user()?->user_type === 'LVS';
+        if ($isCourier) {
+            $courierCountry = $this->courierCountryCode(auth()->user());
+            $isAssignedToCourier = (string) $Orders->user_id === (string) auth()->id();
+            $isAvailableInCourierCountry = ! $Orders->user_id
+                && ! $Orders->take
+                && ! $Orders->status_order
+                && $Orders->status === 'ordered'
+                && $this->orderCountryCode($Orders) === $courierCountry;
+            abort_unless($this->orderCountryCode($Orders) === $courierCountry
+                && ($isAssignedToCourier || $isAvailableInCourierCountry), 403);
+        }
         $isPartnerPublicOrder = $Orders->partner_id && $Orders->public_tracking_token;
         $handoffConfirmed = ! ($isCourier && $isPartnerPublicOrder)
             || OrderCourierHandoff::query()->where('order_id', $Orders->id)
                 ->where('courier_id', auth()->id())
                 ->where('received_by_courier', auth()->id())
                 ->where('status', 'received')->exists();
+        $deliveryPayment = $Orders->payments()->where('stage', 'on_delivery')->latest('id')->first();
 
-        return view('livreurs.livrablde_show', compact('Orders', 'handoffConfirmed', 'isPartnerPublicOrder'));
+        return view('livreurs.livrablde_show', compact('Orders', 'handoffConfirmed', 'isPartnerPublicOrder', 'deliveryPayment'));
     }
 
     public function updateOrderPayment(Request $request, string $id)
@@ -261,6 +286,138 @@ class LivreurController extends Controller
         $order->save();
 
         return redirect()->back()->with('success', 'Le règlement de la commande a été enregistré.');
+    }
+
+    public function startDeliveryMobilePayment(Request $request, string $id, FedaPayService $fedapay)
+    {
+        $courier = $request->user();
+        abort_unless($courier?->user_type === User::ROLE_LIVREUR, 403);
+        abort_unless($fedapay->isDeliverySandboxEnabled(), 404);
+        abort_unless($fedapay->isConfigured(), 503, 'Le paiement Sandbox FedaPay n’est pas encore configuré.');
+
+        $validated = $request->validate([
+            'provider_method' => ['required', 'in:mixx,moov'],
+            'phone' => ['required', 'string', 'max:32', 'regex:/^[+0-9 ()-]+$/'],
+            'email' => ['required', 'email', 'max:160'],
+        ]);
+        $phone = preg_replace('/[^0-9]/', '', $validated['phone']);
+        if (str_starts_with($phone, '228') && strlen($phone) === 11) {
+            $phone = substr($phone, 3);
+        }
+        abort_unless((bool) preg_match('/^[0-9]{8}$/', $phone), 422, 'Saisis un numéro togolais valide à 8 chiffres.');
+        $gatewayMethod = $validated['provider_method'] === 'mixx' ? 'togocel' : 'moov_tg';
+
+        [$payment, $shouldStart] = DB::transaction(function () use ($id, $courier, $gatewayMethod): array {
+            $order = Order::query()->lockForUpdate()->findOrFail($id);
+            abort_unless((string) $order->user_id === (string) $courier->id, 403);
+            $deliveryCountry = strtoupper(trim((string) ($order->country_code ?: ($order->shipping_country ?: ($courier->country_code ?: config('services.fedapay.country_code', 'TG'))))));
+            abort_unless($deliveryCountry === 'TG' && $order->status === 'ordered', 409,
+                'Le paiement mobile est disponible pour les commandes togolaises encore à livrer.');
+            $amountDue = (int) ($order->montant ?? ((int) $order->total + (int) $order->tax));
+            $balance = max(0, $amountDue - (int) $order->paid_amount);
+            abort_if($balance < 1, 409, 'Cette commande est déjà réglée.');
+
+            $existing = OrderPayment::query()->where('order_id', $order->id)
+                ->where('stage', 'on_delivery')->where('gateway', 'fedapay')
+                ->whereIn('status', ['initiating', 'pending'])->lockForUpdate()->first();
+            if ($existing) {
+                return [$existing, false];
+            }
+
+            return [OrderPayment::query()->create([
+                'order_id' => $order->id,
+                'stage' => 'on_delivery',
+                'method' => 'mobile_money',
+                'amount' => $balance,
+                'status' => 'initiating',
+                'gateway' => 'fedapay',
+                'gateway_method' => $gatewayMethod,
+                'gateway_status' => 'creating',
+                'collected_by' => $courier->id,
+                'collected_at' => now(),
+            ]), true];
+        });
+
+        if (! $shouldStart) {
+            return response()->json([
+                'payment_id' => $payment->id,
+                'status' => $payment->status,
+                'message' => 'Une transaction existe déjà. Vérification de son état Sandbox en cours; aucune nouvelle simulation n’a été lancée.',
+                'status_url' => route('livrableshow.mobile-payment.status', [$id, $payment]),
+            ], 202);
+        }
+
+        try {
+            $order = Order::with('costumer')->findOrFail($id);
+            $transaction = $fedapay->createTransaction($order, $phone, $validated['email']);
+            $payment->gateway_transaction_id = (string) $transaction['id'];
+            $payment->gateway_reference = isset($transaction['reference']) ? (string) $transaction['reference'] : null;
+            $payment->transaction_reference = $payment->gateway_reference;
+            $payment->gateway_status = (string) ($transaction['status'] ?? 'pending');
+            $payment->status = 'pending';
+            $payment->save();
+            $fedapay->requestMobilePayment((string) $transaction['id'], $gatewayMethod);
+        } catch (\Throwable $exception) {
+            if (! $payment->gateway_transaction_id) {
+                $payment->status = 'failed';
+                $payment->gateway_status = 'creation_failed';
+                $payment->save();
+            }
+            Log::warning('FedaPay delivery payment could not be started.', [
+                'order_id' => $id, 'payment_id' => $payment->id,
+                'gateway_transaction_id' => $payment->gateway_transaction_id,
+                'exception' => get_class($exception),
+            ]);
+
+            return response()->json(['message' => $payment->gateway_transaction_id
+                ? 'La transaction Sandbox existe, mais la simulation n’a pas abouti. Consulte son état dans le tableau de bord FedaPay avant une nouvelle tentative.'
+                : 'FedaPay Sandbox n’a pas pu créer la demande. Tu peux réessayer.'], 502);
+        }
+
+        return response()->json([
+            'payment_id' => $payment->id,
+            'status' => 'pending',
+            'message' => 'Simulation Mobile Money lancée dans FedaPay Sandbox. Aucun SMS ne sera envoyé.',
+            'status_url' => route('livrableshow.mobile-payment.status', [$id, $payment]),
+        ], 202);
+    }
+
+    public function deliveryMobilePaymentStatus(
+        Request $request,
+        string $id,
+        string $paymentId,
+        FedaPayService $fedapay,
+        FedaPayPaymentProcessor $processor
+    ) {
+        $courier = $request->user();
+        abort_unless($courier?->user_type === User::ROLE_LIVREUR, 403);
+        $order = Order::query()->findOrFail($id);
+        abort_unless((string) $order->user_id === (string) $courier->id, 404);
+        $payment = OrderPayment::query()->where('order_id', $order->id)
+            ->where('gateway', 'fedapay')->findOrFail($paymentId);
+
+        if ($payment->gateway_transaction_id && $payment->status !== 'confirmed' && $fedapay->isConfigured()) {
+            try {
+                $payment = $processor->refresh($payment,
+                    $fedapay->retrieveTransaction((string) $payment->gateway_transaction_id));
+            } catch (\Throwable $exception) {
+                Log::warning('FedaPay delivery payment status refresh failed.', [
+                    'order_id' => $order->id, 'payment_id' => $payment->id,
+                    'exception' => get_class($exception),
+                ]);
+            }
+        }
+
+        return response()->json([
+            'status' => $payment->fresh()->status,
+            'gateway_status' => $payment->fresh()->gateway_status,
+            'paid_amount' => (int) $order->fresh()->paid_amount,
+            'message' => match ($payment->fresh()->status) {
+                'confirmed' => 'Paiement confirmé par FedaPay. Tu peux terminer la livraison.',
+                'failed' => 'Le paiement a échoué ou a été annulé. Vérifie avec le client avant de réessayer.',
+                default => 'Simulation FedaPay Sandbox en attente. Aucun SMS opérateur ne sera envoyé.',
+            },
+        ]);
     }
 
     public function uploadPackagePhotos(Request $request, string $id)
@@ -329,7 +486,13 @@ class LivreurController extends Controller
     }
 
 
-    public function change_order_status_user(Request $request,$id, StockDeliveryService $stockDelivery){
+    public function change_order_status_user(
+        Request $request,
+        $id,
+        StockDeliveryService $stockDelivery,
+        FedaPayService $fedapay,
+        FedaPayPaymentProcessor $fedapayProcessor
+    ){
 
         $orders=Order::findOrfail($id);
 
@@ -362,6 +525,63 @@ class LivreurController extends Controller
               return redirect()->back()->with('success','commande annuler');
 
              }else if($request->status=="delivered"){
+                $cashCollection = 0;
+                if ($request->user()?->user_type === User::ROLE_LIVREUR) {
+                    // The dashboard may already show a declined Sandbox payment while
+                    // this app still has its last local state as pending. Refresh it
+                    // before deciding whether cash collection can safely proceed.
+                    if ($fedapay->isConfigured()) {
+                        $pendingGatewayPayments = OrderPayment::query()
+                            ->where('order_id', $orders->id)
+                            ->where('stage', 'on_delivery')
+                            ->where('gateway', 'fedapay')
+                            ->whereIn('status', ['initiating', 'pending'])
+                            ->whereNotNull('gateway_transaction_id')
+                            ->get();
+
+                        foreach ($pendingGatewayPayments as $gatewayPayment) {
+                            try {
+                                $freshTransaction = $fedapay->retrieveTransaction((string) $gatewayPayment->gateway_transaction_id);
+                                $fedapayProcessor->refresh($gatewayPayment, $freshTransaction);
+                            } catch (\Throwable $exception) {
+                                Log::warning('Could not refresh FedaPay status before cash delivery validation.', [
+                                    'order_id' => $orders->id,
+                                    'payment_id' => $gatewayPayment->id,
+                                    'gateway_transaction_id' => $gatewayPayment->gateway_transaction_id,
+                                    'exception' => get_class($exception),
+                                ]);
+                            }
+                        }
+                        $orders->refresh();
+                    }
+
+                    $amountDue = (int) ($orders->montant ?? ((int) $orders->total + (int) $orders->tax));
+                    $balance = max(0, $amountDue - (int) $orders->paid_amount);
+                    if ($balance > 0) {
+                        $paymentMethod = $request->validate(['payment_method' => ['required', 'in:cash,mobile_money']])['payment_method'];
+                        if ($paymentMethod === 'mobile_money' && ! $fedapay->isDeliverySandboxEnabled()) {
+                            return redirect()->back()->withErrors([
+                                'delivery' => 'Le paiement Mobile Money Sandbox est disponible uniquement en local ou en test.',
+                            ]);
+                        }
+                        $fedapayPayment = OrderPayment::query()->where('order_id', $orders->id)
+                            ->where('stage', 'on_delivery')->where('gateway', 'fedapay')
+                            ->whereIn('status', ['initiating', 'pending'])->exists();
+                        if ($paymentMethod === 'mobile_money' && $balance > 0) {
+                            return redirect()->back()->withErrors([
+                                'delivery' => $fedapayPayment
+                                    ? 'Attends la confirmation du paiement Mobile Money avant de valider la livraison.'
+                                    : 'Lance le paiement Mobile Money et attends sa confirmation avant de valider la livraison.',
+                            ]);
+                        }
+                        if ($paymentMethod === 'cash') {
+                            if ($fedapayPayment) {
+                                return redirect()->back()->withErrors(['delivery' => 'Une demande Mobile Money est en cours. Attends son résultat avant de choisir les espèces.']);
+                            }
+                            $cashCollection = $balance;
+                        }
+                    }
+                }
                 if ($request->user()?->user_type === 'LVS'
                     && $orders->partner_id
                     && $orders->public_tracking_token) {
@@ -383,7 +603,7 @@ class LivreurController extends Controller
                     ]);
                 }
                 $order=Order::with('orderItems')->findOrFail($orders->id);
-                if (! $stockDelivery->deliver($order, (int) Auth::id())) {
+               if (! $stockDelivery->deliver($order, (int) Auth::id())) {
                     $orders->refresh();
                     if ($orders->status === 'delivered'
                         && $orders->partner_id
@@ -395,6 +615,18 @@ class LivreurController extends Controller
                     }
                     return redirect()->back()->with('success','Cette commande a déjà été validée comme livrée.');
                 }
+               if ($cashCollection > 0) {
+                   OrderPayment::query()->create([
+                       'order_id' => $orders->id,
+                       'stage' => 'on_delivery',
+                       'method' => 'cash',
+                       'amount' => $cashCollection,
+                       'status' => 'collected',
+                       'collected_by' => Auth::id(),
+                       'collected_at' => now(),
+                   ]);
+                   $orders->paid_amount = (int) $orders->paid_amount + $cashCollection;
+               }
                $orders->status=$request->status;
                $orders->user_id=Auth::user()->id;
                $orders->status_order=false;
@@ -466,6 +698,14 @@ class LivreurController extends Controller
 
   public function check_livraison($id){
     $orders=Order::findOrfail($id);
+    $user = Auth::user();
+
+      if ($user?->user_type === User::ROLE_LIVREUR) {
+          $courierCountry = $this->courierCountryCode($user);
+          $orderCountry = $this->orderCountryCode($orders);
+          abort_unless($orderCountry === $courierCountry, 403,
+              'Cette commande ne correspond pas au pays de ton compte livreur.');
+      }
 
       if($orders->take==false){
 
@@ -490,6 +730,16 @@ class LivreurController extends Controller
         ->with('waring','La commande déjà pris par un livreur');
       }
 
+  }
+
+  private function orderCountryCode(Order $order): string
+  {
+      return strtoupper(trim((string) ($order->country_code ?: ($order->shipping_country ?: config('services.fedapay.country_code', 'TG')))));
+  }
+
+  private function courierCountryCode(User $courier): string
+  {
+      return strtoupper(trim((string) ($courier->country_code ?: config('services.fedapay.country_code', 'TG'))));
   }
 
 

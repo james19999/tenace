@@ -75,7 +75,7 @@ class CourierPublicOrderController extends Controller
         return back()->with('success', 'La réception du colis est enregistrée.');
     }
 
-    public function deliver(Request $request, Order $order): RedirectResponse
+    public function deliver(Request $request, Order $order, FedaPayService $fedapay): RedirectResponse
     {
         $courier = $this->courier($request);
         $validated = $request->validate([
@@ -84,24 +84,52 @@ class CourierPublicOrderController extends Controller
             'notes' => ['nullable', 'string', 'max:1000'],
         ]);
 
-        DB::transaction(function () use ($order, $courier, $validated): void {
+        if (($validated['payment_method'] ?? null) === 'mobile_money' && ! $fedapay->isDeliverySandboxEnabled()) {
+            return back()->withErrors([
+                'delivery' => 'Le paiement Mobile Money Sandbox est disponible uniquement en local ou en test.',
+            ]);
+        }
+
+        $deliveryError = DB::transaction(function () use ($order, $courier, $validated): ?string {
             $locked = Order::query()->whereKey($order->id)->lockForUpdate()->firstOrFail();
-            abort_unless((string) $locked->user_id === (string) $courier->id
-                && $locked->partner_order_status === 'out_for_delivery' && $locked->status !== 'delivered', 409);
+            if ((string) $locked->user_id !== (string) $courier->id) {
+                return 'Cette commande ne t’est pas affectée. Actualise la liste de tes livraisons.';
+            }
+            if ($locked->status === 'delivered' || $locked->partner_order_status === 'delivered') {
+                return 'Cette commande est déjà marquée comme livrée.';
+            }
+            if ($locked->partner_order_status !== 'out_for_delivery') {
+                $message = match ($locked->partner_order_status) {
+                    'assigned_to_courier' => 'Le partenaire ne t’a pas encore remis le colis.',
+                    'handed_to_courier' => 'Confirme d’abord la réception du colis avant de terminer la livraison.',
+                    default => 'Le statut de cette commande ne permet pas encore de terminer la livraison.',
+                };
+
+                return $message;
+            }
             $handoff = OrderCourierHandoff::query()->where('order_id', $locked->id)
                 ->where('courier_id', $courier->id)->where('status', 'received')
                 ->where('received_by_courier', $courier->id)->latest()->lockForUpdate()->first();
-            abort_unless($handoff, 409, 'Confirme d’abord la réception du colis avant de valider la livraison.');
+            if (! $handoff) {
+                return 'Confirme d’abord la réception du colis avant de valider la livraison.';
+            }
             $balance = max(0, (int) $locked->montant - (int) $locked->paid_amount);
             if ($locked->payment_timing === 'on_delivery' && $balance > 0) {
-                abort_unless(in_array($validated['payment_method'] ?? '', ['cash', 'mobile_money'], true), 422, 'Indique le moyen de paiement reçu.');
+                if (! in_array($validated['payment_method'] ?? '', ['cash', 'mobile_money'], true)) {
+                    return 'Choisis le moyen de paiement reçu pour cette commande.';
+                }
                 if ($validated['payment_method'] === 'mobile_money') {
-                    abort_unless($locked->country_code === 'TG', 422, 'Le paiement mobile FedaPay est actuellement configuré pour le Togo.');
-                    abort_unless((int) $locked->paid_amount >= (int) $locked->montant, 409, 'Attends la confirmation du paiement Mobile Money avant de valider la livraison.');
+                    if ($locked->country_code !== 'TG') {
+                        return 'Le paiement mobile FedaPay est actuellement configuré pour le Togo.';
+                    }
+                    if ((int) $locked->paid_amount < (int) $locked->montant) {
+                        return 'Attends la confirmation du paiement Mobile Money avant de valider la livraison.';
+                    }
                 } else {
-                    abort_if($locked->payments()->where('gateway', 'fedapay')->where('stage', 'on_delivery')
-                        ->whereIn('status', ['initiating', 'pending'])->exists(), 409,
-                        'Une demande Mobile Money est encore en cours. Attends son résultat avant de choisir les espèces.');
+                    if ($locked->payments()->where('gateway', 'fedapay')->where('stage', 'on_delivery')
+                        ->whereIn('status', ['initiating', 'pending'])->exists()) {
+                        return 'Une demande Mobile Money est encore en cours. Vérifie son résultat FedaPay avant de choisir les espèces.';
+                    }
                     OrderPayment::create([
                         'order_id' => $locked->id,
                         'stage' => 'on_delivery',
@@ -119,7 +147,13 @@ class CourierPublicOrderController extends Controller
             $locked->status = 'delivered';
             $locked->partner_order_status = 'delivered';
             $locked->save();
+
+            return null;
         });
+
+        if ($deliveryError !== null) {
+            return back()->withErrors(['delivery' => $deliveryError]);
+        }
 
         return back()->with('success', 'La livraison est terminée et son paiement est enregistré.');
     }
@@ -130,6 +164,7 @@ class CourierPublicOrderController extends Controller
         FedaPayService $fedapay
     ): JsonResponse {
         $courier = $this->courier($request);
+        abort_unless($fedapay->isDeliverySandboxEnabled(), 404);
         abort_unless($fedapay->isConfigured(), 503, 'Le paiement Sandbox FedaPay n’est pas encore configuré.');
 
         $validated = $request->validate([
@@ -223,7 +258,7 @@ class CourierPublicOrderController extends Controller
 
             return response()->json([
                 'message' => $payment->gateway_transaction_id
-                    ? 'La demande a été créée mais son envoi est incertain. Vérifie le téléphone du client avant de réessayer.'
+                    ? 'La transaction Sandbox existe, mais la simulation n’a pas abouti. Consulte son état dans le tableau de bord FedaPay avant une nouvelle tentative.'
                     : 'FedaPay Sandbox n’a pas pu créer la demande. Tu peux réessayer.',
             ], 502);
         }
@@ -231,7 +266,7 @@ class CourierPublicOrderController extends Controller
         return response()->json([
             'payment_id' => $payment->id,
             'status' => 'pending',
-            'message' => 'Demande envoyée. Le client doit confirmer sur son téléphone.',
+            'message' => 'Simulation Mobile Money lancée dans FedaPay Sandbox. Aucun SMS ne sera envoyé.',
             'status_url' => route('courier.public-orders.mobile-payment.status', [$order, $payment]),
         ], 202);
     }
@@ -271,7 +306,7 @@ class CourierPublicOrderController extends Controller
             'message' => match ($payment->fresh()->status) {
                 'confirmed' => 'Paiement confirmé par FedaPay. Tu peux terminer la livraison.',
                 'failed' => 'Le paiement a échoué ou a été annulé. Vérifie avec le client avant de réessayer.',
-                default => 'En attente de la confirmation du client sur son téléphone.',
+                default => 'Simulation FedaPay Sandbox en attente. Aucun SMS opérateur ne sera envoyé.',
             },
         ]);
     }

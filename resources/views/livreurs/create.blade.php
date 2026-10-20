@@ -78,7 +78,7 @@
                         </div>
 
                         <div class="form-group" id="country-code-group">
-                            <label for="country_code">Pays du partenaire ou du livreur</label>
+                            <label for="country_code">Pays du partenaire ou du livreur <span class="text-muted">(facultatif)</span></label>
                             <select name="country_code" id="country_code" class="form-control">
                                 <option value="">Choisir un pays</option>
                                 @foreach ($countries as $code => $country)
@@ -89,14 +89,14 @@
                         </div>
 
                         <div class="form-group" id="identity-card-group">
-                            <label for="identity_card_photo">Photo de la carte d’identité du livreur</label>
+                            <label for="identity_card_photo">Photo de la carte d’identité du livreur <span class="text-muted">(facultatif)</span></label>
                             <input type="file" name="identity_card_photo" id="identity_card_photo" class="form-control-file" accept="image/jpeg,image/png,image/webp">
-                            <small class="form-text text-muted">Le document est conservé dans un espace privé.</small>
+                            <small class="form-text text-muted">Facultative. Si elle est ajoutée, la photo est conservée dans un espace privé.</small>
                             @error('identity_card_photo') <span class="text-danger">{{ $message }}</span>@enderror
                         </div>
 
                         <div id="emergency-contact-group" class="border rounded p-3 mb-3">
-                            <strong class="d-block mb-2">Personne à prévenir</strong>
+                            <strong class="d-block mb-2">Personne à prévenir <span class="text-muted">(facultatif)</span></strong>
                             <div class="form-group"><label for="emergency_contact_name">Nom complet</label><input class="form-control" id="emergency_contact_name" name="emergency_contact_name" value="{{ old('emergency_contact_name') }}" maxlength="160">@error('emergency_contact_name')<span class="text-danger">{{ $message }}</span>@enderror</div>
                             <div class="form-group mb-0"><label for="emergency_contact_phone">Téléphone</label><input class="form-control" id="emergency_contact_phone" name="emergency_contact_phone" type="tel" value="{{ old('emergency_contact_phone') }}" maxlength="32">@error('emergency_contact_phone')<span class="text-danger">{{ $message }}</span>@enderror</div>
                         </div>
@@ -127,15 +127,15 @@
         const emergencyName = document.getElementById('emergency_contact_name');
         const emergencyPhone = document.getElementById('emergency_contact_phone');
         const updateFields = () => {
-            const countryRequired = ['LVS', 'PT'].includes(role.value);
+            const countryApplicable = ['LVS', 'PT'].includes(role.value);
             const courier = role.value === 'LVS';
-            countryGroup.hidden = !countryRequired;
-            country.required = countryRequired;
+            countryGroup.hidden = !countryApplicable;
+            country.required = false;
             documentGroup.hidden = !courier;
-            documentInput.required = courier;
+            documentInput.required = false;
             emergencyGroup.hidden = !courier;
-            emergencyName.required = courier;
-            emergencyPhone.required = courier;
+            emergencyName.required = false;
+            emergencyPhone.required = false;
         };
         role.addEventListener('change', updateFields);
         updateFields();

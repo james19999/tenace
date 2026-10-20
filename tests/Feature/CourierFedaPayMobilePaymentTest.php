@@ -97,7 +97,7 @@ class CourierFedaPayMobilePaymentTest extends TestCase
                 'v1/transaction' => ['id' => 123, 'reference' => 'trx_123', 'status' => 'pending'],
             ]),
             'https://sandbox-api.fedapay.com/v1/transactions/123/token' => Http::response(['token' => 'sandbox-token']),
-            'https://sandbox-api.fedapay.com/v1/togocel' => Http::response(['v1/transaction' => ['id' => 123, 'status' => 'pending']]),
+            'https://sandbox-api.fedapay.com/v1/momo_test' => Http::response(['v1/transaction' => ['id' => 123, 'status' => 'pending']]),
         ]);
 
         $response = $this->postJson(route('courier.public-orders.mobile-payment.start', $order), [
@@ -116,6 +116,45 @@ class CourierFedaPayMobilePaymentTest extends TestCase
         Http::assertSent(fn (Request $request): bool => str_ends_with($request->url(), '/transactions')
             && $request['amount'] === 4000
             && $request['currency']['iso'] === 'XOF');
+        Http::assertSent(fn (Request $request): bool => str_ends_with($request->url(), '/momo_test'));
+        Http::assertNotSent(fn (Request $request): bool => str_ends_with($request->url(), '/togocel'));
+    }
+
+    public function test_assigned_courier_can_start_mobile_payment_from_delivery_detail_page(): void
+    {
+        $courier = new User(['user_type' => User::ROLE_LIVREUR, 'country_code' => 'TG']);
+        $courier->id = 41;
+        $this->actingAs($courier);
+        $order = $this->orderForCourier($courier, 5000, 1000);
+        Http::fake([
+            'https://sandbox-api.fedapay.com/v1/transactions' => Http::response([
+                'v1/transaction' => ['id' => 321, 'reference' => 'trx_321', 'status' => 'pending'],
+            ]),
+            'https://sandbox-api.fedapay.com/v1/transactions/321/token' => Http::response(['token' => 'sandbox-token']),
+            'https://sandbox-api.fedapay.com/v1/momo_test' => Http::response(['v1/transaction' => ['id' => 321, 'status' => 'pending']]),
+        ]);
+
+        $this->postJson(route('livrableshow.mobile-payment.start', $order), [
+            'provider_method' => 'mixx', 'phone' => '90 00 00 00', 'email' => 'client@example.test',
+        ])->assertAccepted()->assertJsonPath('status', 'pending');
+
+        $this->assertSame(4000, (int) OrderPayment::query()->firstOrFail()->amount);
+        $this->assertSame('togocel', OrderPayment::query()->firstOrFail()->gateway_method);
+    }
+
+    public function test_delivery_detail_cannot_be_marked_delivered_before_balance_is_paid(): void
+    {
+        $courier = new User(['user_type' => User::ROLE_LIVREUR, 'country_code' => 'TG']);
+        $courier->id = 41;
+        $this->actingAs($courier);
+        $order = $this->orderForCourier($courier, 5000, 1000);
+
+        $this->put(route('changestatususer', $order), [
+            'status' => 'delivered', 'payment_method' => 'mobile_money',
+        ])->assertRedirect()->assertSessionHasErrors('delivery');
+
+        $this->assertSame('ordered', $order->fresh()->status);
+        $this->assertSame(1000, (int) $order->fresh()->paid_amount);
     }
 
     public function test_a_different_courier_cannot_start_a_payment_for_the_order(): void
@@ -145,7 +184,7 @@ class CourierFedaPayMobilePaymentTest extends TestCase
                 'v1/transaction' => ['id' => 123, 'reference' => 'trx_123', 'status' => 'pending'],
             ]),
             'https://sandbox-api.fedapay.com/v1/transactions/123/token' => Http::response(['token' => 'sandbox-token']),
-            'https://sandbox-api.fedapay.com/v1/togocel' => Http::response(['v1/transaction' => ['id' => 123, 'status' => 'pending']]),
+            'https://sandbox-api.fedapay.com/v1/momo_test' => Http::response(['v1/transaction' => ['id' => 123, 'status' => 'pending']]),
         ]);
         $input = ['provider_method' => 'mixx', 'phone' => '90000000', 'email' => 'client@example.test'];
 
@@ -252,6 +291,7 @@ class CourierFedaPayMobilePaymentTest extends TestCase
             'montant' => $amount,
             'paid_amount' => $paid,
         ]);
+        $order->forceFill(['status' => 'ordered'])->save();
         DB::table('order_courier_handoffs')->insert([
             'order_id' => $order->id,
             'courier_id' => $courierId,

@@ -16,17 +16,21 @@ class FedaPayPaymentProcessor
         if ($transactionId === '' || $transactionId !== (string) $payment->gateway_transaction_id) {
             throw new RuntimeException('FedaPay transaction identifier does not match.');
         }
-        if ((int) ($transaction['amount'] ?? -1) !== (int) $payment->amount) {
-            throw new RuntimeException('FedaPay transaction amount does not match.');
-        }
-        $currency = strtoupper((string) (data_get($transaction, 'currency.iso')
-            ?? $transaction['currency_iso']
-            ?? ''));
-        if ($currency !== 'XOF') {
-            throw new RuntimeException('FedaPay transaction currency is not XOF.');
-        }
-
         $status = strtolower((string) ($transaction['status'] ?? ''));
+        // A declined/canceled transaction cannot credit an order. If FedaPay's
+        // status response omits amount/currency, persist this terminal result
+        // after matching the transaction ID. Successful states stay strict.
+        if (! in_array($status, ['declined', 'canceled'], true)) {
+            if ((int) ($transaction['amount'] ?? -1) !== (int) $payment->amount) {
+                throw new RuntimeException('FedaPay transaction amount does not match.');
+            }
+            $currency = strtoupper((string) (data_get($transaction, 'currency.iso')
+                ?? $transaction['currency_iso']
+                ?? ''));
+            if ($currency !== 'XOF') {
+                throw new RuntimeException('FedaPay transaction currency is not XOF.');
+            }
+        }
         $reference = isset($transaction['reference']) ? (string) $transaction['reference'] : null;
 
         return DB::transaction(function () use ($payment, $status, $reference): OrderPayment {
@@ -40,7 +44,8 @@ class FedaPayPaymentProcessor
             }
 
             if ($status === 'approved' && $lockedPayment->status !== 'confirmed') {
-                $balance = max(0, (int) $lockedOrder->montant - (int) $lockedOrder->paid_amount);
+                $amountDue = (int) ($lockedOrder->montant ?? ((int) $lockedOrder->total + (int) $lockedOrder->tax));
+                $balance = max(0, $amountDue - (int) $lockedOrder->paid_amount);
                 if ((int) $lockedPayment->amount > $balance) {
                     Log::warning('FedaPay approved transaction exceeds the remaining order balance.', [
                         'payment_id' => $lockedPayment->id,

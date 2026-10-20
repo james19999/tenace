@@ -338,6 +338,8 @@ Route::middleware(['auth'])->group(function () {
         Route::get('livrable/list', [LivreurController::class, 'livrable'])->name('livrable');
         Route::get('livrable/show/{id}', [LivreurController::class, 'livrable_show'])->name('livrableshow');
         Route::post('livrable/show/{id}/payment', [LivreurController::class, 'updateOrderPayment'])->middleware('role:ADMINUSER,MNG')->name('livrableshow.payment');
+        Route::post('livrable/show/{id}/mobile-payment', [LivreurController::class, 'startDeliveryMobilePayment'])->middleware(['role:LVS', 'throttle:8,1'])->name('livrableshow.mobile-payment.start');
+        Route::get('livrable/show/{id}/mobile-payment/{payment}/status', [LivreurController::class, 'deliveryMobilePaymentStatus'])->middleware(['role:LVS', 'throttle:30,1'])->name('livrableshow.mobile-payment.status');
         Route::post('livrable/show/{id}/package-photos', [LivreurController::class, 'uploadPackagePhotos'])->name('livrableshow.package-photos');
         Route::get('livrable/show/{id}/package-photos/{photo}', [LivreurController::class, 'showPackagePhoto'])->name('livrableshow.package-photo');
         Route::get('auth/livrable/{id}', [LivreurController::class, 'auth_user_livrable'])->name('authlivrable');

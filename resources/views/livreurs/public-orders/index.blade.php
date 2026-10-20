@@ -3,6 +3,8 @@
 @section('content')
 <link rel="stylesheet" href="{{ asset('assets/css/courier-public-orders.css') }}?v=20261020.3">
 @php
+    $fedapayService = app(\App\Services\Payments\FedaPayService::class);
+    $sandboxCourierPaymentsAvailable = $fedapayService->isDeliverySandboxEnabled() && $fedapayService->isConfigured();
     $statusLabels = [
         'awaiting_delivery_quote' => 'Frais de livraison à définir',
         'awaiting_customer_confirmation' => 'En attente de l’accord du client',
@@ -64,15 +66,19 @@
                             @if($order->payment_timing === 'on_delivery' && $deliveryBalance > 0)
                                 <div class="courier-payment-alert">Montant à recevoir : <strong>{{ number_format($deliveryBalance, 0, ',', ' ') }} F</strong>.</div>
                                 <form method="POST" action="{{ route('courier.public-orders.deliver', $order) }}" class="courier-cash-delivery-form">@csrf<input type="hidden" name="payment_method" value="cash"><button class="btn btn-success courier-action-button">Paiement en espèces · confirmer la livraison</button></form>
-                                @if($order->country_code === 'TG')
+                                @if($order->country_code === 'TG' && $sandboxCourierPaymentsAvailable)
                                     <form method="POST" action="{{ route('courier.public-orders.mobile-payment.start', $order) }}" class="courier-payment-fields courier-fedapay-form" data-fedapay-form data-status-url="{{ $gatewayPayment?->gateway_transaction_id ? route('courier.public-orders.mobile-payment.status', [$order, $gatewayPayment]) : '' }}">@csrf
                                         <strong class="courier-mobile-title">Paiement Mobile Money sécurisé</strong>
                                         <label>Opérateur<select name="provider_method" class="form-control" required><option value="mixx">Mixx by Yas</option><option value="moov">Moov Money</option></select></label>
-                                        <label>Téléphone du client<input name="phone" class="form-control" type="tel" inputmode="tel" autocomplete="tel" value="{{ $order->costumer?->phone }}" placeholder="Ex. 90 00 00 00" required></label>
-                                        <label>E-mail du client<input name="email" class="form-control" type="email" autocomplete="email" value="{{ $order->costumer?->email }}" placeholder="client@exemple.com" required></label>
-                                        <small>Le client recevra une demande sur son téléphone et saisira lui-même son code PIN. Ne lui demande jamais son code.</small>
-                                        <button class="btn btn-danger courier-action-button" type="submit"><span class="courier-button-label">Envoyer la demande de paiement</span><span class="courier-button-loading" hidden>Envoi en cours…</span></button>
-                                        <div class="courier-gateway-result" data-gateway-result role="status" aria-live="polite" @if(!$gatewayPayment || $gatewayPayment->status === 'failed') hidden @endif>{{ $gatewayPayment?->status === 'confirmed' ? 'Paiement confirmé par FedaPay.' : 'Vérification de la demande Mobile Money…' }}</div>
+                                        <label>Téléphone du client<input name="phone" class="form-control" type="tel" inputmode="tel" autocomplete="tel" value="{{ old('phone', $order->costumer?->phone) }}" placeholder="Ex. 90 00 00 00" required><small>Prérempli depuis la fiche client; modifie-le si le client veut payer avec un autre numéro.</small></label>
+                                        @if (filled($order->costumer?->email))
+                                            <input type="hidden" name="email" value="{{ $order->costumer->email }}"><small>E-mail client utilisé : {{ $order->costumer->email }}</small>
+                                        @else
+                                            <label>E-mail du client<input name="email" class="form-control" type="email" autocomplete="email" value="{{ old('email') }}" placeholder="client@exemple.com" required><small>FedaPay demande l’e-mail pour identifier le client.</small></label>
+                                        @endif
+                                        <small>Simulation de test uniquement : aucun SMS ne sera envoyé et aucun montant réel ne sera débité.</small>
+                                        <button class="btn btn-danger courier-action-button" type="submit"><span class="courier-button-label">Lancer la simulation Sandbox</span><span class="courier-button-loading" hidden>Simulation en cours…</span></button>
+                                        <div class="courier-gateway-result" data-gateway-result role="status" aria-live="polite" @if(!$gatewayPayment || $gatewayPayment->status === 'failed') hidden @endif>{{ $gatewayPayment?->status === 'confirmed' ? 'Paiement confirmé par FedaPay.' : 'Vérification de la simulation Sandbox…' }}</div>
                                     </form>
                                 @endif
                             @elseif($order->payment_timing === 'on_delivery' && $deliveryBalance === 0 && $gatewayConfirmed)
@@ -115,7 +121,7 @@
                     const response = await fetch(url, { headers: { 'Accept': 'application/json' }, credentials: 'same-origin' });
                     if (!response.ok) throw new Error('La vérification du paiement est temporairement indisponible.');
                     const state = await response.json();
-                    showMessage(state.message || 'En attente de la confirmation du client sur son téléphone.', state.status === 'confirmed');
+                    showMessage(state.message || 'Simulation FedaPay Sandbox en attente. Aucun SMS opérateur ne sera envoyé.', state.status === 'confirmed');
                     if (state.status === 'confirmed') {
                         window.setTimeout(() => window.location.reload(), 1200);
                         return;
@@ -126,7 +132,7 @@
                 }
                 await new Promise((resolve) => window.setTimeout(resolve, 8000));
             }
-            showMessage('La demande est toujours en attente. Vérifie le téléphone du client avant toute nouvelle tentative.');
+            showMessage('La simulation Sandbox est toujours en attente. Vérifie son état dans le tableau de bord FedaPay.');
         };
 
         if (form.dataset.statusUrl) poll(form.dataset.statusUrl);
@@ -146,7 +152,7 @@
                 });
                 const data = await response.json();
                 if (!response.ok) throw new Error(data.message || 'FedaPay n’a pas pu démarrer le paiement.');
-                showMessage(data.message || 'Demande envoyée. Le client doit confirmer sur son téléphone.');
+                showMessage(data.message || 'Simulation Mobile Money lancée dans FedaPay Sandbox. Aucun SMS ne sera envoyé.');
                 if (data.status_url) {
                     form.dataset.statusUrl = data.status_url;
                     poll(data.status_url);

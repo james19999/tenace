@@ -80,7 +80,7 @@
                         </div>
 
                         <div class="form-group" id="country-code-group">
-                            <label for="country_code">Pays du partenaire ou du livreur</label>
+                            <label for="country_code">Pays du partenaire ou du livreur <span class="text-muted">(facultatif)</span></label>
                             <select name="country_code" id="country_code" class="form-control">
                                 <option value="">Choisir un pays</option>
                                 @foreach ($countries as $code => $country)
@@ -91,10 +91,12 @@
                         </div>
 
                         <div class="form-group" id="identity-card-group">
-                            <label for="identity_card_photo">Ajouter une photo de la carte d’identité</label>
+                            <label for="identity_card_photo">Ajouter une photo de la carte d’identité <span class="text-muted">(facultatif)</span></label>
                             <input type="file" name="identity_card_photo" id="identity_card_photo" class="form-control-file" accept="image/jpeg,image/png,image/webp">
                             @if ($users->courierDocuments->isNotEmpty())
-                                <small class="form-text text-muted">Une pièce d’identité est déjà enregistrée. Tu peux en ajouter une nouvelle.</small>
+                                <small class="form-text text-muted">Une pièce d’identité est déjà enregistrée. Tu peux en ajouter une nouvelle ou laisser le champ vide.</small>
+                            @else
+                                <small class="form-text text-muted">Facultative. Le document est conservé dans un espace privé.</small>
                                 <ul class="mt-2">
                                     @foreach ($users->courierDocuments as $document)
                                         <li><a href="{{ route('livreurs.documents.show', [$users, $document]) }}" target="_blank" rel="noopener">Voir la pièce enregistrée</a></li>
@@ -105,7 +107,7 @@
                         </div>
 
                         <div id="emergency-contact-group" class="border rounded p-3 mb-3">
-                            <strong class="d-block mb-2">Personne à prévenir</strong>
+                            <strong class="d-block mb-2">Personne à prévenir <span class="text-muted">(facultatif)</span></strong>
                             <div class="form-group"><label for="emergency_contact_name">Nom complet</label><input class="form-control" id="emergency_contact_name" name="emergency_contact_name" value="{{ old('emergency_contact_name', $users->emergency_contact_name) }}" maxlength="160">@error('emergency_contact_name')<span class="text-danger">{{ $message }}</span>@enderror</div>
                             <div class="form-group mb-0"><label for="emergency_contact_phone">Téléphone</label><input class="form-control" id="emergency_contact_phone" name="emergency_contact_phone" type="tel" value="{{ old('emergency_contact_phone', $users->emergency_contact_phone) }}" maxlength="32">@error('emergency_contact_phone')<span class="text-danger">{{ $message }}</span>@enderror</div>
                         </div>
@@ -135,13 +137,13 @@
         const emergencyName = document.getElementById('emergency_contact_name');
         const emergencyPhone = document.getElementById('emergency_contact_phone');
         const updateFields = () => {
-            const countryRequired = ['LVS', 'PT'].includes(role.value);
-            countryGroup.hidden = !countryRequired;
-            country.required = countryRequired;
+            const countryApplicable = ['LVS', 'PT'].includes(role.value);
+            countryGroup.hidden = !countryApplicable;
+            country.required = false;
             documentGroup.hidden = role.value !== 'LVS';
             emergencyGroup.hidden = role.value !== 'LVS';
-            emergencyName.required = role.value === 'LVS';
-            emergencyPhone.required = role.value === 'LVS';
+            emergencyName.required = false;
+            emergencyPhone.required = false;
         };
         role.addEventListener('change', updateFields);
         updateFields();

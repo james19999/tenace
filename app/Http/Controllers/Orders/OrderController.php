@@ -17,6 +17,7 @@ use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Mail;
 use App\Models\PourcentageCommission;
 use App\Services\StockDeliveryService;
+use App\Support\WestAfricaShippingCatalog;
 
 class OrderController extends Controller
 {
@@ -414,7 +415,7 @@ class OrderController extends Controller
     {
         $startOfWeek = Carbon::now()->startOfWeek(); // Début de la semaine (Lundi)
         $endOfWeek = Carbon::now()->endOfWeek();
-        $results = DB::table('orders')
+        $query = DB::table('orders')
             ->join('users', function ($join) {
                 $join->whereRaw('orders.user_id = CAST(users.id AS CHAR)');
             })
@@ -427,8 +428,11 @@ class OrderController extends Controller
             ->where('users.user_type', '=', 'LVS') // Filtrer les utilisateurs de type LVS
             ->where('orders.status', '=', 'delivered')
             ->whereBetween('orders.delivered_at', [$startOfWeek, $endOfWeek])  // Filtrer les commandes livrées
-            ->groupBy('users.id', 'users.name', 'day') // Grouper par utilisateur et jour
-            ->get();
+            ->groupBy('users.id', 'users.name', 'day'); // Grouper par utilisateur et jour
+
+        $this->scopeDeliveryRankingToCountry($query);
+
+        $results = $query->get();
 
         return $results;
     }
@@ -437,7 +441,7 @@ class OrderController extends Controller
         $startOfWeek = Carbon::now()->startOfWeek(); // Début de la semaine (lundi)
         $endOfWeek = Carbon::now()->endOfWeek();    // Fin de la semaine (dimanche)
 
-        return DB::table('orders')
+        $query = DB::table('orders')
             ->join('users', function ($join) {
                 $join->whereRaw('orders.user_id = CAST(users.id AS CHAR)');
             })
@@ -450,8 +454,46 @@ class OrderController extends Controller
             ->where('orders.status', '=', 'delivered') // Filtrer les commandes livrées
             ->whereBetween('orders.delivered_at', [$startOfWeek, $endOfWeek]) // Filtrer les commandes de la semaine en cours
             ->groupBy('users.id', 'users.name') // Grouper par utilisateur
-            ->orderByDesc('total_deliveries') // Trier par total décroissant
-            ->get();
+            ->orderByDesc('total_deliveries'); // Trier par total décroissant
+
+        $this->scopeDeliveryRankingToCountry($query);
+
+        return $query->get();
+    }
+
+    private function deliveryRankingCountryCode(): ?string
+    {
+        $viewer = auth()->user();
+        $adminCanChooseAll = in_array($viewer?->user_type, ['ADMINUSER', 'MNG'], true);
+
+        if ($viewer?->user_type === 'PT') {
+            $countryCode = strtoupper(trim((string) $viewer->country_code));
+            return in_array($countryCode, array_keys(WestAfricaShippingCatalog::countries()), true)
+                ? $countryCode
+                : '___NONE___';
+        }
+
+        $requestedCountry = strtoupper(trim((string) request()->query('country_code', '')));
+        if ($adminCanChooseAll && $requestedCountry === 'ALL') {
+            return null;
+        }
+
+        if ($adminCanChooseAll && in_array($requestedCountry, array_keys(WestAfricaShippingCatalog::countries()), true)) {
+            return $requestedCountry;
+        }
+
+        $viewerCountry = strtoupper(trim((string) ($viewer?->country_code ?: config('services.fedapay.country_code', 'TG'))));
+        return in_array($viewerCountry, array_keys(WestAfricaShippingCatalog::countries()), true)
+            ? $viewerCountry
+            : '___NONE___';
+    }
+
+    private function scopeDeliveryRankingToCountry($query): void
+    {
+        $countryCode = $this->deliveryRankingCountryCode();
+        if ($countryCode !== null) {
+            $query->where('users.country_code', $countryCode);
+        }
     }
 
 
@@ -490,7 +532,11 @@ class OrderController extends Controller
     public function showDeliveries()
     {
         $formatted = $this->formatDeliveriesByDay();
-        return view('orders.deliveries', compact('formatted'));
+        $selectedCountry = $this->deliveryRankingCountryCode();
+        $canSelectDeliveryCountry = in_array(auth()->user()?->user_type, ['ADMINUSER', 'MNG'], true);
+        $countryOptions = WestAfricaShippingCatalog::countries();
+
+        return view('orders.deliveries', compact('formatted', 'selectedCountry', 'canSelectDeliveryCountry', 'countryOptions'));
     }
 
     public function OrderFilter()

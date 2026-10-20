@@ -16,6 +16,12 @@
         $amountDue = (float) ($Orders->montant ?? ($itemsTotal + (float) $Orders->tax));
         $paidAmount = $Orders->paid_amount;
         $remainingAmount = $paidAmount === null ? null : max(0, $amountDue - (float) $paidAmount);
+        $isAssignedCourier = auth()->user()?->user_type === 'LVS' && (string) $Orders->user_id === (string) auth()->id();
+        $deliveryCountry = strtoupper(trim((string) ($Orders->country_code ?: ($Orders->shipping_country ?: (auth()->user()?->country_code ?: config('services.fedapay.country_code', 'TG'))))));
+        $fedapayService = app(\App\Services\Payments\FedaPayService::class);
+        $mobilePaymentAvailable = $isAssignedCourier && $deliveryCountry === 'TG' && $Orders->status === 'ordered'
+            && $amountDue > (float) ($paidAmount ?? 0)
+            && $fedapayService->isDeliverySandboxEnabled() && $fedapayService->isConfigured();
         $needsPartnerCommissionSync = $Orders->status === 'delivered'
             && $Orders->partner_id
             && ! $Orders->created_user
@@ -37,6 +43,9 @@
         .dd-paper, .dd-panel { background:#fff; border:1px solid var(--dd-line); border-radius:16px; box-shadow:0 8px 24px rgba(27,34,49,.045); }
         .dd-paper { position:relative; clear:both; padding:24px; }
         .dd-alert { margin-bottom:15px; border-radius:12px; }
+        .dd-feedback{margin:0 0 16px;padding:13px 16px;border:1px solid;border-radius:11px;font-weight:650;line-height:1.5}
+        .dd-feedback-error{border-color:#e9b8b8;background:#fff0f0;color:#7c1717}
+        .dd-feedback-success{border-color:#b9dfc9;background:#effaf3;color:#185b37}
         .dd-receipt-head { display:grid; grid-template-columns:repeat(5,minmax(0,1fr)); gap:20px; padding-bottom:22px; border-bottom:1px solid var(--dd-line); }
         .dd-info{min-width:0;padding:12px;border:1px solid var(--dd-line);background:#fbfcfd}
         .dd-brand { display:flex; align-items:flex-start; gap:12px; }
@@ -84,6 +93,15 @@
         .dd-payment-form button{min-height:38px;padding:7px 10px;border:1px solid var(--dd-red);background:var(--dd-red);color:#fff;font-size:12px;font-weight:800;cursor:pointer}
         .dd-payment-form .invalid-feedback{grid-column:1/-1;display:block}
         .dd-payment-edit-card{display:block}
+        .dd-mobile-pay{grid-column:1/-1;padding:16px;border:1px solid var(--dd-line);border-radius:12px;background:#f7f9fc}
+        .dd-mobile-pay h2{margin:0 0 6px;font-size:16px;font-weight:850}
+        .dd-mobile-pay p{margin:4px 0 12px;color:var(--dd-muted);font-size:13px}
+        .dd-mobile-pay-fields{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px;align-items:end}
+        .dd-mobile-pay-fields>div:first-child,.dd-mobile-pay-fields>div:last-child{grid-column:1/-1}
+        .dd-mobile-pay-fields label{display:block;margin-bottom:5px;font-size:12px;font-weight:750}
+        .dd-mobile-pay-fields input,.dd-mobile-pay-fields select{width:100%;min-height:40px;padding:8px;border:1px solid var(--dd-line);background:#fff;color:var(--dd-ink)}
+        .dd-mobile-pay-fields small{display:block;margin-top:5px;color:var(--dd-muted);font-size:11px;line-height:1.4;overflow-wrap:anywhere}
+        .dd-mobile-pay-result{margin-top:10px;font-size:13px;font-weight:700}
         .dd-shipping-card,.dd-package-photo-panel{margin:18px 0;padding:15px;border:1px solid var(--dd-line);background:#fbfcfd}
         .dd-shipping-card h2,.dd-package-photo-panel h2{margin:0 0 9px;font-size:15px;font-weight:850}
         .dd-package-photo-panel p{margin:5px 0;color:var(--dd-muted);font-size:13px}
@@ -108,6 +126,8 @@
         .dd-back { margin-top:18px; }
         @media (max-width:1050px) { .dd-receipt-head { grid-template-columns:repeat(3,minmax(0,1fr)); gap:16px; } }
         @media (max-width:650px) {
+            .dd-mobile-pay-fields{grid-template-columns:1fr}
+            .dd-mobile-pay-fields>div{grid-column:1/-1}
             .delivery-detail { padding-top:0; }
             .dd-heading { align-items:stretch; flex-direction:column; gap:12px; min-height:0; margin-bottom:18px; }
             .dd-heading-actions, .dd-heading-actions .dd-btn { width:100%; }
@@ -176,6 +196,12 @@
     </style>
 
     <div class="delivery-detail">
+        @if ($errors->any())
+            <div class="dd-feedback dd-feedback-error" role="alert">
+                <strong>La livraison n’a pas été enregistrée :</strong>
+                <ul class="mb-0 mt-1">@foreach ($errors->all() as $error)<li>{{ $error }}</li>@endforeach</ul>
+            </div>
+        @endif
         @if (Session::has('success'))
             <div class="alert alert-success dd-alert"><strong>{{ session('success') }}</strong></div>
         @endif
@@ -379,6 +405,34 @@
             </section>
         @elseif ($Orders->status !== 'delivered' && $handoffConfirmed)
             <section class="dd-actions no-print">
+                @if ($mobilePaymentAvailable)
+                    <div id="delivery-mobile-payment-panel" class="dd-panel dd-mobile-pay" @if(old('payment_method', 'cash') !== 'mobile_money') hidden @endif>
+                        <h2>Encaisser par paiement mobile</h2>
+                        <p>Montant restant : <strong>{{ number_format(max(0, $amountDue - (float) ($paidAmount ?? 0)), 0, ',', ' ') }} F</strong>. Le paiement sera simulé dans FedaPay Sandbox. Aucun SMS ne sera envoyé; la livraison restera bloquée jusqu’à confirmation par FedaPay.</p>
+                        <form id="delivery-mobile-payment-form" action="{{ route('livrableshow.mobile-payment.start', $Orders->id) }}" method="POST" data-status-url="{{ $deliveryPayment?->gateway_transaction_id && in_array($deliveryPayment->status, ['pending', 'initiating'], true) ? route('livrableshow.mobile-payment.status', [$Orders->id, $deliveryPayment]) : '' }}">
+                            @csrf
+                            <div class="dd-mobile-pay-fields">
+                                <div><label for="delivery-provider-method">Moyen de paiement</label><select id="delivery-provider-method" name="provider_method" required><option value="mixx">Mixx by Yas</option><option value="moov">Moov Money</option></select></div>
+                                <div><label for="delivery-client-phone">Téléphone du client</label><input id="delivery-client-phone" name="phone" type="tel" inputmode="tel" autocomplete="tel" value="{{ old('phone', $Orders->costumer->phone ?? '') }}" placeholder="Ex. 90 00 00 00" required><small>Prérempli depuis la fiche client. Tu peux le corriger si le client paie avec un autre numéro.</small></div>
+                                <div>
+                                    @if (filled($Orders->costumer->email ?? null))
+                                        <label>E-mail client utilisé</label><p class="mb-0">{{ $Orders->costumer->email }}</p><input type="hidden" name="email" value="{{ $Orders->costumer->email }}">
+                                    @else
+                                        <label for="delivery-client-email">E-mail FedaPay du client</label><input id="delivery-client-email" name="email" type="email" autocomplete="email" value="{{ old('email') }}" placeholder="Adresse e-mail réelle du client" required><small>FedaPay exige une adresse e-mail pour créer son profil de paiement. Saisis son adresse réelle s’il n’en a pas enregistré dans sa fiche.</small>
+                                    @endif
+                                </div>
+                                <div><button id="delivery-mobile-payment-submit" type="submit" class="dd-btn dd-btn-primary">Lancer la simulation Sandbox</button></div>
+                            </div>
+                            <div id="delivery-mobile-payment-result" class="dd-mobile-pay-result" role="status" aria-live="polite">
+                                @if ($deliveryPayment?->gateway === 'fedapay' && in_array($deliveryPayment->status, ['pending', 'initiating'], true))
+                                    Simulation Sandbox en cours. Aucun SMS ne sera envoyé au client.
+                                @elseif ($deliveryPayment?->status === 'confirmed')
+                                    Paiement confirmé par FedaPay.
+                                @endif
+                            </div>
+                        </form>
+                    </div>
+                @endif
                 <form action="{{ route('changestatususer', $Orders->id) }}" method="POST" class="dd-panel">
                     @csrf
                     @method('PUT')
@@ -391,6 +445,17 @@
                                 <option value="canceled">Annuler la commande</option>
                             </select>
                         </div>
+                        @if ($isAssignedCourier && $amountDue > (float) ($paidAmount ?? 0))
+                            <div class="dd-field" id="delivery-payment-method-field">
+                                <label for="delivery-payment-method">Moyen de paiement reçu</label>
+                                <select name="payment_method" id="delivery-payment-method" class="form-control" required>
+                                    <option value="cash" @selected(old('payment_method', 'cash') === 'cash')>Espèces</option>
+                                    @if ($mobilePaymentAvailable)
+                                        <option value="mobile_money" @selected(old('payment_method') === 'mobile_money')>Mobile Money</option>
+                                    @endif
+                                </select>
+                            </div>
+                        @endif
                         <div class="dd-field">
                             <label for="delivery-motif">Motif, si annulation</label>
                             <input id="delivery-motif" type="text" class="form-control @error('motif') is-invalid @enderror" name="motif" value="{{ old('motif') }}" placeholder="Préciser le motif d’annulation">
@@ -410,6 +475,99 @@
             </section>
         @endif
     </div>
+    <script>
+        (function () {
+            var form = document.getElementById('delivery-mobile-payment-form');
+            var methodSelect = document.getElementById('delivery-payment-method');
+            var paymentPanel = document.getElementById('delivery-mobile-payment-panel');
+            var statusSelect = document.getElementById('delivery-status');
+            var paymentField = document.getElementById('delivery-payment-method-field');
+            function updateDeliveryPaymentChoice() {
+                if (paymentPanel && methodSelect) {
+                    paymentPanel.hidden = methodSelect.value !== 'mobile_money';
+                }
+                if (paymentField && statusSelect) {
+                    paymentField.hidden = statusSelect.value !== 'delivered';
+                }
+            }
+            if (methodSelect) methodSelect.addEventListener('change', function () {
+                updateDeliveryPaymentChoice();
+                if (methodSelect.value === 'mobile_money' && paymentPanel) {
+                    paymentPanel.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                    var provider = document.getElementById('delivery-provider-method');
+                    if (provider) provider.focus({ preventScroll: true });
+                }
+            });
+            if (statusSelect) statusSelect.addEventListener('change', updateDeliveryPaymentChoice);
+            updateDeliveryPaymentChoice();
+            if (!form) return;
+            var button = document.getElementById('delivery-mobile-payment-submit');
+            var result = document.getElementById('delivery-mobile-payment-result');
+            var statusUrl = form.dataset.statusUrl || '';
+            var csrf = form.querySelector('[name="_token"]').value;
+            var pollTimer = null;
+
+            function show(message, isError) {
+                result.textContent = message;
+                result.style.color = isError ? '#a62828' : '';
+            }
+            async function poll() {
+                if (!statusUrl) return;
+                try {
+                    var response = await fetch(statusUrl, { headers: { 'Accept': 'application/json', 'X-Requested-With': 'XMLHttpRequest' } });
+                    var data = await response.json();
+                    if (!response.ok) throw new Error(data.message || 'Statut du paiement indisponible.');
+                    show(data.message, data.status === 'failed');
+                    if (data.status === 'confirmed') {
+                        show('Paiement confirmé par FedaPay. Actualisation de la fiche…');
+                        window.setTimeout(function () { window.location.reload(); }, 900);
+                    } else if (data.status === 'failed' || data.status === 'refunded') {
+                        statusUrl = '';
+                        form.dataset.statusUrl = '';
+                        button.disabled = false;
+                        button.textContent = 'Réessayer le paiement';
+                    } else {
+                        pollTimer = window.setTimeout(poll, 4000);
+                    }
+                } catch (error) {
+                    show(error.message || 'Impossible de vérifier le paiement. Réessaie.', true);
+                    pollTimer = window.setTimeout(poll, 6000);
+                }
+            }
+
+            form.addEventListener('submit', async function (event) {
+                event.preventDefault();
+                if (pollTimer) window.clearTimeout(pollTimer);
+                button.disabled = true;
+                button.textContent = 'Envoi en cours…';
+                show('Lancement de la simulation FedaPay Sandbox…');
+                try {
+                    var response = await fetch(form.action, {
+                        method: 'POST', body: new FormData(form),
+                        headers: { 'Accept': 'application/json', 'X-Requested-With': 'XMLHttpRequest', 'X-CSRF-TOKEN': csrf }
+                    });
+                    var data = await response.json();
+                    if (!response.ok) throw new Error(data.message || 'FedaPay n’a pas pu démarrer le paiement.');
+                    statusUrl = data.status_url || '';
+                    form.dataset.statusUrl = statusUrl;
+                    show(data.message || 'Simulation Mobile Money lancée dans FedaPay Sandbox. Aucun SMS ne sera envoyé.');
+                    button.textContent = 'Simulation lancée';
+                    if (statusUrl) poll();
+                } catch (error) {
+                    show(error.message || 'Impossible de lancer le paiement.', true);
+                    button.disabled = false;
+                    button.textContent = 'Réessayer le paiement';
+                }
+            });
+
+            if (statusUrl) {
+                button.disabled = true;
+                button.disabled = false;
+                button.textContent = 'Lancer la simulation Sandbox';
+                poll();
+            }
+        })();
+    </script>
     <script>
         (function () {
             var form = document.getElementById('package-photo-upload-form');

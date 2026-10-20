@@ -35,6 +35,7 @@ return [
         // This integration is deliberately locked to Sandbox until Live is
         // explicitly implemented and approved.
         'environment' => env('FEDAPAY_ENVIRONMENT', 'sandbox'),
+        'country_code' => env('FEDAPAY_COUNTRY_CODE', 'TG'),
         'secret_key' => env('FEDAPAY_SECRET_KEY'),
         'webhook_secret' => env('FEDAPAY_WEBHOOK_SECRET'),
         'base_url' => 'https://sandbox-api.fedapay.com/v1',

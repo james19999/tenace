@@ -9,6 +9,12 @@ use RuntimeException;
 
 class FedaPayService
 {
+    public function isDeliverySandboxEnabled(): bool
+    {
+        return app()->environment(['local', 'testing'])
+            && config('services.fedapay.environment') === 'sandbox';
+    }
+
     public function isConfigured(): bool
     {
         return config('services.fedapay.environment') === 'sandbox'
@@ -32,7 +38,7 @@ class FedaPayService
 
         $response = $this->request('post', '/transactions', [
             'description' => 'Commande '.$order->code.' - paiement à la livraison',
-            'amount' => max(0, (int) $order->montant - (int) $order->paid_amount),
+            'amount' => max(0, (int) ($order->montant ?? ((int) $order->total + (int) $order->tax)) - (int) $order->paid_amount),
             'currency' => ['iso' => 'XOF'],
             'customer' => $customerData,
         ]);
@@ -56,7 +62,10 @@ class FedaPayService
             throw new RuntimeException('FedaPay did not return a payment token.');
         }
 
-        return $this->resource($this->request('post', '/'.$method, ['token' => $token]), 'transaction');
+        // FedaPay documents momo_test as the Sandbox-only Mobile Money simulator.
+        // Keep the selected operator in our local payment record for display,
+        // but never call a real operator endpoint from this test integration.
+        return $this->resource($this->request('post', '/momo_test', ['token' => $token]), 'transaction');
     }
 
     public function retrieveTransaction(string $transactionId): array
