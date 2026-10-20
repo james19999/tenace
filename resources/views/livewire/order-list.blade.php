@@ -34,8 +34,8 @@
             transform: translateY(-1px);
         }
         .date-chip.active {
-            background: #7e1615;
-            border-color: #7e1615;
+            background: var(--app-primary, #7e1615);
+            border-color: var(--app-primary, #7e1615);
             color: #ffffff !important;
             box-shadow: 0 4px 10px rgba(126, 22, 21, 0.35);
         }

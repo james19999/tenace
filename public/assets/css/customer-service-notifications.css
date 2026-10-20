@@ -137,11 +137,11 @@
 }
 .sc-global-notification-menu article > a:hover {
     background: transparent !important;
-    color: #7e1615 !important;
+    color: var(--app-primary, #7e1615) !important;
 }
 .sc-global-notification-menu article > a > .material-icons {
     flex: 0 0 auto;
-    color: #7e1615;
+    color: var(--app-primary, #7e1615);
     font-size: 17px;
 }
 .sc-global-notification-menu article > a > span:last-child {
@@ -225,7 +225,7 @@
     justify-content: center;
     border-radius: 10px;
     background: #f7e9e8;
-    color: #7e1615;
+    color: var(--app-primary, #7e1615);
 }
 .sc-global-notification-title-icon .material-icons {
     font-size: 19px;
@@ -248,7 +248,7 @@
     padding: 5px 8px;
     border-radius: 20px;
     background: #f7eeee;
-    color: #7e1615 !important;
+    color: var(--app-primary, #7e1615) !important;
     font-size: 9px !important;
     font-weight: 750;
     white-space: nowrap;
@@ -277,7 +277,7 @@
     justify-content: center;
     border-radius: 50%;
     background: #f5f3f5;
-    color: #7e1615;
+    color: var(--app-primary, #7e1615);
 }
 .sc-global-notification-icon .material-icons {
     font-size: 17px;
@@ -328,7 +328,7 @@
     padding: 11px 14px;
     border-top: 1px solid #ededf1;
     background: #faf9fa;
-    color: #7e1615 !important;
+    color: var(--app-primary, #7e1615) !important;
     font-size: 10px;
     font-weight: 750;
     text-decoration: none !important;

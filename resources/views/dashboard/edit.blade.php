@@ -104,7 +104,7 @@
     </div>
 
     <style>
-        .product-edit-page{--edit-burgundy:#7e1615;--edit-ink:#292d37;--edit-muted:#7a8290;--edit-line:#e4e6eb;max-width:1040px;margin:0 auto;padding:18px 12px 36px;color:var(--edit-ink)}
+        .product-edit-page{--edit-burgundy:var(--app-primary, #7e1615);--edit-ink:#292d37;--edit-muted:#7a8290;--edit-line:#e4e6eb;max-width:1040px;margin:0 auto;padding:18px 12px 36px;color:var(--edit-ink)}
         .product-edit-heading{margin-bottom:20px}
         .product-edit-back{display:inline-flex;align-items:center;gap:5px;margin-bottom:19px;color:#687080;font-size:13px;font-weight:650;text-decoration:none}
         .product-edit-back:hover{color:var(--edit-burgundy)}

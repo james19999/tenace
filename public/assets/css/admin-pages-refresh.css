@@ -2,7 +2,7 @@
 .admin-pages-refresh {
     --admin-ink: #292d36;
     --admin-muted: #747b88;
-    --admin-red: #7e1615;
+    --admin-red: var(--app-primary, #7e1615);
     --admin-red-dark: #65100f;
     --admin-border: #e8e9ed;
     --admin-surface: #fff;

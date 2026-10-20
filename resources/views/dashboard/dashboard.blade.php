@@ -293,6 +293,23 @@
                     <div class="card-body">
                         <div class="row">
                             <div class="col">
+                                <h5 class="text-uppercase text-muted mb-0 card-title">Chiffre d’affaires du jour</h5>
+                                <span style="font-size: 130%" class="h1 font-weight-bold mb-0">{{ number_format((float) $OrderdeAmount, 0, ',', ' ') }} XOF</span>
+                            </div>
+                            <div class="col-auto col">
+                                <div class="btn btn-transparent-primary btn-lg btn-circle">
+                                    <img src="{{ asset('assets/images/money.png') }}" width="40" height="40" alt="">
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="col-12 col-sm-6 col-md-6 col-lg-3">
+                <div class="card shadow">
+                    <div class="card-body">
+                        <div class="row">
+                            <div class="col">
                                 <h5 class="text-uppercase text-muted mb-0 card-title">Total des commandes</h5><span
                                     style="font-size: 130%" class="h1 font-weight-bold mb-0">{{ $Orderall }}</span>
                             </div>
@@ -481,10 +498,79 @@
 
         @if (Auth::user()->user_type == 'ADMINUSER')
             {!! $chart1->renderChartJsLibrary() !!}
+            @if (($appTheme['appearance_mode'] ?? 'light') === 'dark')
+                <script>
+                    if (window.Chart && Chart.defaults && Chart.defaults.global) {
+                        Chart.defaults.global.defaultFontColor = '#a8b1bd';
+                        Chart.defaults.global.defaultColor = '#a8b1bd';
+                        if (Chart.defaults.scale) {
+                            Chart.defaults.scale.gridLines.color = '#3b434f';
+                            Chart.defaults.scale.ticks.fontColor = '#a8b1bd';
+                            Chart.defaults.scale.scaleLabel.fontColor = '#a8b1bd';
+                        }
+                    }
+                </script>
+            @endif
             {!! $chart1->renderJs() !!}
             {!! $chart2->renderJs() !!}
             {!! $chart3->renderJs() !!}
             {!! $chart4->renderJs() !!}
+            @if (($appTheme['appearance_mode'] ?? 'light') === 'dark')
+                <script>
+                    (function () {
+                        if (!window.Chart || !Chart.instances) return;
+                        var root = getComputedStyle(document.documentElement);
+                        var primary = root.getPropertyValue('--app-primary').trim() || '#177e15';
+                        var rgb = primary.match(/^#([\da-f]{2})([\da-f]{2})([\da-f]{2})$/i);
+                        var brightPrimary = rgb
+                            ? '#' + rgb.slice(1).map(function (part) { return Math.round(parseInt(part, 16) * .52 + 255 * .48).toString(16).padStart(2, '0'); }).join('')
+                            : '#8bc28a';
+                        var seriesColors = [brightPrimary, '#60a5fa', '#fbbf24', '#f87171', '#c084fc'];
+                        Object.values(Chart.instances).forEach(function (chart) {
+                            if (!chart || !chart.config || !chart.options) return;
+                            var type = chart.config.type;
+                            var datasets = chart.config.data && chart.config.data.datasets || [];
+                            datasets.forEach(function (dataset, index) {
+                                if (type === 'pie' || type === 'doughnut' || type === 'polarArea') {
+                                    var segmentColors = dataset.backgroundColor;
+                                    if (!Array.isArray(segmentColors)) segmentColors = Array.isArray(chart.config.data.labels) ? chart.config.data.labels.map(function (_, colorIndex) { return seriesColors[colorIndex % seriesColors.length]; }) : [seriesColors[index % seriesColors.length]];
+                                    dataset.backgroundColor = segmentColors.map(function (color, colorIndex) {
+                                        return typeof color === 'string' && color.indexOf('rgba(') === 0
+                                            ? color.replace(/,[^,\)]+\)$/, ', 0.88)')
+                                            : (color || seriesColors[colorIndex % seriesColors.length]);
+                                    });
+                                    dataset.borderColor = '#1e232b';
+                                    dataset.borderWidth = 2;
+                                } else {
+                                    var color = seriesColors[index % seriesColors.length];
+                                    dataset.backgroundColor = type === 'line' ? color.replace(/^#/, 'rgba(').replace(/(..)(..)(..)$/, function (_, r, g, b) { return parseInt(r, 16) + ', ' + parseInt(g, 16) + ', ' + parseInt(b, 16) + ', 0.18)'; }) : color;
+                                    dataset.borderColor = color;
+                                    dataset.pointBackgroundColor = color;
+                                }
+                            });
+                            chart.options.legend = chart.options.legend || {};
+                            chart.options.legend.labels = chart.options.legend.labels || {};
+                            chart.options.legend.labels.fontColor = '#c5cbd4';
+                            chart.options.tooltips = chart.options.tooltips || {};
+                            chart.options.tooltips.backgroundColor = '#303742';
+                            chart.options.tooltips.titleFontColor = '#f3f5f7';
+                            chart.options.tooltips.bodyFontColor = '#edf1f5';
+                            var scales = chart.options.scales || {};
+                            ['xAxes', 'yAxes'].forEach(function (axisName) {
+                                (scales[axisName] || []).forEach(function (axis) {
+                                    axis.ticks = axis.ticks || {};
+                                    axis.ticks.fontColor = '#a8b1bd';
+                                    axis.gridLines = axis.gridLines || {};
+                                    axis.gridLines.color = '#414a57';
+                                    axis.gridLines.zeroLineColor = '#657080';
+                                    if (axis.scaleLabel) axis.scaleLabel.fontColor = '#c5cbd4';
+                                });
+                            });
+                            chart.update();
+                        });
+                    })();
+                </script>
+            @endif
         @endif
 
     </div>
@@ -528,6 +614,20 @@
         .dashboard-order-tabs .badge,.dashboard-orders-table .badge,.dashboard-orders-table .btn,.dashboard-content .pagination .page-link{border-radius:0!important}
         .dashboard-orders-table{border-collapse:collapse}
         .dashboard-orders-table th,.dashboard-orders-table td{padding:12px 13px;vertical-align:middle}
+        html[data-app-theme="dark"] .dashboard-welcome { background:#1e232b !important; border-color:#373f4b !important; }
+        html[data-app-theme="dark"] .dashboard-welcome h1,
+        html[data-app-theme="dark"] .dashboard-date-copy strong { color:#edf1f5 !important; }
+        html[data-app-theme="dark"] .dashboard-welcome-copy p,
+        html[data-app-theme="dark"] .dashboard-date-copy span,
+        html[data-app-theme="dark"] .dashboard-date-copy small { color:#a8b1bd !important; }
+        html[data-app-theme="dark"] .dashboard-welcome-eyebrow { color:color-mix(in srgb,var(--app-primary) 45%,#fff) !important; }
+        html[data-app-theme="dark"] .dashboard-datetime { background:#171b21 !important; border-color:#373f4b !important; }
+        html[data-app-theme="dark"] .dashboard-date-icon,
+        html[data-app-theme="dark"] .dashboard-content .btn-circle { background:#252b34 !important; color:var(--app-primary) !important; }
+        html[data-app-theme="dark"] .dashboard-content .card-title { color:#a8b1bd !important; }
+        html[data-app-theme="dark"] .dashboard-content .h1 { color:#edf1f5 !important; }
+        html[data-app-theme="dark"] .dashboard-content > .col-12 > .card,
+        html[data-app-theme="dark"] .dashboard-content > .col-12 > a > .card { background:#1e232b !important; border-color:#373f4b !important; }
         @media(max-width:767.98px){
             .dashboard-welcome{margin:4px 0 14px;padding:16px}
             .dashboard-datetime{width:100%;min-width:0}

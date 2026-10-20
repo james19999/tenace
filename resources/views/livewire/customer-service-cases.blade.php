@@ -76,7 +76,7 @@
         .service-cases .sc-modal-head .sc-eyebrow {
             font-size: 11px !important;
             font-weight: 800 !important;
-            color: #7e1615 !important;
+            color: var(--app-primary, #7e1615) !important;
             letter-spacing: 1.2px !important;
             text-transform: uppercase !important;
             margin: 0 !important;

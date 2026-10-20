@@ -1,6 +1,6 @@
 <!-- PWA Meta Tags & Manifest -->
 <link rel="manifest" href="{{ asset('manifest.json') }}">
-<meta name="theme-color" content="#7e1615">
+<meta name="theme-color" content="{{ $appTheme['primary_color'] ?? '#7e1615' }}">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="application-name" content="TENACE COSMETIQUE">
 <meta name="apple-mobile-web-app-capable" content="yes">

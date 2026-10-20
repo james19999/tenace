@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="fr" data-app-theme="{{ $appTheme['appearance_mode'] ?? 'light' }}">
 
 
 <!-- Mirrored from htmlthemes.gitlab.io/admin/login.html by HTTrack Website Copier/3.x [XR&CO'2014], Thu, 18 May 2023 21:04:31 GMT -->
@@ -11,6 +11,33 @@
     <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
 
     <link rel="stylesheet" href="{{ asset('assets/css/style.css') }}">
+    <style>
+        :root {
+            --app-primary: {{ $appTheme['primary_color'] }};
+            --app-secondary: {{ $appTheme['secondary_color'] }};
+            --app-accent: {{ $appTheme['accent_color'] }};
+            --app-background: {{ $appTheme['background_color'] }};
+            --app-surface: {{ $appTheme['surface_color'] }};
+            --app-text: {{ $appTheme['text_color'] }};
+            --app-primary-contrast: {{ $appTheme['primary_contrast_color'] }};
+            --app-radius: {{ ['square' => '0px', 'soft' => '8px', 'rounded' => '16px'][$appTheme['corner_style']] ?? '8px' }};
+        }
+        html, body, .main-wrapper, .login-shell { min-height:100%; }
+        body { background:var(--app-background); color:var(--app-text); }
+        .login-shell { display:flex; min-height:100vh; padding:28px 16px; background:linear-gradient(135deg,var(--login-primary,var(--app-primary)),var(--login-secondary,var(--app-secondary))) !important; }
+        .login-card { width:100%; max-width:430px; align-self:center; margin:0 auto !important; padding:34px 30px 24px !important; border:1px solid rgba(255,255,255,.28); border-radius:var(--app-radius) !important; background:var(--app-surface); color:var(--app-text); box-shadow:0 22px 60px rgba(0,0,0,.2); }
+        .login-card h4 { color:var(--app-text); font-weight:750; }
+        .login-card .form-control { min-height:46px; border-radius:var(--app-radius); }
+        .login-card .btn-primary { min-height:46px; border-color:var(--app-primary); background:var(--app-primary); color:var(--app-primary-contrast); }
+        .login-card .form-check-label { color:var(--app-text); }
+        .login-card .login-credit { color:var(--app-primary); font-size:12px; font-weight:700; }
+        html[data-app-theme="dark"] body { background:#14171c; }
+        html[data-app-theme="dark"] .login-shell { background:radial-gradient(ellipse at top left,color-mix(in srgb,var(--login-primary,var(--app-primary)) 24%,#14171c),transparent 55%),#14171c !important; }
+        html[data-app-theme="dark"] .login-card { border-color:#373f4b; }
+        html[data-app-theme="dark"] .login-card .form-control { background:#171b21; color:#edf1f5; border-color:#373f4b; }
+        html[data-app-theme="dark"] .login-card .form-control::placeholder { color:#a8b1bd; }
+        @media(max-width:575px) { .login-shell { padding:18px 12px; } .login-card { padding:26px 18px 18px !important; } }
+    </style>
 
     <link rel="shortcut icon" href="{{ asset('assets/images/tena.png') }}" type="image/png">
     <link rel="icon" href="{{ asset('assets/images/tena.png') }}" type="image/png">
@@ -20,10 +47,10 @@
     @include('partials.pwa-head')
 </head>
 
-<body >
+<body>
     <div class="overlay-mask"></div>
     <div class="main-wrapper ">
-        <div class="main-content container-fluid h-100 bg-primary">
+        <div class="main-content container-fluid login-shell" style="--login-primary:{{ $appTheme['primary_color'] }};--login-secondary:{{ $appTheme['secondary_color'] }};background:{{ ($appTheme['appearance_mode'] ?? 'light') === 'dark' ? '#14171c' : 'linear-gradient(135deg, '.$appTheme['primary_color'].','.$appTheme['secondary_color'].')' }} !important">
             @if (session()->has('messages'))
             <div class="alert alert-success">{{ session('messages') }}</div>
            @endif
@@ -36,8 +63,8 @@
                 {{ session('session_expired') }}
             </div>
             @endif
-            <div  style="background-color: #7e1615" class="row h-100">
-                <div class="col-10 col-sm-8 col-md-6 col-lg-4 col-xl-3 m-auto px-3 pt-5 pb-4 card shadow m-3">
+            <div class="row w-100 h-100 m-0">
+                <div class="col-10 col-sm-8 col-md-6 col-lg-4 col-xl-3 card shadow login-card">
                     @php
                     $settings=App\Models\Setting::all();
                     @endphp
@@ -73,12 +100,12 @@
                             <label class="form-check-label" for="showPassword" style="cursor: pointer;">Voir le mot de passe</label>
                         </div>
 
-                        <button id="login-submit" type="submit" class="btn btn-primary btn-block my-4 d-flex align-items-center justify-content-center" style="min-height: 44px; font-weight: 600;">
+                        <button id="login-submit" type="submit" class="btn btn-primary btn-block my-4 d-flex align-items-center justify-content-center" style="min-height:44px;font-weight:600;background-color:{{ $appTheme['primary_color'] }} !important;border-color:{{ $appTheme['primary_color'] }} !important;color:{{ $appTheme['primary_contrast_color'] }} !important">
                             <span id="login-spinner" class="spinner-border spinner-border-sm mr-2" style="display: none;" role="status" aria-hidden="true"></span>
                             <span id="login-submit-label">Connectez-vous</span>
                         </button>
                         <hr style="padding-top: 8px">
-                        <a href="https://digital-services-home.com/" style="color: black" class="d-block text-center">@ DIGITAL SERVCICES</a>
+                        <a href="https://digital-services-home.com/" class="login-credit d-block text-center">@ DIGITAL SERVICES</a>
                     </form>
                 </div>
             </div>

@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="fr" data-app-theme="{{ $appTheme['appearance_mode'] ?? 'light' }}">
 
 
 <!-- Mirrored from htmlthemes.gitlab.io/admin/login.html by HTTrack Website Copier/3.x [XR&CO'2014], Thu, 18 May 2023 21:04:31 GMT -->
@@ -11,6 +11,34 @@
     <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
 
     <link rel="stylesheet" href="{{ asset('assets/css/style.css') }}">
+    <style>
+        :root {
+            --app-primary: {{ $appTheme['primary_color'] }};
+            --app-secondary: {{ $appTheme['secondary_color'] }};
+            --app-accent: {{ $appTheme['accent_color'] }};
+            --app-background: {{ $appTheme['background_color'] }};
+            --app-surface: {{ $appTheme['surface_color'] }};
+            --app-text: {{ $appTheme['text_color'] }};
+            --app-primary-contrast: {{ $appTheme['primary_contrast_color'] }};
+            --app-radius: {{ ['square' => '0px', 'soft' => '8px', 'rounded' => '16px'][$appTheme['corner_style']] ?? '8px' }};
+        }
+        body { background:var(--app-background); color:var(--app-text); }
+        .welcome-login-shell { display:flex; align-items:center; justify-content:center; box-sizing:border-box; width:100%; min-height:100vh; min-height:100svh; padding:24px 16px; background:{{ $appTheme['primary_color'] }} !important; }
+        .welcome-login-background { display:flex; align-items:center; justify-content:center; box-sizing:border-box; width:100%; min-height:calc(100vh - 48px); min-height:calc(100svh - 48px); margin:0; padding:0; background:transparent !important; }
+        .welcome-login-card { flex:0 1 430px; width:100%; max-width:430px; margin:0 !important; padding:30px 26px 24px !important; background:var(--app-surface); color:var(--app-text); }
+        .welcome-login-card .btn-primary { background:{{ $appTheme['primary_color'] }} !important; border-color:{{ $appTheme['primary_color'] }} !important; color:{{ $appTheme['primary_contrast_color'] }} !important; }
+        .welcome-login-credit { color:var(--app-primary) !important; }
+        html[data-app-theme="dark"] body { background:#14171c; }
+        html[data-app-theme="dark"] .welcome-login-card { background:#20252d; color:#edf1f5; border-color:#373f4b; }
+        html[data-app-theme="dark"] .welcome-login-card .form-control { background:#171b21; color:#edf1f5; border-color:#373f4b; }
+        html[data-app-theme="dark"] .welcome-login-card .form-control::placeholder { color:#a8b1bd; }
+        @media (max-width:575.98px) {
+            .welcome-login-shell { align-items:center; min-height:100vh; min-height:100svh; padding:16px 12px; }
+            .welcome-login-background { min-height:calc(100vh - 32px); min-height:calc(100svh - 32px); }
+            .welcome-login-card { flex-basis:100%; max-width:430px; padding:24px 16px 20px !important; }
+            .welcome-login-card form { padding:12px 0 0 !important; }
+        }
+    </style>
 
     <link rel="shortcut icon" href="{{ asset('assets/images/tena.png') }}" type="image/png">
     <link rel="icon" href="{{ asset('assets/images/tena.png') }}" type="image/png">
@@ -22,11 +50,10 @@
 
 <body >
     <div class="overlay-mask"></div>
-    <div class="main-wrapper ">
-        <div class="main-content container-fluid h-100 bg-primary">
-            <div  style="background-color: #7e1615" class="row h-100">
-
-                <div class="col-10 col-sm-8 col-md-6 col-lg-4 col-xl-3 m-auto px-3 pt-5 pb-4 card shadow m-3">
+    <div class="main-wrapper">
+        <main class="main-content container-fluid welcome-login-shell">
+            <div class="welcome-login-background">
+                <div class="card shadow welcome-login-card">
                     @php
                     $settings=App\Models\Setting::all();
                     @endphp
@@ -65,11 +92,11 @@
                             Connectez-vous
                         </button>
                         <hr style="padding-top: 8px">
-                        <a href="https://digital-services-home.com/" style="color: black" class="d-block text-center">@ DIGITAL SERVCICES</a>
+                        <a href="https://digital-services-home.com/" class="d-block text-center welcome-login-credit">@ DIGITAL SERVCICES</a>
                     </form>
                 </div>
             </div>
-        </div>
+        </main>
     </div>
 
 
