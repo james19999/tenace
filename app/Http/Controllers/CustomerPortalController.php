@@ -121,11 +121,17 @@ class CustomerPortalController extends Controller
 
     public function logout(Request $request): RedirectResponse
     {
-        $request->session()->forget('customer_portal_account_id');
+        $request->session()->forget([
+            'customer_portal_account_id',
+            'customer_portal_pending_customer_id',
+            'customer_portal_pending_phone',
+        ]);
         $request->session()->regenerateToken();
         Cookie::queue(Cookie::forget(self::REMEMBER_COOKIE));
 
-        return redirect()->route('customer-portal.index');
+        return $request->input('destination') === 'catalog'
+            ? redirect()->route('public-order.app')
+            : redirect()->route('customer-portal.index');
     }
 
     public function storeProfile(Request $request): RedirectResponse
