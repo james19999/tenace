@@ -17121,7 +17121,7 @@ table.dataTable > thead .sorting_desc_disabled:before
     }
 }
 
-.right-area header
+.right-area > header
 {
     background-color: var(--app-primary, #7e1615);
     background-color: var(--primary);

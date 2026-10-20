@@ -28,7 +28,7 @@ class AppServiceProvider extends ServiceProvider
             URL::forceScheme('https');
         }
 
-        view()->composer(['layouts.admin', 'auth.login', 'layouts.app', 'welcome'], function ($view): void {
+        view()->composer(['layouts.admin', 'auth.login', 'layouts.app', 'welcome', 'customer-portal.index'], function ($view): void {
             $view->with('appTheme', AppThemeSetting::currentTheme());
         });
     }

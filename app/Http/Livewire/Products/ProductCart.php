@@ -7,6 +7,8 @@ use App\Models\Product;
 use App\Models\Costumer;
 use App\Models\TransportCompany;
 use App\Models\CostumerContactSetting;
+use App\Models\ProductCountryPrice;
+use App\Models\PartnerCountryDeliverySetting;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
 use App\Services\StockModuleSettingsService;
@@ -103,6 +105,32 @@ class ProductCart extends Component
     {
         $user = auth()->user();
         $isPartner = $user?->user_type === \App\Models\User::ROLE_PARTNER;
+        $partnerCartItems = Cart::instance('cart')->content();
+        $partnerDeliveryFees = collect();
+        $partnerDeliveryFeeTotal = 0;
+        $partnerOrderDeliveryFee = 0;
+        if ($isPartner && $partnerCartItems->isNotEmpty()) {
+            $deliverySetting = PartnerCountryDeliverySetting::query()
+                ->where('country_code', strtoupper((string) $user->country_code))->first();
+            $partnerOrderDeliveryFee = (int) ($deliverySetting?->order_delivery_fee ?? 0);
+            $partnerDeliveryFees = ProductCountryPrice::query()
+                ->where('country_code', strtoupper((string) $user->country_code))
+                ->where('is_available', true)
+                ->whereIn('product_id', $partnerCartItems->pluck('id')->map(fn ($id) => (int) $id)->unique())
+                ->get(['product_id', 'delivery_fee', 'has_delivery_fee_override'])->keyBy('product_id');
+            $hasFallbackProducts = false;
+            foreach ($partnerCartItems as $cartItem) {
+                $fee = $partnerDeliveryFees[(int) $cartItem->id] ?? null;
+                if ($fee?->has_delivery_fee_override) {
+                    $partnerDeliveryFeeTotal += (int) $fee->delivery_fee * (int) $cartItem->qty;
+                } else {
+                    $hasFallbackProducts = true;
+                }
+            }
+            if ($hasFallbackProducts) {
+                $partnerDeliveryFeeTotal += $partnerOrderDeliveryFee;
+            }
+        }
         return view('livewire.products.product-cart', [
             'selectedCostumer' => old('costumer_id') && ! in_array(old('costumer_id'), ['default', 'anonymous'], true)
                 ? Costumer::find(old('costumer_id'))
@@ -118,6 +146,9 @@ class ProductCart extends Component
             'partnerCountryCode' => $isPartner ? $user->country_code : null,
             'partnerCountry' => $isPartner ? (\App\Support\WestAfricaShippingCatalog::countries()[$user->country_code]['label'] ?? $user->country_code) : null,
             'partnerCities' => $isPartner ? (\App\Support\WestAfricaShippingCatalog::countries()[$user->country_code]['cities'] ?? []) : [],
+            'partnerDeliveryFees' => $partnerDeliveryFees,
+            'partnerDeliveryFeeTotal' => $partnerDeliveryFeeTotal,
+            'partnerOrderDeliveryFee' => $partnerOrderDeliveryFee,
         ])
         ->extends('layouts.admin')
         ->section('content');

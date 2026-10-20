@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\ProductCountryPrice;
+use App\Models\PartnerCountryDeliverySetting;
 use App\Models\PublicOrderLink;
 use App\Models\User;
 use App\Models\Costumer;
@@ -13,9 +14,11 @@ use App\Support\WestAfricaShippingCatalog;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 use App\Models\OrderPayment;
+use App\Support\CustomerPortalPhone;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
+use Illuminate\Validation\ValidationException;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\View\View;
 
@@ -101,6 +104,7 @@ class PublicOrderController extends Controller
         $featuredIds = $link
             ? $link->products()->pluck('products.id')->map(fn ($id) => (int) $id)->all()
             : [];
+        $deliverySetting = PartnerCountryDeliverySetting::query()->where('country_code', $countryCode)->first();
         $prices = ProductCountryPrice::query()
             ->with('product:id,name,description,img')
             ->where('country_code', $countryCode)
@@ -116,11 +120,17 @@ class PublicOrderController extends Controller
                 'description' => $price->product->description,
                 'image' => $price->product->img ? url('image/'.$price->product->img) : null,
                 'price' => (int) $price->price,
+                'delivery_fee' => (int) $price->delivery_fee,
+                'delivery_fee_override' => (bool) $price->has_delivery_fee_override,
                 'featured' => in_array((int) $price->product_id, $featuredIds, true),
             ]);
 
         return response()->json([
             'country' => ['code' => $countryCode, 'name' => $countries[$countryCode]['label']],
+            'delivery' => [
+                'mode' => 'priority',
+                'order_fee' => (int) ($deliverySetting?->order_delivery_fee ?? 0),
+            ],
             'cities' => $countries[$countryCode]['cities'],
             'products' => $prices,
         ])->header('Cache-Control', 'no-store');
@@ -184,9 +194,20 @@ class PublicOrderController extends Controller
 
         $trackingToken = (string) Str::uuid();
         $order = DB::transaction(function () use ($validated, $countryCode, $partner, $link, $prices, $quantities, $trackingToken, $portalAccount, $portalCustomer): Order {
+            $deliverySetting = PartnerCountryDeliverySetting::query()->where('country_code', $countryCode)->lockForUpdate()->first();
             $subtotal = 0;
+            $deliveryFee = 0;
+            $hasFallbackProducts = false;
             foreach ($quantities as $productId => $item) {
                 $subtotal += (int) $prices[$productId]->price * (int) $item['quantity'];
+                if ($prices[$productId]->has_delivery_fee_override) {
+                    $deliveryFee += (int) $prices[$productId]->delivery_fee * (int) $item['quantity'];
+                } else {
+                    $hasFallbackProducts = true;
+                }
+            }
+            if ($hasFallbackProducts) {
+                $deliveryFee += (int) ($deliverySetting?->order_delivery_fee ?? 0);
             }
 
             $customer = Costumer::create([
@@ -203,9 +224,9 @@ class PublicOrderController extends Controller
             $order = new Order();
             $order->costumer_id = $customer->id;
             $order->subtotal = $subtotal;
-            $order->tax = 0;
+            $order->tax = $deliveryFee;
             $order->total = $subtotal;
-            $order->montant = $subtotal;
+            $order->montant = $subtotal + $deliveryFee;
             $order->paid_amount = 0;
             $order->code = 'WEB-'.Str::upper(Str::random(10));
             $order->time = 'À confirmer';
@@ -222,12 +243,16 @@ class PublicOrderController extends Controller
             $order->order_by = null;
             $order->remis = 0;
             $order->country_code = $countryCode;
+            $order->delivery_fee_mode = $hasFallbackProducts ? 'per_order' : 'per_product';
+            $order->delivery_mode = 'local';
+            $order->shipping_country = $countryCode;
+            $order->shipping_city = $validated['city'];
             $order->partner_id = $partner->id;
             $order->public_order_link_id = $link?->id;
             $order->payment_timing = $validated['payment_timing'];
             $order->requested_payment_method = $validated['payment_method'];
             $order->public_tracking_token = $trackingToken;
-            $order->partner_order_status = 'awaiting_delivery_quote';
+            $order->partner_order_status = $validated['payment_timing'] === 'before_delivery' ? 'awaiting_prepayment' : 'preparing';
             $order->save();
 
             foreach ($quantities as $productId => $item) {
@@ -237,6 +262,8 @@ class PublicOrderController extends Controller
                     'price' => (int) $prices[$productId]->price,
                     'quantity' => (int) $item['quantity'],
                     'high_price' => 0,
+                    'delivery_fee' => $prices[$productId]->has_delivery_fee_override ? (int) $prices[$productId]->delivery_fee : 0,
+                    'delivery_fee_is_override' => (bool) $prices[$productId]->has_delivery_fee_override,
                 ]);
             }
 
@@ -244,7 +271,7 @@ class PublicOrderController extends Controller
         });
 
         return redirect()->route('public-order.track', $order->public_tracking_token)
-            ->with('success', 'La demande est envoyée au partenaire. Il va confirmer les frais de livraison avant la préparation.');
+            ->with('success', 'Ta commande et son montant total ont été envoyés au partenaire.');
     }
 
     public function track(string $trackingToken): View
@@ -254,7 +281,17 @@ class PublicOrderController extends Controller
             ->where('public_tracking_token', $trackingToken)
             ->firstOrFail();
 
-        return view('public-orders.track', compact('order'));
+        $hasCustomerPortalAccount = false;
+        if ($order->costumer?->phone) {
+            try {
+                $phone = CustomerPortalPhone::toE164((string) $order->country_code, (string) $order->costumer->phone);
+                $hasCustomerPortalAccount = CustomerPortalAccount::query()->where('phone_e164', $phone)->exists();
+            } catch (ValidationException) {
+                // Les anciennes commandes peuvent contenir un téléphone non normalisable.
+            }
+        }
+
+        return view('public-orders.track', compact('order', 'hasCustomerPortalAccount'));
     }
 
     public function confirmQuote(string $trackingToken): RedirectResponse

@@ -5,7 +5,7 @@
 <body><main class="wrap">
     @if (session('success'))<section class="card" style="border-color:#9bd2ad;color:#176b37">{{ session('success') }}</section>@endif
     @if ($errors->any())<section class="card" style="border-color:#e6a1a1;color:#a32222">{{ $errors->first() }}</section>@endif
-    <section class="card"><span class="tag">SUIVI DE COMMANDE</span><h1>Commande {{ $order->code }}</h1><p class="muted mb-0">Conserve ce lien pour retrouver l’avancement de ta commande.</p><a href="{{ route('customer-portal.activate',$order->public_tracking_token) }}" style="display:inline-flex;align-items:center;justify-content:center;margin-top:14px;min-height:44px;padding:10px 14px;border:1px solid var(--red);background:var(--red);color:#fff;text-decoration:none;font-weight:750">Créer ou retrouver mon espace client</a></section>
+    <section class="card"><span class="tag">SUIVI DE COMMANDE</span><h1>Commande {{ $order->code }}</h1><p class="muted mb-0">Conserve ce lien pour retrouver l’avancement de ta commande.</p><a href="{{ route('customer-portal.activate',$order->public_tracking_token) }}" style="display:inline-flex;align-items:center;justify-content:center;margin-top:14px;min-height:44px;padding:10px 14px;border:1px solid var(--red);background:var(--red);color:#fff;text-decoration:none;font-weight:750">{{ $hasCustomerPortalAccount ? 'Mon espace client' : 'Créer mon espace client' }}</a></section>
     <section class="card"><h2>Avancement</h2><p class="status">@switch($order->partner_order_status)
         @case('awaiting_delivery_quote') Le partenaire prépare le montant de livraison. @break
         @case('awaiting_customer_confirmation') Confirme le montant final auprès du partenaire. @break
@@ -31,9 +31,18 @@
             </form>
         @endif
     </section>
-    <section class="card"><h2>Produits</h2><ul class="items">@foreach ($order->orderItems as $item)<li>{{ $item->product?->name ?? 'Produit' }} × {{ $item->quantity }} — {{ number_format((float) $item->price * (int) $item->quantity, 0, ',', ' ') }} F</li>@endforeach</ul>
+    <section class="card"><h2>Produits</h2><ul class="items">
+        @foreach ($order->orderItems as $item)
+            <li>
+                {{ $item->product?->name ?? 'Produit' }} × {{ $item->quantity }} — produits {{ number_format((float) $item->price * (int) $item->quantity, 0, ',', ' ') }} F
+                @if ($item->delivery_fee_is_override)
+                    , frais de livraison {{ number_format((float) $item->delivery_fee * (int) $item->quantity, 0, ',', ' ') }} F
+                @endif
+            </li>
+        @endforeach
+    </ul>
         <div class="row"><span>Sous-total produits</span><strong>{{ number_format((float) $order->subtotal, 0, ',', ' ') }} F</strong></div>
-        @if (!is_null($order->tax) && (float) $order->tax > 0)<div class="row"><span>Livraison</span><strong>{{ number_format((float) $order->tax, 0, ',', ' ') }} F</strong></div>@endif
+        <div class="row"><span>Livraison</span><strong>{{ number_format((float) $order->tax, 0, ',', ' ') }} F</strong></div>
         <div class="row total"><span>Total</span><span>{{ number_format((float) ($order->montant ?? ((float) $order->total + (float) $order->tax)), 0, ',', ' ') }} F</span></div>
     </section>
     @if ($order->payments->isNotEmpty())<section class="card"><h2>Paiements</h2>@foreach ($order->payments as $payment)<div class="row"><span>{{ $payment->stage === 'before_delivery' ? 'Avant livraison' : 'À la livraison' }} · {{ $payment->method === 'mobile_money' ? 'Mobile Money' : 'Espèces' }}<br><small class="muted">{{ $payment->status === 'confirmed' ? 'Confirmé' : ($payment->status === 'collected' ? 'Collecté par le livreur, remise au partenaire en attente' : 'En attente de confirmation du partenaire') }}</small></span><strong>{{ number_format((int) $payment->amount, 0, ',', ' ') }} F</strong></div>@endforeach</section>@endif

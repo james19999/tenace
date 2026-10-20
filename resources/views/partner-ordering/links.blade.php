@@ -12,7 +12,6 @@
             <h1 class="h3 mb-1">Liens de commande</h1>
             <p class="text-muted mb-0">Crée une sélection à partager. Le client choisira son pays et les prix configurés s’afficheront.</p>
         </div>
-        <a href="{{ route('partner-ordering.prices', 'TG') }}" class="btn btn-outline-danger">Configurer les prix par pays</a>
     </div>
 
     @if (session('success'))<div class="alert alert-success">{{ session('success') }}</div>@endif

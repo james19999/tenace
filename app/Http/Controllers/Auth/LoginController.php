@@ -61,7 +61,7 @@ class LoginController extends Controller
 
         if ($user->user_type === User::ROLE_PARTNER && $user->country_code) {
             $request->session()->forget('url.intended');
-            return redirect()->route('partner.orders.index');
+            return redirect()->route('partner.dashboard');
         }
 
         return redirect()->intended(RouteServiceProvider::HOME);

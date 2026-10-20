@@ -7,9 +7,9 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 class ProductCountryPrice extends Model
 {
-    protected $fillable = ['product_id', 'country_code', 'price', 'is_available'];
+    protected $fillable = ['product_id', 'country_code', 'price', 'delivery_fee', 'has_delivery_fee_override', 'is_available'];
 
-    protected $casts = ['price' => 'integer', 'is_available' => 'boolean'];
+    protected $casts = ['price' => 'integer', 'delivery_fee' => 'integer', 'has_delivery_fee_override' => 'boolean', 'is_available' => 'boolean'];
 
     public function product(): BelongsTo
     {

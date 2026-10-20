@@ -8,38 +8,290 @@ use App\Models\Costumer;
 use App\Models\Orders\Order;
 use App\Models\Orders\OrderItem;
 use App\Models\ProductCountryPrice;
+use App\Models\PartnerCountryDeliverySetting;
 use App\Models\User;
 use App\Support\WestAfricaShippingCatalog;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Str;
+use Illuminate\Support\Facades\Storage;
 use Illuminate\View\View;
 use Illuminate\Validation\Rule;
 use Gloudemans\Shoppingcart\Facades\Cart;
 
 class PartnerOrderController extends Controller
 {
+    public function couriers(Request $request): View
+    {
+        $partner = $this->partner($request);
+        $couriers = User::query()->with('courierDocuments')
+            ->where('user_type', User::ROLE_LIVREUR)
+            ->where('country_code', strtoupper((string) $partner->country_code))
+            ->orderBy('name')->paginate(20);
+
+        return view('partners.couriers.index', compact('partner', 'couriers'));
+    }
+
+    public function createCourier(Request $request): View
+    {
+        $partner = $this->partner($request);
+
+        return view('partners.couriers.create', [
+            'partner' => $partner,
+            'countryName' => WestAfricaShippingCatalog::countries()[$partner->country_code]['label'] ?? $partner->country_code,
+        ]);
+    }
+
+    public function storeCourier(Request $request): RedirectResponse
+    {
+        $partner = $this->partner($request);
+        $data = $request->validate([
+            'name' => ['required', 'string', 'max:255'],
+            'email' => ['required', 'string', 'email', 'max:255', 'unique:users,email'],
+            'password' => ['required', 'string', 'min:8', 'confirmed'],
+            'phone' => ['required', 'string', 'max:32', 'unique:users,phone'],
+            'adresse' => ['required', 'string', 'max:255'],
+            'emergency_contact_name' => ['required', 'string', 'max:160'],
+            'emergency_contact_phone' => ['required', 'string', 'max:32'],
+            'identity_card_photo' => ['required', 'image', 'mimes:jpg,jpeg,png,webp', 'max:10240'],
+        ]);
+
+        $courier = User::create([
+            'name' => $data['name'],
+            'email' => $data['email'],
+            'password' => Hash::make($data['password']),
+            'phone' => $data['phone'],
+            'adresse' => $data['adresse'],
+            'user_type' => User::ROLE_LIVREUR,
+            'country_code' => strtoupper((string) $partner->country_code),
+            'emergency_contact_name' => $data['emergency_contact_name'],
+            'emergency_contact_phone' => $data['emergency_contact_phone'],
+            'active' => true,
+        ]);
+
+        $courier->courierDocuments()->create([
+            'document_type' => 'identity_card',
+            'path' => $data['identity_card_photo']->store('courier-documents', 'local'),
+            'original_name' => $data['identity_card_photo']->getClientOriginalName(),
+            'uploaded_by' => $partner->id,
+        ]);
+
+        return redirect()->route('partner.couriers.index')->with('success', 'Le compte du livreur a été créé. Il est rattaché à '.$partner->country_code.'.');
+    }
+
+    public function editCourier(Request $request, int $courierId): View
+    {
+        $partner = $this->partner($request);
+        $courier = $this->courierInPartnerCountry($partner, $courierId)->load('courierDocuments');
+
+        return view('partners.couriers.edit', [
+            'partner' => $partner,
+            'courier' => $courier,
+            'countryName' => WestAfricaShippingCatalog::countries()[$partner->country_code]['label'] ?? $partner->country_code,
+        ]);
+    }
+
+    public function updateCourier(Request $request, int $courierId): RedirectResponse
+    {
+        $partner = $this->partner($request);
+        $courier = $this->courierInPartnerCountry($partner, $courierId);
+        $data = $request->validate([
+            'name' => ['required', 'string', 'max:255'],
+            'email' => ['required', 'string', 'email', 'max:255', Rule::unique('users', 'email')->ignore($courier->id)],
+            'password' => ['nullable', 'string', 'min:8', 'confirmed'],
+            'phone' => ['required', 'string', 'max:32', Rule::unique('users', 'phone')->ignore($courier->id)],
+            'adresse' => ['required', 'string', 'max:255'],
+            'emergency_contact_name' => ['required', 'string', 'max:160'],
+            'emergency_contact_phone' => ['required', 'string', 'max:32'],
+            'identity_card_photo' => ['nullable', 'image', 'mimes:jpg,jpeg,png,webp', 'max:10240'],
+        ]);
+
+        $courier->fill([
+            'name' => $data['name'],
+            'email' => $data['email'],
+            'phone' => $data['phone'],
+            'adresse' => $data['adresse'],
+            'emergency_contact_name' => $data['emergency_contact_name'],
+            'emergency_contact_phone' => $data['emergency_contact_phone'],
+        ]);
+        if (! empty($data['password'])) {
+            $courier->password = Hash::make($data['password']);
+        }
+        $courier->save();
+
+        if (! empty($data['identity_card_photo'])) {
+            $courier->courierDocuments()->create([
+                'document_type' => 'identity_card',
+                'path' => $data['identity_card_photo']->store('courier-documents', 'local'),
+                'original_name' => $data['identity_card_photo']->getClientOriginalName(),
+                'uploaded_by' => $partner->id,
+            ]);
+        }
+
+        return redirect()->route('partner.couriers.index')->with('success', 'Les informations du livreur ont été mises à jour.');
+    }
+
+    public function deactivateCourier(Request $request, int $courierId): RedirectResponse
+    {
+        $partner = $this->partner($request);
+        $courier = $this->courierInPartnerCountry($partner, $courierId);
+        abort_if((int) $courier->id === (int) $partner->id, 409, 'Tu ne peux pas désactiver ton propre compte.');
+        $hasActiveDeliveries = Order::query()->where('user_id', $courier->id)
+            ->whereNotIn('status', ['delivered', 'canceled'])
+            ->exists();
+        if ($hasActiveDeliveries) {
+            return back()->with('error', 'Ce livreur a encore des commandes en cours. Termine ou réaffecte-les avant de désactiver son compte.');
+        }
+        $courier->active = false;
+        $courier->save();
+
+        return redirect()->route('partner.couriers.index')->with('success', 'Le compte du livreur a été désactivé. Son historique de livraisons est conservé.');
+    }
+
+    public function reactivateCourier(Request $request, int $courierId): RedirectResponse
+    {
+        $partner = $this->partner($request);
+        $courier = $this->courierInPartnerCountry($partner, $courierId);
+        $courier->active = true;
+        $courier->save();
+
+        return redirect()->route('partner.couriers.index')->with('success', 'Le compte du livreur est de nouveau actif.');
+    }
+
+    public function showCourierDocument(Request $request, int $courierId, int $documentId)
+    {
+        $partner = $this->partner($request);
+        $courier = $this->courierInPartnerCountry($partner, $courierId);
+        $document = $courier->courierDocuments()->findOrFail($documentId);
+        abort_unless(Storage::disk('local')->exists($document->path), 404);
+
+        return response()->file(Storage::disk('local')->path($document->path), [
+            'Content-Disposition' => 'inline; filename="'.addslashes($document->original_name ?: basename($document->path)).'"',
+        ]);
+    }
+
+    private function courierInPartnerCountry(User $partner, int $courierId): User
+    {
+        return User::query()->where('user_type', User::ROLE_LIVREUR)
+            ->where('country_code', strtoupper((string) $partner->country_code))
+            ->findOrFail($courierId);
+    }
+
     public function index(Request $request): View
     {
         $partner = $this->partner($request);
         $orders = Order::query()->with(['costumer', 'user:id,name,phone', 'orderItems.product'])
             ->where('partner_id', $partner->id)
+            ->whereNotIn('partner_order_status', ['delivered', 'canceled'])
             ->latest()
             ->paginate(25);
-
-        $counts = Order::query()->where('partner_id', $partner->id)
-            ->selectRaw("SUM(CASE WHEN partner_order_status IN ('awaiting_delivery_quote', 'awaiting_customer_confirmation', 'awaiting_prepayment') THEN 1 ELSE 0 END) as attention_count")
-            ->selectRaw("SUM(CASE WHEN partner_order_status IN ('preparing', 'ready_for_courier', 'assigned_to_courier', 'handed_to_courier', 'out_for_delivery') THEN 1 ELSE 0 END) as active_count")
-            ->selectRaw("SUM(CASE WHEN partner_order_status = 'delivered' THEN 1 ELSE 0 END) as delivered_count")
-            ->first();
 
         return view('partners.orders.index', [
             'partner' => $partner,
             'countryName' => WestAfricaShippingCatalog::countries()[$partner->country_code]['label'] ?? $partner->country_code,
             'orders' => $orders,
-            'counts' => $counts,
         ]);
+    }
+
+    public function dashboard(Request $request): View
+    {
+        $partner = $this->partner($request);
+        $countryName = WestAfricaShippingCatalog::countries()[$partner->country_code]['label'] ?? $partner->country_code;
+        $revenueBase = Order::query()
+            ->where('partner_id', $partner->id)
+            ->where('partner_order_status', 'delivered')
+            ->whereNotNull('delivered_at');
+        $todayStart = now()->startOfDay();
+        $tomorrow = $todayStart->copy()->addDay();
+        $weekStart = now()->startOfWeek();
+        $nextWeek = $weekStart->copy()->addWeek();
+        $yearStart = now()->startOfYear();
+        $nextYear = $yearStart->copy()->addYear();
+        $revenuePeriods = collect([
+            'today' => ['label' => 'Aujourd’hui', 'start' => $todayStart, 'end' => $tomorrow],
+            'week' => ['label' => 'Cette semaine', 'start' => $weekStart, 'end' => $nextWeek],
+            'year' => ['label' => 'Cette année', 'start' => $yearStart, 'end' => $nextYear],
+        ])->map(function (array $period) use ($revenueBase): array {
+            $totals = (clone $revenueBase)
+                ->where('delivered_at', '>=', $period['start'])
+                ->where('delivered_at', '<', $period['end'])
+                ->selectRaw('COUNT(*) as orders_count, COALESCE(SUM(total), 0) as amount')
+                ->first();
+
+            return $period + ['orders_count' => (int) $totals->orders_count, 'amount' => (int) $totals->amount];
+        });
+
+        $monthlyValues = array_fill(1, 12, 0);
+        $monthlyRows = Order::query()->where('partner_id', $partner->id)->where('partner_order_status', 'delivered')
+            ->where('delivered_at', '>=', $yearStart)->where('delivered_at', '<', $nextYear)
+            ->selectRaw('MONTH(delivered_at) as period_month, COALESCE(SUM(total), 0) as amount')
+            ->groupByRaw('MONTH(delivered_at)')->get();
+        foreach ($monthlyRows as $row) {
+            $monthlyValues[(int) $row->period_month] = (int) $row->amount;
+        }
+        $monthlyChartValues = array_values($monthlyValues);
+        $monthLabels = ['Jan', 'Fév', 'Mar', 'Avr', 'Mai', 'Juin', 'Juil', 'Août', 'Sep', 'Oct', 'Nov', 'Déc'];
+
+        $firstDay = now()->subDays(13)->startOfDay();
+        $dayTotals = Order::query()->where('partner_id', $partner->id)->where('partner_order_status', 'delivered')
+            ->where('delivered_at', '>=', $firstDay)
+            ->selectRaw('DATE(delivered_at) as period_day, COUNT(*) as orders_count')
+            ->groupByRaw('DATE(delivered_at)')->get()->keyBy('period_day');
+        $dailyLabels = [];
+        $dailyOrderCounts = [];
+        for ($day = $firstDay->copy(); $day <= now()->startOfDay(); $day->addDay()) {
+            $dateKey = $day->toDateString();
+            $dailyLabels[] = $day->format('d/m');
+            $dailyOrderCounts[] = (int) ($dayTotals[$dateKey]->orders_count ?? 0);
+        }
+
+        $statusLabels = [
+            'awaiting_delivery_quote' => 'Frais à définir',
+            'awaiting_customer_confirmation' => 'Accord client',
+            'awaiting_prepayment' => 'Paiement attendu',
+            'preparing' => 'En préparation',
+            'ready_for_courier' => 'Prête au retrait',
+            'assigned_to_courier' => 'Livreur affecté',
+            'handed_to_courier' => 'Colis remis',
+            'out_for_delivery' => 'En livraison',
+            'delivered' => 'Livrée',
+            'canceled' => 'Annulée',
+        ];
+        $statusRows = Order::query()->where('partner_id', $partner->id)
+            ->selectRaw('partner_order_status, COUNT(*) as orders_count')
+            ->groupBy('partner_order_status')->get()->keyBy('partner_order_status');
+        $ordersByStatusLabels = [];
+        $ordersByStatusValues = [];
+        foreach ($statusLabels as $status => $label) {
+            $count = (int) ($statusRows[$status]->orders_count ?? 0);
+            if ($count > 0) {
+                $ordersByStatusLabels[] = $label;
+                $ordersByStatusValues[] = $count;
+            }
+        }
+        $attentionCount = (int) ($statusRows['awaiting_delivery_quote']->orders_count ?? 0)
+            + (int) ($statusRows['awaiting_customer_confirmation']->orders_count ?? 0)
+            + (int) ($statusRows['awaiting_prepayment']->orders_count ?? 0);
+        $activeCount = (int) ($statusRows['preparing']->orders_count ?? 0)
+            + (int) ($statusRows['ready_for_courier']->orders_count ?? 0)
+            + (int) ($statusRows['assigned_to_courier']->orders_count ?? 0)
+            + (int) ($statusRows['handed_to_courier']->orders_count ?? 0)
+            + (int) ($statusRows['out_for_delivery']->orders_count ?? 0);
+        $activeCourierCount = User::query()
+            ->where('user_type', User::ROLE_LIVREUR)
+            ->where('country_code', strtoupper((string) $partner->country_code))
+            ->where('active', true)
+            ->count();
+
+        $recentOrders = Order::query()->with('costumer')
+            ->where('partner_id', $partner->id)->latest()->limit(6)->get();
+
+        return view('partners.dashboard', compact(
+            'partner', 'countryName', 'revenuePeriods', 'monthlyChartValues', 'dailyLabels', 'dailyOrderCounts',
+            'ordersByStatusLabels', 'ordersByStatusValues', 'attentionCount', 'activeCount', 'activeCourierCount', 'recentOrders', 'monthLabels'
+        ));
     }
 
     public function show(Request $request, Order $order): View
@@ -62,7 +314,8 @@ class PartnerOrderController extends Controller
         abort_unless($country, 403, 'Le pays de ce compte partenaire n’est pas configuré.');
 
         $validated = $request->validate([
-            'customer_name' => ['required', 'string', 'max:160'],
+            'customer_anonymous' => ['sometimes', 'boolean'],
+            'customer_name' => ['required_unless:customer_anonymous,1', 'nullable', 'string', 'max:160'],
             'customer_phone' => ['required', 'string', 'max:50'],
             'customer_email' => ['nullable', 'email', 'max:160'],
             'address' => ['required', 'string', 'max:180'],
@@ -81,15 +334,22 @@ class PartnerOrderController extends Controller
                 ->where('is_available', true)->whereIn('product_id', $productIds)->lockForUpdate()->get()->keyBy('product_id');
             abort_unless($prices->count() === $productIds->count(), 409, 'Un produit du panier n’est plus proposé dans ton pays. Actualise le catalogue.');
 
+            $deliverySetting = PartnerCountryDeliverySetting::query()
+                ->where('country_code', strtoupper((string) $partner->country_code))->first();
+            $hasFallbackProducts = false;
             $subtotal = 0;
             foreach ($cartItems as $item) {
                 $subtotal += (int) $prices[(int) $item->id]->price * (int) $item->qty;
+                if (! $prices[(int) $item->id]->has_delivery_fee_override) {
+                    $hasFallbackProducts = true;
+                }
             }
             $deliveryFee = (int) $validated['delivery_fee'];
+            $isAnonymousCustomer = (bool) ($validated['customer_anonymous'] ?? false);
             $customer = Costumer::create([
-                'name' => $validated['customer_name'],
+                'name' => $isAnonymousCustomer ? $this->generateAnonymousCustomerName() : $validated['customer_name'],
                 'phone' => trim($validated['customer_phone']),
-                'email' => $validated['customer_email'] ?? null,
+                'email' => $isAnonymousCustomer ? null : ($validated['customer_email'] ?? null),
                 'adresse' => trim($validated['address']).', '.$validated['city'].', '.$partner->country_code,
                 'user_id' => $partner->id,
             ]);
@@ -117,6 +377,7 @@ class PartnerOrderController extends Controller
             $order->shipping_country = $partner->country_code;
             $order->shipping_city = $validated['city'];
             $order->country_code = $partner->country_code;
+            $order->delivery_fee_mode = $hasFallbackProducts ? 'per_order' : 'per_product';
             $order->partner_id = $partner->id;
             $order->payment_timing = $validated['payment_timing'];
             $order->requested_payment_method = $validated['payment_method'];
@@ -131,6 +392,8 @@ class PartnerOrderController extends Controller
                     'price' => (int) $prices[(int) $item->id]->price,
                     'quantity' => (int) $item->qty,
                     'high_price' => 0,
+                    'delivery_fee' => $prices[(int) $item->id]->has_delivery_fee_override ? (int) $prices[(int) $item->id]->delivery_fee : 0,
+                    'delivery_fee_is_override' => (bool) $prices[(int) $item->id]->has_delivery_fee_override,
                 ]);
             }
 
@@ -141,6 +404,15 @@ class PartnerOrderController extends Controller
 
         return redirect()->route('partner.orders.show', $order)
             ->with('success', 'La commande est créée avec les prix de '.$country['label'].'.');
+    }
+
+    private function generateAnonymousCustomerName(): string
+    {
+        do {
+            $name = 'CL-'.Str::upper(Str::random(6));
+        } while (Costumer::query()->where('name', $name)->exists());
+
+        return $name;
     }
 
     public function setDeliveryFee(Request $request, Order $order): RedirectResponse

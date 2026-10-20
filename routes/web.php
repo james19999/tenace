@@ -43,6 +43,7 @@ use App\Http\Controllers\PartnerOrderingSetupController;
 use App\Http\Controllers\PublicOrderController;
 use App\Http\Controllers\CustomerPortalController;
 use App\Http\Controllers\PartnerOrderController;
+use App\Http\Controllers\PartnerMonitoringController;
 use App\Http\Controllers\CourierPublicOrderController;
 use App\Http\Controllers\Expensive\ExpensiveController;
 use App\Http\Controllers\Brouillons\BrouillonController;
@@ -95,6 +96,8 @@ Route::middleware(['auth'])->group(function () {
     // 1. ROUTES STRICTEMENT ADMINISTRATEUR (ADMINUSER)
     // -------------------------------------------------------------------------
     Route::middleware(['role:ADMINUSER'])->group(function () {
+        Route::get('/partner-monitoring', [PartnerMonitoringController::class, 'index'])->name('partner-monitoring.index');
+        Route::get('/partner-monitoring/snapshot', [PartnerMonitoringController::class, 'snapshot'])->name('partner-monitoring.snapshot');
         Route::post('/avis-clients/phone-display', [PublicReviewController::class, 'updatePhoneDisplay'])->name('public-reviews.phone-display');
         // Paramètres & Rôles & Sécurité
         Route::get('settings/config', [DashboarController::class, 'settings'])->name('setting');
@@ -149,9 +152,12 @@ Route::middleware(['auth'])->group(function () {
         Route::get('livreurs/{livreur}', [LivreurController::class, 'show'])->name('livreurs.show');
     });
 
-    Route::middleware(['role:ADMINUSER,MNG'])->prefix('partner-ordering')->name('partner-ordering.')->group(function () {
+    Route::middleware(['role:PT'])->prefix('partner-ordering')->name('partner-ordering.')->group(function () {
         Route::get('/prices/{country}', [PartnerOrderingSetupController::class, 'prices'])->where('country', '[A-Za-z]{2}')->name('prices');
         Route::put('/prices/{country}', [PartnerOrderingSetupController::class, 'savePrices'])->where('country', '[A-Za-z]{2}')->name('prices.save');
+    });
+
+    Route::middleware(['role:ADMINUSER,MNG'])->prefix('partner-ordering')->name('partner-ordering.')->group(function () {
         Route::get('/links', [PartnerOrderingSetupController::class, 'links'])->name('links');
         Route::post('/links', [PartnerOrderingSetupController::class, 'createLink'])->name('links.create');
         Route::put('/links/{link}/toggle', [PartnerOrderingSetupController::class, 'toggleLink'])->name('links.toggle');
@@ -245,7 +251,16 @@ Route::middleware(['auth'])->group(function () {
     });
 
     Route::middleware(['role:PT'])->prefix('partner')->name('partner.')->group(function () {
+        Route::get('/dashboard', [PartnerOrderController::class, 'dashboard'])->name('dashboard');
         Route::get('/orders', [PartnerOrderController::class, 'index'])->name('orders.index');
+        Route::get('/couriers', [PartnerOrderController::class, 'couriers'])->name('couriers.index');
+        Route::get('/couriers/create', [PartnerOrderController::class, 'createCourier'])->name('couriers.create');
+        Route::post('/couriers', [PartnerOrderController::class, 'storeCourier'])->name('couriers.store');
+        Route::get('/couriers/{courier}/edit', [PartnerOrderController::class, 'editCourier'])->whereNumber('courier')->name('couriers.edit');
+        Route::put('/couriers/{courier}', [PartnerOrderController::class, 'updateCourier'])->whereNumber('courier')->name('couriers.update');
+        Route::delete('/couriers/{courier}', [PartnerOrderController::class, 'deactivateCourier'])->whereNumber('courier')->name('couriers.destroy');
+        Route::patch('/couriers/{courier}/reactivate', [PartnerOrderController::class, 'reactivateCourier'])->whereNumber('courier')->name('couriers.restore');
+        Route::get('/couriers/{courier}/documents/{document}', [PartnerOrderController::class, 'showCourierDocument'])->name('couriers.documents.show');
         Route::get('/orders/{order}', [PartnerOrderController::class, 'show'])->name('orders.show');
         Route::post('/orders/{order}/delivery-fee', [PartnerOrderController::class, 'setDeliveryFee'])->name('orders.delivery-fee');
         Route::post('/orders/from-cart', [PartnerOrderController::class, 'storeFromCart'])->name('orders.from-cart');

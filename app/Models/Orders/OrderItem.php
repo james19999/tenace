@@ -18,7 +18,11 @@ class OrderItem extends Model
         'price',
         'quantity',
         'high_price',
+        'delivery_fee',
+        'delivery_fee_is_override',
   ];
+
+    protected $casts = ['delivery_fee_is_override' => 'boolean'];
 
     public function order(){
         return $this->belongsTo(Order::class,'order_id');

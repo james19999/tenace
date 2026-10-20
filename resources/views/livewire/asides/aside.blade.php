@@ -83,10 +83,15 @@
                     </a>
                 </li>
                 <li>
-                    <a href="{{ route('partner-ordering.links') }}" class="{{ $active('partner-ordering.*') }}">
+                    <a href="#adminPartnerOrdersMenu" class="{{ $active('partner-ordering.*', 'partner-monitoring.*') }}" data-toggle="collapse" aria-expanded="{{ request()->routeIs('partner-ordering.*', 'partner-monitoring.*') ? 'true' : 'false' }}">
+                        <span class="caret material-icons">arrow_right</span>
                         <span class="icon material-icons">public</span>
                         <span class="text">Commandes partenaires</span>
                     </a>
+                    <ul class="collapse {{ $active('partner-ordering.*', 'partner-monitoring.*') ? 'show' : '' }}" id="adminPartnerOrdersMenu">
+                        <li><a href="{{ route('partner-ordering.links') }}" class="{{ $active('partner-ordering.*') }}"><span class="icon material-icons">remove</span><span class="text">Liens de commande</span></a></li>
+                        <li><a href="{{ route('partner-monitoring.index') }}" class="{{ $active('partner-monitoring.*') }}"><span class="icon material-icons">remove</span><span class="text">Suivi des partenaires</span></a></li>
+                    </ul>
                 </li>
                 <li>
                     <a href="#adminStockControlMenu" class="{{ $active('stock-control.*') }}" data-toggle="collapse" aria-expanded="{{ request()->routeIs('stock-control.*') ? 'true' : 'false' }}">
@@ -293,9 +298,29 @@
                 </li>
             @elseif (Auth::user()->user_type == 'PT')
                 <li>
+                    <a href="{{ route('partner.dashboard') }}" class="{{ $active('partner.dashboard') }}">
+                        <span class="icon material-icons">dashboard</span>
+                        <span class="text">Tableau de bord</span>
+                    </a>
+                </li>
+                @if (Auth::user()->country_code)
+                    <li>
+                        <a href="{{ route('partner-ordering.prices', Auth::user()->country_code) }}" class="{{ $active('partner-ordering.prices*') }}">
+                            <span class="icon material-icons">local_shipping</span>
+                            <span class="text">Prix et livraison</span>
+                        </a>
+                    </li>
+                @endif
+                <li>
                     <a href="{{ route('partner.orders.index') }}" class="{{ $active('partner.orders.*') }}">
                         <span class="icon material-icons">inventory</span>
                         <span class="text">Commandes à traiter</span>
+                    </a>
+                </li>
+                <li>
+                    <a href="{{ route('partner.couriers.index') }}" class="{{ $active('partner.couriers.*') }}">
+                        <span class="icon material-icons">directions_bike</span>
+                        <span class="text">Livreurs de mon pays</span>
                     </a>
                 </li>
                 <li>

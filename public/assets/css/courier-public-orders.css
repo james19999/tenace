@@ -136,6 +136,26 @@
 .courier-empty { grid-column: 1 / -1; padding: 26px 14px; border: 1px dashed #dce2e9; border-radius: 8px; color: var(--co-muted); text-align: center; }
 .courier-pagination { display: flex; justify-content: flex-end; margin-top: 16px; }
 .courier-pagination .pagination { margin-bottom: 0; }
+.courier-assigned-fold { margin-top: 18px; overflow: hidden; border: 1px solid var(--co-line); border-radius: 10px; background: #fff; }
+.courier-orders-page .courier-assigned-fold > summary { display: flex !important; align-items: center !important; justify-content: flex-start !important; gap: 12px !important; min-height: 68px; padding: 12px 16px; cursor: pointer; list-style: none !important; }
+.courier-orders-page .courier-assigned-fold > summary::marker { content: ""; font-size: 0; }
+.courier-orders-page .courier-assigned-fold > summary::-webkit-details-marker { display: none !important; }
+.courier-orders-page .courier-assigned-title { display: flex !important; flex: 1 1 auto; flex-direction: column !important; align-items: flex-start !important; gap: 3px !important; min-width: 0; }
+.courier-orders-page .courier-assigned-title b { display: block !important; color: var(--co-ink); font-size: 14px; line-height: 1.35; }
+.courier-orders-page .courier-assigned-title small { display: block !important; color: var(--co-muted); font-size: 12px; line-height: 1.4; }
+.courier-orders-page .courier-assigned-count { display: grid; flex: 0 0 30px; place-items: center; width: 30px; height: 30px; border-radius: 50%; background: #f2f4f7; color: var(--co-ink); font-size: 12px; }
+.courier-orders-page .courier-assigned-chevron { display: block !important; flex: 0 0 auto; color: var(--co-muted); transition: transform .18s ease; }
+.courier-orders-page .courier-assigned-fold[open] > summary .courier-assigned-chevron { transform: rotate(180deg); }
+.courier-assigned-fold[open] > summary { border-bottom: 1px solid var(--co-line); }
+.courier-assigned-grid { padding: 14px; }
+
+html[data-app-theme="dark"] .courier-orders-page { --co-ink: var(--app-text, #edf1f5); --co-muted: var(--app-muted, #a8b1bd); --co-line: var(--app-border, #373f4b); --co-red-soft: #392b2d; color: var(--co-ink); }
+html[data-app-theme="dark"] .courier-orders-page :is(.courier-orders-heading,.courier-order-section,.courier-order-card,.courier-assigned-fold,.courier-assigned-fold > summary) { background: var(--app-surface, #1e232b) !important; color: var(--co-ink) !important; border-color: var(--co-line) !important; }
+html[data-app-theme="dark"] .courier-orders-page .courier-assigned-count { background: #303742; color: var(--co-ink); }
+html[data-app-theme="dark"] .courier-orders-page .courier-waiting-note { background: #252b34; color: var(--co-muted); }
+html[data-app-theme="dark"] .courier-orders-page .courier-payment-alert { background: #39331f; color: #f0d18a; border-color: #b99042; }
+html[data-app-theme="dark"] .courier-orders-page .courier-payment-fields label { color: var(--co-ink); }
+html[data-app-theme="dark"] .courier-orders-page .form-control { background: #171b21; color: var(--co-ink); border-color: var(--co-line); }
 
 @media (max-width: 767.98px) {
     .courier-orders-page { padding: 14px 10px 28px !important; }
@@ -143,6 +163,11 @@
     .courier-orders-page .courier-orders-heading h1 { font-size: 25px; line-height: 1.25 !important; }
     .courier-orders-page .courier-orders-heading p { font-size: 13px; line-height: 1.45 !important; }
     .courier-order-section { margin-bottom: 14px; padding: 14px 11px; border-radius: 9px; }
+    .courier-assigned-fold { margin-top: 13px; border-radius: 8px; }
+    .courier-orders-page .courier-assigned-fold > summary { min-height: 62px; gap: 9px !important; padding: 11px 12px; }
+    .courier-orders-page .courier-assigned-title b { font-size: 13px; }
+    .courier-orders-page .courier-assigned-title small { font-size: 11px; }
+    .courier-assigned-grid { padding: 9px; }
     .courier-section-heading { display: flex !important; position: static !important; align-items: flex-start; flex-direction: column; gap: 6px; margin: 0 3px 15px !important; }
     .courier-orders-page .courier-section-heading h2 { margin-top: 3px !important; font-size: 18px; line-height: 1.3 !important; }
     .courier-orders-grid { grid-template-columns: minmax(0, 1fr); gap: 10px; }

@@ -40,7 +40,8 @@
         <div id="cart-empty" class="empty">Ajoute les produits qui t’intéressent.</div>
         <div id="cart-items"></div>
         <div class="cart-total"><span>Sous-total produits</span><span id="cart-subtotal">0 F</span></div>
-        <div class="notice">Le partenaire de ton pays confirmera les frais de livraison. Tu verras le montant final et pourras le valider avant la préparation et le paiement.</div>
+        <div class="cart-total"><span>Frais de livraison</span><span id="cart-delivery">0 F</span></div>
+        <div class="cart-total"><span>Total à payer</span><span id="cart-total">0 F</span></div>
 
         <form id="order-form" method="POST" action="{{ $link ? route('public-order.store', $link->token) : route('public-order.app.store') }}" class="mt-3">
             @csrf
@@ -77,15 +78,21 @@
     const cartItems = document.getElementById('cart-items');
     const cartEmpty = document.getElementById('cart-empty');
     const subtotalNode = document.getElementById('cart-subtotal');
+    const deliveryNode = document.getElementById('cart-delivery');
+    const totalNode = document.getElementById('cart-total');
     const basket = new Map();
     let catalog = [];
+    let deliveryMode = 'priority';
+    let orderDeliveryFee = 0;
     const money = (amount) => new Intl.NumberFormat('fr-FR').format(amount) + ' F';
 
     function renderBasket() {
         cartItems.replaceChildren();
         let subtotal = 0;
+        let delivery = 0;
         basket.forEach((entry, id) => {
             subtotal += entry.product.price * entry.quantity;
+            if (entry.product.delivery_fee_override) delivery += entry.product.delivery_fee * entry.quantity;
             const row = document.createElement('div');
             row.className = 'cart-row';
             const name = document.createElement('strong'); name.className = 'cart-product-name'; name.textContent = entry.product.name;
@@ -96,12 +103,15 @@
             const plus = document.createElement('button'); plus.type = 'button'; plus.textContent = '+'; plus.setAttribute('aria-label', 'Ajouter une unité');
             plus.addEventListener('click', () => changeQuantity(id, 1));
             controls.append(minus, count, plus);
-            const line = document.createElement('span'); line.className = 'line-total'; line.textContent = money(entry.product.price * entry.quantity);
+            const line = document.createElement('span'); line.className = 'line-total'; line.textContent = money((entry.product.price + (entry.product.delivery_fee_override ? entry.product.delivery_fee : 0)) * entry.quantity);
             row.append(name, controls, line); cartItems.append(row);
         });
+        if (basket.size > 0 && Array.from(basket.values()).some((entry) => !entry.product.delivery_fee_override)) delivery += orderDeliveryFee;
         cartEmpty.hidden = basket.size > 0;
         cartSection.hidden = !country.value;
         subtotalNode.textContent = money(subtotal);
+        deliveryNode.textContent = money(delivery);
+        totalNode.textContent = money(subtotal + delivery);
     }
 
     function changeQuantity(id, delta) {
@@ -126,12 +136,17 @@
         const heading = document.createElement('h3'); heading.textContent = product.name; card.append(heading);
         if (product.description) { const description = document.createElement('p'); description.textContent = product.description.slice(0, 100); card.append(description); }
         const price = document.createElement('div'); price.className = 'price'; price.textContent = money(product.price); card.append(price);
+        const delivery = document.createElement('p');
+        delivery.textContent = product.delivery_fee_override
+            ? 'Frais de livraison : ' + money(product.delivery_fee)
+            : 'Frais de livraison : ' + money(orderDeliveryFee);
+        card.append(delivery);
         const button = document.createElement('button'); button.type = 'button'; button.textContent = 'Ajouter au panier'; button.addEventListener('click', () => addProduct(product)); card.append(button);
         return card;
     }
 
     country.addEventListener('change', async () => {
-        basket.clear(); catalog = []; featuredProducts.replaceChildren(); suggestionProducts.replaceChildren();
+        basket.clear(); catalog = []; deliveryMode = 'priority'; orderDeliveryFee = 0; featuredProducts.replaceChildren(); suggestionProducts.replaceChildren();
         featuredSection.hidden = true; suggestionsSection.hidden = true; renderBasket();
         if (country.value) localStorage.setItem('tenacos_public_country', country.value);
         else localStorage.removeItem('tenacos_public_country');
@@ -146,6 +161,8 @@
             data.cities.forEach((name, index) => { const option = document.createElement('option'); option.value = name; option.textContent = name; if (index === 0) option.selected = true; city.append(option); });
             city.disabled = false;
             catalog = data.products;
+            deliveryMode = data.delivery?.mode || 'per_product';
+            orderDeliveryFee = Number(data.delivery?.order_fee || 0);
             const featured = catalog.filter((item) => item.featured);
             const suggestions = catalog.filter((item) => !item.featured);
             featured.forEach((item) => featuredProducts.append(productCard(item)));

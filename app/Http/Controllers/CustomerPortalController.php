@@ -10,12 +10,15 @@ use App\Support\CustomerPortalPhone;
 use App\Support\WestAfricaShippingCatalog;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Cookie;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\View\View;
 
 class CustomerPortalController extends Controller
 {
+    private const REMEMBER_COOKIE = 'tenacos_customer_portal_account';
+
     public function index(Request $request): View
     {
         $account = $this->currentAccount($request);
@@ -100,6 +103,7 @@ class CustomerPortalController extends Controller
         RateLimiter::clear($key);
         $request->session()->regenerate();
         $request->session()->put('customer_portal_account_id', $account->id);
+        $this->rememberAccount($account);
 
         $pendingCustomerId = $request->session()->get('customer_portal_pending_customer_id');
         $pendingPhone = $request->session()->get('customer_portal_pending_phone');
@@ -115,6 +119,7 @@ class CustomerPortalController extends Controller
     {
         $request->session()->forget('customer_portal_account_id');
         $request->session()->regenerateToken();
+        Cookie::queue(Cookie::forget(self::REMEMBER_COOKIE));
 
         return redirect()->route('customer-portal.index');
     }
@@ -158,6 +163,7 @@ class CustomerPortalController extends Controller
         $account->customers()->syncWithoutDetaching([$order->costumer_id]);
         $request->session()->regenerate();
         $request->session()->put('customer_portal_account_id', $account->id);
+        $this->rememberAccount($account);
         $request->session()->forget(['customer_portal_pending_customer_id', 'customer_portal_pending_phone']);
 
         return redirect()->route('customer-portal.index')->with('success', 'Ton espace client est créé. Tu peux maintenant retrouver tes commandes ici.');
@@ -166,8 +172,27 @@ class CustomerPortalController extends Controller
     private function currentAccount(Request $request): ?CustomerPortalAccount
     {
         $accountId = $request->session()->get('customer_portal_account_id');
+        $account = $accountId ? CustomerPortalAccount::with('customers')->find($accountId) : null;
 
-        return $accountId ? CustomerPortalAccount::with('customers')->find($accountId) : null;
+        if (! $account) {
+            $rememberedAccountId = $request->cookie(self::REMEMBER_COOKIE);
+            $account = $rememberedAccountId
+                ? CustomerPortalAccount::with('customers')->find($rememberedAccountId)
+                : null;
+
+            if ($account) {
+                $request->session()->put('customer_portal_account_id', $account->id);
+            } elseif ($rememberedAccountId) {
+                Cookie::queue(Cookie::forget(self::REMEMBER_COOKIE));
+            }
+        }
+
+        return $account;
+    }
+
+    private function rememberAccount(CustomerPortalAccount $account): void
+    {
+        Cookie::queue(Cookie::forever(self::REMEMBER_COOKIE, (string) $account->id));
     }
 
     private function trackedOrder(string $trackingToken): Order
