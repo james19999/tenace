@@ -2,7 +2,6 @@
 
 @section('content')
 @include('partners.partials.styles')
-@php($isPartner = auth()->user()->user_type === \App\Models\User::ROLE_PARTNER)
 @php($isAdmin = auth()->user()->user_type === \App\Models\User::ROLE_ADMIN)
 <div class="container-fluid py-3 partner-portal partner-prices-page">
     <div class="d-flex flex-wrap justify-content-between align-items-center mb-4">

@@ -25,14 +25,18 @@ class PartnerOrderingSetupController extends Controller
             $countries = [$country => $countries[$country]];
         }
 
+        $isPartner = $request->user()->user_type === User::ROLE_PARTNER;
         $products = Product::query()
             ->with(['countryPrices' => fn ($query) => $query->where('country_code', $country)])
+            ->when($isPartner, fn ($query) => $query->whereHas('countryPrices', fn ($prices) => $prices
+                ->where('country_code', $country)
+                ->where('is_available', true)))
             ->orderBy('name')
             ->paginate(50)
             ->withQueryString();
         $deliverySetting = PartnerCountryDeliverySetting::query()->firstOrNew(['country_code' => $country]);
 
-        return view('partner-ordering.prices', compact('country', 'countries', 'products', 'deliverySetting'));
+        return view('partner-ordering.prices', compact('country', 'countries', 'products', 'deliverySetting', 'isPartner'));
     }
 
     public function savePrices(Request $request, string $country): RedirectResponse

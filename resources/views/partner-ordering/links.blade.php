@@ -8,12 +8,14 @@
     .partner-country-shortcuts>div:first-child { display:grid; gap:4px; }
     .partner-country-shortcuts>div:first-child strong { color:var(--app-text,#202938); font-size:13px; }
     .partner-country-shortcuts>div:first-child small { color:var(--app-muted,#748093); font-size:10px; }
-    .partner-country-shortcut { display:inline-flex; align-items:center; gap:7px; min-height:38px; padding:8px 12px; border:1px solid var(--app-primary,#147d25); background:var(--app-primary,#147d25); color:#fff; font-size:11px; font-weight:750; text-decoration:none; white-space:nowrap; }
+    .partner-country-shortcut { display:inline-flex; align-items:center; justify-content:center; gap:7px; min-height:38px; padding:8px 12px; border:1px solid var(--app-primary,#147d25); background:var(--app-primary,#147d25); color:#fff!important; font-size:11px; font-weight:750; text-decoration:none; white-space:nowrap; }
+    .partner-country-shortcut span,.partner-country-shortcut .material-icons { color:#fff!important; font-size:inherit; line-height:1.2; }
     .partner-country-shortcut .material-icons { font-size:17px; }
     .partner-country-shortcut:hover,.partner-country-shortcut:focus-visible { filter:brightness(.92); color:#fff!important; text-decoration:none; }
+    .partner-country-shortcut:hover span,.partner-country-shortcut:focus-visible span { color:#fff!important; }
     html[data-app-theme="dark"] .partner-country-shortcuts { background:var(--app-surface); border-color:var(--app-border); }
     html[data-app-theme="dark"] .partner-country-shortcuts>div:first-child strong { color:var(--app-text); }
-    html[data-app-theme="dark"] .partner-country-shortcut { color:#fff; }
+    html[data-app-theme="dark"] .partner-country-shortcut,html[data-app-theme="dark"] .partner-country-shortcut span { color:#fff!important; }
     @media (max-width: 700px) { .partner-country-shortcuts { align-items:stretch; flex-direction:column; } .partner-country-shortcut { justify-content:center; } }
     .partner-link-actions { display:flex; align-items:center; justify-content:flex-end; flex-wrap:wrap; gap:6px; min-width:245px; }
     .partner-link-actions a, .partner-link-actions button { display:inline-flex; align-items:center; justify-content:center; gap:5px; min-height:34px; padding:6px 9px; border:1px solid var(--app-border,#e3e8ef); background:var(--app-surface,#fff); color:var(--app-primary,#147d25); font-size:11px; font-weight:700; text-decoration:none; cursor:pointer; }
