@@ -318,8 +318,30 @@
         // 2. Gestion du Service Worker et de la notification de mise à jour
         if ('serviceWorker' in navigator) {
             window.addEventListener('load', () => {
-                navigator.serviceWorker.register('/sw.js?v=1.0.2', { updateViaCache: 'none' }).then((registration) => {
-                    function promptUserForUpdate(waitingWorker) {
+                navigator.serviceWorker.register('/sw.js?v=1.0.3', { updateViaCache: 'none' }).then((registration) => {
+                    let promptedUpdateVersion = null;
+
+                    async function getWorkerVersion(worker) {
+                        try {
+                            const response = await fetch(worker.scriptURL, { cache: 'no-store', credentials: 'same-origin' });
+                            if (!response.ok) throw new Error('Impossible de lire la version du service worker.');
+                            const bytes = await response.arrayBuffer();
+                            const digest = await crypto.subtle.digest('SHA-256', bytes);
+                            return Array.from(new Uint8Array(digest), (byte) => byte.toString(16).padStart(2, '0')).join('');
+                        } catch (_) {
+                            return new URL(worker.scriptURL).searchParams.get('v') || worker.scriptURL;
+                        }
+                    }
+
+                    async function promptUserForUpdate(waitingWorker) {
+                        if (!waitingWorker || waitingWorker.state !== 'installed' || !navigator.serviceWorker.controller) return;
+                        const updateVersion = await getWorkerVersion(waitingWorker);
+                        if (promptedUpdateVersion === updateVersion) return;
+                        promptedUpdateVersion = updateVersion;
+                        try {
+                            if (localStorage.getItem('pwa_update_dismissed_version') === updateVersion) return;
+                        } catch (_) {}
+
                         const updateBanner = document.getElementById('pwa-update-banner');
                         const btnUpdate = document.getElementById('pwa-btn-update');
                         const btnDismissUpdate = document.getElementById('pwa-btn-dismiss-update');
@@ -342,6 +364,9 @@
 
                         if (btnDismissUpdate) {
                             btnDismissUpdate.onclick = () => {
+                                try {
+                                    localStorage.setItem('pwa_update_dismissed_version', updateVersion);
+                                } catch (_) {}
                                 if (updateBanner) {
                                     updateBanner.style.display = 'none';
                                 }
@@ -356,7 +381,7 @@
 
                         newWorker.addEventListener('statechange', () => {
                             if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
-                                promptUserForUpdate(newWorker);
+                                promptUserForUpdate(registration.waiting || newWorker);
                             }
                         });
                     });

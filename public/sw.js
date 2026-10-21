@@ -1,4 +1,4 @@
-const CACHE_NAME = 'tenace-pwa-v1.0.1';
+const CACHE_NAME = 'tenace-pwa-v1.0.3';
 
 const PRECACHE_ASSETS = [
   '/icons/icon-192x192.png',
