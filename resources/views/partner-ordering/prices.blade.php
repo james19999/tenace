@@ -74,9 +74,20 @@
                 </div>
             </section>
         @endif
+        <form method="GET" action="{{ route('partner-ordering.prices', $country) }}" class="card shadow-sm mb-3">
+            <div class="card-body d-flex flex-wrap align-items-end" style="gap: .75rem">
+                <div class="form-group mb-0 flex-grow-1" style="min-width: 240px; max-width: 520px">
+                    <label for="product-search">Rechercher un produit</label>
+                    <input class="form-control" id="product-search" type="search" name="search" value="{{ request('search') }}" placeholder="Nom du produit…">
+                </div>
+                @if ($stockPartner && ! $isPartner)<input type="hidden" name="partner_id" value="{{ $stockPartner->id }}">@endif
+                @if (request()->filled('search'))<a class="btn btn-link" href="{{ route('partner-ordering.prices', array_filter([$country, 'partner_id' => $stockPartner && ! $isPartner ? $stockPartner->id : null])) }}">Effacer</a>@endif
+            </div>
+        </form>
+
         <div class="card shadow-sm">
             <div class="table-responsive">
-                <table class="table table-hover mb-0">
+                <table class="table table-hover mb-0" id="partner-products-table">
                     <thead class="thead-light"><tr><th>Produit</th><th style="width: 200px">Prix de vente (FCFA)</th>@if($isAdmin)<th style="min-width: 280px">Prix selon quantité</th>@endif @if($showPartnerStock)<th style="width: 150px">Approvisionné</th><th style="width: 125px">En réserve</th><th style="width: 125px">Chez les livreurs</th>@endif @if($canReplenishPartnerStock)<th style="width: 180px">Réapprovisionnement</th>@endif<th style="width: 180px">Disponible dans le pays</th></tr></thead>
                     <tbody>
                     @forelse ($products as $product)
@@ -140,10 +151,59 @@
                     </tbody>
                 </table>
             </div>
-            @if ($products->hasPages())<div class="card-footer">{{ $products->links() }}</div>@endif
+            <div class="card-footer" id="partner-products-pagination">@if ($products->hasPages()){{ $products->links() }}@endif</div>
             <div class="card-footer text-right"><button class="btn btn-danger" form="partner-prices-form" type="submit">{{ $isPartner ? 'Enregistrer les réglages' : ($isAdmin ? 'Enregistrer les prix et disponibilités' : 'Enregistrer les disponibilités') }}</button></div>
         </div>
 </div>
+<script>
+(() => {
+    const form = document.querySelector('#product-search')?.form;
+    const input = document.querySelector('#product-search');
+    if (!form || !input) return;
+
+    let timer;
+    let controller;
+    const refreshProducts = async () => {
+        controller?.abort();
+        controller = new AbortController();
+        const url = new URL(form.action, window.location.href);
+        const params = new URLSearchParams(new FormData(form));
+        params.forEach((value, key) => {
+            if (value) url.searchParams.set(key, value);
+            else url.searchParams.delete(key);
+        });
+        if (!input.value.trim()) url.searchParams.delete('search');
+        form.setAttribute('aria-busy', 'true');
+        try {
+            const response = await fetch(url, { headers: { 'X-Requested-With': 'XMLHttpRequest', 'Accept': 'text/html' }, signal: controller.signal });
+            if (!response.ok) return;
+            const parsedDocument = new DOMParser().parseFromString(await response.text(), 'text/html');
+            const nextBody = parsedDocument.querySelector('#partner-products-table tbody');
+            const currentBody = window.document.querySelector('#partner-products-table tbody');
+            const nextPagination = parsedDocument.querySelector('#partner-products-pagination');
+            const currentPagination = window.document.querySelector('#partner-products-pagination');
+            if (!nextBody || !currentBody || !nextPagination || !currentPagination) return;
+            currentBody.replaceWith(nextBody);
+            currentPagination.innerHTML = nextPagination.innerHTML;
+            window.history.replaceState({}, '', url);
+        } catch (error) {
+            if (error.name !== 'AbortError') console.error('La recherche des produits a échoué.', error);
+        } finally {
+            form.removeAttribute('aria-busy');
+        }
+    };
+
+    input.addEventListener('input', () => {
+        window.clearTimeout(timer);
+        timer = window.setTimeout(refreshProducts, 300);
+    });
+    form.addEventListener('submit', (event) => {
+        event.preventDefault();
+        window.clearTimeout(timer);
+        refreshProducts();
+    });
+})();
+</script>
 @if ($canReplenishPartnerStock)
 <script>
 document.querySelectorAll('.partner-replenish-quantity').forEach((input) => {

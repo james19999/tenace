@@ -43,6 +43,7 @@ class PartnerOrderingSetupController extends Controller
         $showPartnerStock = $isPartner || $canReplenishPartnerStock;
         $products = Product::query()
             ->with(['countryPrices' => fn ($query) => $query->where('country_code', $country)->with('quantityTiers')])
+            ->when($request->filled('search'), fn ($query) => $query->where('name', 'like', '%'.trim((string) $request->query('search')).'%'))
             ->when($isPartner, fn ($query) => $query->whereHas('countryPrices', fn ($prices) => $prices
                 ->where('country_code', $country)
                 ->where('is_available', true)))
