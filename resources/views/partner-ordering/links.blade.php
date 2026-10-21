@@ -48,6 +48,7 @@
     .partner-links-table th:nth-child(5),.partner-links-table td:nth-child(5) { width:12%; }
     .partner-links-table th:nth-child(6),.partner-links-table td:nth-child(6) { width:28%; }
     .partner-links-table td { white-space:normal; overflow-wrap:anywhere; vertical-align:middle; }
+    .partner-link-country-name { display:block; min-width:0; max-width:100%; white-space:normal; overflow-wrap:anywhere; }
     .partner-link-title { overflow-wrap:anywhere; }
     @media(max-width:767.98px) {
         .partner-links-page { padding-left:12px; padding-right:12px; }
@@ -69,9 +70,10 @@
         .partner-links-table,.partner-links-table tbody { display:block; width:100%; }
         .partner-links-table tbody tr { display:block; margin:0 0 12px; padding:7px 12px; border:1px solid var(--app-border,#e3e8ef); background:var(--app-surface,#fff); }
         .partner-links-table tbody tr:last-child { margin-bottom:0; }
-        .partner-links-table tbody td { display:grid; grid-template-columns:minmax(88px, .7fr) minmax(0,1.3fr); align-items:start; gap:10px; padding:9px 0; border:0; border-bottom:1px solid var(--app-border,#e3e8ef); white-space:normal; overflow-wrap:anywhere; }
+        .partner-links-table tbody td { display:grid; grid-template-columns:minmax(72px, .55fr) minmax(0,1.45fr); align-items:start; gap:8px; padding:9px 0; border:0; border-bottom:1px solid var(--app-border,#e3e8ef); white-space:normal; overflow-wrap:anywhere; }
         .partner-links-table tbody td:last-child { border-bottom:0; }
         .partner-links-table tbody td[data-label]::before { content:attr(data-label); color:var(--app-muted,#748093); font-size:11px; font-weight:750; }
+        .partner-links-table tbody td[data-label="Pays"] .partner-link-country-name { grid-column:2; line-height:1.35; }
         .partner-links-table .partner-link-public-url { max-width:none; }
         .partner-links-table .partner-link-actions { grid-column:1/-1; }
         .partner-links-table tbody td[data-label="Actions"] { grid-template-columns:1fr; }
@@ -138,7 +140,7 @@
                 <tbody>
                 @forelse ($links as $link)
                     <tr>
-                        <td data-label="Pays">{{ $countries[$link->country_code]['label'] ?? 'À rattacher' }}</td><td data-label="Lien"><strong class="partner-link-title">{{ $link->title }}</strong><small class="d-block text-muted">Créé par {{ $link->creator?->name ?? 'Compte supprimé' }}</small></td>
+                        <td data-label="Pays"><span class="partner-link-country-name">{{ $countries[$link->country_code]['label'] ?? 'À rattacher' }}</span></td><td data-label="Lien"><strong class="partner-link-title">{{ $link->title }}</strong><small class="d-block text-muted">Créé par {{ $link->creator?->name ?? 'Compte supprimé' }}</small></td>
                         <td data-label="Produits">{{ $link->products_count }}</td><td data-label="Commandes">{{ $link->orders_count }}</td>
                         <td data-label="État">{{ $link->isAvailable() ? 'Actif' : ($link->is_active ? 'Expiré' : 'Désactivé') }}</td>
                         <td data-label="Actions"><div class="partner-link-actions">
