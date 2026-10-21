@@ -31,10 +31,17 @@ class PublicOrderController extends Controller
         $portalAccount = $this->portalAccount($request);
         $savedCustomer = $portalAccount?->customers()->orderByDesc('costumers.id')->first();
         $savedProfiles = $this->portalProfiles($request);
+        $countries = WestAfricaShippingCatalog::countries();
+        $initialCountry = strtoupper((string) $request->query('country', ''));
+        if (! isset($countries[$initialCountry])) {
+            $initialCountry = '';
+        }
 
         return view('public-orders.show', [
             'link' => null,
-            'countries' => WestAfricaShippingCatalog::countries(),
+            'countries' => $countries,
+            'initialCountry' => $initialCountry,
+            'hasPortalAccount' => $portalAccount !== null,
             'savedCustomer' => $savedCustomer,
             'savedProfiles' => $savedProfiles,
             'savedAddress' => $savedProfiles->first()?->checkout_address ?? $this->portalAddress($savedCustomer),
@@ -52,6 +59,8 @@ class PublicOrderController extends Controller
         return view('public-orders.show', [
             'link' => $link,
             'countries' => WestAfricaShippingCatalog::countries(),
+            'initialCountry' => strtoupper((string) $link->country_code),
+            'hasPortalAccount' => $portalAccount !== null,
             'savedCustomer' => $savedCustomer,
             'savedProfiles' => $savedProfiles,
             'savedAddress' => $savedProfiles->first()?->checkout_address ?? $this->portalAddress($savedCustomer),
