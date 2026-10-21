@@ -24,7 +24,7 @@
         <div><span class="brand">TENACOS · BOUTIQUE</span><h1>{{ $link?->title ?: 'Catalogue TENACOS' }}</h1><p>Choisis ton pays pour voir tous les produits et les prix disponibles près de chez toi.</p></div>
         <div class="install-area" style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;justify-content:flex-end">
             <a href="{{ route('public-order.app', array_filter(['country' => $link?->country_code ?: ($initialCountry ?: null)])) }}" style="display:inline-flex;align-items:center;justify-content:center;min-height:44px;padding:10px 14px;border:1px solid var(--line);background:#fff;color:var(--ink);text-decoration:none;font-weight:700">Voir les produits disponibles</a>
-            @if($hasPortalAccount)<a href="{{ route('customer-portal.index') }}" style="display:inline-flex;align-items:center;justify-content:center;min-height:44px;padding:10px 14px;border:1px solid var(--line);background:#fff;color:var(--ink);text-decoration:none;font-weight:700">Mon espace client</a>@endif
+            <a href="{{ route('customer-portal.index') }}" style="display:inline-flex;align-items:center;justify-content:center;min-height:44px;padding:10px 14px;border:1px solid var(--line);background:#fff;color:var(--ink);text-decoration:none;font-weight:700">{{ $hasPortalAccount ? 'Mon espace client' : 'Mon espace client / créer mon compte' }}</a>
             <button type="button" id="install-app" class="install" hidden>Installer l’application</button>
             <div id="install-help" class="install-help" role="status" hidden></div>
         </div>
@@ -248,12 +248,13 @@ if (window.jQuery && jQuery.fn.select2) {
 
     if (appInstalled) {
         hideInstallControls();
-    } else if (!window.isSecureContext) {
-        installHelp.textContent = 'Installation indisponible sur cette adresse locale HTTP. Ouvre cette page avec une adresse HTTPS pour installer TENACOS.';
-        installHelp.hidden = false;
     } else if (isIOS && isSafari) {
         installButton.hidden = false;
         installButton.textContent = 'Comment installer ?';
+    }
+    if (!appInstalled && !window.isSecureContext) {
+        installHelp.textContent = 'Installation indisponible sur cette adresse locale HTTP. Ouvre cette page avec une adresse HTTPS pour installer TENACOS.';
+        installHelp.hidden = false;
     }
 
     window.addEventListener('beforeinstallprompt', (event) => {
@@ -321,7 +322,7 @@ if (window.jQuery && jQuery.fn.select2) {
             return;
         }
 
-        if (!isIOS || !isSafari) return;
+        if (!(isIOS && isSafari)) return;
         installHelp.textContent = 'Dans Safari, ouvre le menu Partager puis choisis « Sur l’écran d’accueil » pour installer l’application.';
         installHelp.hidden = false;
     });

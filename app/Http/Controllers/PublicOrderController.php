@@ -84,7 +84,7 @@ class PublicOrderController extends Controller
                 ['platform' => 'webapp', 'id' => url('/commander')],
             ],
             'start_url' => route('public-order.app'),
-            'scope' => url('/').'/',
+            'scope' => rtrim(url('/'), '/').'/',
             'display' => 'standalone',
             'orientation' => 'portrait-primary',
             'background_color' => '#ffffff',
