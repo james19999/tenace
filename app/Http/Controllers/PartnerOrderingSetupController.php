@@ -167,6 +167,14 @@ class PartnerOrderingSetupController extends Controller
                         $record->price = (int) $validated['prices'][$productId];
                     }
 
+                    if ($isPartner && array_key_exists($productId, $validated['delivery_fees'] ?? [])) {
+                        $specificFee = $validated['delivery_fees'][$productId] ?? null;
+                        $record->has_delivery_fee_override = $specificFee !== null && $specificFee !== '';
+                        $record->delivery_fee = $record->has_delivery_fee_override ? (int) $specificFee : 0;
+                    }
+                    $record->is_available = (bool) ($validated['available'][$productId] ?? false);
+                    $record->save();
+
                     if ($isAdmin && array_key_exists($productId, $validated['tier_configured'] ?? [])) {
                         $tiers = collect($validated['quantity_prices'][$productId] ?? [])
                             ->filter(fn (array $tier) => isset($tier['min_quantity'], $tier['unit_price']) && $tier['min_quantity'] !== '' && $tier['unit_price'] !== '')
@@ -177,14 +185,6 @@ class PartnerOrderingSetupController extends Controller
                         $record->quantityTiers()->delete();
                         if ($tiers) $record->quantityTiers()->createMany($tiers);
                     }
-
-                    if ($isPartner && array_key_exists($productId, $validated['delivery_fees'] ?? [])) {
-                        $specificFee = $validated['delivery_fees'][$productId] ?? null;
-                        $record->has_delivery_fee_override = $specificFee !== null && $specificFee !== '';
-                        $record->delivery_fee = $record->has_delivery_fee_override ? (int) $specificFee : 0;
-                    }
-                    $record->is_available = (bool) ($validated['available'][$productId] ?? false);
-                    $record->save();
                 }
 
             });
