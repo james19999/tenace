@@ -47,7 +47,7 @@
     .partner-links-table th:nth-child(3),.partner-links-table td:nth-child(3),.partner-links-table th:nth-child(4),.partner-links-table td:nth-child(4) { width:9%; }
     .partner-links-table th:nth-child(5),.partner-links-table td:nth-child(5) { width:12%; }
     .partner-links-table th:nth-child(6),.partner-links-table td:nth-child(6) { width:28%; }
-    .partner-links-table td { overflow-wrap:anywhere; }
+    .partner-links-table td { white-space:normal; overflow-wrap:anywhere; vertical-align:middle; }
     .partner-link-title { overflow-wrap:anywhere; }
     @media(max-width:767.98px) {
         .partner-links-page { padding-left:12px; padding-right:12px; }
