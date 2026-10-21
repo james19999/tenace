@@ -99,7 +99,7 @@
                                             @endforeach
                                         </div>
                                         <button class="btn btn-outline-primary btn-sm mt-2" type="button" data-add-tier>Ajouter un palier</button>
-                                        <small class="d-block text-muted mt-1">Prix unitaire appliqué à chaque article dès cette quantité. Les paliers doivent être dégressifs. La quantité du dernier palier fixe le maximum commandable.</small>
+                                        <small class="d-block text-muted mt-1">Ce prix unitaire s’applique dès cette quantité et jusqu’au palier suivant. Le dernier palier continue de s’appliquer aux quantités supérieures.</small>
                                     </details>
                                 </td>
                             @endif

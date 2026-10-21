@@ -209,13 +209,6 @@ class PublicOrderController extends Controller
             return back()->withErrors(['items' => 'Un produit sélectionné n’est plus disponible dans ce pays.'])->withInput();
         }
 
-        foreach ($quantities as $productId => $item) {
-            $maximumQuantity = (int) $prices[$productId]->quantityTiers->max('min_quantity');
-            if ($maximumQuantity > 0 && (int) $item['quantity'] > $maximumQuantity) {
-                return back()->withErrors(['items' => 'La quantité maximale commandable pour '.$prices[$productId]->product->name.' est de '.$maximumQuantity.' unité(s).'])->withInput();
-            }
-        }
-
         $trackingToken = (string) Str::uuid();
         $order = DB::transaction(function () use ($validated, $countryCode, $partner, $link, $prices, $quantities, $trackingToken, $portalAccount, $orderCustomer): Order {
             $subtotal = 0;

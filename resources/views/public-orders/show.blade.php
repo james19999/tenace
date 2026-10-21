@@ -94,21 +94,6 @@ if (window.jQuery && jQuery.fn.select2) {
         if (!eligible.length) return Number(product.price) || 0;
         return Number(eligible.reduce((best, tier) => Number(tier.min_quantity) > Number(best.min_quantity) ? tier : best).unit_price) || Number(product.price) || 0;
     };
-    const maxQuantityForProduct = (product) => {
-        const configured = (product.quantity_prices || []).reduce((maximum, tier) => Math.max(maximum, Number(tier.min_quantity) || 0), 0);
-        return configured || 500;
-    };
-
-    function updateProductButtons() {
-        document.querySelectorAll('[data-add-product]').forEach((button) => {
-            const product = catalog.find((item) => Number(item.id) === Number(button.dataset.addProduct));
-            const quantity = basket.get(Number(button.dataset.addProduct))?.quantity || 0;
-            const reachedLimit = product && quantity >= maxQuantityForProduct(product);
-            button.disabled = Boolean(reachedLimit);
-            button.textContent = reachedLimit ? 'Quantité maximale atteinte' : 'Ajouter au panier';
-        });
-    }
-
     function renderBasket() {
         cartItems.replaceChildren();
         let subtotal = 0;
@@ -120,13 +105,12 @@ if (window.jQuery && jQuery.fn.select2) {
             row.className = 'cart-row';
             const name = document.createElement('div'); name.className = 'cart-product-name';
             const productName = document.createElement('strong'); productName.textContent = entry.product.name; name.append(productName);
-            if ((entry.product.quantity_prices || []).length) { const maxNote = document.createElement('small'); maxNote.textContent = `Maximum commandable : ${maxQuantityForProduct(entry.product)} unité(s)`; name.append(maxNote); }
+            if ((entry.product.quantity_prices || []).length) { const tierNote = document.createElement('small'); tierNote.textContent = 'Tarif unitaire calculé selon la quantité'; name.append(tierNote); }
             const controls = document.createElement('div'); controls.className = 'qty';
             const minus = document.createElement('button'); minus.type = 'button'; minus.textContent = '−'; minus.setAttribute('aria-label', 'Retirer une unité');
             minus.addEventListener('click', () => changeQuantity(id, -1));
             const count = document.createElement('span'); count.textContent = entry.quantity;
             const plus = document.createElement('button'); plus.type = 'button'; plus.textContent = '+'; plus.setAttribute('aria-label', 'Ajouter une unité');
-            plus.disabled = entry.quantity >= maxQuantityForProduct(entry.product);
             plus.addEventListener('click', () => changeQuantity(id, 1));
             controls.append(minus, count, plus);
             const line = document.createElement('span'); line.className = 'line-total';
@@ -136,13 +120,11 @@ if (window.jQuery && jQuery.fn.select2) {
         cartEmpty.hidden = basket.size > 0;
         cartSection.hidden = !country.value;
         subtotalNode.textContent = money(subtotal);
-        updateProductButtons();
     }
 
     function changeQuantity(id, delta) {
         const entry = basket.get(Number(id));
         if (!entry) return;
-        if (delta > 0 && entry.quantity >= maxQuantityForProduct(entry.product)) return;
         entry.quantity += delta;
         if (entry.quantity <= 0) basket.delete(Number(id));
         renderBasket();
@@ -150,7 +132,6 @@ if (window.jQuery && jQuery.fn.select2) {
 
     function addProduct(product) {
         const entry = basket.get(product.id);
-        if (entry && entry.quantity >= maxQuantityForProduct(product)) return;
         if (entry) entry.quantity += 1;
         else basket.set(product.id, { product, quantity: 1 });
         renderBasket();
