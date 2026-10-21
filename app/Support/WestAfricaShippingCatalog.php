@@ -38,6 +38,17 @@ final class WestAfricaShippingCatalog
             }
         }
 
+        // Keep both Congo country codes available even when the host's ICU
+        // country list is incomplete or does not provide localized labels.
+        $countries['CG'] = [
+            'label' => 'Congo',
+            'cities' => ['Brazzaville', 'Pointe-Noire', 'Dolisie', 'Nkayi', 'Ouesso'],
+        ];
+        $countries['CD'] = [
+            'label' => 'République démocratique du Congo',
+            'cities' => ['Kinshasa', 'Lubumbashi', 'Goma', 'Kisangani', 'Bukavu', 'Matadi'],
+        ];
+
         uasort($countries, fn (array $left, array $right): int => strcmp($left['label'], $right['label']));
 
         return $countries;
