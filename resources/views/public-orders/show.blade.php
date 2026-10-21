@@ -31,18 +31,23 @@
 <body>
 <main class="wrap">
     <header class="head">
-        <div><span class="brand">TENACOS · BOUTIQUE</span><h1>{{ $link?->title ?: 'Catalogue TENACOS' }}</h1><p>Choisis ton pays pour voir tous les produits et les prix disponibles près de chez toi.</p></div>
-        <div class="install-area" style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;justify-content:flex-end">
-            <a href="{{ route('public-order.app', array_filter(['country' => $link?->country_code ?: ($initialCountry ?: null)])) }}" style="display:inline-flex;align-items:center;justify-content:center;min-height:44px;padding:10px 14px;border:1px solid var(--line);background:#fff;color:var(--ink);text-decoration:none;font-weight:700">Voir les produits disponibles</a>
-            <a href="{{ route('customer-portal.index') }}" style="display:inline-flex;align-items:center;justify-content:center;min-height:44px;padding:10px 14px;border:1px solid var(--line);background:#fff;color:var(--ink);text-decoration:none;font-weight:700">{{ $hasPortalAccount ? 'Mon espace client' : 'Mon espace client / créer mon compte' }}</a>
-            <button type="button" id="install-app" class="install">Installer l’application</button>
-            <div id="install-help" class="install-help" role="status" hidden></div>
-        </div>
+        <div><span class="brand">TENACOS · BOUTIQUE</span><h1>{{ $link?->title ?: 'Catalogue TENACOS' }}</h1><p>{{ $link ? 'Choisis les produits dont tu as besoin et envoie ta commande.' : 'Choisis ton pays pour voir tous les produits et les prix disponibles près de chez toi.' }}</p></div>
+        @unless ($link)
+            <div class="install-area" style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;justify-content:flex-end">
+                <a href="{{ route('customer-portal.index') }}" style="display:inline-flex;align-items:center;justify-content:center;min-height:44px;padding:10px 14px;border:1px solid var(--line);background:#fff;color:var(--ink);text-decoration:none;font-weight:700">{{ $hasPortalAccount ? 'Mon espace client' : 'Mon espace client / créer mon compte' }}</a>
+                <button type="button" id="install-app" class="install">Installer l’application</button>
+                <div id="install-help" class="install-help" role="status" hidden></div>
+            </div>
+        @endunless
     </header>
 
-    <section class="controls" aria-label="Destination">
-        <div class="field"><label for="country">Pays de livraison</label><select id="country" class="js-country-search" @disabled($link?->country_code)>@unless($link?->country_code)<option value="">Choisir un pays</option>@endunless @foreach ($countries as $code => $country)<option value="{{ $code }}" @selected(strtoupper((string) $link?->country_code) === $code || (! $link?->country_code && old('country_code') === $code))>{{ $country['label'] }}</option>@endforeach</select></div>
-    </section>
+    @if ($link)
+        <select id="country" class="hidden-inputs" aria-hidden="true" tabindex="-1" disabled><option value="{{ strtoupper((string) $link->country_code) }}" selected>{{ $link->country_code }}</option></select>
+    @else
+        <section class="controls" aria-label="Destination">
+            <div class="field"><label for="country">Pays de livraison</label><select id="country" class="js-country-search"><option value="" @selected(! $initialCountry && ! old('country_code'))>Choisir un pays</option>@foreach ($countries as $code => $country)<option value="{{ $code }}" @selected(old('country_code') === $code || $initialCountry === $code)>{{ $country['label'] }}</option>@endforeach</select></div>
+        </section>
+    @endif
 
     @if ($errors->any())<div class="errors"><strong>Vérifie ta commande :</strong><ul>@foreach ($errors->all() as $error)<li>{{ $error }}</li>@endforeach</ul></div>@endif
     <div id="catalog-status" class="status">Sélectionne ton pays pour afficher le catalogue.</div>
@@ -84,7 +89,7 @@
 <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
 <script>
-if (window.jQuery && jQuery.fn.select2) {
+if (window.jQuery && jQuery.fn.select2 && document.getElementById('country')?.classList.contains('js-country-search')) {
     jQuery('#country').select2({width:'100%', placeholder:'Rechercher un pays…', language:{noResults:()=>'Aucun pays trouvé',searching:()=>'Recherche…'}});
 }
 (() => {
@@ -234,6 +239,9 @@ if (window.jQuery && jQuery.fn.select2) {
     let installPrompt = window.__tenacosInstallPrompt || null;
     const installButton = document.getElementById('install-app');
     const installHelp = document.getElementById('install-help');
+    const showCatalogInstall = @json(! $link);
+    if ('serviceWorker' in navigator) navigator.serviceWorker.register('/sw.js').catch(() => {});
+    if (!installButton || !installHelp) return;
     const displayMode = window.matchMedia('(display-mode: standalone)');
     const isIOS = /iphone|ipad|ipod/i.test(navigator.userAgent)
         || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
@@ -253,7 +261,7 @@ if (window.jQuery && jQuery.fn.select2) {
     const installedPwaIdSet = new Set(installedPwaIds.map(normalizePwaId));
 
     function hideInstallControls() {
-        installButton.hidden = appInstalled;
+        installButton.hidden = appInstalled || !showCatalogInstall;
         installButton.disabled = false;
         installButton.textContent = 'Installer l’application';
         installHelp.hidden = true;
@@ -268,10 +276,10 @@ if (window.jQuery && jQuery.fn.select2) {
         hideInstallControls();
     }
 
-    if (appInstalled) {
+    if (appInstalled || !showCatalogInstall) {
         hideInstallControls();
     } else {
-        installButton.hidden = false;
+        installButton.hidden = !showCatalogInstall;
         installButton.textContent = 'Installer l’application';
     }
     if (!appInstalled && !window.isSecureContext) {
@@ -367,9 +375,6 @@ if (window.jQuery && jQuery.fn.select2) {
         installHelp.hidden = false;
     });
 
-    if ('serviceWorker' in navigator) {
-        navigator.serviceWorker.register('/sw.js').catch(() => {});
-    }
 })();
 </script>
 </body>
