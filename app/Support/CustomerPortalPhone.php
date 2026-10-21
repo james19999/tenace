@@ -16,6 +16,12 @@ final class CustomerPortalPhone
         return self::DIAL_CODES;
     }
 
+    /** @return array<string, array{label: string, cities: list<string>}> */
+    public static function countries(): array
+    {
+        return array_intersect_key(WestAfricaShippingCatalog::countries(), self::DIAL_CODES);
+    }
+
     public static function toE164(string $countryCode, string $phone): string
     {
         $dialCode = self::DIAL_CODES[strtoupper($countryCode)] ?? null;

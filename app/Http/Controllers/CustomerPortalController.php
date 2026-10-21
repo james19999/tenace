@@ -8,7 +8,6 @@ use App\Models\Costumer;
 use App\Models\Orders\Order;
 use App\Models\Orders\OrderItem;
 use App\Support\CustomerPortalPhone;
-use App\Support\WestAfricaShippingCatalog;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Cookie;
@@ -26,7 +25,7 @@ class CustomerPortalController extends Controller
         if (! $account) {
             return view('customer-portal.index', [
                 'account' => null,
-                'countries' => WestAfricaShippingCatalog::countries(),
+                'countries' => CustomerPortalPhone::countries(),
                 'dialCodes' => CustomerPortalPhone::dialCodes(),
             ]);
         }
@@ -57,7 +56,7 @@ class CustomerPortalController extends Controller
         return view('customer-portal.index', [
             'account' => $account,
             'profiles' => $profiles,
-            'countries' => WestAfricaShippingCatalog::countries(),
+            'countries' => CustomerPortalPhone::countries(),
             'orders' => $orders,
             'recentProducts' => $recentProducts,
             'profile' => $profile,
@@ -85,7 +84,7 @@ class CustomerPortalController extends Controller
     public function login(Request $request): RedirectResponse
     {
         $validated = $request->validate([
-            'country_code' => ['required', 'string', 'size:2', 'in:'.implode(',', array_keys(WestAfricaShippingCatalog::countries()))],
+            'country_code' => ['required', 'string', 'size:2', 'in:'.implode(',', array_keys(CustomerPortalPhone::dialCodes()))],
             'phone' => ['required', 'string', 'max:50'],
             'password' => ['required', 'string', 'max:200'],
         ]);

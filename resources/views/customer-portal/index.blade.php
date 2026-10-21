@@ -80,7 +80,7 @@
                 <h2>Se connecter</h2><p>Utilisez le numéro indiqué lors de votre commande.</p>
                 <form method="POST" action="{{ route('customer-portal.login') }}">@csrf
                     <div class="field-row">
-                        <div class="field"><label for="country_code">Pays</label><select id="country_code" class="js-country-search" name="country_code" required>@foreach($countries as $code=>$country)<option value="{{ $code }}" @selected(old('country_code')===$code)>{{ $country['label'] }} (+{{ $dialCodes[$code] }})</option>@endforeach</select></div>
+                        <div class="field"><label for="country_code">Pays</label><select id="country_code" class="js-country-search" name="country_code" required>@foreach($countries as $code=>$country)<option value="{{ $code }}" @selected(old('country_code')===$code)>{{ $country['label'] }} (+{{ $dialCodes[$code] ?? '' }})</option>@endforeach</select></div>
                         <div class="field"><label for="phone">Téléphone</label><input id="phone" name="phone" type="tel" autocomplete="tel" value="{{ old('phone') }}" required></div>
                     </div>
                     <div class="field"><label for="password">Mot de passe</label><input id="password" name="password" type="password" autocomplete="current-password" required></div>
