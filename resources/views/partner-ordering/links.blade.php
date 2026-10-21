@@ -70,7 +70,7 @@
         .partner-links-table,.partner-links-table tbody { display:block; width:100%; }
         .partner-links-table tbody tr { display:block; margin:0 0 12px; padding:7px 12px; border:1px solid var(--app-border,#e3e8ef); background:var(--app-surface,#fff); }
         .partner-links-table tbody tr:last-child { margin-bottom:0; }
-        .partner-links-table tbody td { display:grid; grid-template-columns:minmax(72px, .55fr) minmax(0,1.45fr); align-items:start; gap:8px; padding:9px 0; border:0; border-bottom:1px solid var(--app-border,#e3e8ef); white-space:normal; overflow-wrap:anywhere; }
+        .partner-links-table tbody td { display:grid; width:100%!important; grid-template-columns:minmax(72px, .55fr) minmax(0,1.45fr); align-items:start; gap:8px; padding:9px 0; border:0; border-bottom:1px solid var(--app-border,#e3e8ef); white-space:normal; overflow-wrap:anywhere; }
         .partner-links-table tbody td:last-child { border-bottom:0; }
         .partner-links-table tbody td[data-label]::before { content:attr(data-label); color:var(--app-muted,#748093); font-size:11px; font-weight:750; }
         .partner-links-table tbody td[data-label="Pays"] .partner-link-country-name { grid-column:2; line-height:1.35; }
