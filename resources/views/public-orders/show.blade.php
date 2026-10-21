@@ -12,6 +12,9 @@
         window.__tenacosInstallPrompt = null;
         window.addEventListener('beforeinstallprompt', (event) => {
             event.preventDefault();
+            if (!window.matchMedia('(display-mode: standalone)').matches && navigator.standalone !== true) {
+                localStorage.removeItem('pwa_installed');
+            }
             window.__tenacosInstallPrompt = event;
         });
     </script>
@@ -235,7 +238,7 @@ if (window.jQuery && jQuery.fn.select2) {
     const isIOS = /iphone|ipad|ipod/i.test(navigator.userAgent)
         || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
     const isSafari = /^((?!chrome|chromium|android).)*safari/i.test(navigator.userAgent);
-    let appInstalled = displayMode.matches || navigator.standalone === true;
+    let appInstalled = displayMode.matches || navigator.standalone === true || localStorage.getItem('pwa_installed') === 'true';
     let installPending = false;
     let installPendingTimer = null;
     const installedPwaIds = @json([rtrim(url('/'), '/').'/', url('/commander')]);
@@ -247,6 +250,7 @@ if (window.jQuery && jQuery.fn.select2) {
 
     function markAppInstalled() {
         appInstalled = true;
+        localStorage.setItem('pwa_installed', 'true');
         installPending = false;
         window.clearTimeout(installPendingTimer);
         installPrompt = null;
@@ -265,8 +269,10 @@ if (window.jQuery && jQuery.fn.select2) {
     }
 
     window.addEventListener('beforeinstallprompt', (event) => {
-        if (appInstalled || !window.isSecureContext) return;
+        if (displayMode.matches || navigator.standalone === true || !window.isSecureContext) return;
         event.preventDefault();
+        appInstalled = false;
+        localStorage.removeItem('pwa_installed');
         installPrompt = event;
         installButton.textContent = 'Installer l’application';
         installButton.hidden = false;
