@@ -64,7 +64,7 @@ class LivreurController extends Controller
                  'password' => ['required', 'string', 'min:8', 'confirmed'],
                  'adresse' => ['required', 'string'],
                  'phone' => ['required', 'string', 'max:32', 'unique:users,phone'],
-                 'user_type' => ['required', 'in:LVS,PT,VDS,CSA,MNG,SCR,CALLCENTER,ADMINUSER,COMPTABLE'],
+                 'user_type' => ['required', 'in:LVS,VDS,CSA,MNG,SCR,CALLCENTER,ADMINUSER,COMPTABLE'],
                  'country_code' => ['nullable', Rule::in(array_keys(WestAfricaShippingCatalog::countries()))],
                  'emergency_contact_name' => ['nullable', 'string', 'max:160'],
                  'emergency_contact_phone' => ['nullable', 'string', 'max:32'],

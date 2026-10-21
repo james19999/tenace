@@ -255,6 +255,10 @@ Route::middleware(['auth'])->group(function () {
         Route::get('virement/auth/user/list', [VirementController::class, 'virementverify'])->name('virementverify');
     });
 
+    Route::post('/parthners', [BrouillonController::class, 'storePartner'])
+        ->middleware('role:ADMINUSER')
+        ->name('parthners.store');
+
     Route::middleware(['role:PT'])->prefix('partner')->name('partner.')->group(function () {
         Route::get('/dashboard', [PartnerOrderController::class, 'dashboard'])->name('dashboard');
         Route::get('/orders', [PartnerOrderController::class, 'index'])->name('orders.index');

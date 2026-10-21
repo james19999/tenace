@@ -8,7 +8,10 @@ use App\Models\Orders\Order;
 use Illuminate\Http\Request;
 use Illuminate\Support\Carbon;
 use App\Http\Controllers\Controller;
+use App\Support\WestAfricaShippingCatalog;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Hash;
+use Illuminate\Validation\Rule;
 
 
 class BrouillonController extends Controller
@@ -51,7 +54,34 @@ class BrouillonController extends Controller
       {
           $users=User::where('user_type','PT')->latest()->get();
 
-          return view('parthners.index',compact('users'));
+          $countries = WestAfricaShippingCatalog::countries();
+
+          return view('parthners.index',compact('users', 'countries'));
+      }
+
+      public function storePartner(Request $request)
+      {
+          $data = $request->validate([
+              'name' => ['required', 'string', 'max:255'],
+              'email' => ['required', 'string', 'email', 'max:255', 'unique:users,email'],
+              'phone' => ['required', 'string', 'max:32', 'unique:users,phone'],
+              'adresse' => ['required', 'string', 'max:255'],
+              'country_code' => ['required', Rule::in(array_keys(WestAfricaShippingCatalog::countries()))],
+              'password' => ['required', 'string', 'min:8', 'confirmed'],
+          ]);
+
+          User::create([
+              'name' => $data['name'],
+              'email' => $data['email'],
+              'phone' => $data['phone'],
+              'adresse' => $data['adresse'],
+              'country_code' => strtoupper($data['country_code']),
+              'password' => Hash::make($data['password']),
+              'user_type' => User::ROLE_PARTNER,
+          ]);
+
+          return redirect()->to(route('parthners', [], false))
+              ->with('messages', 'Le compte partenaire a été créé.');
       }
 
 

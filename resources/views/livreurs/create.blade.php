@@ -65,7 +65,6 @@
 
                         <select name="user_type" id="user_type" class="form-control" required>
                              <option value="LVS" @selected(old('user_type', 'LVS') === 'LVS')>Livreur</option>
-                             <option value="PT" @selected(old('user_type') === 'PT')>Partenaire</option>
                              <option value="VDS" @selected(old('user_type') === 'VDS')>Vendeur</option>
                              <option value="CSA" @selected(old('user_type') === 'CSA')>Caissier</option>
                              <option value="MNG" @selected(old('user_type') === 'MNG')>Manager</option>
