@@ -427,6 +427,7 @@
                         <span class="text">Dashboard</span>
                     </a>
                 </li>
+                <li><a href="{{ route('dg-appointments.index') }}" class="{{ $active('dg-appointments.*') }}"><span class="icon material-icons">event</span><span class="text">Rendez-vous DG</span></a></li>
                 <li>
                     <a href="{{ route('partner-ordering.links') }}" class="{{ $active('partner-ordering.*') }}">
                         <span class="icon material-icons">public</span>
@@ -606,6 +607,7 @@
                         <span class="text">Dashboard</span>
                     </a>
                 </li>
+                <li><a href="{{ route('dg-appointments.index') }}" class="{{ $active('dg-appointments.*') }}"><span class="icon material-icons">event</span><span class="text">Rendez-vous DG</span></a></li>
                 <li>
                     <a href="{{ route('product') }}" class="{{ $active('product') }}">
                         <span class="icon material-icons">store</span>
@@ -688,6 +690,7 @@
                     </a>
                 </li>
             @elseif (Auth::user()->user_type == 'CALLCENTER')
+                <li><a href="{{ route('dg-appointments.index') }}" class="{{ $active('dg-appointments.*') }}"><span class="icon material-icons">event</span><span class="text">Rendez-vous DG</span></a></li>
                 <li>
                     <a href="{{ route('costumer.follow-up') }}" class="{{ $active('costumer.follow-up') }}">
                         <span class="icon material-icons">support_agent</span>

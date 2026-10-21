@@ -448,6 +448,30 @@ class DashboarController extends Controller
     public function settings(Request $request){
         $settings = Setting::limit(1)->get();
         $appTheme = AppThemeSetting::currentTheme();
+        $dgCalendar = \App\Models\DgAppointmentCalendar::with('dg')->first();
+        $dgAvailabilities = $dgCalendar
+            ? \App\Models\DgAppointmentAvailability::where('dg_user_id', $dgCalendar->dg_user_id)->orderBy('weekday')->orderBy('starts_at')->get()->groupBy('weekday')
+            : collect();
+        $appointmentToday = now()->toDateString();
+        $appointmentNow = now()->format('H:i:s');
+        $dgUpcomingAppointmentQuery = \App\Models\DgAppointment::query()->when($dgCalendar, fn ($query) => $query->where('dg_user_id', $dgCalendar->dg_user_id));
+        $dgPastAppointmentQuery = \App\Models\DgAppointment::query()->when($dgCalendar, fn ($query) => $query->where('dg_user_id', $dgCalendar->dg_user_id));
+        $dgUpcomingAppointmentQuery->where(function ($query) use ($appointmentToday, $appointmentNow) {
+            $query->whereDate('appointment_date', '>', $appointmentToday)
+                ->orWhere(fn ($sameDay) => $sameDay->whereDate('appointment_date', $appointmentToday)->where('ends_at', '>', $appointmentNow));
+        });
+        $dgPastAppointmentQuery->where(function ($query) use ($appointmentToday, $appointmentNow) {
+            $query->whereDate('appointment_date', '<', $appointmentToday)
+                ->orWhere(fn ($sameDay) => $sameDay->whereDate('appointment_date', $appointmentToday)->where('ends_at', '<=', $appointmentNow));
+        });
+        $dgUpcomingAppointmentCount = $dgCalendar ? (clone $dgUpcomingAppointmentQuery)->count() : 0;
+        $dgPastAppointmentCount = $dgCalendar ? (clone $dgPastAppointmentQuery)->count() : 0;
+        $dgUpcomingAppointments = $dgCalendar
+            ? (clone $dgUpcomingAppointmentQuery)->with('requester')->orderBy('appointment_date')->orderBy('starts_at')->get()
+            : collect();
+        $dgPastAppointments = $dgCalendar
+            ? (clone $dgPastAppointmentQuery)->with('requester')->orderByDesc('appointment_date')->orderByDesc('starts_at')->get()
+            : collect();
 
         // Recherche utilisateurs pour la gestion des rôles
         $search = $request->input('user_search');
@@ -460,7 +484,7 @@ class DashboarController extends Controller
         }
         $users = $usersQuery->orderBy('name')->paginate(5, ['*'], 'users_page');
 
-        return view('dashboard.settings', compact('settings', 'users', 'search', 'appTheme'));
+        return view('dashboard.settings', compact('settings', 'users', 'search', 'appTheme', 'dgCalendar', 'dgAvailabilities', 'dgUpcomingAppointmentCount', 'dgPastAppointmentCount', 'dgUpcomingAppointments', 'dgPastAppointments'));
     }
 
     public function updateTheme(Request $request)

@@ -45,6 +45,7 @@ use App\Http\Controllers\CustomerPortalController;
 use App\Http\Controllers\PartnerOrderController;
 use App\Http\Controllers\PartnerMonitoringController;
 use App\Http\Controllers\CourierPublicOrderController;
+use App\Http\Controllers\DgAppointmentController;
 use App\Http\Controllers\FedaPayWebhookController;
 use App\Http\Controllers\Expensive\ExpensiveController;
 use App\Http\Controllers\Brouillons\BrouillonController;
@@ -104,6 +105,8 @@ Route::middleware(['auth'])->group(function () {
         Route::post('/avis-clients/phone-display', [PublicReviewController::class, 'updatePhoneDisplay'])->name('public-reviews.phone-display');
         // Paramètres & Rôles & Sécurité
         Route::get('settings/config', [DashboarController::class, 'settings'])->name('setting');
+        Route::post('settings/dg-appointments', [DgAppointmentController::class, 'updateSettings'])->name('dg-appointments.settings.update');
+        Route::get('settings/dg-appointments/count', [DgAppointmentController::class, 'upcomingCount'])->name('dg-appointments.settings.count');
         Route::put('settings/theme', [DashboarController::class, 'updateTheme'])->name('setting-theme');
         Route::post('settinginfo/config', [DashboarController::class, 'settinginfo'])->name('setting-info');
         Route::put('settinginfo/update/config/{id}', [DashboarController::class, 'settinginfoupdate'])->name('setting-update');
@@ -239,6 +242,9 @@ Route::middleware(['auth'])->group(function () {
 
     // Dossiers du service client : agents SAV et encadrement autorisés.
     Route::middleware(['role:ADMINUSER,MNG,SCR,CALLCENTER'])->group(function () {
+        Route::get('dg-appointments', [DgAppointmentController::class, 'index'])->name('dg-appointments.index');
+        Route::get('dg-appointments/available-slots', [DgAppointmentController::class, 'availableSlots'])->name('dg-appointments.slots');
+        Route::post('dg-appointments', [DgAppointmentController::class, 'store'])->name('dg-appointments.store');
         Route::get('service-client/cases', CustomerServiceCases::class)->name('service-cases.index');
         Route::get('service-client/cases/{caseId}', CustomerServiceCases::class)->whereNumber('caseId')->name('service-cases.show');
         Route::get('service-client/attachments/{attachment}', [CustomerServiceCaseAttachmentController::class, 'download'])->name('service-cases.attachments.download');

@@ -11,6 +11,7 @@
         <button type="button" class="settings-tab is-active" role="tab" aria-selected="true" aria-controls="settings-company" id="tab-company" data-settings-tab="company"><span class="material-icons">business</span>Entreprise</button>
         <button type="button" class="settings-tab" role="tab" aria-selected="false" aria-controls="settings-theme" id="tab-theme" data-settings-tab="theme"><span class="material-icons">palette</span>Apparence</button>
         <button type="button" class="settings-tab" role="tab" aria-selected="false" aria-controls="settings-users" id="tab-users" data-settings-tab="users"><span class="material-icons">manage_accounts</span>Utilisateurs et rôles</button>
+        <button type="button" class="settings-tab" role="tab" aria-selected="false" aria-controls="settings-appointments" id="tab-appointments" data-settings-tab="appointments"><span class="material-icons">event_available</span>Rendez-vous du DG <span id="dg-appointments-badge" class="badge badge-danger ml-1" data-appointment-counter="upcoming" data-count-url="{{ route('dg-appointments.settings.count') }}" style="{{ ($dgUpcomingAppointmentCount ?? 0) > 0 ? '' : 'display:none' }}">{{ $dgUpcomingAppointmentCount > 99 ? '99+' : $dgUpcomingAppointmentCount }}</span></button>
     </nav>
 
     <section class="config-tab-panel is-active" id="settings-company" role="tabpanel" aria-labelledby="tab-company" data-settings-panel="company">
@@ -224,6 +225,80 @@
     </div>
 </section>
     </section>
+<section class="config-tab-panel" id="settings-appointments" role="tabpanel" aria-labelledby="tab-appointments" data-settings-panel="appointments" hidden>
+    <nav class="nav nav-pills mt-4 mb-3" aria-label="Calendrier du DG">
+        <button type="button" class="nav-link active" data-appointment-settings-tab="availability">Disponibilités</button>
+        <button type="button" class="nav-link" data-appointment-settings-tab="list">Rendez-vous planifiés <span class="badge badge-light ml-1">{{ $dgUpcomingAppointmentCount }}</span></button>
+    </nav>
+    <div data-appointment-settings-panel="availability">
+    <div class="card shadow mt-4">
+        <div class="card-header bg-white"><h5 class="mb-0 font-weight-bold"><span class="material-icons align-middle mr-2" style="color:var(--app-primary)">event_available</span>Disponibilités du DG</h5></div>
+        <div class="card-body">
+            @if(session('appointment_settings_success'))<div class="alert alert-success">{{ session('appointment_settings_success') }}</div>@endif
+            @if($errors->any())<div class="alert alert-danger">{{ $errors->first() }}</div>@endif
+            @if($dgCalendar)<p><strong>Agenda configuré pour :</strong> {{ $dgCalendar->dg->name }}</p>@else<p class="alert alert-info">En enregistrant ces horaires, ton compte administrateur sera défini comme le DG de l’agenda.</p>@endif
+            <p class="text-muted">Ajoute une ou plusieurs plages par jour. Les équipes choisiront librement le début et la fin du rendez-vous dans les périodes encore disponibles.</p>
+            <form method="POST" action="{{ route('dg-appointments.settings.update') }}">
+                @csrf
+                @php
+                    $weekdays = ['Dimanche', 'Lundi', 'Mardi', 'Mercredi', 'Jeudi', 'Vendredi', 'Samedi'];
+                @endphp
+                @foreach($weekdays as $weekday => $label)
+                    @php
+                        $dayRanges = old("days.$weekday.ranges");
+                        if ($dayRanges === null) {
+                            $dayRanges = $dgAvailabilities->get($weekday, collect())->map(function ($range) {
+                                return ['starts_at' => substr($range->starts_at, 0, 5), 'ends_at' => substr($range->ends_at, 0, 5)];
+                            })->values()->all();
+                        }
+                    @endphp
+                    <div class="border-bottom py-3">
+                        <div class="d-flex justify-content-between align-items-center mb-2"><strong>{{ $label }}</strong><button type="button" class="btn btn-sm btn-outline-primary" data-add-availability-range="{{ $weekday }}"><span class="material-icons align-middle" style="font-size:16px">add</span> Ajouter une plage</button></div>
+                        <div class="dg-availability-ranges" data-availability-day="{{ $weekday }}">
+                            @foreach($dayRanges as $rangeIndex => $range)
+                                <div class="row align-items-center mb-2 dg-availability-range">
+                                    <div class="col-5 col-md-4"><label class="sr-only">Début {{ $label }}</label><input class="form-control" type="time" name="days[{{ $weekday }}][ranges][{{ $rangeIndex }}][starts_at]" value="{{ $range['starts_at'] ?? '' }}"></div>
+                                    <div class="col-5 col-md-4"><label class="sr-only">Fin {{ $label }}</label><input class="form-control" type="time" name="days[{{ $weekday }}][ranges][{{ $rangeIndex }}][ends_at]" value="{{ $range['ends_at'] ?? '' }}"></div>
+                                    <div class="col-2"><button type="button" class="btn btn-sm btn-outline-danger" data-remove-availability-range aria-label="Supprimer cette plage"><span class="material-icons" style="font-size:18px">delete</span></button></div>
+                                </div>
+                            @endforeach
+                        </div>
+                        <small class="text-muted">Sans plage horaire, le DG est considéré indisponible ce jour.</small>
+                    </div>
+                @endforeach
+                <template id="dg-availability-range-template"><div class="row align-items-center mb-2 dg-availability-range"><div class="col-5 col-md-4"><label class="sr-only">Début</label><input class="form-control" type="time" name="days[__DAY__][ranges][__INDEX__][starts_at]"></div><div class="col-5 col-md-4"><label class="sr-only">Fin</label><input class="form-control" type="time" name="days[__DAY__][ranges][__INDEX__][ends_at]"></div><div class="col-2"><button type="button" class="btn btn-sm btn-outline-danger" data-remove-availability-range aria-label="Supprimer cette plage"><span class="material-icons" style="font-size:18px">delete</span></button></div></div></template>
+                <div class="d-flex justify-content-end mt-3"><button type="submit" class="btn btn-primary"><span class="material-icons align-middle mr-1">save</span>Enregistrer les disponibilités</button></div>
+            </form>
+        </div>
+    </div>
+    </div>
+    <div data-appointment-settings-panel="list" hidden>
+        <nav class="nav nav-pills mb-3" aria-label="État des rendez-vous du DG">
+            <button type="button" class="nav-link active" data-dg-appointment-list-tab="upcoming">À venir <span class="badge badge-light ml-1" data-appointment-counter="upcoming">{{ $dgUpcomingAppointmentCount }}</span></button>
+            <button type="button" class="nav-link" data-dg-appointment-list-tab="past">Passés <span class="badge badge-light ml-1" data-appointment-counter="past">{{ $dgPastAppointmentCount }}</span></button>
+        </nav>
+        <div data-dg-appointment-list-panel="upcoming">
+        <div class="card shadow mt-4">
+            <div class="card-header bg-white"><h5 class="mb-0 font-weight-bold">Rendez-vous à venir</h5></div>
+            <div class="table-responsive"><table class="table mb-0 dg-appointment-table"><thead><tr><th>Date</th><th>Heure</th><th>Personne</th><th>Téléphone</th><th>Objet</th><th>Planifié par</th><th>État</th></tr></thead><tbody>
+                @forelse($dgUpcomingAppointments as $appointment)
+                    <tr data-appointment-expires-at="{{ \Carbon\Carbon::parse($appointment->appointment_date->format('Y-m-d').' '.substr($appointment->ends_at, 0, 8))->timestamp * 1000 }}"><td>{{ $appointment->appointment_date->format('d/m/Y') }}</td><td>{{ substr($appointment->starts_at, 0, 5) }}–{{ substr($appointment->ends_at, 0, 5) }}</td><td>{{ $appointment->visitor_name }}</td><td>{{ $appointment->visitor_phone }}</td><td>{{ $appointment->subject }}</td><td>{{ $appointment->requester?->name ?? '—' }}</td><td><span class="badge badge-primary" data-appointment-status>À venir</span></td></tr>
+                @empty<tr data-appointment-empty><td colspan="7" class="text-center text-muted py-4">Aucun rendez-vous planifié pour le moment.</td></tr>@endforelse
+            </tbody></table></div>
+        </div>
+        </div>
+        <div data-dg-appointment-list-panel="past" hidden>
+            <div class="card shadow mt-4">
+                <div class="card-header bg-white"><h5 class="mb-0 font-weight-bold">Rendez-vous terminés</h5></div>
+                <div class="table-responsive"><table class="table mb-0 dg-appointment-table"><thead><tr><th>Date</th><th>Heure</th><th>Personne</th><th>Téléphone</th><th>Objet</th><th>Planifié par</th><th>État</th></tr></thead><tbody data-appointment-history-body>
+                    @forelse($dgPastAppointments as $appointment)
+                        <tr><td>{{ $appointment->appointment_date->format('d/m/Y') }}</td><td>{{ substr($appointment->starts_at, 0, 5) }}–{{ substr($appointment->ends_at, 0, 5) }}</td><td>{{ $appointment->visitor_name }}</td><td>{{ $appointment->visitor_phone }}</td><td>{{ $appointment->subject }}</td><td>{{ $appointment->requester?->name ?? '—' }}</td><td><span class="badge badge-secondary">Passé</span></td></tr>
+                    @empty<tr data-appointment-empty><td colspan="7" class="text-center text-muted py-4">Aucun rendez-vous terminé.</td></tr>@endforelse
+                </tbody></table></div>
+            </div>
+        </div>
+    </div>
+</section>
 {{-- ============================================================ --}}
 {{-- Section : Gestion des rôles utilisateurs (Admin uniquement) --}}
 {{-- ============================================================ --}}
@@ -606,6 +681,11 @@
     .settings-tab.is-active { background:var(--app-primary); color:var(--app-primary-contrast); }
     .config-tab-panel[hidden] { display:none !important; }
     .config-tab-panel > .col-12 { padding:0; }
+    #settings-appointments .nav-pills { gap:8px; flex-wrap:wrap; }
+    #settings-appointments .nav-pills .nav-link { display:inline-flex; align-items:center; gap:5px; }
+    #settings-appointments .table-responsive { -webkit-overflow-scrolling:touch; }
+    #settings-appointments .dg-appointment-table { min-width:760px; }
+    #settings-appointments .dg-availability-range { margin-left:0; margin-right:0; }
     html[data-app-theme="dark"] .settings-page-heading h1 { color:var(--app-text) !important; }
     html[data-app-theme="dark"] .settings-page-heading p { color:var(--app-muted) !important; }
     html[data-app-theme="dark"] .settings-tabs { background:var(--app-surface) !important; border-color:var(--app-border) !important; }
@@ -628,9 +708,108 @@
     html[data-app-theme="dark"] .settings-page .dataTables_wrapper button.dt-button:hover,
     html[data-app-theme="dark"] .settings-page .dataTables_wrapper a.dt-button:hover { background:var(--app-primary) !important; color:var(--app-primary-contrast) !important; border-color:var(--app-primary) !important; }
     @media(max-width:575.98px) { .settings-page { padding:6px 8px 22px; } .settings-page-heading { margin-bottom:15px; } .settings-page-heading h1 { font-size:22px; } .settings-tabs { gap:4px; } .settings-tab { padding:10px 12px; font-size:13px; } }
+    @media(max-width:575.98px) {
+        #settings-appointments .nav-pills { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:6px; }
+        #settings-appointments .nav-pills .nav-link { justify-content:center; min-width:0; padding:9px 7px; font-size:12px; line-height:1.25; text-align:center; white-space:normal; }
+        #settings-appointments .card-header { padding:12px; }
+        #settings-appointments .card-body { padding:13px; }
+        #settings-appointments .dg-availability-range { display:grid; grid-template-columns:minmax(0,1fr) minmax(0,1fr) 38px; gap:7px; }
+        #settings-appointments .dg-availability-range>[class*="col-"] { width:auto; max-width:none; padding:0; }
+        #settings-appointments .dg-availability-range .form-control { min-width:0; padding:6px 5px; font-size:13px; }
+        #settings-appointments [data-add-availability-range] { padding:5px 7px; font-size:11px; }
+        #settings-appointments .dg-appointment-table { min-width:720px; }
+    }
 </style>
 <script>
     document.addEventListener('DOMContentLoaded', function () {
+        const expireAppointmentRows = () => {
+            document.querySelectorAll('[data-appointment-expires-at]').forEach(row => {
+                if (Number(row.dataset.appointmentExpiresAt) > Date.now()) return;
+                const historyBody = document.querySelector('[data-appointment-history-body]');
+                if (!historyBody) { row.remove(); return; }
+                const upcomingBody = row.closest('tbody');
+                upcomingBody.querySelector('[data-appointment-empty]')?.remove();
+                historyBody.querySelector('[data-appointment-empty]')?.remove();
+                const status = row.querySelector('[data-appointment-status]');
+                if (status) { status.textContent = 'Passé'; status.classList.remove('badge-primary'); status.classList.add('badge-secondary'); }
+                row.removeAttribute('data-appointment-expires-at');
+                historyBody.prepend(row);
+                if (!upcomingBody.querySelector('tr:not([data-appointment-empty])')) {
+                    const emptyRow = document.createElement('tr');
+                    emptyRow.dataset.appointmentEmpty = '';
+                    emptyRow.innerHTML = '<td colspan="7" class="text-center text-muted py-4">Aucun rendez-vous à venir.</td>';
+                    upcomingBody.appendChild(emptyRow);
+                }
+                if (!historyBody.querySelector('tr:not([data-appointment-empty])')) {
+                    const emptyRow = document.createElement('tr');
+                    emptyRow.dataset.appointmentEmpty = '';
+                    emptyRow.innerHTML = '<td colspan="7" class="text-center text-muted py-4">Aucun rendez-vous terminé.</td>';
+                    historyBody.appendChild(emptyRow);
+                }
+                document.querySelectorAll('[data-appointment-counter="upcoming"]').forEach(counter => {
+                    const count = Math.max(0, parseInt(counter.textContent, 10) || 0) - 1;
+                    counter.textContent = count > 99 ? '99+' : count;
+                    if (counter.id === 'dg-appointments-badge') counter.style.display = count ? '' : 'none';
+                });
+                document.querySelectorAll('[data-appointment-counter="past"]').forEach(counter => {
+                    const count = (parseInt(counter.textContent, 10) || 0) + 1;
+                    counter.textContent = count > 99 ? '99+' : count;
+                });
+            });
+        };
+        expireAppointmentRows();
+        window.setInterval(expireAppointmentRows, 15000);
+        const appointmentSubtabs = [...document.querySelectorAll('[data-appointment-settings-tab]')];
+        appointmentSubtabs.forEach(tab => tab.addEventListener('click', () => {
+            appointmentSubtabs.forEach(item => item.classList.toggle('active', item === tab));
+            document.querySelectorAll('[data-appointment-settings-panel]').forEach(panel => {
+                panel.hidden = panel.dataset.appointmentSettingsPanel !== tab.dataset.appointmentSettingsTab;
+            });
+        }));
+        const appointmentListTabs = [...document.querySelectorAll('[data-dg-appointment-list-tab]')];
+        appointmentListTabs.forEach(tab => tab.addEventListener('click', () => {
+            appointmentListTabs.forEach(item => item.classList.toggle('active', item === tab));
+            document.querySelectorAll('[data-dg-appointment-list-panel]').forEach(panel => {
+                panel.hidden = panel.dataset.dgAppointmentListPanel !== tab.dataset.dgAppointmentListTab;
+            });
+        }));
+        const appointmentBadge = document.getElementById('dg-appointments-badge');
+        if (appointmentBadge) {
+            const refreshAppointmentCount = () => fetch(appointmentBadge.dataset.countUrl, {headers: {'Accept': 'application/json'}})
+                .then(response => response.ok ? response.json() : null)
+                .then(result => {
+                    if (!result) return;
+                    appointmentBadge.textContent = result.count > 99 ? '99+' : result.count;
+                    appointmentBadge.style.display = result.count > 0 ? '' : 'none';
+                }).catch(() => {});
+            refreshAppointmentCount();
+            window.setInterval(refreshAppointmentCount, 30000);
+        }
+        const rangeTemplate = document.getElementById('dg-availability-range-template');
+        document.querySelectorAll('[data-add-availability-range]').forEach(button => {
+            button.addEventListener('click', () => {
+                const day = button.dataset.addAvailabilityRange;
+                const container = document.querySelector(`[data-availability-day="${day}"]`);
+                const index = container.querySelectorAll('.dg-availability-range').length;
+                container.insertAdjacentHTML('beforeend', rangeTemplate.innerHTML.replaceAll('__DAY__', day).replaceAll('__INDEX__', index));
+            });
+        });
+        function reindexAvailabilityRanges(container) {
+            const day = container.dataset.availabilityDay;
+            container.querySelectorAll('.dg-availability-range').forEach((row, index) => {
+                row.querySelectorAll('input[name]').forEach(input => {
+                    input.name = input.name.replace(/days\[\d+\]\[ranges\]\[\d+\]/, `days[${day}][ranges][${index}]`);
+                });
+            });
+        }
+        document.addEventListener('click', event => {
+            const removeButton = event.target.closest('[data-remove-availability-range]');
+            if (removeButton) {
+                const container = removeButton.closest('.dg-availability-ranges');
+                removeButton.closest('.dg-availability-range').remove();
+                reindexAvailabilityRanges(container);
+            }
+        });
         const tabs = [...document.querySelectorAll('[data-settings-tab]')];
         const panels = [...document.querySelectorAll('[data-settings-panel]')];
         function activate(name, updateHash = true) {
@@ -658,7 +837,7 @@
                 next.focus();
             });
         });
-        const initial = window.location.hash.replace('#', '');
+        const initial = @json(session('settings_tab', '')) || window.location.hash.replace('#', '');
         activate(panels.some(panel => panel.dataset.settingsPanel === initial) ? initial : 'company', false);
     });
 </script>
