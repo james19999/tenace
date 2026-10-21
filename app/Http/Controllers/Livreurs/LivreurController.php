@@ -94,7 +94,8 @@ class LivreurController extends Controller
                    ]);
                }
 
-         return redirect()->route('useradminlist', ['user_type' => $data['user_type']])->with('messages','utilisateur créer');
+         return redirect()->to(route('useradminlist', ['user_type' => $data['user_type']], false))
+             ->with('messages', 'utilisateur créer');
     }
 
     /**
