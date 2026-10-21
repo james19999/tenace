@@ -75,12 +75,14 @@ class PublicOrderController extends Controller
 
         return response()->json([
             // The installed app starts from its permanent catalogue, independent of invitation links.
-            'id' => url('/commander'),
+            // Reuse the existing TENACE PWA identity (the static manifest used the origin root).
+            'id' => rtrim(url('/'), '/').'/',
             'name' => 'TENACOS',
             'short_name' => 'TENACOS',
             'description' => 'Catalogue et commandes TENACOS',
             'prefer_related_applications' => false,
             'related_applications' => [
+                ['platform' => 'webapp', 'id' => rtrim(url('/'), '/').'/'],
                 ['platform' => 'webapp', 'id' => url('/commander')],
             ],
             'start_url' => route('public-order.app'),

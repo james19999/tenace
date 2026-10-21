@@ -8,6 +8,13 @@
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css">
     <link rel="manifest" href="{{ $link ? route('public-order.manifest', $link->token) : route('public-order.app.manifest') }}">
     <link rel="apple-touch-icon" href="{{ asset('icons/icon-192x192.png') }}">
+    <script>
+        window.__tenacosInstallPrompt = null;
+        window.addEventListener('beforeinstallprompt', (event) => {
+            event.preventDefault();
+            window.__tenacosInstallPrompt = event;
+        });
+    </script>
     <title>{{ $link?->title ?: 'Catalogue TENACOS' }}</title>
     <style>
         :root{--red:#7e1615;--ink:#252a34;--muted:#687386;--line:#e5e8ee;--bg:#f6f7f9;--green:#16794b}*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--ink);font:16px/1.5 system-ui,-apple-system,"Segoe UI",sans-serif}.wrap{max-width:1100px;margin:auto;padding:24px 18px 70px}.head{background:white;border-radius:0;padding:28px;display:flex;justify-content:space-between;align-items:center;gap:20px;box-shadow:0 8px 28px #1720330b}.brand{color:var(--red);font-size:13px;font-weight:800;letter-spacing:.16em}.head h1{font-size:clamp(26px,4vw,40px);line-height:1.15;margin:8px 0}.head p{color:var(--muted);margin:0}.install{display:inline-flex;align-items:center;justify-content:center;border:0;background:var(--red);color:#fff;border-radius:0;padding:13px 17px;font:inherit;font-weight:700;white-space:nowrap;cursor:pointer}.install[hidden],.install-help[hidden]{display:none!important}.install-help{margin-top:10px;padding:11px 13px;background:#fdf5e8;border-left:4px solid #d49a30;border-radius:0;color:#73551b;font-size:14px}.controls,.panel{background:white;border:1px solid var(--line);border-radius:0;padding:20px;margin-top:20px}.controls{display:grid;grid-template-columns:1fr;gap:16px}.field label{display:block;font-weight:700;font-size:14px;margin-bottom:7px}.field input,.field select,.field textarea{width:100%;min-height:46px;border:1px solid #d8dce5;background:white;padding:11px 12px;border-radius:0;font:inherit}.section-title{display:flex;justify-content:space-between;align-items:end;margin:26px 0 12px}.section-title h2{font-size:21px;margin:0}.section-title p{color:var(--muted);margin:3px 0 0}.grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:14px}.product{background:white;border:1px solid var(--line);border-radius:0;padding:14px;display:flex;flex-direction:column;min-width:0}.product img{width:100%;height:175px;object-fit:cover;background:#f0f1f3;border-radius:0;margin:12px 0 8px}.product h3{font-size:16px;line-height:1.35;margin:4px 0 8px;overflow-wrap:anywhere}.product p{color:var(--muted);font-size:13px;line-height:1.45;margin:0 0 10px}.price{font-size:19px;font-weight:800;color:var(--red);margin-top:auto}.product button,.checkout-button{display:flex;align-items:center;justify-content:center;width:100%;min-height:46px;border:0;background:var(--red);color:#fff;border-radius:0;padding:11px 12px;font:inherit;font-weight:750;margin-top:12px;cursor:pointer}.suggestions{margin-top:28px}.empty{color:var(--muted);padding:18px;border:1px solid var(--line);border-radius:0;margin-top:15px;background:#fff}.cart{background:#fff;border:1px solid var(--line);padding:22px;margin-top:22px}.cart h2{font-size:20px;margin:0 0 12px}.cart-row{display:grid;grid-template-columns:minmax(0,1fr) auto auto;align-items:center;gap:14px;border-bottom:1px solid var(--line);padding:12px 0}.cart-product-name{min-width:0;overflow-wrap:anywhere;font-size:14px}.qty{display:flex;align-items:center;gap:9px}.qty button{display:grid;place-items:center;width:38px;height:38px;border:1px solid var(--line);background:#fff;border-radius:0;font-size:20px;line-height:1;font-weight:700;padding:0;cursor:pointer}.qty span{min-width:20px;text-align:center;font-weight:750}.line-total{min-width:90px;text-align:right;font-weight:800;white-space:nowrap}.cart-total{display:flex;justify-content:space-between;gap:12px;padding:16px 0;font-size:16px;font-weight:800}.notice{background:#fdf5e8;color:#73551b;border-left:4px solid #d49a30;padding:12px 14px;border-radius:0;font-size:14px}.checkout{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-top:16px}.checkout .wide{grid-column:1/-1}.checkout .field{min-width:0}.customer-summary{display:flex;align-items:center;gap:5px 8px;flex-wrap:wrap;padding:12px 14px;background:#f7f8fa;border-left:3px solid var(--red);font-size:13px}.customer-summary span{color:var(--muted)}.checkout .field small{display:block;margin-top:5px;color:var(--muted);font-size:12px}.checkout-button{font-size:15px}.errors{background:#fff0f0;color:#8c1e1b;padding:12px;border-radius:0;margin-top:16px}.status{color:var(--muted);text-align:center;padding:20px}.hidden-inputs{display:none}
@@ -25,7 +32,7 @@
         <div class="install-area" style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;justify-content:flex-end">
             <a href="{{ route('public-order.app', array_filter(['country' => $link?->country_code ?: ($initialCountry ?: null)])) }}" style="display:inline-flex;align-items:center;justify-content:center;min-height:44px;padding:10px 14px;border:1px solid var(--line);background:#fff;color:var(--ink);text-decoration:none;font-weight:700">Voir les produits disponibles</a>
             <a href="{{ route('customer-portal.index') }}" style="display:inline-flex;align-items:center;justify-content:center;min-height:44px;padding:10px 14px;border:1px solid var(--line);background:#fff;color:var(--ink);text-decoration:none;font-weight:700">{{ $hasPortalAccount ? 'Mon espace client' : 'Mon espace client / créer mon compte' }}</a>
-            <button type="button" id="install-app" class="install" hidden>Installer l’application</button>
+            <button type="button" id="install-app" class="install">Installer l’application</button>
             <div id="install-help" class="install-help" role="status" hidden></div>
         </div>
     </header>
@@ -221,7 +228,7 @@ if (window.jQuery && jQuery.fn.select2) {
         });
     });
 
-    let installPrompt = null;
+    let installPrompt = window.__tenacosInstallPrompt || null;
     const installButton = document.getElementById('install-app');
     const installHelp = document.getElementById('install-help');
     const displayMode = window.matchMedia('(display-mode: standalone)');
@@ -231,7 +238,7 @@ if (window.jQuery && jQuery.fn.select2) {
     let appInstalled = displayMode.matches || navigator.standalone === true;
     let installPending = false;
     let installPendingTimer = null;
-    const installedPwaId = @json(url('/commander'));
+    const installedPwaIds = @json([rtrim(url('/'), '/').'/', url('/commander')]);
 
     function hideInstallControls() {
         installButton.hidden = true;
@@ -248,9 +255,9 @@ if (window.jQuery && jQuery.fn.select2) {
 
     if (appInstalled) {
         hideInstallControls();
-    } else if (isIOS && isSafari) {
+    } else {
         installButton.hidden = false;
-        installButton.textContent = 'Comment installer ?';
+        installButton.textContent = 'Installer l’application';
     }
     if (!appInstalled && !window.isSecureContext) {
         installHelp.textContent = 'Installation indisponible sur cette adresse locale HTTP. Ouvre cette page avec une adresse HTTPS pour installer TENACOS.';
@@ -275,7 +282,7 @@ if (window.jQuery && jQuery.fn.select2) {
 
     if (typeof navigator.getInstalledRelatedApps === 'function') {
         navigator.getInstalledRelatedApps().then((apps) => {
-            if (apps.some((app) => app.platform === 'webapp' && app.id === installedPwaId)) {
+            if (apps.some((app) => app.platform === 'webapp' && installedPwaIds.includes(app.id))) {
                 markAppInstalled();
             }
         }).catch(() => {});
@@ -322,8 +329,11 @@ if (window.jQuery && jQuery.fn.select2) {
             return;
         }
 
-        if (!(isIOS && isSafari)) return;
-        installHelp.textContent = 'Dans Safari, ouvre le menu Partager puis choisis « Sur l’écran d’accueil » pour installer l’application.';
+        if (isIOS && isSafari) {
+            installHelp.textContent = 'Dans Safari, ouvre le menu Partager puis choisis « Sur l’écran d’accueil » pour installer l’application.';
+        } else {
+            installHelp.textContent = 'Ton navigateur ne propose pas encore l’installation native pour cette page. Ouvre-la dans un navigateur compatible et actualise-la.';
+        }
         installHelp.hidden = false;
     });
 
