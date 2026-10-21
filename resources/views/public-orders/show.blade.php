@@ -242,9 +242,20 @@ if (window.jQuery && jQuery.fn.select2) {
     let installPending = false;
     let installPendingTimer = null;
     const installedPwaIds = @json([rtrim(url('/'), '/').'/', url('/commander')]);
+    const normalizePwaId = (id) => {
+        try {
+            const parsed = new URL(id, window.location.origin);
+            return parsed.origin + (parsed.pathname.replace(/\/+$/, '') || '/');
+        } catch (_) {
+            return String(id);
+        }
+    };
+    const installedPwaIdSet = new Set(installedPwaIds.map(normalizePwaId));
 
     function hideInstallControls() {
-        installButton.hidden = true;
+        installButton.hidden = appInstalled;
+        installButton.disabled = false;
+        installButton.textContent = 'Installer l’application';
         installHelp.hidden = true;
     }
 
@@ -286,16 +297,29 @@ if (window.jQuery && jQuery.fn.select2) {
         if (displayMode.matches || navigator.standalone === true) markAppInstalled();
     });
 
+    let installedAppsCheck = Promise.resolve(false);
     if (typeof navigator.getInstalledRelatedApps === 'function') {
-        navigator.getInstalledRelatedApps().then((apps) => {
-            if (apps.some((app) => app.platform === 'webapp' && installedPwaIds.includes(app.id))) {
+        installedAppsCheck = navigator.getInstalledRelatedApps().then((apps) => {
+            const installed = apps.some((app) => app.platform === 'webapp' && installedPwaIdSet.has(normalizePwaId(app.id)));
+            if (installed) {
                 markAppInstalled();
             }
-        }).catch(() => {});
+            return installed;
+        }).catch(() => false);
     }
 
     installButton.addEventListener('click', async () => {
-        if (appInstalled) return hideInstallControls();
+        if (appInstalled) {
+            installHelp.textContent = 'TENACOS est déjà installée sur cet appareil. Ouvre-la depuis son icône sur l’écran d’accueil.';
+            installHelp.hidden = false;
+            return;
+        }
+        if (!installPrompt && await installedAppsCheck) return markAppInstalled();
+        if (appInstalled) {
+            installHelp.textContent = 'TENACOS est déjà installée sur cet appareil. Ouvre-la depuis son icône sur l’écran d’accueil.';
+            installHelp.hidden = false;
+            return;
+        }
         if (!window.isSecureContext) {
             installHelp.textContent = 'Installation indisponible sur cette adresse locale HTTP. Ouvre cette page avec une adresse HTTPS pour installer TENACOS.';
             installHelp.hidden = false;
@@ -338,7 +362,7 @@ if (window.jQuery && jQuery.fn.select2) {
         if (isIOS && isSafari) {
             installHelp.textContent = 'Dans Safari, ouvre le menu Partager puis choisis « Sur l’écran d’accueil » pour installer l’application.';
         } else {
-            installHelp.textContent = 'Ton navigateur ne propose pas encore l’installation native pour cette page. Ouvre-la dans un navigateur compatible et actualise-la.';
+            installHelp.textContent = 'L’invitation d’installation n’est pas disponible pour le moment. Si TENACOS est déjà installée, ouvre-la depuis son icône sur l’écran d’accueil.';
         }
         installHelp.hidden = false;
     });
