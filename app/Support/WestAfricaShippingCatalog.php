@@ -4,6 +4,8 @@ namespace App\Support;
 
 final class WestAfricaShippingCatalog
 {
+    private static ?array $worldCities = null;
+
     /** @return array<string, array{label: string, cities: list<string>}> */
     public static function countries(): array
     {
@@ -52,5 +54,26 @@ final class WestAfricaShippingCatalog
         uasort($countries, fn (array $left, array $right): int => strcmp($left['label'], $right['label']));
 
         return $countries;
+    }
+
+    /** @return list<string> */
+    public static function cities(string $countryCode): array
+    {
+        $code = strtoupper(trim($countryCode));
+        $country = self::countries()[$code] ?? null;
+        if ($country === null) {
+            return [];
+        }
+
+        if (self::$worldCities === null) {
+            $path = resource_path('data/world-cities.json');
+            $decoded = is_file($path) ? json_decode((string) file_get_contents($path), true) : [];
+            self::$worldCities = is_array($decoded) ? $decoded : [];
+        }
+
+        return array_values(array_unique(array_merge(
+            $country['cities'] ?? [],
+            self::$worldCities[$code] ?? []
+        )));
     }
 }

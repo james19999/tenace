@@ -310,6 +310,7 @@ Route::middleware(['auth'])->group(function () {
     //    (Accessible à ADMINUSER, MNG, SCR, VDS, CSA, PT)
     // -------------------------------------------------------------------------
     Route::middleware(['role:ADMINUSER,MNG,SCR,VDS,PT,CSA'])->group(function () {
+        Route::get('shipping/countries/{country}/cities', [CheckController::class, 'shippingCities'])->where('country', '[A-Za-z]{2}')->name('shipping.cities');
         Route::get('product/list', ProductList::class)->name('product');
         Route::get('product/cart', ProductCart::class)->name('productcart');
         Route::post('costumer/anonymize-all', [CostumerController::class, 'anonymizeAllFromCart'])->name('costumer.anonymize-all');

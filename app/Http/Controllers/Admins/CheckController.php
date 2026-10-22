@@ -10,6 +10,7 @@ use App\Models\CostumerContactPreference;
 use App\Mail\ParthnerMail;
 use App\Models\Orders\Order;
 use Illuminate\Http\Request;
+use Illuminate\Http\JsonResponse;
 use App\Models\Orders\OrderItem;
 use App\Models\TransportCompany;
 use App\Support\WestAfricaShippingCatalog;
@@ -24,6 +25,26 @@ use Gloudemans\Shoppingcart\Facades\Cart;
 
 class CheckController extends Controller
 {
+
+    public function shippingCities(Request $request, string $country): JsonResponse
+    {
+        $countryCode = strtoupper($country);
+        abort_unless(array_key_exists($countryCode, WestAfricaShippingCatalog::countries()), 404);
+
+        $query = trim((string) $request->query('q', ''));
+        $normalize = static function (string $value): string {
+            $ascii = iconv('UTF-8', 'ASCII//TRANSLIT//IGNORE', $value);
+            return mb_strtolower($ascii === false ? $value : $ascii);
+        };
+        $normalizedQuery = $normalize($query);
+        $cities = collect(WestAfricaShippingCatalog::cities($countryCode))
+            ->filter(fn (string $city): bool => $normalizedQuery === '' || str_contains($normalize($city), $normalizedQuery))
+            ->take(50)
+            ->map(fn (string $city): array => ['id' => $city, 'text' => $city])
+            ->values();
+
+        return response()->json(['results' => $cities, 'pagination' => ['more' => false]]);
+    }
 
     public function brouillons () {
         $auth = Auth::user();
@@ -60,17 +81,15 @@ class CheckController extends Controller
          $shippingCountries = WestAfricaShippingCatalog::countries();
          $deliveryMode = (string) $request->input('delivery_mode', 'local');
          $shippingCountry = (string) $request->input('shipping_country', '');
-         $shippingCities = $shippingCountries[$shippingCountry]['cities'] ?? [];
          $request->validate([
              'delivery_mode' => ['required', Rule::in(['local', 'expedition'])],
              'transport_company' => ['required_if:delivery_mode,expedition', 'nullable', 'string', 'max:120'],
              'shipping_country' => ['required_if:delivery_mode,expedition', 'nullable', Rule::in(array_keys($shippingCountries))],
-             'shipping_city' => ['required_if:delivery_mode,expedition', 'nullable', Rule::in($shippingCities)],
+             'shipping_city' => ['required_if:delivery_mode,expedition', 'nullable', 'string', 'max:120'],
          ], [
              'transport_company.required_if' => 'Indique le transporteur ou le moyen de transport.',
              'shipping_country.required_if' => 'Choisis le pays de destination.',
              'shipping_city.required_if' => 'Choisis la ville de destination.',
-             'shipping_city.in' => 'La ville choisie ne correspond pas au pays sélectionné.',
          ]);
          $transportCompany = null;
          if ($deliveryMode === 'expedition') {

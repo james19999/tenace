@@ -521,9 +521,43 @@
                 });
             }
             initCountrySearch(document);
+            $(document).off('select2:select.cartShipping select2:clear.cartShipping', '#shipping-country')
+                .on('select2:select.cartShipping select2:clear.cartShipping', '#shipping-country', function() {
+                    this.dispatchEvent(new CustomEvent('cart-shipping-country-changed', { bubbles: true }));
+                });
+            function initCartShippingSearch(root) {
+                var $root = root ? $(root) : $(document);
+                $root.find('select.js-transport-company, select.js-shipping-city').addBack('select.js-transport-company, select.js-shipping-city').each(function() {
+                    var $select = $(this);
+                    if ($select.hasClass('select2-hidden-accessible')) return;
+                    var options = {
+                        width: '100%',
+                        tags: true,
+                        placeholder: $select.data('placeholder') || 'Choisir ou saisir',
+                        language: {
+                            noResults: function() { return 'Aucun résultat. Saisis une valeur pour l’ajouter.'; },
+                            searching: function() { return 'Recherche…'; }
+                        }
+                    };
+                    if ($select.hasClass('js-shipping-city')) {
+                        options.ajax = {
+                            url: function() { return $select.attr('data-cities-url') || ''; },
+                            dataType: 'json',
+                            delay: 200,
+                            data: function(params) { return { q: params.term || '' }; },
+                            processResults: function(data) { return data; },
+                            cache: true
+                        };
+                        options.minimumInputLength = 0;
+                    }
+                    $select.select2(options);
+                });
+            }
+            initCartShippingSearch(document);
             document.addEventListener('livewire:load', function() {
                 if (window.Livewire && typeof Livewire.hook === 'function') {
                     Livewire.hook('message.processed', function() { initCountrySearch(document); });
+                    Livewire.hook('message.processed', function() { initCartShippingSearch(document); });
                 }
             });
             $('.js-customer-search').each(function() {
