@@ -333,16 +333,23 @@
                 </div>
 
                 <div class="od-panel">
-                    <h3>Modifier l’heure</h3>
+                    <h3>{{ auth()->user()?->user_type === 'PT' ? 'Reprogrammer la commande' : 'Modifier l’heure' }}</h3>
                     <form action="{{ route('edit-hours', $Orders->id) }}" method="POST">
                         @csrf
                         @method('PUT')
+                        @if(auth()->user()?->user_type === 'PT')
+                            <div class="od-field">
+                                <label for="order-date">Nouvelle date de livraison</label>
+                                <input id="order-date" type="date" class="form-control @error('date_order') is-invalid @enderror" name="date_order" min="{{ now()->toDateString() }}" value="{{ old('date_order', substr((string) $Orders->date_order, 0, 10) ?: now()->toDateString()) }}" required>
+                                @error('date_order') <div class="invalid-feedback">{{ $message }}</div> @enderror
+                            </div>
+                        @endif
                         <div class="od-field">
                             <label for="order-time">Nouvelle heure de livraison</label>
                             <input id="order-time" type="time" class="form-control @error('time') is-invalid @enderror" name="time" value="{{ old('time', preg_match('/^\d{2}:\d{2}$/', (string) $Orders->time) ? $Orders->time : '') }}" required>
                             @error('time') <div class="invalid-feedback">{{ $message }}</div> @enderror
                         </div>
-                        <button type="submit" class="od-btn">Enregistrer l’heure</button>
+                        <button type="submit" class="od-btn">{{ auth()->user()?->user_type === 'PT' ? 'Reprogrammer la commande' : 'Enregistrer l’heure' }}</button>
                     </form>
                 </div>
 

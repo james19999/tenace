@@ -279,6 +279,7 @@ Route::middleware(['auth'])->group(function () {
         Route::get('/couriers/{courier}/documents/{document}', [PartnerOrderController::class, 'showCourierDocument'])->name('couriers.documents.show');
         Route::get('/orders/{order}', [PartnerOrderController::class, 'show'])->name('orders.show');
         Route::post('/orders/{order}/delivery-fee', [PartnerOrderController::class, 'setDeliveryFee'])->name('orders.delivery-fee');
+        Route::post('/orders/{order}/reschedule', [PartnerOrderController::class, 'rescheduleOrder'])->name('orders.reschedule');
         Route::post('/orders/{order}/cancel', [PartnerOrderController::class, 'cancelOrder'])->name('orders.cancel');
         Route::post('/orders/from-cart', [PartnerOrderController::class, 'storeFromCart'])->name('orders.from-cart');
         Route::post('/orders/{order}/payments/{payment}/confirm', [PartnerOrderController::class, 'confirmPayment'])->name('orders.payments.confirm');

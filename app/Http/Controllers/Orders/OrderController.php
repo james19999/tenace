@@ -118,6 +118,9 @@ class OrderController extends Controller
     {
 
         $Orders = Order::with('user:id,name,user_type,country_code')->findOrFail($id);
+        if (Auth::user()?->user_type === User::ROLE_PARTNER) {
+            abort_unless((int) $Orders->partner_id === (int) Auth::id() || (int) $Orders->created_user === (int) Auth::id(), 404);
+        }
         $countryCode = $this->orderCountryCode($Orders);
         $livreurs = User::query()->where('user_type', User::ROLE_LIVREUR)
             ->where('active', true)
@@ -290,14 +293,26 @@ class OrderController extends Controller
 
     public function edit_hours_order(Request $request, $id)
     {
+        $isPartner = $request->user()?->user_type === User::ROLE_PARTNER;
         $validated = $request->validate([
             'time' => ['required', 'date_format:H:i'],
+            'date_order' => $isPartner
+                ? ['required', 'date_format:Y-m-d', 'after_or_equal:today']
+                : ['nullable', 'date_format:Y-m-d'],
         ], [
             'time.required' => 'Choisis une heure de livraison.',
             'time.date_format' => 'Saisis une heure valide au format HH:MM.',
+            'date_order.required' => 'Choisis une nouvelle date de livraison.',
+            'date_order.after_or_equal' => 'La date de livraison doit être aujourd’hui ou plus tard.',
         ]);
 
         $order = Order::findOrFail($id);
+        if ($isPartner) {
+            abort_unless((int) $order->partner_id === (int) $request->user()->id || (int) $order->created_user === (int) $request->user()->id, 404);
+            $order->date_order = $validated['date_order'];
+        } elseif (! empty($validated['date_order'])) {
+            $order->date_order = $validated['date_order'];
+        }
         $order->time = $validated['time'];
         $order->save();
 

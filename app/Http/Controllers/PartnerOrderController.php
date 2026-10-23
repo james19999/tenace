@@ -486,6 +486,31 @@ class PartnerOrderController extends Controller
             : ' La commande est maintenant visible par les livreurs du pays.'));
     }
 
+    public function rescheduleOrder(Request $request, Order $order): RedirectResponse
+    {
+        $partner = $this->partner($request);
+        abort_unless((int) $order->partner_id === (int) $partner->id, 404);
+
+        $validated = $request->validate([
+            'date_order' => ['required', 'date_format:Y-m-d', 'after_or_equal:today'],
+            'time' => ['required', 'date_format:H:i'],
+        ], [
+            'date_order.required' => 'Choisis une nouvelle date de livraison.',
+            'date_order.after_or_equal' => 'La nouvelle date doit être aujourd’hui ou plus tard.',
+            'time.required' => 'Choisis une nouvelle heure de livraison.',
+            'time.date_format' => 'Saisis une heure valide au format HH:MM.',
+        ]);
+
+        abort_unless(in_array($order->partner_order_status, ['awaiting_delivery_quote', 'awaiting_customer_confirmation', 'awaiting_prepayment', 'preparing', 'ready_for_courier'], true)
+            && ! $order->user_id, 409, 'Cette commande ne peut plus être reprogrammée depuis cet écran.');
+
+        $order->date_order = $validated['date_order'];
+        $order->time = $validated['time'];
+        $order->save();
+
+        return back()->with('success', 'La commande a été reprogrammée.');
+    }
+
     public function cancelOrder(Request $request, Order $order): RedirectResponse
     {
         $partner = $this->partner($request);
