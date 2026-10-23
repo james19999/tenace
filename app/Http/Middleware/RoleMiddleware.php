@@ -2,6 +2,7 @@
 
 namespace App\Http\Middleware;
 
+use App\Models\User;
 use Closure;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -27,10 +28,19 @@ class RoleMiddleware
 
         // Vérification que l'utilisateur a l'un des rôles autorisés
         if (! in_array($user->user_type, $roles, true)) {
+            $destination = $this->homeForUser($user);
+
+            // Empêche toute boucle de redirection infinie vers la même route
+            $destinationPath = parse_url($destination, PHP_URL_PATH) ?? $destination;
+            $currentPath = parse_url($request->url(), PHP_URL_PATH) ?? $request->url();
+            if (rtrim($currentPath, '/') === rtrim($destinationPath, '/')) {
+                abort(403, 'Vous n\'avez pas accès à cette page.');
+            }
+
             // Si l'utilisateur est connecté mais n'a pas le bon rôle,
             // on le redirige vers sa page d'accueil naturelle avec un message d'erreur
             return redirect()
-                ->to($this->homeForUser($user))
+                ->to($destination)
                 ->with('error', 'Vous n\'avez pas accès à cette page.');
         }
 
@@ -40,12 +50,12 @@ class RoleMiddleware
     /**
      * Retourne la page d'accueil selon le rôle de l'utilisateur.
      */
-    private function homeForUser($user): string
+    public function homeForUser($user): string
     {
-        return match ($user->user_type) {
-            'CALLCENTER' => route('costumer.follow-up'),
-            'COMPTABLE' => route('expensives'),
-            default      => route('Admin'),
-        };
+        if ($user instanceof User) {
+            return $user->homeUrl();
+        }
+
+        return route('Admin');
     }
 }

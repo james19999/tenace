@@ -108,6 +108,19 @@ class User extends Authenticatable
         return in_array($this->user_type, (array) $roles, true);
     }
 
+    public function homeUrl(): string
+    {
+        return match ($this->user_type) {
+            self::ROLE_CALL_CENTER => route('costumer.follow-up'),
+            self::ROLE_ACCOUNTANT  => route('expensives'),
+            self::ROLE_PARTNER     => $this->country_code ? route('partner.dashboard') : route('product'),
+            self::ROLE_LIVREUR     => $this->country_code ? route('courier.public-orders.index') : route('Admin'),
+            self::ROLE_SALES       => route('product'),
+            self::ROLE_CASHIER     => route('order-liste-order'),
+            default                => route('Admin'),
+        };
+    }
+
     public function orders()
     {
         return $this->hasMany(Order::class);
