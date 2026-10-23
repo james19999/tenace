@@ -63,6 +63,10 @@ use App\Http\Controllers\TypeExpensive\TypeExpensiveController;
 */
 
 Route::get('/', function () {
+    if (Auth::check()) {
+        $user = Auth::user();
+        return redirect($user instanceof \App\Models\User ? $user->homeUrl() : \App\Providers\RouteServiceProvider::HOME);
+    }
     return view('welcome');
 });
 

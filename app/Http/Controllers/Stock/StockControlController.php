@@ -42,7 +42,6 @@ class StockControlController extends Controller
             'users' => \App\Models\User::query()->where('active', true)->whereIn('user_type', ['ADMINUSER', 'MNG'])->orderBy('name')->get(['id', 'name', 'user_type']),
             'rules' => $settings->rules(),
             'locationTypes' => self::LOCATION_TYPES,
-            'countries' => \App\Support\WestAfricaShippingCatalog::countries(),
             'systemLocationCodes' => array_column(self::SYSTEM_LOCATIONS, 'code'),
             'isAdmin' => auth()->user()?->user_type === 'ADMINUSER',
         ]);

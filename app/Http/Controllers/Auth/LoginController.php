@@ -45,26 +45,25 @@ class LoginController extends Controller
      */
     protected function authenticated(Request $request, $user)
     {
-        if ($user->user_type === User::ROLE_CALL_CENTER) {
-            // On vide l'URL "intended" stockée en session (souvent /Admin)
-            // pour éviter qu'elle n'écrase notre redirection call-center.
-            $request->session()->forget('url.intended');
+        $homeUrl = $user instanceof User ? $user->homeUrl() : RouteServiceProvider::HOME;
 
-            return redirect('/costumer/follow-up');
+        $intended = $request->session()->get('url.intended');
+        if ($intended) {
+            $intendedPath = parse_url($intended, PHP_URL_PATH) ?? '';
+            // Si l'URL intended est /Admin mais que l'utilisateur n'a pas accès à /Admin, oublier intended
+            if (str_ends_with(rtrim($intendedPath, '/'), '/Admin')) {
+                if (! in_array($user->user_type, [User::ROLE_ADMIN, User::ROLE_MANAGER, User::ROLE_SECRETARY, User::ROLE_LIVREUR], true)) {
+                    $request->session()->forget('url.intended');
+                }
+            }
+
+            // Pour ces rôles ayant des espaces dédiés, toujours privilégier leur espace
+            if (in_array($user->user_type, [User::ROLE_PARTNER, User::ROLE_CALL_CENTER, User::ROLE_ACCOUNTANT, User::ROLE_SALES, User::ROLE_CASHIER], true)) {
+                $request->session()->forget('url.intended');
+            }
         }
 
-        if ($user->user_type === User::ROLE_ACCOUNTANT) {
-            $request->session()->forget('url.intended');
-
-            return redirect()->route('expensives');
-        }
-
-        if ($user->user_type === User::ROLE_PARTNER && $user->country_code) {
-            $request->session()->forget('url.intended');
-            return redirect()->route('partner.dashboard');
-        }
-
-        return redirect()->intended(RouteServiceProvider::HOME);
+        return redirect()->intended($homeUrl);
     }
 
     /** Redirige toujours vers la page d'accueil après la déconnexion. */
