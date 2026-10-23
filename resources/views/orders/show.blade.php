@@ -299,10 +299,12 @@
                         <div class="od-field">
                             <label for="order-deliverer">Livreur</label>
                             <select id="order-deliverer" class="js-example-basic-single form-control" name="user_take">
+                                <option value="">Choisir un livreur du pays de la commande</option>
                                 @foreach ($livreurs as $livreur)
                                     <option value="{{ $livreur->id }}" {{ $livreur->id == $Orders->user_id ? 'selected' : '' }}>{{ $livreur->name }}</option>
                                 @endforeach
                             </select>
+                            @error('user_take') <div class="invalid-feedback d-block">{{ $message }}</div> @enderror
                         </div>
                         <button type="submit" class="od-btn od-btn-primary">Enregistrer et relancer</button>
                     </form>
@@ -337,7 +339,7 @@
                         @method('PUT')
                         <div class="od-field">
                             <label for="order-time">Nouvelle heure de livraison</label>
-                            <input id="order-time" type="time" class="form-control @error('time') is-invalid @enderror" name="time" value="{{ $Orders->time }}">
+                            <input id="order-time" type="time" class="form-control @error('time') is-invalid @enderror" name="time" value="{{ old('time', preg_match('/^\d{2}:\d{2}$/', (string) $Orders->time) ? $Orders->time : '') }}" required>
                             @error('time') <div class="invalid-feedback">{{ $message }}</div> @enderror
                         </div>
                         <button type="submit" class="od-btn">Enregistrer l’heure</button>

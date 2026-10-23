@@ -3,7 +3,7 @@
 @section('content')
 @include('partners.partials.styles')
 <main class="container-fluid py-4 partner-dashboard-page">
-    <header class="partner-dashboard-hero"><div><span class="partner-dashboard-eyebrow">ESPACE PARTENAIRE · {{ $countryName }}</span><h1>Tableau de bord</h1><p>Activité des commandes livrées et suivi de ton équipe.</p></div><nav><a href="{{ route('partner.orders.index') }}">Commandes à livrer <span aria-hidden="true">→</span></a><a href="{{ route('partner.couriers.index') }}">Mes livreurs <span aria-hidden="true">→</span></a></nav></header>
+    <header class="partner-dashboard-hero"><div><span class="partner-dashboard-eyebrow">ESPACE PARTENAIRE · {{ $countryName }}</span><h1>Tableau de bord</h1><p>Activité des commandes livrées et suivi de ton équipe.</p></div><nav><a href="{{ route('partner.orders.index') }}">Mes commandes <span aria-hidden="true">→</span></a><a href="{{ route('partner.couriers.index') }}">Mes livreurs <span aria-hidden="true">→</span></a></nav></header>
 
     <section class="partner-dashboard-revenue" aria-label="Chiffre d’affaires livré">
         @foreach ($revenuePeriods as $period)

@@ -10,7 +10,6 @@ use App\Models\Orders\OrderItem;
 use App\Models\ProductCountryPrice;
 use App\Models\PartnerProductStock;
 use App\Models\PartnerCourierStockIssueLine;
-use App\Models\PartnerCountryDeliverySetting;
 use App\Models\User;
 use App\Support\WestAfricaShippingCatalog;
 use Illuminate\Http\RedirectResponse;
@@ -221,16 +220,28 @@ class PartnerOrderController extends Controller
     public function index(Request $request): View
     {
         $partner = $this->partner($request);
-        $orders = Order::query()->with(['costumer', 'user:id,name,phone', 'orderItems.product'])
-            ->where('partner_id', $partner->id)
-            ->whereNotIn('partner_order_status', ['delivered', 'canceled'])
-            ->latest()
-            ->paginate(25);
+        $scope = $request->query('scope', 'active');
+        abort_unless(in_array($scope, ['active', 'history', 'all'], true), 404);
+        $query = Order::query()->with(['costumer', 'user:id,name,phone', 'orderItems.product'])
+            ->where('partner_id', $partner->id);
+        if ($scope === 'active') {
+            $query->whereNotIn('partner_order_status', ['delivered', 'canceled']);
+        } elseif ($scope === 'history') {
+            $query->whereIn('partner_order_status', ['delivered', 'canceled']);
+        }
+        $orders = $query->latest()->paginate(25)->withQueryString();
+        $orderCounts = [
+            'active' => Order::query()->where('partner_id', $partner->id)->whereNotIn('partner_order_status', ['delivered', 'canceled'])->count(),
+            'history' => Order::query()->where('partner_id', $partner->id)->whereIn('partner_order_status', ['delivered', 'canceled'])->count(),
+            'all' => Order::query()->where('partner_id', $partner->id)->count(),
+        ];
 
         return view('partners.orders.index', [
             'partner' => $partner,
             'countryName' => WestAfricaShippingCatalog::countries()[$partner->country_code]['label'] ?? $partner->country_code,
             'orders' => $orders,
+            'scope' => $scope,
+            'orderCounts' => $orderCounts,
         ]);
     }
 
@@ -373,15 +384,9 @@ class PartnerOrderController extends Controller
                 ->where('is_available', true)->whereIn('product_id', $productIds)->lockForUpdate()->get()->keyBy('product_id');
             abort_unless($prices->count() === $productIds->count(), 409, 'Un produit du panier n’est plus proposé dans ton pays. Actualise le catalogue.');
 
-            $deliverySetting = PartnerCountryDeliverySetting::query()
-                ->where('country_code', strtoupper((string) $partner->country_code))->first();
-            $hasFallbackProducts = false;
             $subtotal = 0;
             foreach ($cartItems as $item) {
                 $subtotal += (int) $prices[(int) $item->id]->price * (int) $item->qty;
-                if (! $prices[(int) $item->id]->has_delivery_fee_override) {
-                    $hasFallbackProducts = true;
-                }
             }
             $deliveryFee = (int) $validated['delivery_fee'];
             $isAnonymousCustomer = (bool) ($validated['customer_anonymous'] ?? false);
@@ -416,7 +421,7 @@ class PartnerOrderController extends Controller
             $order->shipping_country = $partner->country_code;
             $order->shipping_city = $validated['city'];
             $order->country_code = $partner->country_code;
-            $order->delivery_fee_mode = $hasFallbackProducts ? 'per_order' : 'per_product';
+            $order->delivery_fee_mode = 'per_order';
             $order->partner_id = $partner->id;
             $order->payment_timing = $validated['payment_timing'];
             $order->requested_payment_method = $validated['payment_method'];
@@ -431,8 +436,8 @@ class PartnerOrderController extends Controller
                     'price' => (int) $prices[(int) $item->id]->price,
                     'quantity' => (int) $item->qty,
                     'high_price' => 0,
-                    'delivery_fee' => $prices[(int) $item->id]->has_delivery_fee_override ? (int) $prices[(int) $item->id]->delivery_fee : 0,
-                    'delivery_fee_is_override' => (bool) $prices[(int) $item->id]->has_delivery_fee_override,
+                    'delivery_fee' => 0,
+                    'delivery_fee_is_override' => false,
                 ]);
             }
 
@@ -461,7 +466,6 @@ class PartnerOrderController extends Controller
         $validated = $request->validate([
             'delivery_fee' => ['required', 'integer', 'min:0', 'max:999999999'],
             'customer_informed' => ['accepted'],
-            'delivery_location_url' => ['nullable', 'url', 'starts_with:https://', 'max:2048'],
         ]);
 
         DB::transaction(function () use ($order, $partner, $validated): void {
@@ -471,7 +475,6 @@ class PartnerOrderController extends Controller
             $locked->tax = (int) $validated['delivery_fee'];
             $locked->total = (int) $locked->subtotal + (int) $validated['delivery_fee'];
             $locked->montant = $locked->total;
-            $locked->delivery_location_url = $validated['delivery_location_url'] ?? $locked->delivery_location_url;
             $locked->partner_order_status = $locked->payment_timing === 'before_delivery'
                 ? 'awaiting_prepayment'
                 : 'ready_for_courier';
@@ -483,19 +486,36 @@ class PartnerOrderController extends Controller
             : ' La commande est maintenant visible par les livreurs du pays.'));
     }
 
-    public function updateDeliveryLocation(Request $request, Order $order): RedirectResponse
+    public function cancelOrder(Request $request, Order $order): RedirectResponse
     {
         $partner = $this->partner($request);
         abort_unless((int) $order->partner_id === (int) $partner->id, 404);
-        $validated = $request->validate([
-            'delivery_location_url' => ['nullable', 'url', 'starts_with:https://', 'max:2048'],
+        $validated = $request->validate(['motif' => ['required', 'string', 'max:255']], [
+            'motif.required' => 'Indique le motif d’annulation.',
         ]);
 
-        abort_unless(! in_array($order->partner_order_status, ['delivered', 'canceled'], true), 409);
-        $order->delivery_location_url = $validated['delivery_location_url'] ?? null;
-        $order->save();
+        DB::transaction(function () use ($order, $partner, $validated): void {
+            $locked = Order::query()->whereKey($order->id)->lockForUpdate()->firstOrFail();
+            abort_unless((int) $locked->partner_id === (int) $partner->id, 404);
+            abort_unless(! in_array($locked->partner_order_status, ['delivered', 'canceled'], true), 409, 'Cette commande est déjà terminée ou annulée.');
+            abort_if((int) $locked->paid_amount > 0 || $locked->payments()->whereIn('status', ['initiating', 'pending', 'awaiting_partner_confirmation', 'confirmed', 'collected'])->exists(), 409,
+                'Un paiement est en cours, déclaré ou déjà encaissé. Vérifie-le et régularise le remboursement avant d’annuler cette commande.');
 
-        return back()->with('success', 'La position de livraison est enregistrée.');
+            $locked->partner_order_status = 'canceled';
+            $locked->status = 'canceled';
+            $locked->motif = trim($validated['motif']);
+            $locked->status_order = false;
+            $locked->take = false;
+            $locked->save();
+
+            $locked->courierHandoffs()->whereIn('status', ['assigned', 'handed_over', 'received'])->update([
+                'status' => 'canceled',
+                'notes' => trim($validated['motif']),
+                'updated_at' => now(),
+            ]);
+        });
+
+        return redirect()->route('partner.orders.index', ['scope' => 'history'])->with('success', 'La commande est annulée.');
     }
 
     public function confirmPayment(Request $request, Order $order, OrderPayment $payment): RedirectResponse

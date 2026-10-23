@@ -20,6 +20,7 @@ class ProductList extends Component
     protected $paginationTheme = 'bootstrap';
 
     public $cartMessage = '';
+    public $cartMessageIsError = false;
     public $search = '';
     public $stockFilter = 'all';
 
@@ -45,8 +46,32 @@ class ProductList extends Component
         $product = Product::findOrFail($id);
         $price = $product->price;
         if (Auth::user()?->user_type === \App\Models\User::ROLE_PARTNER) {
+            $partner = Auth::user();
+            $countryCode = strtoupper((string) $partner->country_code);
             $countryPrice = ProductCountryPrice::query()->where('product_id', $product->id)
-                ->where('country_code', Auth::user()->country_code)->where('is_available', true)->firstOrFail();
+                ->where('country_code', $countryCode)->where('is_available', true)->first();
+            if (! $countryPrice) {
+                $this->cartMessage = 'Ce produit n’est pas disponible dans le catalogue de ton pays.';
+                $this->cartMessageIsError = true;
+                return;
+            }
+
+            $reserve = (int) PartnerProductStock::query()->where('partner_id', $partner->id)
+                ->where('country_code', $countryCode)->where('product_id', $product->id)->value('quantity');
+            $withCouriers = (int) DB::table('partner_courier_stock_issue_lines as lines')
+                ->join('partner_courier_stock_issues as issues', 'issues.id', '=', 'lines.issue_id')
+                ->where('issues.partner_id', $partner->id)->where('issues.country_code', $countryCode)
+                ->where('lines.product_id', $product->id)->sum('lines.quantity_remaining');
+            $available = $reserve + $withCouriers;
+            $alreadyInCart = (int) Cart::instance('cart')->content()
+                ->filter(fn ($item) => (int) $item->id === (int) $product->id)->sum('qty');
+            if ($available <= $alreadyInCart) {
+                $this->cartMessage = $available < 1
+                    ? 'Stock épuisé pour ce produit. Demande un réapprovisionnement avant de l’ajouter.'
+                    : 'La quantité disponible de ce produit est déjà dans ton panier.';
+                $this->cartMessageIsError = true;
+                return;
+            }
             $price = $countryPrice->price;
         }
         Cart::instance('cart')->add($product->id, $product->name, 1, $price)->associate(Product::class);
@@ -64,6 +89,7 @@ class ProductList extends Component
     private function cartUpdated(): void
     {
         $this->cartMessage = 'Produit ajouté au panier.';
+        $this->cartMessageIsError = false;
         $count = (int) Cart::instance('cart')->count();
         $this->emit('cartUpdated');
         $this->dispatchBrowserEvent('cart-count-updated', ['count' => $count]);
@@ -127,6 +153,7 @@ class ProductList extends Component
 
         $Products = $productsQuery->orderBy('name')->paginate(12);
         $partnerStockSummary = collect();
+        $partnerCartQuantities = collect();
         if ($isPartner) {
             $productIds = $Products->getCollection()->modelKeys();
             $reserveStocks = PartnerProductStock::query()
@@ -152,6 +179,9 @@ class ProductList extends Component
                     'available' => $reserve + $withCouriers,
                 ];
             }
+            $partnerCartQuantities = Cart::instance('cart')->content()
+                ->groupBy(fn ($item) => (int) $item->id)
+                ->map(fn ($items) => (int) $items->sum('qty'));
         }
 
         return view('livewire.products.product-list', [
@@ -161,6 +191,7 @@ class ProductList extends Component
             'isPartner' => $isPartner,
             'partnerCountryCode' => $partnerCountryCode,
             'partnerStockSummary' => $partnerStockSummary,
+            'partnerCartQuantities' => $partnerCartQuantities,
         ])
             ->extends('layouts.admin')
             ->section('content');

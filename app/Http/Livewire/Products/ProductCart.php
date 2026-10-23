@@ -8,7 +8,6 @@ use App\Models\Costumer;
 use App\Models\TransportCompany;
 use App\Models\CostumerContactSetting;
 use App\Models\ProductCountryPrice;
-use App\Models\PartnerCountryDeliverySetting;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
 use App\Services\StockModuleSettingsService;
@@ -67,7 +66,16 @@ class ProductCart extends Component
     private function availableShopQuantity(Product $product): int
     {
         if (auth()->user()?->user_type === \App\Models\User::ROLE_PARTNER) {
-            return PHP_INT_MAX;
+            $partner = auth()->user();
+            $countryCode = strtoupper((string) $partner->country_code);
+            $reserve = (int) \App\Models\PartnerProductStock::query()->where('partner_id', $partner->id)
+                ->where('country_code', $countryCode)->where('product_id', $product->id)->value('quantity');
+            $withCouriers = (int) DB::table('partner_courier_stock_issue_lines as lines')
+                ->join('partner_courier_stock_issues as issues', 'issues.id', '=', 'lines.issue_id')
+                ->where('issues.partner_id', $partner->id)->where('issues.country_code', $countryCode)
+                ->where('lines.product_id', $product->id)->sum('lines.quantity_remaining');
+
+            return $reserve + $withCouriers;
         }
         $locationId = app(StockModuleSettingsService::class)->rules()['default_sales_location_id'] ?? null;
         if (! $locationId) {
@@ -106,31 +114,7 @@ class ProductCart extends Component
         $user = auth()->user();
         $isPartner = $user?->user_type === \App\Models\User::ROLE_PARTNER;
         $partnerCartItems = Cart::instance('cart')->content();
-        $partnerDeliveryFees = collect();
         $partnerDeliveryFeeTotal = 0;
-        $partnerOrderDeliveryFee = 0;
-        if ($isPartner && $partnerCartItems->isNotEmpty()) {
-            $deliverySetting = PartnerCountryDeliverySetting::query()
-                ->where('country_code', strtoupper((string) $user->country_code))->first();
-            $partnerOrderDeliveryFee = (int) ($deliverySetting?->order_delivery_fee ?? 0);
-            $partnerDeliveryFees = ProductCountryPrice::query()
-                ->where('country_code', strtoupper((string) $user->country_code))
-                ->where('is_available', true)
-                ->whereIn('product_id', $partnerCartItems->pluck('id')->map(fn ($id) => (int) $id)->unique())
-                ->get(['product_id', 'delivery_fee', 'has_delivery_fee_override'])->keyBy('product_id');
-            $hasFallbackProducts = false;
-            foreach ($partnerCartItems as $cartItem) {
-                $fee = $partnerDeliveryFees[(int) $cartItem->id] ?? null;
-                if ($fee?->has_delivery_fee_override) {
-                    $partnerDeliveryFeeTotal += (int) $fee->delivery_fee * (int) $cartItem->qty;
-                } else {
-                    $hasFallbackProducts = true;
-                }
-            }
-            if ($hasFallbackProducts) {
-                $partnerDeliveryFeeTotal += $partnerOrderDeliveryFee;
-            }
-        }
         return view('livewire.products.product-cart', [
             'selectedCostumer' => old('costumer_id') && ! in_array(old('costumer_id'), ['default', 'anonymous'], true)
                 ? Costumer::find(old('costumer_id'))
@@ -146,9 +130,7 @@ class ProductCart extends Component
             'partnerCountryCode' => $isPartner ? $user->country_code : null,
             'partnerCountry' => $isPartner ? (\App\Support\WestAfricaShippingCatalog::countries()[$user->country_code]['label'] ?? $user->country_code) : null,
             'partnerCities' => $isPartner ? (\App\Support\WestAfricaShippingCatalog::countries()[$user->country_code]['cities'] ?? []) : [],
-            'partnerDeliveryFees' => $partnerDeliveryFees,
             'partnerDeliveryFeeTotal' => $partnerDeliveryFeeTotal,
-            'partnerOrderDeliveryFee' => $partnerOrderDeliveryFee,
         ])
         ->extends('layouts.admin')
         ->section('content');

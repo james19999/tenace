@@ -8,7 +8,7 @@
         <div>
             <span class="text-uppercase text-danger font-weight-bold small">COMMANDES PARTENAIRES</span>
             <h1 class="h3 mb-1">Catalogue partenaire · {{ $countries[$country]['label'] }}</h1>
-            <p class="text-muted mb-0">{{ $isAdmin ? 'Définis le prix de vente et les produits disponibles pour ce pays.' : ($isPartner ? 'Le prix de vente est fixé par l’administration. Consulte les quantités approvisionnées pour ton compte et configure les frais de livraison.' : 'Configure ici les produits visibles dans le catalogue partenaire de ce pays.') }}</p>
+            <p class="text-muted mb-0">{{ $isAdmin ? 'Définis le prix de vente et les produits disponibles pour ce pays.' : ($isPartner ? 'Le prix de vente est fixé par l’administration. Consulte les quantités approvisionnées pour ton compte.' : 'Configure ici les produits visibles dans le catalogue partenaire de ce pays.') }}</p>
         </div>
         <div class="d-flex align-items-center flex-wrap" style="gap: .5rem">
             <label for="country-picker" class="mb-0">Pays</label>
@@ -63,17 +63,6 @@
         </section>
     @endif
 
-        @if ($isPartner)
-            <section class="card shadow-sm mb-3">
-                <div class="card-body">
-                    <div class="form-group mb-2">
-                        <label for="order-delivery-fee">Forfait global par commande (FCFA)</label>
-                        <input class="form-control" form="partner-prices-form" type="number" min="0" step="1" id="order-delivery-fee" name="order_delivery_fee" value="{{ old('order_delivery_fee', (int) ($deliverySetting->order_delivery_fee ?? 0) > 0 ? $deliverySetting->order_delivery_fee : '') }}" placeholder="Montant en FCFA">
-                        <small class="text-muted">Ce forfait s’applique une seule fois si au moins un produit du panier n’a pas de frais spécifique.</small>
-                    </div>
-                </div>
-            </section>
-        @endif
         <form method="GET" action="{{ route('partner-ordering.prices', $country) }}" class="card shadow-sm mb-3">
             <div class="card-body d-flex flex-wrap align-items-end" style="gap: .75rem">
                 <div class="form-group mb-0 flex-grow-1" style="min-width: 240px; max-width: 520px">

@@ -24,7 +24,7 @@
     </div>
 
     @if ($cartMessage)
-        <div class="catalog-alert" role="status"><span class="material-icons">check_circle</span>{{ $cartMessage }}</div>
+        <div class="catalog-alert {{ $cartMessageIsError ? 'catalog-alert-error' : '' }}" role="status"><span class="material-icons">{{ $cartMessageIsError ? 'error_outline' : 'check_circle' }}</span>{{ $cartMessage }}</div>
     @endif
     @if (Session::has('messages'))
         <div class="catalog-alert" role="status"><span class="material-icons">check_circle</span>{{ session('messages') }}</div>
@@ -94,7 +94,7 @@
                                 <span class="material-icons product-image-fallback">inventory_2</span>
                             </div>
                             @if ($isPartner)
-                                <span class="stock-badge stock-available"><span></span>Disponible dans {{ $countryNames[$partnerCountryCode] ?? $partnerCountryCode }}</span>
+                                <span class="stock-badge {{ $partnerStock['available'] > 0 ? 'stock-available' : 'stock-out' }}"><span></span>{{ $partnerStock['available'] > 0 ? 'Disponible' : 'Rupture de stock' }} · {{ $countryNames[$partnerCountryCode] ?? $partnerCountryCode }}</span>
                             @elseif ($isOut)
                                 <span class="stock-badge stock-out"><span></span>Rupture</span>
                             @elseif ($isLow)
@@ -150,8 +150,10 @@
 
                             @if ($isPartner)
                                 <div class="product-cart-actions product-partner-cart-action">
-                                    <button type="button" class="btn product-add-button" wire:click="AddToCart({{ $product->id }})" wire:loading.attr="disabled" wire:target="AddToCart({{ $product->id }})">
-                                        <span class="material-icons">add_shopping_cart</span> Ajouter au panier
+                                    @php($partnerCartQuantity = (int) ($partnerCartQuantities[$product->id] ?? 0))
+                                    @php($partnerStockReached = $partnerStock['available'] < 1 || $partnerCartQuantity >= $partnerStock['available'])
+                                    <button type="button" class="btn product-add-button" wire:click="AddToCart({{ $product->id }})" wire:loading.attr="disabled" wire:target="AddToCart({{ $product->id }})" @disabled($partnerStockReached)>
+                                        <span class="material-icons">{{ $partnerStockReached ? 'block' : 'add_shopping_cart' }}</span> {{ $partnerStock['available'] < 1 ? 'Stock épuisé' : ($partnerStockReached ? 'Quantité maximale atteinte' : 'Ajouter au panier') }}
                                     </button>
                                 </div>
                             @else
@@ -249,6 +251,7 @@
         .catalog-add-button{display:flex;align-items:center;gap:6px;padding:11px 15px;border-radius:10px;background:var(--catalog-burgundy);color:#fff!important;font-weight:700;white-space:nowrap}
         .catalog-add-button:hover{background:#63110f}
         .catalog-alert{display:flex;align-items:center;gap:9px;margin-bottom:16px;padding:12px 15px;border:1px solid #bde7d0;border-radius:10px;background:#f0fbf5;color:#216b44;font-weight:600}
+        .catalog-alert-error{border-color:#f0c4c4;background:#fff5f5;color:#a32a2a}
         .catalog-alert .material-icons{font-size:20px}
         .catalog-metrics{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px;margin-bottom:18px}
         .catalog-metric{display:flex;align-items:center;gap:13px;min-width:0;padding:15px 16px;border:1px solid var(--catalog-line);border-radius:13px;background:#fff;box-shadow:0 3px 12px rgba(27,31,41,.035)}

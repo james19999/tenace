@@ -6,7 +6,6 @@ use App\Models\Product;
 use App\Models\ProductCountryPrice;
 use App\Models\PartnerProductStock;
 use App\Models\PartnerCourierStockIssueLine;
-use App\Models\PartnerCountryDeliverySetting;
 use App\Models\PublicOrderLink;
 use App\Models\User;
 use App\Support\WestAfricaShippingCatalog;
@@ -50,7 +49,6 @@ class PartnerOrderingSetupController extends Controller
             ->orderBy('name')
             ->paginate(50)
             ->withQueryString();
-        $deliverySetting = PartnerCountryDeliverySetting::query()->firstOrNew(['country_code' => $country]);
         $partnerStocks = $showPartnerStock
             ? PartnerProductStock::query()->where('partner_id', $stockPartner->id)->where('country_code', $country)->get()->keyBy('product_id')
             : collect();
@@ -72,7 +70,7 @@ class PartnerOrderingSetupController extends Controller
                 ->pluck('quantity', 'product_id')
             : collect();
 
-        return view('partner-ordering.prices', compact('country', 'countries', 'products', 'deliverySetting', 'isPartner', 'partnerStocks', 'warehouseSnapshot', 'suppliedStocks', 'courierStocks', 'countryPartners', 'stockPartner', 'canReplenishPartnerStock', 'showPartnerStock'));
+        return view('partner-ordering.prices', compact('country', 'countries', 'products', 'isPartner', 'partnerStocks', 'warehouseSnapshot', 'suppliedStocks', 'courierStocks', 'countryPartners', 'stockPartner', 'canReplenishPartnerStock', 'showPartnerStock'));
     }
 
     public function savePrices(Request $request, string $country): RedirectResponse
@@ -81,7 +79,6 @@ class PartnerOrderingSetupController extends Controller
         $this->authorizeCountry($request, $country);
         abort_unless(isset(WestAfricaShippingCatalog::countries()[$country]), 404);
 
-        $isPartner = $request->user()->user_type === User::ROLE_PARTNER;
         $isAdmin = $request->user()->user_type === User::ROLE_ADMIN;
         $rules = [
             'available' => ['sometimes', 'array'],
@@ -99,18 +96,10 @@ class PartnerOrderingSetupController extends Controller
                 'quantity_prices.*.*.unit_price' => ['nullable', 'integer', 'min:1', 'max:999999999'],
             ];
         }
-        if ($isPartner) {
-            $rules += [
-                'order_delivery_fee' => ['nullable', 'integer', 'min:0', 'max:999999999'],
-                'delivery_fees' => ['sometimes', 'array'],
-                'delivery_fees.*' => ['nullable', 'integer', 'min:0', 'max:999999999'],
-            ];
-        }
         $validated = $request->validate($rules);
 
         $productIds = array_map('intval', array_unique(array_merge(
             array_keys($validated['available'] ?? []),
-            array_keys($validated['delivery_fees'] ?? []),
             array_keys($validated['prices'] ?? []),
             array_keys($validated['tier_configured'] ?? [])
         )));
@@ -152,7 +141,7 @@ class PartnerOrderingSetupController extends Controller
             }
         }
         try {
-            \Illuminate\Support\Facades\DB::transaction(function () use ($productIds, $productsById, $validated, $isAdmin, $isPartner, $country, $request): void {
+            \Illuminate\Support\Facades\DB::transaction(function () use ($productIds, $productsById, $validated, $isAdmin, $country): void {
                 foreach ($productIds as $productId) {
                     $record = ProductCountryPrice::query()->firstOrNew([
                         'product_id' => $productId,
@@ -168,11 +157,6 @@ class PartnerOrderingSetupController extends Controller
                         $record->price = (int) $validated['prices'][$productId];
                     }
 
-                    if ($isPartner && array_key_exists($productId, $validated['delivery_fees'] ?? [])) {
-                        $specificFee = $validated['delivery_fees'][$productId] ?? null;
-                        $record->has_delivery_fee_override = $specificFee !== null && $specificFee !== '';
-                        $record->delivery_fee = $record->has_delivery_fee_override ? (int) $specificFee : 0;
-                    }
                     $record->is_available = (bool) ($validated['available'][$productId] ?? false);
                     $record->save();
 
@@ -193,19 +177,9 @@ class PartnerOrderingSetupController extends Controller
             return back()->withErrors(['stock' => $exception->getMessage()])->withInput();
         }
 
-        if ($isPartner) {
-            PartnerCountryDeliverySetting::query()->updateOrCreate(
-                ['country_code' => $country],
-                [
-                    'delivery_mode' => 'per_order',
-                    'order_delivery_fee' => (int) ($validated['order_delivery_fee'] ?? 0),
-                ],
-            );
-        }
-
-        return back()->with('success', $isPartner
-            ? 'La disponibilité et les frais de livraison ont été enregistrés.'
-            : ($isAdmin ? 'Les prix et disponibilités de ce pays ont été enregistrés.' : 'Les produits disponibles dans ce pays ont été enregistrés.'));
+        return back()->with('success', $isAdmin
+            ? 'Les prix et disponibilités de ce pays ont été enregistrés.'
+            : 'Les produits disponibles dans ce pays ont été enregistrés.');
     }
 
     public function replenishStock(Request $request, string $country): RedirectResponse

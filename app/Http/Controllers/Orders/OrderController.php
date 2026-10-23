@@ -13,6 +13,7 @@ use App\Models\Orders\Order;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use App\Http\Controllers\Controller;
+use App\Http\Controllers\PartnerOrderController;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Mail;
 use App\Models\PourcentageCommission;
@@ -41,6 +42,10 @@ class OrderController extends Controller
     }
     public function index(Request $request)
     {
+        if (Auth::user()?->user_type === User::ROLE_PARTNER) {
+            return app(PartnerOrderController::class)->index($request);
+        }
+
         $filter = $request->get('filter', 'today');
         if (! in_array($filter, ['today', 'week', 'month', 'year', 'all'], true)) {
             $filter = 'today';
@@ -112,8 +117,13 @@ class OrderController extends Controller
     public function show($id)
     {
 
-        $Orders = Order::findOrfail($id);
-        $livreurs = User::where('user_type', 'LVS')->get();
+        $Orders = Order::with('user:id,name,user_type,country_code')->findOrFail($id);
+        $countryCode = $this->orderCountryCode($Orders);
+        $livreurs = User::query()->where('user_type', User::ROLE_LIVREUR)
+            ->where('active', true)
+            ->where('country_code', $countryCode)
+            ->orderBy('name')
+            ->get(['id', 'name', 'phone', 'country_code']);
 
         // $Orders->orderItems()->save([
         //     'product_id',
@@ -210,6 +220,18 @@ class OrderController extends Controller
         ]);
 
         $orders = Order::findOrfail($id);
+        if (! empty($validated['user_take'])) {
+            $courier = User::query()->whereKey($validated['user_take'])
+                ->where('user_type', User::ROLE_LIVREUR)
+                ->where('active', true)
+                ->where('country_code', $this->orderCountryCode($orders))
+                ->exists();
+            if (! $courier) {
+                return redirect()->back()->withErrors([
+                    'user_take' => 'Choisis un livreur actif rattaché au pays de cette commande.',
+                ])->withInput();
+            }
+        }
         if ($orders->status_order == 0 || $orders->status_order == 1) {
             $orders->status_order = true;
             $orders->status = 'ordered';
@@ -243,6 +265,21 @@ class OrderController extends Controller
         return redirect()->back()->with('success', 'commande déjà en cours');
     }
 
+    private function orderCountryCode(Order $order): string
+    {
+        $order->loadMissing('user:id,user_type,country_code');
+        $countryCode = strtoupper(trim((string) (
+            $order->country_code
+            ?: $order->shipping_country
+            ?: ($order->user?->user_type === User::ROLE_LIVREUR ? $order->user->country_code : null)
+            ?: config('services.fedapay.country_code', 'TG')
+        )));
+
+        return in_array($countryCode, array_keys(WestAfricaShippingCatalog::countries()), true)
+            ? $countryCode
+            : strtoupper((string) config('services.fedapay.country_code', 'TG'));
+    }
+
     public function delete($id)
     {
 
@@ -253,19 +290,18 @@ class OrderController extends Controller
 
     public function edit_hours_order(Request $request, $id)
     {
-        $order = Order::findOrfail($id);
+        $validated = $request->validate([
+            'time' => ['required', 'date_format:H:i'],
+        ], [
+            'time.required' => 'Choisis une heure de livraison.',
+            'time.date_format' => 'Saisis une heure valide au format HH:MM.',
+        ]);
 
-        if ($order) {
-            $order->time = $request->time;
+        $order = Order::findOrFail($id);
+        $order->time = $validated['time'];
+        $order->save();
 
-            //    $constumer=Costumer::findOrfail($order->costumer_id);
-
-            //    $constumer->update(['adresse'=>$request->adresse]);
-
-            $order->save();
-
-            return redirect()->back()->with('succes', 'heure de livraison mise à jour');
-        }
+        return redirect()->back()->with('success', 'Heure de livraison mise à jour.');
     }
 
 
