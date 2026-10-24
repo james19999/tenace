@@ -48,9 +48,10 @@ class QuantityPromotionController extends Controller
     {
         $promotion = QuantityPromotionSetting::current();
         $tiers = collect($promotion->tiers ?? [])->map(fn ($tier) => [
+            'product_id' => $tier['product_id'] ?? 'all',
             'min_quantity' => $tier['min_quantity'] ?? null,
             'discount_percent' => $tier['discount_percent'] ?? null,
-        ])->unique(fn ($tier) => $tier['min_quantity'])->values()->all();
+        ])->unique(fn ($tier) => ($tier['product_id'] ?? 'all').':'.$tier['min_quantity'])->values()->all();
 
         return view('products.promotions', [
             'promotion' => $promotion,
@@ -67,6 +68,7 @@ class QuantityPromotionController extends Controller
             'product_ids' => ['nullable', 'array'],
             'product_ids.*' => ['integer', 'distinct', 'exists:products,id'],
             'promotion_tiers' => ['nullable', 'array', 'max:8'],
+            'promotion_tiers.*.product_id' => ['nullable', 'string'],
             'promotion_tiers.*.min_quantity' => ['nullable', 'integer', 'min:1', 'max:999999'],
             'promotion_tiers.*.discount_percent' => ['nullable', 'integer', 'min:1', 'max:90'],
             'periods' => ['nullable', 'array', 'max:12'],
@@ -78,6 +80,7 @@ class QuantityPromotionController extends Controller
         foreach ($data['promotion_tiers'] ?? [] as $tier) {
             $minimum = $tier['min_quantity'] ?? null;
             $discount = $tier['discount_percent'] ?? null;
+            $productId = $tier['product_id'] ?? 'all';
             if (($minimum === null || $minimum === '') && ($discount === null || $discount === '')) {
                 continue;
             }
@@ -86,19 +89,29 @@ class QuantityPromotionController extends Controller
                     'tiers' => 'Chaque palier doit avoir une quantité minimale et un pourcentage de réduction valide.',
                 ]);
             }
-            $tiers[] = ['min_quantity' => (int) $minimum, 'discount_percent' => (int) $discount];
+            if ($productId !== 'all' && (! ctype_digit((string) $productId) || ! Product::query()->whereKey((int) $productId)->exists())) {
+                throw ValidationException::withMessages(['tiers' => 'Choisis un produit inclus dans cette promotion pour chaque palier.']);
+            }
+            $tiers[] = ['product_id' => $productId === 'all' ? null : (int) $productId, 'min_quantity' => (int) $minimum, 'discount_percent' => (int) $discount];
         }
 
-        $tiers = collect($tiers)->sortBy('min_quantity')->values()->all();
-        if (count(array_unique(array_column($tiers, 'min_quantity'))) !== count($tiers)) {
-            throw ValidationException::withMessages(['tiers' => 'Chaque quantité minimale doit être unique.']);
-        }
-        $previousDiscount = 0;
-        foreach ($tiers as $tier) {
-            if ($tier['discount_percent'] < $previousDiscount) {
-                throw ValidationException::withMessages(['tiers' => 'La réduction doit rester identique ou augmenter à chaque palier.']);
+        $tiers = collect($tiers)->groupBy(fn ($tier) => $tier['product_id'] ?? 'all')->flatMap(function ($group) {
+            $group = $group->sortBy('min_quantity')->values();
+            if ($group->pluck('min_quantity')->unique()->count() !== $group->count()) {
+                throw ValidationException::withMessages(['tiers' => 'Chaque quantité minimale doit être unique pour un même produit.']);
             }
-            $previousDiscount = $tier['discount_percent'];
+            $previousDiscount = 0;
+            foreach ($group as $tier) {
+                if ($tier['discount_percent'] < $previousDiscount) {
+                    throw ValidationException::withMessages(['tiers' => 'La réduction doit rester identique ou augmenter à chaque palier du produit.']);
+                }
+                $previousDiscount = $tier['discount_percent'];
+            }
+            return $group;
+        })->values()->all();
+        if (collect($tiers)->contains(fn ($tier) => $tier['product_id'] !== null)
+            && collect($tiers)->contains(fn ($tier) => $tier['product_id'] === null)) {
+            throw ValidationException::withMessages(['tiers' => 'Utilise soit des paliers pour tous les produits concernés, soit des paliers par produit.']);
         }
         if ($request->boolean('is_active') && $tiers === []) {
             throw ValidationException::withMessages(['tiers' => 'Ajoute au moins un palier avant d’activer la promotion.']);
@@ -123,6 +136,11 @@ class QuantityPromotionController extends Controller
         $endsAt = $startsAt && $durationDays ? $startsAt->copy()->addDays($durationDays) : null;
         $applicationMode = $request->boolean('apply_to_all') ? 'general' : 'product';
         $productIds = $applicationMode === 'product' ? array_map('intval', $data['product_ids'] ?? []) : [];
+        foreach ($tiers as $tier) {
+            if ($tier['product_id'] !== null && $applicationMode === 'product' && ! in_array($tier['product_id'], $productIds, true)) {
+                throw ValidationException::withMessages(['tiers' => 'Chaque palier doit cibler un produit sélectionné dans la promotion.']);
+            }
+        }
         if ($request->boolean('is_active') && $applicationMode === 'product' && $productIds === []) {
             throw ValidationException::withMessages(['product_ids' => 'Sélectionne au moins un produit ou active l’option « Appliquer à tous les produits ».']);
         }
