@@ -2,18 +2,167 @@
 
 namespace App\Http\Controllers;
 
-use App\Models\QuantityPromotionSetting;
 use App\Models\Product;
-use Illuminate\Http\RedirectResponse;
+use App\Models\QuantityPromotionSetting;
 use Illuminate\Http\JsonResponse;
+use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Carbon;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
 use Illuminate\View\View;
 
 class QuantityPromotionController extends Controller
 {
+    public function index(Request $request): View
+    {
+        $search = trim((string) $request->query('search', ''));
+        $promotion = QuantityPromotionSetting::current();
+        $tierGroups = collect($promotion->tiers ?? [])->map(function ($tier) {
+            $type = $tier['discount_type'] ?? (array_key_exists('unit_price', $tier) ? 'unit_price' : 'percent');
+            return [
+                'product_id' => (int) ($tier['product_id'] ?? 0),
+                'min_quantity' => (int) ($tier['min_quantity'] ?? 0),
+                'discount_type' => $type,
+                'discount_value' => (int) ($tier['discount_value'] ?? ($type === 'unit_price'
+                    ? ($tier['unit_price'] ?? 0)
+                    : ($tier['discount_percent'] ?? 0))),
+            ];
+        })->groupBy('product_id');
+
+        $products = Product::query()->with('quantityPriceTiers')
+            ->when($search !== '', fn ($query) => $query->where('name', 'like', '%'.$search.'%'))
+            ->orderBy('name')->paginate(8)->withQueryString();
+
+        $globalTiers = $tierGroups->get(0, collect());
+        $tiersByProduct = $products->getCollection()->mapWithKeys(function ($product) use ($promotion, $globalTiers, $tierGroups) {
+            $tiers = $promotion->application_mode === 'general'
+                ? $globalTiers
+                : $tierGroups->get((int) $product->id, collect());
+
+            $tiers = $tiers->map(function ($tier) use ($product) {
+                if ($tier['discount_type'] === 'percent') {
+                    $regularPrice = (int) $product->unitPriceForQuantity($tier['min_quantity']);
+                    $tier['discount_value'] = max(1, (int) round($regularPrice * (100 - $tier['discount_value']) / 100));
+                    $tier['discount_type'] = 'unit_price';
+                }
+
+                return $tier;
+            });
+
+            return [$product->id => $tiers];
+        });
+
+        return view('products.promotions', compact('promotion', 'products', 'search', 'tiersByProduct'));
+    }
+
+    public function save(Request $request): RedirectResponse
+    {
+        $data = $request->validate([
+            'is_active' => ['nullable', 'boolean'],
+            'periods' => ['nullable', 'array', 'max:12'],
+            'periods.*.starts_at' => ['nullable', 'date'],
+            'periods.*.duration_days' => ['nullable', 'integer', 'min:1', 'max:365'],
+        ]);
+
+        $setting = QuantityPromotionSetting::current();
+        $periods = [];
+        foreach ($data['periods'] ?? [] as $period) {
+            $startValue = $period['starts_at'] ?? null;
+            $durationValue = $period['duration_days'] ?? null;
+            if (! $startValue && ! $durationValue) continue;
+            if (! $startValue || ! $durationValue) {
+                throw ValidationException::withMessages(['periods' => 'Chaque période doit avoir une date de début et une durée en jours.']);
+            }
+            $periods[] = ['starts_at' => Carbon::parse($startValue)->toDateTimeString(), 'duration_days' => (int) $durationValue];
+        }
+
+        $isActive = $request->boolean('is_active');
+        if ($isActive && collect($setting->tiers ?? [])->isEmpty()) {
+            throw ValidationException::withMessages(['tiers' => 'Configure au moins un palier sur un produit avant d’activer les promotions.']);
+        }
+        if ($isActive && $periods === []) {
+            throw ValidationException::withMessages(['periods' => 'Ajoute au moins une période avant d’activer la promotion.']);
+        }
+
+        $firstPeriod = $periods[0] ?? null;
+        $startsAt = $firstPeriod ? Carbon::parse($firstPeriod['starts_at']) : null;
+        $durationDays = $firstPeriod['duration_days'] ?? null;
+        $setting->forceFill([
+            'is_active' => $isActive,
+            'periods' => $periods,
+            'starts_at' => $startsAt,
+            'ends_at' => $startsAt && $durationDays ? $startsAt->copy()->addDays($durationDays) : null,
+            'duration_days' => $durationDays,
+        ])->save();
+
+        return back()->with('success', 'L’activation et les périodes de promotion ont été enregistrées.');
+    }
+
+    public function saveProduct(Request $request, Product $product): RedirectResponse
+    {
+        $data = $request->validate([
+            'min_quantity' => ['nullable', 'array', 'max:8'],
+            'min_quantity.*' => ['nullable', 'integer', 'min:1', 'max:999999'],
+            'unit_price' => ['nullable', 'array', 'max:8'],
+            'unit_price.*' => ['nullable', 'integer', 'min:1', 'max:999999999'],
+        ]);
+
+        $tiers = [];
+        foreach ($data['min_quantity'] ?? [] as $index => $minimum) {
+            $value = $data['unit_price'][$index] ?? null;
+            if (($minimum === null || $minimum === '') && ($value === null || $value === '')) continue;
+            if (! $minimum || ! $value) {
+                throw ValidationException::withMessages(['tiers' => 'Chaque palier doit avoir une quantité minimale et un prix promotionnel valide.']);
+            }
+            $tiers[] = ['product_id' => (int) $product->id, 'min_quantity' => (int) $minimum, 'discount_type' => 'unit_price', 'discount_value' => (int) $value];
+        }
+
+        usort($tiers, fn ($left, $right) => $left['min_quantity'] <=> $right['min_quantity']);
+        if (count(array_unique(array_column($tiers, 'min_quantity'))) !== count($tiers)) {
+            throw ValidationException::withMessages(['tiers' => 'Chaque quantité minimale doit être unique pour ce produit.']);
+        }
+        $previousType = null;
+        $previousValue = null;
+        $previousPrice = (int) $product->price;
+        foreach ($tiers as $tier) {
+            if ($tier['discount_type'] === 'unit_price') {
+                $regularPrice = (int) $product->unitPriceForQuantity($tier['min_quantity']);
+                if ($tier['discount_value'] >= min($previousPrice, $regularPrice)) {
+                    throw ValidationException::withMessages(['tiers' => 'Chaque prix promotionnel doit être inférieur au prix normal ou au palier précédent.']);
+                }
+                $previousPrice = $tier['discount_value'];
+            } elseif ($previousType === 'percent' && $tier['discount_value'] < $previousValue) {
+                throw ValidationException::withMessages(['tiers' => 'Le pourcentage de remise doit augmenter entre deux paliers successifs.']);
+            }
+            $previousType = $tier['discount_type'];
+            $previousValue = $tier['discount_value'];
+        }
+
+        $setting = QuantityPromotionSetting::current();
+        DB::transaction(function () use ($setting, $product, $tiers): void {
+            $existing = collect($setting->tiers ?? []);
+            if ($setting->application_mode !== 'product') {
+                // Expand any legacy all-product rule before this product is customized.
+                $legacyGlobalTiers = $existing->filter(fn ($tier) => empty($tier['product_id']))->values();
+                if ($legacyGlobalTiers->isNotEmpty()) {
+                    $existing = Product::query()->pluck('id')->flatMap(fn ($id) => $legacyGlobalTiers->map(fn ($tier) => array_merge($tier, ['product_id' => (int) $id])));
+                }
+            }
+            $existing = $existing->reject(fn ($tier) => (int) ($tier['product_id'] ?? 0) === (int) $product->id);
+            $allTiers = $existing->concat($tiers)->values()->all();
+            $productIds = collect($allTiers)->pluck('product_id')->map(fn ($id) => (int) $id)->unique()->values()->all();
+            $setting->forceFill([
+                'application_mode' => 'product',
+                'product_ids' => $productIds,
+                'tiers' => $allTiers,
+                'is_active' => $allTiers !== [] && $setting->is_active,
+            ])->save();
+        });
+
+        return back()->with('success', 'Les promotions de « '.$product->name.' » ont été enregistrées.');
+    }
+
     public function deletePeriod(Request $request): JsonResponse
     {
         $data = $request->validate(['index' => ['required', 'integer', 'min:0', 'max:11']]);
@@ -25,14 +174,10 @@ class QuantityPromotionController extends Controller
         }
 
         array_splice($periods, $index, 1);
-        $periods = array_map(fn ($period) => [
-            'starts_at' => $period['starts_at'],
-            'duration_days' => (int) $period['duration_days'],
-        ], $periods);
+        $periods = array_map(fn ($period) => ['starts_at' => $period['starts_at'], 'duration_days' => (int) $period['duration_days']], $periods);
         $firstPeriod = $periods[0] ?? null;
         $startsAt = $firstPeriod ? Carbon::parse($firstPeriod['starts_at']) : null;
         $durationDays = $firstPeriod['duration_days'] ?? null;
-
         $setting->forceFill([
             'periods' => $periods,
             'starts_at' => $startsAt,
@@ -42,157 +187,5 @@ class QuantityPromotionController extends Controller
         ])->save();
 
         return response()->json(['message' => 'La période a été supprimée.', 'remaining' => count($periods)]);
-    }
-
-    public function index(): View
-    {
-        $promotion = QuantityPromotionSetting::current();
-        $tiers = collect($promotion->tiers ?? [])->map(function ($tier) {
-            $discountType = $tier['discount_type'] ?? (array_key_exists('unit_price', $tier) ? 'unit_price' : 'percent');
-            return [
-                'product_id' => $tier['product_id'] ?? 'all',
-                'min_quantity' => $tier['min_quantity'] ?? null,
-                'discount_type' => $discountType,
-                'discount_value' => $tier['discount_value'] ?? ($discountType === 'unit_price'
-                    ? ($tier['unit_price'] ?? null)
-                    : ($tier['discount_percent'] ?? null)),
-            ];
-        })->unique(fn ($tier) => ($tier['product_id'] ?? 'all').':'.$tier['min_quantity'])->values()->all();
-
-        return view('products.promotions', [
-            'promotion' => $promotion,
-            'promotionTiers' => $tiers,
-            'products' => Product::query()->orderBy('name')->get(['id', 'name']),
-        ]);
-    }
-
-    public function save(Request $request): RedirectResponse
-    {
-        $data = $request->validate([
-            'is_active' => ['nullable', 'boolean'],
-            'apply_to_all' => ['nullable', 'boolean'],
-            'product_ids' => ['nullable', 'array'],
-            'product_ids.*' => ['integer', 'distinct', 'exists:products,id'],
-            'promotion_tiers' => ['nullable', 'array', 'max:8'],
-            'promotion_tiers.*.product_id' => ['nullable', 'string'],
-            'promotion_tiers.*.min_quantity' => ['nullable', 'integer', 'min:1', 'max:999999'],
-            'promotion_tiers.*.discount_type' => ['nullable', 'in:percent,unit_price'],
-            'promotion_tiers.*.discount_value' => ['nullable', 'integer', 'min:1', 'max:999999999'],
-            'periods' => ['nullable', 'array', 'max:12'],
-            'periods.*.starts_at' => ['nullable', 'date'],
-            'periods.*.duration_days' => ['nullable', 'integer', 'min:1', 'max:365'],
-        ]);
-
-        $applyToAll = $request->boolean('apply_to_all');
-        $tiers = [];
-        foreach ($data['promotion_tiers'] ?? [] as $tier) {
-            $minimum = $tier['min_quantity'] ?? null;
-            // A global fixed unit price cannot fit products with different prices.
-            $discountType = $applyToAll ? 'percent' : ($tier['discount_type'] ?? 'percent');
-            $discountValue = $tier['discount_value'] ?? null;
-            $productId = $tier['product_id'] ?? 'all';
-            if (($minimum === null || $minimum === '') && ($discountValue === null || $discountValue === '')) {
-                continue;
-            }
-            if (! $minimum || ! $discountValue) {
-                throw ValidationException::withMessages([
-                    'tiers' => 'Chaque palier doit avoir une quantité minimale et une valeur de réduction valide.',
-                ]);
-            }
-            if ($discountType === 'percent' && (int) $discountValue > 90) {
-                throw ValidationException::withMessages(['tiers' => 'La réduction en pourcentage doit être comprise entre 1 et 90 %.']);
-            }
-            if ($productId !== 'all' && (! ctype_digit((string) $productId) || ! Product::query()->whereKey((int) $productId)->exists())) {
-                throw ValidationException::withMessages(['tiers' => 'Choisis un produit inclus dans cette promotion pour chaque palier.']);
-            }
-            $tiers[] = ['product_id' => $productId === 'all' ? null : (int) $productId, 'min_quantity' => (int) $minimum, 'discount_type' => $discountType, 'discount_value' => (int) $discountValue];
-        }
-
-        $tiers = collect($tiers)->groupBy(fn ($tier) => $tier['product_id'] ?? 'all')->flatMap(function ($group) {
-            $group = $group->sortBy('min_quantity')->values();
-            if ($group->pluck('min_quantity')->unique()->count() !== $group->count()) {
-                throw ValidationException::withMessages(['tiers' => 'Chaque quantité minimale doit être unique pour un même produit.']);
-            }
-            $previousValue = null;
-            $discountType = null;
-            foreach ($group as $tier) {
-                if ($discountType === $tier['discount_type'] && $previousValue !== null && (($tier['discount_type'] === 'percent' && $tier['discount_value'] < $previousValue)
-                    || ($tier['discount_type'] === 'unit_price' && $tier['discount_value'] > $previousValue))) {
-                    throw ValidationException::withMessages(['tiers' => 'Le pourcentage doit augmenter, ou le prix unitaire diminuer, entre deux paliers successifs du même type.']);
-                }
-                $previousValue = $discountType === $tier['discount_type'] ? $tier['discount_value'] : null;
-                $discountType = $tier['discount_type'];
-            }
-            return $group;
-        })->values()->all();
-        if (collect($tiers)->contains(fn ($tier) => $tier['product_id'] !== null)
-            && collect($tiers)->contains(fn ($tier) => $tier['product_id'] === null)) {
-            throw ValidationException::withMessages(['tiers' => 'Utilise soit des paliers pour tous les produits concernés, soit des paliers par produit.']);
-        }
-        if ($request->boolean('is_active') && $tiers === []) {
-            throw ValidationException::withMessages(['tiers' => 'Ajoute au moins un palier avant d’activer la promotion.']);
-        }
-        $periods = [];
-        foreach ($data['periods'] ?? [] as $period) {
-            $startValue = $period['starts_at'] ?? null;
-            $durationValue = $period['duration_days'] ?? null;
-            if (! $startValue && ! $durationValue) continue;
-            if (! $startValue || ! $durationValue) {
-                throw ValidationException::withMessages(['periods' => 'Chaque période doit avoir une date de début et une durée en jours.']);
-            }
-            $start = Carbon::parse($startValue);
-            $periods[] = ['starts_at' => $start->toDateTimeString(), 'duration_days' => (int) $durationValue];
-        }
-        if ($request->boolean('is_active') && $periods === []) {
-            throw ValidationException::withMessages(['periods' => 'Ajoute au moins une période avant d’activer la promotion.']);
-        }
-        $firstPeriod = $periods[0] ?? null;
-        $startsAt = $firstPeriod ? Carbon::parse($firstPeriod['starts_at']) : null;
-        $durationDays = $firstPeriod['duration_days'] ?? null;
-        $endsAt = $startsAt && $durationDays ? $startsAt->copy()->addDays($durationDays) : null;
-        $applicationMode = $applyToAll ? 'general' : 'product';
-        $productIds = $applicationMode === 'product' ? array_map('intval', $data['product_ids'] ?? []) : [];
-        $unitPriceTiers = collect($tiers)->filter(fn ($tier) => $tier['discount_type'] === 'unit_price');
-        if ($unitPriceTiers->isNotEmpty()) {
-            $scopedProductIds = collect($tiers)->pluck('product_id')->filter()->map(fn ($id) => (int) $id)->unique();
-            $productsForPriceCheck = Product::query()->with('quantityPriceTiers')
-                ->when($scopedProductIds->isNotEmpty(), fn ($query) => $query->whereIn('id', $scopedProductIds))
-                ->when($scopedProductIds->isEmpty() && $applicationMode === 'product', fn ($query) => $query->whereIn('id', $productIds))
-                ->get();
-            foreach ($unitPriceTiers as $tier) {
-                $affectedProducts = $tier['product_id'] !== null
-                    ? $productsForPriceCheck->where('id', $tier['product_id'])
-                    : $productsForPriceCheck;
-                foreach ($affectedProducts as $product) {
-                    $regularPrice = $product->unitPriceForQuantity($tier['min_quantity']);
-                    if ($tier['discount_value'] >= $regularPrice) {
-                        throw ValidationException::withMessages(['tiers' => 'Le prix promotionnel par unité doit être inférieur au prix normal de chaque produit concerné ('.$product->name.').']);
-                    }
-                }
-            }
-        }
-        foreach ($tiers as $tier) {
-            if ($tier['product_id'] !== null && $applicationMode === 'product' && ! in_array($tier['product_id'], $productIds, true)) {
-                throw ValidationException::withMessages(['tiers' => 'Chaque palier doit cibler un produit sélectionné dans la promotion.']);
-            }
-        }
-        if ($request->boolean('is_active') && $applicationMode === 'product' && $productIds === []) {
-            throw ValidationException::withMessages(['product_ids' => 'Sélectionne au moins un produit ou active l’option « Appliquer à tous les produits ».']);
-        }
-
-        DB::transaction(function () use ($request, $tiers, $applicationMode, $productIds, $startsAt, $endsAt, $durationDays, $periods): void {
-            QuantityPromotionSetting::query()->updateOrCreate(['id' => 1], [
-                'is_active' => $request->boolean('is_active'),
-                'application_mode' => $applicationMode,
-                'product_ids' => $productIds,
-                'tiers' => $tiers,
-                'starts_at' => $startsAt,
-                'ends_at' => $endsAt,
-                'duration_days' => $durationDays,
-                'periods' => $periods,
-            ]);
-        });
-
-        return redirect()->route('quantity-promotions.index')->with('success', 'Les paramètres de promotion ont été enregistrés.');
     }
 }

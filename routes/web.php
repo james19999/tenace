@@ -113,6 +113,7 @@ Route::middleware(['auth'])->group(function () {
         Route::get('/suivi-grossistes/{customer}', [WholesaleCustomerMonitoringController::class, 'show'])->name('wholesale-monitoring.show');
         Route::get('/promotions', [QuantityPromotionController::class, 'index'])->name('quantity-promotions.index');
         Route::post('/promotions', [QuantityPromotionController::class, 'save'])->name('quantity-promotions.save');
+        Route::post('/promotions/products/{product}', [QuantityPromotionController::class, 'saveProduct'])->name('quantity-promotions.products.save');
         Route::post('/promotions/periods/delete', [QuantityPromotionController::class, 'deletePeriod'])->name('quantity-promotions.periods.delete');
         Route::post('/avis-clients/phone-display', [PublicReviewController::class, 'updatePhoneDisplay'])->name('public-reviews.phone-display');
         // Paramètres & Rôles & Sécurité
