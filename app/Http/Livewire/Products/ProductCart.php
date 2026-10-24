@@ -8,6 +8,7 @@ use App\Models\Costumer;
 use App\Models\TransportCompany;
 use App\Models\CostumerContactSetting;
 use App\Models\ProductCountryPrice;
+use App\Models\QuantityPromotionSetting;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
 use App\Services\StockModuleSettingsService;
@@ -21,6 +22,7 @@ class ProductCart extends Component
     public $defaultFollowUpAt;
     public $isWholesaleOrder = false;
     public $stockNotice = '';
+    public $promotionSummary = '';
 
     public function mount()
     {
@@ -44,10 +46,13 @@ class ProductCart extends Component
     {
         if (auth()->user()?->user_type === \App\Models\User::ROLE_PARTNER) {
             $this->isWholesaleOrder = false;
+            $this->promotionSummary = '';
             return;
         }
         $cart = Cart::instance('cart');
         $groups = $cart->content()->groupBy(fn ($item) => (int) $item->id);
+        $promotion = QuantityPromotionSetting::current();
+        $maximumDiscountApplied = 0;
         $this->isWholesaleOrder = false;
         foreach ($groups as $productId => $items) {
             $quantity = (int) $items->sum('qty');
@@ -64,9 +69,20 @@ class ProductCart extends Component
             $product = Product::query()->with('quantityPriceTiers')->find($productId);
             if (! $product) continue;
             $price = $this->isWholesaleOrder ? $product->unitPriceForQuantity($quantity) : (int) $product->price;
+            $discountPercent = $promotion->appliesToProduct((int) $productId)
+                ? $promotion->discountForQuantity($quantity)
+                : 0;
+            if ($discountPercent > 0) {
+                $price = max(1, (int) round($price * (100 - $discountPercent) / 100));
+                $maximumDiscountApplied = max($maximumDiscountApplied, $discountPercent);
+            }
             foreach ($items as $item) $cart->remove($item->rowId);
             $cart->add($product->id, $first->name, $quantity, $price)->associate(Product::class);
         }
+
+        $this->promotionSummary = $maximumDiscountApplied > 0
+            ? 'Promotions appliquées selon les quantités des produits concernés (jusqu’à '.$maximumDiscountApplied.' %).'
+            : '';
     }
 
     private function calculateTotal()

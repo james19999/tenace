@@ -191,6 +191,7 @@
                         <strong>{{ $isWholesaleOrder ? 'Commande grossiste détectée' : 'Commande classique' }}</strong>
                         <small>{{ $isWholesaleOrder ? 'Tarifs par quantité et stock de la boutique grossiste appliqués.' : 'Le prix normal reste appliqué jusqu’à ce qu’un seuil grossiste soit atteint.' }}</small>
                     </div>
+                    @if($promotionSummary !== '')<div class="cart-order-category-copy" aria-live="polite"><strong>Promotion</strong><small>{{ $promotionSummary }}</small></div>@endif
                 </div>
             </section>
             <input type="hidden" name="is_wholesale" value="{{ $isWholesaleOrder ? 1 : 0 }}">

@@ -84,6 +84,7 @@
                 </li>
                 <li><a href="{{ route('product-tier-prices.index') }}" class="{{ $active('product-tier-prices.*') }}"><span class="icon material-icons">sell</span><span class="text">Tarifs par quantité</span></a></li>
                 <li><a href="{{ route('wholesale-monitoring.index') }}" class="{{ $active('wholesale-monitoring.*') }}"><span class="icon material-icons">groups</span><span class="text">Suivi clients grossistes</span></a></li>
+                <li><a href="{{ route('quantity-promotions.index') }}" class="{{ $active('quantity-promotions.*') }}"><span class="icon material-icons">local_offer</span><span class="text">Promotions</span></a></li>
                 <li>
                     <a href="#adminPartnerOrdersMenu" class="{{ $active('partner-ordering.*', 'partner-monitoring.*') }}" data-toggle="collapse" aria-expanded="{{ request()->routeIs('partner-ordering.*', 'partner-monitoring.*') ? 'true' : 'false' }}">
                         <span class="caret material-icons">arrow_right</span>

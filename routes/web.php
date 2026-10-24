@@ -48,6 +48,7 @@ use App\Http\Controllers\CourierPublicOrderController;
 use App\Http\Controllers\DgAppointmentController;
 use App\Http\Controllers\FedaPayWebhookController;
 use App\Http\Controllers\ProductQuantityPriceController;
+use App\Http\Controllers\QuantityPromotionController;
 use App\Http\Controllers\WholesaleCustomerMonitoringController;
 use App\Http\Controllers\Expensive\ExpensiveController;
 use App\Http\Controllers\Brouillons\BrouillonController;
@@ -110,6 +111,8 @@ Route::middleware(['auth'])->group(function () {
         Route::get('/partner-monitoring/snapshot', [PartnerMonitoringController::class, 'snapshot'])->name('partner-monitoring.snapshot');
         Route::get('/suivi-grossistes', [WholesaleCustomerMonitoringController::class, 'index'])->name('wholesale-monitoring.index');
         Route::get('/suivi-grossistes/{customer}', [WholesaleCustomerMonitoringController::class, 'show'])->name('wholesale-monitoring.show');
+        Route::get('/promotions', [QuantityPromotionController::class, 'index'])->name('quantity-promotions.index');
+        Route::post('/promotions', [QuantityPromotionController::class, 'save'])->name('quantity-promotions.save');
         Route::post('/avis-clients/phone-display', [PublicReviewController::class, 'updatePhoneDisplay'])->name('public-reviews.phone-display');
         // Paramètres & Rôles & Sécurité
         Route::get('settings/config', [DashboarController::class, 'settings'])->name('setting');

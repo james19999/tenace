@@ -8,6 +8,7 @@ use App\Mail\TenanCos;
 use App\Models\Costumer;
 use App\Models\CostumerContactPreference;
 use App\Models\Product;
+use App\Models\QuantityPromotionSetting;
 use App\Mail\ParthnerMail;
 use App\Models\Orders\Order;
 use Illuminate\Http\Request;
@@ -84,6 +85,7 @@ class CheckController extends Controller
                  $product = Product::query()->with('quantityPriceTiers')->find($productId);
                  return $product && $product->quantityPriceTiers->contains(fn ($tier) => $quantity >= (int) $tier->min_quantity);
              });
+         $promotion = QuantityPromotionSetting::current();
          if ($isWholesaleOrder && Auth::user()?->user_type === User::ROLE_PARTNER) {
              return redirect()->route('productcart')->withErrors(['is_wholesale' => 'Le tarif grossiste de la boutique n’est pas disponible pour les commandes partenaires.'])->withInput();
          }
@@ -108,12 +110,35 @@ class CheckController extends Controller
                      return redirect()->route('productcart')->withErrors(['is_wholesale' => 'Stock insuffisant dans la boutique grossiste pour « '.$product->name.' » (disponible : '.max(0, (int) $available).').'])->withInput();
                  }
                  $qualifiedWholesaleProduct = $qualifiedWholesaleProduct || $product->quantityPriceTiers->contains(fn ($tier) => $quantity >= $tier->min_quantity);
+                 $promotionPercent = $promotion->appliesToProduct((int) $productId)
+                     ? $promotion->discountForQuantity($quantity)
+                     : 0;
+                 $unitPrice = $product->unitPriceForQuantity($quantity);
+                 if ($promotionPercent > 0) {
+                     $unitPrice = max(1, (int) round($unitPrice * (100 - $promotionPercent) / 100));
+                 }
                  foreach ($items as $item) Cart::instance('cart')->remove($item->rowId);
                  Cart::instance('cart')->add($product->id, $items->first()->name, $quantity,
-                     $product->unitPriceForQuantity($quantity))->associate(Product::class);
+                     $unitPrice)->associate(Product::class);
              }
              if (! $qualifiedWholesaleProduct) {
                  return redirect()->route('productcart')->withErrors(['is_wholesale' => 'Aucun produit du panier n’atteint le seuil de commande grossiste configuré.'])->withInput();
+             }
+             $cartItems = Cart::instance('cart')->content();
+         } elseif (Auth::user()?->user_type !== User::ROLE_PARTNER) {
+             foreach ($cartItems->groupBy(fn ($item) => (int) $item->id) as $productId => $items) {
+                 $quantity = (int) $items->sum('qty');
+                 $product = Product::query()->find($productId);
+                 if (! $product) continue;
+                 $promotionPercent = $promotion->appliesToProduct((int) $productId)
+                     ? $promotion->discountForQuantity($quantity)
+                     : 0;
+                 $unitPrice = (int) $product->price;
+                 if ($promotionPercent > 0) {
+                     $unitPrice = max(1, (int) round($unitPrice * (100 - $promotionPercent) / 100));
+                 }
+                 foreach ($items as $item) Cart::instance('cart')->remove($item->rowId);
+                 Cart::instance('cart')->add($product->id, $items->first()->name, $quantity, $unitPrice)->associate(Product::class);
              }
              $cartItems = Cart::instance('cart')->content();
          }
