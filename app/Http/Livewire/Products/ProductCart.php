@@ -25,7 +25,7 @@ class ProductCart extends Component
     public $promotionSummary = '';
     public $promotionDiscountAmount = 0;
     public $cartRegularUnitPrices = [];
-    public $cartPromotionPercents = [];
+    public $cartPromotionLabels = [];
 
     public function mount()
     {
@@ -58,16 +58,15 @@ class ProductCart extends Component
             $this->promotionSummary = '';
             $this->promotionDiscountAmount = 0;
             $this->cartRegularUnitPrices = [];
-            $this->cartPromotionPercents = [];
+            $this->cartPromotionLabels = [];
             return;
         }
         $cart = Cart::instance('cart');
         $groups = $cart->content()->groupBy(fn ($item) => (int) $item->id);
         $promotion = QuantityPromotionSetting::current();
-        $maximumDiscountApplied = 0;
         $this->promotionDiscountAmount = 0;
         $this->cartRegularUnitPrices = [];
-        $this->cartPromotionPercents = [];
+        $this->cartPromotionLabels = [];
         $this->isWholesaleOrder = false;
         foreach ($groups as $productId => $items) {
             $quantity = (int) $items->sum('qty');
@@ -79,29 +78,28 @@ class ProductCart extends Component
         }
 
         foreach ($groups as $productId => $items) {
-            $first = $items->first();
             $quantity = (int) $items->sum('qty');
             $product = Product::query()->with('quantityPriceTiers')->find($productId);
             if (! $product) continue;
             $price = $this->isWholesaleOrder ? $product->unitPriceForQuantity($quantity) : (int) $product->price;
             $basePrice = $price;
-            $discountPercent = $promotion->discountForProductQuantity((int) $productId, $quantity);
-            if ($discountPercent > 0) {
-                $price = max(1, (int) round($price * (100 - $discountPercent) / 100));
-                if ($price < $basePrice) {
-                    $this->cartRegularUnitPrices[(int) $productId] = $basePrice;
-                    $this->cartPromotionPercents[(int) $productId] = $discountPercent;
-                }
-                $maximumDiscountApplied = max($maximumDiscountApplied, $discountPercent);
+            $promotionPricing = $promotion->priceAfterPromotionForProductQuantity((int) $productId, $quantity, $basePrice);
+            if ($promotionPricing) {
+                $price = $promotionPricing['unit_price'];
+                $this->cartRegularUnitPrices[(int) $productId] = $basePrice;
+                $this->cartPromotionLabels[(int) $productId] = $promotionPricing['discount_type'] === 'percent'
+                    ? '−'.$promotionPricing['discount_value'].' %'
+                    : 'Prix fixe · '.number_format($price, 0, ',', ' ').' F / unité';
                 $this->promotionDiscountAmount += max(0, $basePrice - $price) * $quantity;
             }
-            if ((float) $first->price === (float) $price) continue;
-            foreach ($items as $item) $cart->remove($item->rowId);
-            $cart->add($product->id, $first->name, $quantity, $price)->associate(Product::class);
+            foreach ($items as $item) {
+                if ((float) $item->price === (float) $price) continue;
+                $cart->update($item->rowId, ['price' => $price]);
+            }
         }
 
-        $this->promotionSummary = $maximumDiscountApplied > 0
-            ? 'Promotions appliquées selon les quantités des produits concernés (jusqu’à '.$maximumDiscountApplied.' %).'
+        $this->promotionSummary = $this->promotionDiscountAmount > 0
+            ? 'Prix promotionnels appliqués selon les quantités des produits concernés.'
             : '';
     }
 

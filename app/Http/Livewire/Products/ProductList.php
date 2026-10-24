@@ -189,14 +189,16 @@ class ProductList extends Component
                 ->sortBy(fn ($tier) => (int) $tier['min_quantity'])->first();
             if (! $firstTier) return [];
             $quantity = (int) $firstTier['min_quantity'];
-            $discount = $promotionSetting->discountForProductQuantity((int) $product->id, $quantity);
-            if ($discount < 1) return [];
             $regularPrice = (int) $product->unitPriceForQuantity($quantity);
+            $pricing = $promotionSetting->priceAfterPromotionForProductQuantity((int) $product->id, $quantity, $regularPrice);
+            if (! $pricing) return [];
             return [(int) $product->id => [
                 'quantity' => $quantity,
-                'regular_price' => $regularPrice,
-                'promo_price' => max(1, (int) round($regularPrice * (100 - $discount) / 100)),
-                'discount_percent' => $discount,
+                'regular_price' => $pricing['regular_price'],
+                'promo_price' => $pricing['unit_price'],
+                'discount_label' => $pricing['discount_type'] === 'percent'
+                    ? '−'.$pricing['discount_value'].' % appliqués'
+                    : 'Prix fixe · '.number_format($pricing['unit_price'], 0, ',', ' ').' F / unité',
             ]];
         });
         $partnerStockSummary = collect();

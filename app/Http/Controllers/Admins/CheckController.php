@@ -110,11 +110,9 @@ class CheckController extends Controller
                      return redirect()->route('productcart')->withErrors(['is_wholesale' => 'Stock insuffisant dans la boutique grossiste pour « '.$product->name.' » (disponible : '.max(0, (int) $available).').'])->withInput();
                  }
                  $qualifiedWholesaleProduct = $qualifiedWholesaleProduct || $product->quantityPriceTiers->contains(fn ($tier) => $quantity >= $tier->min_quantity);
-                 $promotionPercent = $promotion->discountForProductQuantity((int) $productId, $quantity);
                  $unitPrice = $product->unitPriceForQuantity($quantity);
-                 if ($promotionPercent > 0) {
-                     $unitPrice = max(1, (int) round($unitPrice * (100 - $promotionPercent) / 100));
-                 }
+                 $promotionPricing = $promotion->priceAfterPromotionForProductQuantity((int) $productId, $quantity, $unitPrice);
+                 if ($promotionPricing) $unitPrice = $promotionPricing['unit_price'];
                  foreach ($items as $item) Cart::instance('cart')->remove($item->rowId);
                  Cart::instance('cart')->add($product->id, $items->first()->name, $quantity,
                      $unitPrice)->associate(Product::class);
@@ -128,11 +126,9 @@ class CheckController extends Controller
                  $quantity = (int) $items->sum('qty');
                  $product = Product::query()->find($productId);
                  if (! $product) continue;
-                 $promotionPercent = $promotion->discountForProductQuantity((int) $productId, $quantity);
                  $unitPrice = (int) $product->price;
-                 if ($promotionPercent > 0) {
-                     $unitPrice = max(1, (int) round($unitPrice * (100 - $promotionPercent) / 100));
-                 }
+                 $promotionPricing = $promotion->priceAfterPromotionForProductQuantity((int) $productId, $quantity, $unitPrice);
+                 if ($promotionPricing) $unitPrice = $promotionPricing['unit_price'];
                  foreach ($items as $item) Cart::instance('cart')->remove($item->rowId);
                  Cart::instance('cart')->add($product->id, $items->first()->name, $quantity, $unitPrice)->associate(Product::class);
              }

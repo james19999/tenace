@@ -51,7 +51,36 @@ class QuantityPromotionSetting extends Model
 
     public function discountForProductQuantity(int $productId, int $quantity): int
     {
-        if (! $this->appliesToProduct($productId) || $quantity < 1) return 0;
+        $tier = $this->promotionTierForProductQuantity($productId, $quantity);
+        return $tier && $this->tierDiscountType($tier) === 'percent'
+            ? $this->tierDiscountValue($tier)
+            : 0;
+    }
+
+    public function priceAfterPromotionForProductQuantity(int $productId, int $quantity, int $regularPrice): ?array
+    {
+        $tier = $this->promotionTierForProductQuantity($productId, $quantity);
+        if (! $tier || $regularPrice < 1) return null;
+
+        $type = $this->tierDiscountType($tier);
+        $value = $this->tierDiscountValue($tier);
+        $promotionalPrice = $type === 'unit_price'
+            ? min($regularPrice, $value)
+            : max(1, (int) round($regularPrice * (100 - $value) / 100));
+        if ($promotionalPrice >= $regularPrice) return null;
+
+        return [
+            'regular_price' => $regularPrice,
+            'unit_price' => $promotionalPrice,
+            'discount_type' => $type,
+            'discount_value' => $value,
+            'discount_amount' => $regularPrice - $promotionalPrice,
+        ];
+    }
+
+    private function promotionTierForProductQuantity(int $productId, int $quantity): ?array
+    {
+        if (! $this->appliesToProduct($productId) || $quantity < 1) return null;
         $tiers = collect($this->tiers ?? []);
         $productTiers = $tiers->filter(fn ($tier) => (int) ($tier['product_id'] ?? 0) === $productId);
         $eligibleTiers = $productTiers->isNotEmpty()
@@ -60,7 +89,19 @@ class QuantityPromotionSetting extends Model
 
         return $eligibleTiers->filter(fn ($tier) => (int) ($tier['min_quantity'] ?? 0) <= $quantity)
             ->sortByDesc(fn ($tier) => (int) ($tier['min_quantity'] ?? 0))
-            ->first(fn ($tier) => true)['discount_percent'] ?? 0;
+            ->first();
+    }
+
+    private function tierDiscountType(array $tier): string
+    {
+        return $tier['discount_type'] ?? (array_key_exists('unit_price', $tier) ? 'unit_price' : 'percent');
+    }
+
+    private function tierDiscountValue(array $tier): int
+    {
+        return (int) ($tier['discount_value'] ?? ($this->tierDiscountType($tier) === 'unit_price'
+            ? ($tier['unit_price'] ?? 0)
+            : ($tier['discount_percent'] ?? 0)));
     }
 
     public function appliesToProduct(int $productId): bool

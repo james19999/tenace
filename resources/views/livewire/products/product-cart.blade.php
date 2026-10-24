@@ -1,4 +1,4 @@
-<div class="product-cart-page" wire:poll.15s="refreshPromotionState">
+<div class="product-cart-page" wire:poll.5s="refreshPromotionState">
     @if ($isPartner)
         @include('partners.orders.cart')
     @else
@@ -241,7 +241,7 @@
                                                         <span class="cart-price-stack">
                                                             <s class="cart-price-old">{{ number_format((float) $cartRegularUnitPrices[$items->id], 0, ',', ' ') }} F</s>
                                                             <strong class="cart-price-current">{{ number_format((float) $items->price, 0, ',', ' ') }} F</strong>
-                                                            <small class="cart-price-discount">−{{ $cartPromotionPercents[$items->id] ?? 0 }} %</small>
+                                                            <small class="cart-price-discount">{{ $cartPromotionLabels[$items->id] ?? 'Prix promotionnel' }}</small>
                                                         </span>
                                                     @else
                                                         {{ number_format((float) $items->price, 0, ',', ' ') }} F
