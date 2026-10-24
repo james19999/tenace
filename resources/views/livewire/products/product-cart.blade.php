@@ -85,7 +85,7 @@
         .cart-product-placeholder[hidden]{display:none}
         .cart-product-name{font-weight:750;color:var(--cart-ink);line-height:1.35;overflow-wrap:anywhere}
         .cart-product-meta{font-size:12px;color:var(--cart-muted);margin-top:3px}
-        .cart-price{white-space:nowrap;font-weight:650}
+        .cart-price{white-space:nowrap;font-weight:650}.cart-price-stack{display:flex;flex-direction:column;align-items:flex-start;gap:2px}.cart-price-old{color:#8b919d;font-size:11px;font-weight:500}.cart-price-current{color:#26764d;font-weight:800}.cart-price-discount{color:#26764d;font-size:10px;font-weight:650}
         .cart-quantity{display:inline-flex;align-items:center;border:1px solid var(--cart-line);border-radius:9px;overflow:hidden;white-space:nowrap}
         .cart-quantity button{width:32px;height:32px;border:0;background:#f7f8fa;color:#4e5360;font-weight:800}
         .cart-quantity button:disabled{opacity:.42;cursor:not-allowed}
@@ -236,7 +236,17 @@
                                                         <div><div class="cart-product-name">{{ $items->model->name ?? 'Produit' }}</div><div class="cart-product-meta">Réf. {{ $items->id }}</div></div>
                                                     </div>
                                                 </td>
-                                                <td class="cart-price">{{ number_format((float) $items->price, 0, ',', ' ') }} F</td>
+                                                <td class="cart-price">
+                                                    @if(isset($cartRegularUnitPrices[$items->id]))
+                                                        <span class="cart-price-stack">
+                                                            <s class="cart-price-old">{{ number_format((float) $cartRegularUnitPrices[$items->id], 0, ',', ' ') }} F</s>
+                                                            <strong class="cart-price-current">{{ number_format((float) $items->price, 0, ',', ' ') }} F</strong>
+                                                            <small class="cart-price-discount">−{{ $cartPromotionPercents[$items->id] ?? 0 }} %</small>
+                                                        </span>
+                                                    @else
+                                                        {{ number_format((float) $items->price, 0, ',', ' ') }} F
+                                                    @endif
+                                                </td>
                                                 <td>
                                                     <div class="cart-quantity" aria-label="Quantité">
                                                         <button type="button" aria-label="Diminuer la quantité" wire:click.prevent="decrement('{{ $items->rowId }}')" @disabled($items->qty <= 1)>−</button>
@@ -244,7 +254,16 @@
                                                         <button type="button" aria-label="Augmenter la quantité" wire:click.prevent="increment('{{ $items->rowId }}')" wire:loading.attr="disabled" wire:target="increment('{{ $items->rowId }}')">+</button>
                                                     </div>
                                                 </td>
-                                                <td class="cart-price">{{ number_format((float) $items->price * (int) $items->qty, 0, ',', ' ') }} F</td>
+                                                <td class="cart-price">
+                                                    @if(isset($cartRegularUnitPrices[$items->id]))
+                                                        <span class="cart-price-stack">
+                                                            <s class="cart-price-old">{{ number_format((float) $cartRegularUnitPrices[$items->id] * (int) $items->qty, 0, ',', ' ') }} F</s>
+                                                            <strong class="cart-price-current">{{ number_format((float) $items->price * (int) $items->qty, 0, ',', ' ') }} F</strong>
+                                                        </span>
+                                                    @else
+                                                        {{ number_format((float) $items->price * (int) $items->qty, 0, ',', ' ') }} F
+                                                    @endif
+                                                </td>
                                                 <td><button type="button" class="cart-remove" title="Retirer le produit" aria-label="Retirer {{ $items->model->name ?? 'le produit' }}" wire:click.prevent="destroy('{{ $items->rowId }}')"><span class="material-icons" aria-hidden="true">delete_outline</span></button></td>
                                             </tr>
                                         @endforeach

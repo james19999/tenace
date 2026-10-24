@@ -178,6 +178,27 @@ class ProductList extends Component
         $promotedProductIds = $Products->getCollection()
             ->filter(fn ($product) => $promotionSetting->hasPromotionForProduct((int) $product->id))
             ->modelKeys();
+        $promotionPrices = $isPartner ? collect() : $Products->getCollection()->mapWithKeys(function ($product) use ($promotionSetting) {
+            if (! $promotionSetting->hasPromotionForProduct((int) $product->id)) return [];
+            $tiers = collect($promotionSetting->tiers ?? []);
+            $productTiers = $tiers->filter(fn ($tier) => (int) ($tier['product_id'] ?? 0) === (int) $product->id);
+            $eligibleTiers = $productTiers->isNotEmpty()
+                ? $productTiers
+                : $tiers->filter(fn ($tier) => empty($tier['product_id']));
+            $firstTier = $eligibleTiers->filter(fn ($tier) => (int) ($tier['min_quantity'] ?? 0) > 0)
+                ->sortBy(fn ($tier) => (int) $tier['min_quantity'])->first();
+            if (! $firstTier) return [];
+            $quantity = (int) $firstTier['min_quantity'];
+            $discount = $promotionSetting->discountForProductQuantity((int) $product->id, $quantity);
+            if ($discount < 1) return [];
+            $regularPrice = (int) $product->unitPriceForQuantity($quantity);
+            return [(int) $product->id => [
+                'quantity' => $quantity,
+                'regular_price' => $regularPrice,
+                'promo_price' => max(1, (int) round($regularPrice * (100 - $discount) / 100)),
+                'discount_percent' => $discount,
+            ]];
+        });
         $partnerStockSummary = collect();
         $partnerCartQuantities = collect();
         if ($isPartner) {
@@ -213,6 +234,7 @@ class ProductList extends Component
         return view('livewire.products.product-list', [
             'Products' => $Products,
             'promotedProductIds' => $promotedProductIds,
+            'promotionPrices' => $promotionPrices,
             'inventory' => $inventory,
             'countryNames' => collect(WestAfricaShippingCatalog::countries())->map(fn ($country) => $country['label']),
             'isPartner' => $isPartner,

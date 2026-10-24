@@ -138,7 +138,8 @@
                                 <div class="product-prices product-partner-price"><div><small>Prix de vente · {{ $countryNames[$partnerCountryCode] ?? $partnerCountryCode }}</small><strong>{{ number_format((float) $countryPrice->price, 0, ',', ' ') }} <span>F</span></strong></div></div>
                             @else
                             <div class="product-prices">
-                                <div><small>Prix de vente boutique</small><strong>{{ number_format((float) $product->price, 0, ',', ' ') }} <span>F</span></strong></div>
+                                @php($promotionPrice = $promotionPrices[$product->id] ?? null)
+                                <div><small>{{ $promotionPrice ? 'Prix promo · dès '.$promotionPrice['quantity'].' unités' : 'Prix de vente boutique' }}</small>@if($promotionPrice)<div class="product-price-promo"><s>{{ number_format($promotionPrice['regular_price'], 0, ',', ' ') }} F</s><strong>{{ number_format($promotionPrice['promo_price'], 0, ',', ' ') }} F</strong></div><small class="product-price-promo-note">−{{ $promotionPrice['discount_percent'] }} % appliqués</small>@else<strong>{{ number_format((float) $product->price, 0, ',', ' ') }} <span>F</span></strong>@endif</div>
                             </div>
                             @if($product->quantityPriceTiers->isNotEmpty())
                                 <div class="product-country-prices"><div class="product-country-prices-heading"><span>Prix selon la quantité</span><small>Tarif appliqué automatiquement</small></div>@foreach($product->quantityPriceTiers as $tier)<div class="product-country-price"><span>Dès {{ $tier->min_quantity }} unités</span><strong>{{ number_format((float) $tier->unit_price, 0, ',', ' ') }} F / unité</strong></div>@endforeach</div>
@@ -306,6 +307,7 @@
         .product-prices{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:13px;padding:11px 0;border-top:1px solid #f0f0f2;border-bottom:1px solid #f0f0f2}
         .product-prices small{display:block;color:var(--catalog-muted);font-size:10px;margin-bottom:4px}
         .product-prices strong{font-size:15px;color:var(--catalog-ink);font-weight:800;overflow-wrap:anywhere}
+        .product-price-promo{display:flex;flex-wrap:wrap;align-items:baseline;gap:5px 8px}.product-price-promo s{color:var(--catalog-muted);font-size:12px;font-weight:600}.product-price-promo strong{color:#26764d!important}.product-price-promo-note{display:block;margin-top:3px;color:#26764d;font-size:10px;font-weight:650}
         .product-prices strong span{font-size:11px;color:var(--catalog-muted)}
         .product-country-prices{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:6px;margin-top:10px}
         .product-country-prices-heading{grid-column:1/-1;display:flex;justify-content:space-between;align-items:center;gap:8px;margin-bottom:1px;color:var(--catalog-ink);font-size:11px;font-weight:750}

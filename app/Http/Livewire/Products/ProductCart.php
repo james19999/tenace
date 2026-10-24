@@ -24,6 +24,8 @@ class ProductCart extends Component
     public $stockNotice = '';
     public $promotionSummary = '';
     public $promotionDiscountAmount = 0;
+    public $cartRegularUnitPrices = [];
+    public $cartPromotionPercents = [];
 
     public function mount()
     {
@@ -55,6 +57,8 @@ class ProductCart extends Component
             $this->isWholesaleOrder = false;
             $this->promotionSummary = '';
             $this->promotionDiscountAmount = 0;
+            $this->cartRegularUnitPrices = [];
+            $this->cartPromotionPercents = [];
             return;
         }
         $cart = Cart::instance('cart');
@@ -62,6 +66,8 @@ class ProductCart extends Component
         $promotion = QuantityPromotionSetting::current();
         $maximumDiscountApplied = 0;
         $this->promotionDiscountAmount = 0;
+        $this->cartRegularUnitPrices = [];
+        $this->cartPromotionPercents = [];
         $this->isWholesaleOrder = false;
         foreach ($groups as $productId => $items) {
             $quantity = (int) $items->sum('qty');
@@ -82,6 +88,10 @@ class ProductCart extends Component
             $discountPercent = $promotion->discountForProductQuantity((int) $productId, $quantity);
             if ($discountPercent > 0) {
                 $price = max(1, (int) round($price * (100 - $discountPercent) / 100));
+                if ($price < $basePrice) {
+                    $this->cartRegularUnitPrices[(int) $productId] = $basePrice;
+                    $this->cartPromotionPercents[(int) $productId] = $discountPercent;
+                }
                 $maximumDiscountApplied = max($maximumDiscountApplied, $discountPercent);
                 $this->promotionDiscountAmount += max(0, $basePrice - $price) * $quantity;
             }
