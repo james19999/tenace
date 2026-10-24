@@ -212,9 +212,13 @@ class StockControlController extends Controller
         $rules = $settings->rules();
         $location->delete();
         $this->audit($request, 'location.deleted', $location, $before, null);
-        if ((int) ($rules['default_sales_location_id'] ?? 0) === (int) $location->id) {
-            $settings->save(array_replace($rules, ['default_sales_location_id' => null]));
-            $this->auditSettings($request, ['default_sales_location_id' => $location->id], ['default_sales_location_id' => null]);
+        $cleared = [];
+        foreach (['default_sales_location_id', 'wholesale_sales_location_id'] as $key) {
+            if ((int) ($rules[$key] ?? 0) === (int) $location->id) $cleared[$key] = null;
+        }
+        if ($cleared) {
+            $settings->save(array_replace($rules, $cleared));
+            $this->auditSettings($request, $cleared, $cleared);
         }
 
         return back()->with('success', 'L’emplacement '.$location->name.' a été supprimé.');
@@ -232,12 +236,22 @@ class StockControlController extends Controller
             'expiry_alert_days' => ['required', 'integer', 'min:1', 'max:3650'],
             'inventory_interval_days' => ['required', 'integer', 'min:1', 'max:365'],
             'default_sales_location_id' => ['nullable', 'integer', 'exists:stock_locations,id'],
+            'wholesale_sales_location_id' => ['nullable', 'integer', 'exists:stock_locations,id'],
         ]);
 
         if (! empty($validated['default_sales_location_id'])) {
             $salesLocation = StockLocation::query()->findOrFail($validated['default_sales_location_id']);
             if (! $salesLocation->is_active || $salesLocation->type !== 'shop') {
                 return back()->withErrors(['default_sales_location_id' => 'Choisis une boutique active pour enregistrer les sorties des commandes.'])->withInput();
+            }
+        }
+        if (! empty($validated['wholesale_sales_location_id'])) {
+            $wholesaleLocation = StockLocation::query()->findOrFail($validated['wholesale_sales_location_id']);
+            if (! $wholesaleLocation->is_active || $wholesaleLocation->type !== 'shop') {
+                return back()->withErrors(['wholesale_sales_location_id' => 'Choisis une boutique grossiste active.'])->withInput();
+            }
+            if ((int) $wholesaleLocation->id === (int) ($validated['default_sales_location_id'] ?? $settings->rules()['default_sales_location_id'] ?? 0)) {
+                return back()->withErrors(['wholesale_sales_location_id' => 'La boutique grossiste doit être différente de la boutique principale.'])->withInput();
             }
         }
 

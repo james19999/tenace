@@ -18,6 +18,7 @@
         .cart-heading p{color:var(--cart-muted);margin:8px 0 0;font-size:15px}
         .cart-back-link{display:inline-flex;align-items:center;gap:8px;color:var(--cart-wine);font-weight:700;text-decoration:none;white-space:nowrap}
         .cart-alert{border:0;border-radius:12px;padding:14px 16px;margin:0 0 18px}
+        .cart-stock-notice{margin:0 0 16px;padding:12px 15px;border-left:4px solid #c28b24;background:#fff8e8;color:#6f5119;font-size:13px;font-weight:650;line-height:1.5}
         .cart-layout{display:grid;width:100%;min-width:0;grid-template-columns:minmax(0,1.55fr) minmax(310px,.8fr);align-items:start;gap:22px}
         .cart-main,.cart-sidebar{min-width:0;display:grid;gap:18px}
         .cart-panel{width:100%;max-width:100%;min-width:0;background:#fff;border:1px solid var(--cart-line);border-radius:16px;box-shadow:0 8px 26px rgba(33,38,48,.045);overflow:hidden}
@@ -26,6 +27,11 @@
         .cart-panel-head p{font-size:13px;color:var(--cart-muted);margin:4px 0 0}
         .cart-step{display:inline-grid;place-items:center;flex:0 0 32px;width:32px;height:32px;border-radius:10px;background:#f8eaea;color:var(--cart-wine);font-size:13px;font-weight:800}
         .cart-panel-body{padding:20px 22px}
+        .cart-order-category{margin:0 0 18px;border-left:5px solid var(--cart-wine)}
+        .cart-order-category .cart-panel-body{display:grid;grid-template-columns:minmax(220px,.8fr) minmax(280px,1.2fr);align-items:center;gap:18px}
+        .cart-order-category-copy strong{display:block;font-size:15px;font-weight:800}
+        .cart-order-category-copy small{display:block;margin-top:5px;color:var(--cart-muted);font-size:12px;line-height:1.5}
+        .cart-order-category .form-control{height:46px;border:1px solid #dfe2e8;border-radius:8px;font-weight:750}
         .cart-form-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:16px}
         .cart-field{min-width:0}.cart-field.full{grid-column:1/-1}
         .cart-field.anonymous-customer-help{padding:12px 14px;border-left:3px solid var(--cart-wine);background:#f8f3f3;color:#5f626c;font-size:12px;line-height:1.5}
@@ -84,6 +90,8 @@
         .cart-quantity button{width:32px;height:32px;border:0;background:#f7f8fa;color:#4e5360;font-weight:800}
         .cart-quantity button:disabled{opacity:.42;cursor:not-allowed}
         .cart-quantity span{min-width:34px;text-align:center;font-weight:750}
+        .cart-quantity input{width:62px;height:34px;padding:0 4px;border:0;border-left:1px solid var(--cart-line);border-right:1px solid var(--cart-line);outline:0;text-align:center;font:inherit;font-weight:750;color:var(--cart-ink);appearance:textfield;-moz-appearance:textfield}
+        .cart-quantity input::-webkit-inner-spin-button,.cart-quantity input::-webkit-outer-spin-button{-webkit-appearance:none;margin:0}
         .cart-remove{border:0;background:#fff1f1;color:#ad2929;border-radius:8px;width:34px;height:34px}
         .cart-empty{padding:42px 22px;text-align:center}
         .cart-empty-icon{width:58px;height:58px;margin:0 auto 14px;border-radius:18px;background:#f8eeee;color:var(--cart-wine);display:grid;place-items:center}
@@ -110,7 +118,7 @@
         .cart-balance-line strong{color:#861b1b!important}
         .cart-mobile-submit{display:none}
         @media(max-width:991px){.cart-layout{grid-template-columns:minmax(0,1fr) 300px;gap:15px}.cart-shell{padding:0}.cart-panel-head,.cart-panel-body{padding-left:17px;padding-right:17px}}
-        @media(max-width:767px){.product-cart-page{padding-top:0}.cart-shell{padding:0}.cart-heading{align-items:flex-start;margin:8px 0 18px}.cart-heading p{font-size:13px}.cart-back-link{font-size:13px}.cart-layout{grid-template-columns:minmax(0,1fr);gap:14px}.cart-summary{position:static}.cart-sidebar{order:2}.cart-main{order:1}.cart-panel{border-radius:13px}.cart-panel-head{padding:15px}.cart-panel-body{padding:16px}.cart-form-grid{grid-template-columns:minmax(0,1fr);gap:13px}.cart-field,.cart-field.full{grid-column:1/-1;width:100%;max-width:100%}.cart-field .form-control{width:100%;height:43px}.cart-customer-create-actions{gap:6px}.cart-customer-mode{min-height:42px;padding:6px 7px;font-size:11px;line-height:1.2;white-space:normal;text-align:center}.cart-table{min-width:580px}.cart-summary .cart-panel-body{padding:16px}.cart-primary-btn{margin-top:12px}}
+        @media(max-width:767px){.product-cart-page{padding-top:0}.cart-shell{padding:0}.cart-heading{align-items:flex-start;margin:8px 0 18px}.cart-heading p{font-size:13px}.cart-back-link{font-size:13px}.cart-layout{grid-template-columns:minmax(0,1fr);gap:14px}.cart-summary{position:static}.cart-sidebar{order:2}.cart-main{order:1}.cart-panel{border-radius:13px}.cart-panel-head{padding:15px}.cart-panel-body{padding:16px}.cart-order-category .cart-panel-body{grid-template-columns:minmax(0,1fr);gap:12px}.cart-form-grid{grid-template-columns:minmax(0,1fr);gap:13px}.cart-field,.cart-field.full{grid-column:1/-1;width:100%;max-width:100%}.cart-field .form-control{width:100%;height:43px}.cart-customer-create-actions{gap:6px}.cart-customer-mode{min-height:42px;padding:6px 7px;font-size:11px;line-height:1.2;white-space:normal;text-align:center}.cart-table{min-width:580px}.cart-summary .cart-panel-body{padding:16px}.cart-primary-btn{margin-top:12px}}
         @media(max-width:480px){.cart-heading{display:block}.cart-back-link{margin-top:12px}.cart-heading h1{font-size:27px}.cart-form-grid{grid-template-columns:minmax(0,1fr)}.cart-field.full{grid-column:auto}.cart-panel-head h2{font-size:15px}.cart-panel-head p{font-size:12px}.cart-table th,.cart-table td{padding:11px 10px}.cart-product-thumb{width:40px;height:40px;flex-basis:40px}.cart-empty{padding:32px 16px}}
         @media(max-width:380px){.cart-customer-create-actions{gap:4px}.cart-customer-mode{gap:4px;padding:5px;font-size:10px}.cart-customer-mode .material-icons{font-size:14px}}
         /* Surfaces nettes et carrées, cohérentes avec le reste de l'application. */
@@ -161,6 +169,10 @@
         @if (Session::has('error'))
             <div class="alert alert-danger cart-alert"><strong>{{ session('error') }}</strong></div>
         @endif
+        @if ($errors->any())
+            <div class="alert alert-danger cart-alert"><ul class="mb-0">@foreach($errors->all() as $message)<li>{{ $message }}</li>@endforeach</ul></div>
+        @endif
+        @if($stockNotice !== '')<div class="cart-stock-notice" role="alert" aria-live="assertive">{{ $stockNotice }}</div>@endif
 
         @if (Session::has('messages'))
             <div class="alert alert-success cart-alert"><strong>{{ session('messages') }}</strong></div>
@@ -168,6 +180,20 @@
 
         <form method="POST" action="{{ route('palceorder') }}" id="product-cart-order-form">
             @csrf
+
+            <section class="cart-panel cart-order-category" aria-labelledby="cart-order-category-title">
+                <div class="cart-panel-body">
+                    <div class="cart-order-category-copy">
+                        <strong id="cart-order-category-title">Type de commande détecté automatiquement</strong>
+                        <small>Le type grossiste est activé dès qu’un produit atteint un seuil de quantité configuré.</small>
+                    </div>
+                    <div class="cart-order-category-copy" aria-live="polite">
+                        <strong>{{ $isWholesaleOrder ? 'Commande grossiste détectée' : 'Commande classique' }}</strong>
+                        <small>{{ $isWholesaleOrder ? 'Tarifs par quantité et stock de la boutique grossiste appliqués.' : 'Le prix normal reste appliqué jusqu’à ce qu’un seuil grossiste soit atteint.' }}</small>
+                    </div>
+                </div>
+            </section>
+            <input type="hidden" name="is_wholesale" value="{{ $isWholesaleOrder ? 1 : 0 }}">
 
             <div class="cart-layout">
                 <main class="cart-main">
@@ -212,8 +238,8 @@
                                                 <td>
                                                     <div class="cart-quantity" aria-label="Quantité">
                                                         <button type="button" aria-label="Diminuer la quantité" wire:click.prevent="decrement('{{ $items->rowId }}')" @disabled($items->qty <= 1)>−</button>
-                                                        <span>{{ $items->qty }}</span>
-                                                        <button type="button" aria-label="Augmenter la quantité" wire:click.prevent="increment('{{ $items->rowId }}')" @disabled((int) ($items->model->qt_initial ?? 0) <= (int) $items->qty)>+</button>
+                                                        <input type="number" min="1" max="{{ max((int) $items->qty, $this->availableShopQuantity($items->model)) }}" value="{{ $items->qty }}" aria-label="Quantité de {{ $items->model->name ?? 'produit' }}" wire:input.debounce.400ms="setQuantity('{{ $items->rowId }}', $event.target.value)">
+                                                        <button type="button" aria-label="Augmenter la quantité" wire:click.prevent="increment('{{ $items->rowId }}')" wire:loading.attr="disabled" wire:target="increment('{{ $items->rowId }}')">+</button>
                                                     </div>
                                                 </td>
                                                 <td class="cart-price">{{ number_format((float) $items->price * (int) $items->qty, 0, ',', ' ') }} F</td>

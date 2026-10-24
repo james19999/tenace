@@ -143,7 +143,7 @@
                     @forelse ($settings as $setting)
                         <img src="{{ url('image/', $setting->img) }}" class="od-logo" alt="Logo {{ $setting->name ?? 'TENACOS' }}">
                         <div>
-                            <p class="od-eyebrow">Commande client</p>
+                            <p class="od-eyebrow">{{ $Orders->is_wholesale ? 'Commande grossiste' : 'Commande client' }}</p>
                             <div class="od-brand-name">{{ $setting->name ?? 'TENACOS' }}</div>
                             <p>{{ $setting->phone ?? '' }}</p>
                         </div>

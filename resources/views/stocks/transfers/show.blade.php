@@ -55,7 +55,7 @@
             </section>
         @endif
 
-        @if($transfer->status === 'authorized')
+        @if($canShip && $transfer->status === 'authorized')
             <section class="stock-control-card transfer-action-card">
                 <div class="stock-control-section-head"><div><span class="stock-control-kicker">PRÉPARATION</span><h2>Enregistrer l’expédition</h2></div></div>
                 <div class="receipt-validation-note"><span class="material-icons">local_shipping</span><p>Les quantités demandées seront retirées du site source et placées dans <strong>{{ $transit?->name ?? 'TRANSIT' }}</strong>. Le stock global disponible baissera jusqu’à leur réception.</p></div>
@@ -68,7 +68,7 @@
             </section>
         @endif
 
-        @if(in_array($transfer->status, ['in_transit', 'partial'], true))
+        @if($canReceive && in_array($transfer->status, ['in_transit', 'partial'], true))
             <section class="stock-control-card transfer-action-card">
                 <div class="stock-control-section-head"><div><span class="stock-control-kicker">RÉCEPTION · {{ $transfer->destination->name }}</span><h2>Saisir les quantités arrivées</h2></div></div>
                 <div class="receipt-validation-note"><span class="material-icons">inventory</span><p>Enregistre directement les quantités réellement arrivées. Une réception partielle laisse le reliquat en transit. Les articles abîmés sont isolés dans <strong>{{ $blocked?->name ?? 'BLOQUÉ' }}</strong> et ne réintègrent pas le stock disponible.</p></div>

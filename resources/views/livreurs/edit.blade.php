@@ -66,7 +66,7 @@
                         <div class="form-group">
                         <label for="password-confirm">Type:</label>
 
-                         <select name="user_type" id="" class="form-control" required>
+                         <select name="user_type" id="user_type" class="form-control" required>
                              <option value="LVS" {{ $users->user_type == 'LVS' ? 'selected' : '' }}>Livreur</option>
                              <option value="PT" {{ $users->user_type == 'PT' ? 'selected' : '' }}>Partenaire</option>
                              <option value="VDS" {{ $users->user_type == 'VDS' ? 'selected' : '' }}>Vendeur</option>

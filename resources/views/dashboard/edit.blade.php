@@ -39,11 +39,6 @@
                         <div class="edit-input-unit"><input type="number" name="price" min="0" step="1" value="{{ old('price', $product->price) }}" required><span>F CFA</span></div>
                         @error('price')<small class="edit-field-error">{{ $message }}</small>@enderror
                     </label>
-                    <label class="edit-field">
-                        <span>Prix de vente en gros</span>
-                        <div class="edit-input-unit"><input type="number" name="high_price" min="0" step="1" value="{{ old('high_price', $product->high_price) }}"><span>F CFA</span></div>
-                        @error('high_price')<small class="edit-field-error">{{ $message }}</small>@enderror
-                    </label>
                     <label class="edit-field edit-field-wide">
                         <span>Description <small>Facultatif</small></span>
                         <textarea name="description" rows="3" maxlength="2000" placeholder="Informations utiles sur le produit">{{ old('description', $product->description) }}</textarea>

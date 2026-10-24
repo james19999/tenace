@@ -56,6 +56,22 @@ class Product extends Model
         return $this->hasMany(ProductCountryPrice::class);
     }
 
+    public function quantityPriceTiers(): HasMany
+    {
+        return $this->hasMany(ProductQuantityPriceTier::class)->orderBy('min_quantity');
+    }
+
+    public function unitPriceForQuantity(int $quantity): int
+    {
+        $tiers = $this->relationLoaded('quantityPriceTiers')
+            ? $this->quantityPriceTiers
+            : $this->quantityPriceTiers()->get();
+        $tier = $tiers->filter(fn (ProductQuantityPriceTier $tier) => $tier->min_quantity <= $quantity)
+            ->sortByDesc('min_quantity')->first();
+
+        return (int) ($tier?->unit_price ?? $this->price);
+    }
+
     public function publicOrderLinks(): \Illuminate\Database\Eloquent\Relations\BelongsToMany
     {
         return $this->belongsToMany(PublicOrderLink::class, 'public_order_link_products')

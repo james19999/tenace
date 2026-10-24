@@ -35,11 +35,19 @@ class StockDeliveryService
 
             $rules = $this->settings->rules();
             $location = null;
-            if (is_numeric($lockedOrder->user_id)) {
-                $location = StockLocation::query()->where('responsible_user_id', (int) $lockedOrder->user_id)
+            if ($lockedOrder->is_wholesale) {
+                $location = ! empty($rules['wholesale_sales_location_id'])
+                    ? StockLocation::query()->whereKey($rules['wholesale_sales_location_id'])
+                        ->where('type', 'shop')->where('is_active', true)->first()
+                    : null;
+                if (! $location) {
+                    throw ValidationException::withMessages(['stock' => 'La boutique de stock grossiste n’est pas configurée ou n’est plus active. Configure une boutique grossiste distincte de la boutique principale dans le contrôle des stocks.']);
+                }
+            } elseif (is_numeric($lockedOrder->user_id)) {
+                $location = $location ?: StockLocation::query()->where('responsible_user_id', (int) $lockedOrder->user_id)
                     ->where('type', 'sales_rep')->where('is_active', true)->first();
             }
-            if (! $location && ! empty($rules['default_sales_location_id'])) {
+            if (! $lockedOrder->is_wholesale && ! $location && ! empty($rules['default_sales_location_id'])) {
                 $location = StockLocation::query()->whereKey($rules['default_sales_location_id'])
                     ->where('is_active', true)->whereNotIn('type', ['transit', 'blocked'])->first();
             }

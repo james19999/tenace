@@ -121,10 +121,11 @@ class OrderController extends Controller
         if (Auth::user()?->user_type === User::ROLE_PARTNER) {
             abort_unless((int) $Orders->partner_id === (int) Auth::id() || (int) $Orders->created_user === (int) Auth::id(), 404);
         }
+        $isWholesalerOrder = (bool) $Orders->is_wholesale;
         $countryCode = $this->orderCountryCode($Orders);
         $livreurs = User::query()->where('user_type', User::ROLE_LIVREUR)
             ->where('active', true)
-            ->where('country_code', $countryCode)
+            ->when($isWholesalerOrder, fn ($query) => $query->whereNull('country_code'), fn ($query) => $query->where('country_code', $countryCode))
             ->orderBy('name')
             ->get(['id', 'name', 'phone', 'country_code']);
 
@@ -141,6 +142,7 @@ class OrderController extends Controller
     public function updatePayment(Request $request, string $id)
     {
         $order = Order::findOrFail($id);
+        $this->authorizeWholesalerOrder($order);
         $amountDue = (float) ($order->montant ?? ((float) $order->total + (float) $order->tax));
         $validated = $request->validate([
             'paid_amount' => ['required', 'integer', 'min:0', 'max:'.$amountDue],
@@ -148,8 +150,21 @@ class OrderController extends Controller
             'paid_amount.max' => 'Le montant déjà payé ne peut pas dépasser le total de la commande.',
         ]);
 
-        $order->paid_amount = (int) $validated['paid_amount'];
+        $previousPaidAmount = (int) $order->paid_amount;
+        $newPaidAmount = (int) $validated['paid_amount'];
+        $order->paid_amount = $newPaidAmount;
         $order->save();
+        if ($newPaidAmount > $previousPaidAmount) {
+            $order->payments()->create([
+                'stage' => 'manual_adjustment',
+                'method' => 'manual',
+                'amount' => $newPaidAmount - $previousPaidAmount,
+                'status' => 'collected',
+                'collected_by' => Auth::id(),
+                'collected_at' => now(),
+                'notes' => 'Encaissement saisi depuis la fiche de commande.',
+            ]);
+        }
 
         return redirect()->back()->with('success', 'Le paiement de la commande a été enregistré.');
     }
@@ -158,6 +173,7 @@ class OrderController extends Controller
     {
 
         $orders = Order::findOrfail($id);
+        $this->authorizeWholesalerOrder($orders);
 
         if ($orders) {
             if ($request->status == "canceled") {
@@ -223,15 +239,19 @@ class OrderController extends Controller
         ]);
 
         $orders = Order::findOrfail($id);
+        $this->authorizeWholesalerOrder($orders);
         if (! empty($validated['user_take'])) {
+            $createdByWholesaler = (bool) $orders->is_wholesale;
             $courier = User::query()->whereKey($validated['user_take'])
                 ->where('user_type', User::ROLE_LIVREUR)
                 ->where('active', true)
-                ->where('country_code', $this->orderCountryCode($orders))
+                ->when($createdByWholesaler, fn ($query) => $query->whereNull('country_code'), fn ($query) => $query->where('country_code', $this->orderCountryCode($orders)))
                 ->exists();
             if (! $courier) {
                 return redirect()->back()->withErrors([
-                    'user_take' => 'Choisis un livreur actif rattaché au pays de cette commande.',
+                    'user_take' => $createdByWholesaler
+                        ? 'Choisis un livreur standard actif, sans pays partenaire.'
+                        : 'Choisis un livreur actif rattaché au pays de cette commande.',
                 ])->withInput();
             }
         }
@@ -285,8 +305,9 @@ class OrderController extends Controller
 
     public function delete($id)
     {
-
-        Order::destroy($id);
+        $order = Order::findOrFail($id);
+        $this->authorizeWholesalerOrder($order);
+        $order->delete();
 
         return  redirect()->back()->with('success', 'Commande supprimer');
     }
@@ -307,6 +328,7 @@ class OrderController extends Controller
         ]);
 
         $order = Order::findOrFail($id);
+        $this->authorizeWholesalerOrder($order);
         if ($isPartner) {
             abort_unless((int) $order->partner_id === (int) $request->user()->id || (int) $order->created_user === (int) $request->user()->id, 404);
             $order->date_order = $validated['date_order'];
@@ -317,6 +339,11 @@ class OrderController extends Controller
         $order->save();
 
         return redirect()->back()->with('success', 'Heure de livraison mise à jour.');
+    }
+
+    private function authorizeWholesalerOrder(Order $order): void
+    {
+        // Wholesale is a type of order, not a user role.
     }
 
 
@@ -349,7 +376,6 @@ class OrderController extends Controller
     {
 
         $order = Order::findOrFail($id);
-
         if ($order->type === "PR") {
             $order->type = "PU";
         } elseif ($order->type === "PU") {

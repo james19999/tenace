@@ -7,6 +7,7 @@ use App\Mail\TenaCos;
 use App\Mail\TenanCos;
 use App\Models\Costumer;
 use App\Models\CostumerContactPreference;
+use App\Models\Product;
 use App\Mail\ParthnerMail;
 use App\Models\Orders\Order;
 use Illuminate\Http\Request;
@@ -14,10 +15,13 @@ use Illuminate\Http\JsonResponse;
 use App\Models\Orders\OrderItem;
 use App\Models\TransportCompany;
 use App\Support\WestAfricaShippingCatalog;
+use App\Services\StockModuleSettingsService;
+use App\Models\StockLocation;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\URL;
 use App\Http\Controllers\Controller;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
@@ -66,12 +70,53 @@ class CheckController extends Controller
          $request->validate([
              'tax' => ['required', 'integer', 'min:0'],
              'remis' => ['required', 'integer', 'between:0,100'],
+             'is_wholesale' => ['nullable', 'boolean'],
          ], [
              'tax.required' => 'Entre les frais de livraison.',
              'tax.integer' => 'Les frais de livraison doivent être un montant entier.',
              'remis.required' => 'Entre le pourcentage de remise.',
              'remis.between' => 'La remise doit être comprise entre 0 et 100 %.',
          ]);
+
+         $isWholesaleOrder = Auth::user()?->user_type !== User::ROLE_PARTNER
+             && $cartItems->groupBy(fn ($item) => (int) $item->id)->contains(function ($items, $productId) {
+                 $quantity = (int) $items->sum('qty');
+                 $product = Product::query()->with('quantityPriceTiers')->find($productId);
+                 return $product && $product->quantityPriceTiers->contains(fn ($tier) => $quantity >= (int) $tier->min_quantity);
+             });
+         if ($isWholesaleOrder && Auth::user()?->user_type === User::ROLE_PARTNER) {
+             return redirect()->route('productcart')->withErrors(['is_wholesale' => 'Le tarif grossiste de la boutique n’est pas disponible pour les commandes partenaires.'])->withInput();
+         }
+         $qualifiedWholesaleProduct = false;
+         if ($isWholesaleOrder) {
+             $wholesaleLocationId = app(StockModuleSettingsService::class)->rules()['wholesale_sales_location_id'] ?? null;
+             $wholesaleLocation = $wholesaleLocationId
+                 ? StockLocation::query()->whereKey($wholesaleLocationId)->where('type', 'shop')->where('is_active', true)->first()
+                 : null;
+             if (! $wholesaleLocation) {
+                 return redirect()->route('productcart')->withErrors(['is_wholesale' => 'La boutique de stock grossiste n’est pas configurée. Contacte l’administration avant de passer cette commande.'])->withInput();
+             }
+             foreach ($cartItems->groupBy(fn ($item) => (int) $item->id) as $productId => $items) {
+                 $quantity = (int) $items->sum('qty');
+                 $product = Product::query()->with('quantityPriceTiers')->find($productId);
+                 if (! $product) continue;
+                 $available = (float) DB::table('stock_movement_lines as sml')
+                     ->join('stock_movements as sm', 'sm.id', '=', 'sml.movement_id')
+                     ->where('sm.status', 'posted')->where('sml.location_id', $wholesaleLocation->id)
+                     ->where('sml.product_id', $productId)->sum('sml.quantity_delta');
+                 if ($available < $quantity) {
+                     return redirect()->route('productcart')->withErrors(['is_wholesale' => 'Stock insuffisant dans la boutique grossiste pour « '.$product->name.' » (disponible : '.max(0, (int) $available).').'])->withInput();
+                 }
+                 $qualifiedWholesaleProduct = $qualifiedWholesaleProduct || $product->quantityPriceTiers->contains(fn ($tier) => $quantity >= $tier->min_quantity);
+                 foreach ($items as $item) Cart::instance('cart')->remove($item->rowId);
+                 Cart::instance('cart')->add($product->id, $items->first()->name, $quantity,
+                     $product->unitPriceForQuantity($quantity))->associate(Product::class);
+             }
+             if (! $qualifiedWholesaleProduct) {
+                 return redirect()->route('productcart')->withErrors(['is_wholesale' => 'Aucun produit du panier n’atteint le seuil de commande grossiste configuré.'])->withInput();
+             }
+             $cartItems = Cart::instance('cart')->content();
+         }
 
          // Recalculate from the session cart. Never trust the subtotal submitted by the browser.
          $subtotal = (float) $cartItems->sum(fn ($item) => (float) $item->price * (int) $item->qty);
@@ -181,7 +226,16 @@ class CheckController extends Controller
                           'created_user' =>Auth::user()->id,
                           'avis'=>$request->avis,
                           'type'=>$request->type
+                          ,'is_wholesale' => $isWholesaleOrder
                       ]);
+
+                      if ($isWholesaleOrder && $paidAmount > 0) {
+                          $order->payments()->create([
+                              'stage' => 'at_order', 'method' => 'manual', 'amount' => $paidAmount,
+                              'status' => 'collected', 'collected_by' => Auth::id(), 'collected_at' => now(),
+                              'notes' => 'Montant déjà payé renseigné lors de la création de la commande.',
+                          ]);
+                      }
 
                       $this->updateCustomerFollowUp($request, $constumer->id);
 
@@ -256,7 +310,16 @@ class CheckController extends Controller
                 'created_user' =>Auth::user()->id,
                 'avis'=>$request->avis,
                 'type'=>$request->type
+                ,'is_wholesale' => $isWholesaleOrder
             ]);
+
+            if ($isWholesaleOrder && $paidAmount > 0) {
+                $order->payments()->create([
+                    'stage' => 'at_order', 'method' => 'manual', 'amount' => $paidAmount,
+                    'status' => 'collected', 'collected_by' => Auth::id(), 'collected_at' => now(),
+                    'notes' => 'Montant déjà payé renseigné lors de la création de la commande.',
+                ]);
+            }
 
             $this->updateCustomerFollowUp($request, (int) $request->costumer_id);
 

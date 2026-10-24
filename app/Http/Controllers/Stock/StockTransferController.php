@@ -10,6 +10,7 @@ use App\Models\StockLocation;
 use App\Models\StockMovement;
 use App\Models\StockTransfer;
 use App\Models\StockTransferEvent;
+use App\Models\User;
 use App\Notifications\StockControlNotification;
 use App\Services\StockControlNotificationService;
 use App\Services\StockModuleSettingsService;
@@ -27,7 +28,8 @@ class StockTransferController extends Controller
 {
     public function index(Request $request): View
     {
-        app(StockControlNotificationService::class)->markTabAsRead(auth()->user(), 'transfers');
+        $user = $request->user();
+        app(StockControlNotificationService::class)->markTabAsRead($user, 'transfers');
         $filters = $request->validate([
             'search' => ['nullable', 'string', 'max:120'],
             'status' => ['nullable', Rule::in(['all', 'submitted', 'authorized', 'in_transit', 'partial', 'closed'])],
@@ -48,7 +50,8 @@ class StockTransferController extends Controller
             ->paginate(15)
             ->withQueryString();
 
-        return view('stocks.transfers.index', compact('transfers', 'search', 'status'));
+        $canCreate = true;
+        return view('stocks.transfers.index', compact('transfers', 'search', 'status', 'canCreate'));
     }
 
     public function create(Request $request, StockLegacyWarehouseReconciliationService $legacyStock): View
@@ -186,9 +189,10 @@ class StockTransferController extends Controller
         $blocked = StockLocation::query()->where('code', 'BLOQUE')->where('is_active', true)->first(['id', 'name', 'code']);
         $canAuthorize = $transfer->status === 'submitted'
             && auth()->user()->user_type === 'ADMINUSER';
+        $canShip = $transfer->status === 'authorized';
         $canReceive = in_array($transfer->status, ['in_transit', 'partial'], true);
 
-        return view('stocks.transfers.show', compact('transfer', 'transit', 'blocked', 'canAuthorize', 'canReceive'));
+        return view('stocks.transfers.show', compact('transfer', 'transit', 'blocked', 'canAuthorize', 'canShip', 'canReceive'));
     }
 
     public function shipmentReceipt(StockTransfer $transfer): View
@@ -516,6 +520,8 @@ class StockTransferController extends Controller
     private function notifyDestinationOfShipment(StockTransfer $transfer, int $exceptUserId): void
     {
         $destinationManagerId = StockLocation::query()->whereKey($transfer->destination_location_id)->value('responsible_user_id');
+        $recipientIds = [];
+        if ($destinationManagerId) $recipientIds[] = (int) $destinationManagerId;
         $notification = new StockControlNotification(
             'transfer_shipped',
             'Transfert à réceptionner',
@@ -524,8 +530,8 @@ class StockTransferController extends Controller
             'local_shipping',
             'transfers',
         );
-        if ($destinationManagerId) {
-            app(StockControlNotificationService::class)->toUsers([(int) $destinationManagerId], $notification, $exceptUserId);
+        if ($recipientIds) {
+            app(StockControlNotificationService::class)->toUsers(array_values(array_unique($recipientIds)), $notification, $exceptUserId);
         } else {
             app(StockControlNotificationService::class)->toRoles(['ADMINUSER', 'MNG'], $notification, $exceptUserId);
         }

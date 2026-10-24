@@ -34,12 +34,6 @@
                         <div class="product-input-unit"><input type="number" min="0" step="1" wire:model.defer="products.{{ $index }}.price" placeholder="0"><span>F CFA</span></div>
                         @error('products.'.$index.'.price')<small class="product-field-error">{{ $message }}</small>@enderror
                     </label>
-                    <label class="product-field">
-                        <span>Prix de vente en gros <b>*</b></span>
-                        <div class="product-input-unit"><input type="number" min="0" step="1" wire:model.defer="products.{{ $index }}.high_price" placeholder="0"><span>F CFA</span></div>
-                        @error('products.'.$index.'.high_price')<small class="product-field-error">{{ $message }}</small>@enderror
-                    </label>
-
                     <div class="product-form-section product-field-wide">
                         <span class="product-section-label"><span class="material-icons">inventory_2</span> Stock initial</span>
                     </div>

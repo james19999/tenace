@@ -122,6 +122,7 @@
                         <label class="stock-rule-toggle"><span><strong>Justificatif pour casse ou perte</strong><small>Demande une pièce jointe selon les règles activées.</small></span><input type="checkbox" name="loss_requires_attachment" value="1" @checked($rules['loss_requires_attachment'])></label>
                         <div class="stock-control-rule-grid">
                             <label class="stock-control-field"><span>Boutique utilisée pour les ventes</span><select name="default_sales_location_id"><option value="">Non configurée</option>@foreach($salesLocations as $salesLocation)<option value="{{ $salesLocation->id }}" @selected((string) old('default_sales_location_id', $rules['default_sales_location_id'] ?? '') === (string) $salesLocation->id)>{{ $salesLocation->name }} · {{ $salesLocation->code }}</option>@endforeach</select><small>À la livraison d’une commande, le stock sera déduit de cette boutique.</small></label>
+                            <label class="stock-control-field"><span>Boutique dédiée aux commandes grossistes</span><select name="wholesale_sales_location_id"><option value="">Non configurée</option>@foreach($salesLocations as $salesLocation)<option value="{{ $salesLocation->id }}" @selected((string) old('wholesale_sales_location_id', $rules['wholesale_sales_location_id'] ?? '') === (string) $salesLocation->id)>{{ $salesLocation->name }} · {{ $salesLocation->code }}</option>@endforeach</select><small>Elle doit être différente de la boutique principale. Les ventes grossistes y seront vérifiées et déduites.</small></label>
                             <label class="stock-control-field"><span>Retard transfert après (jours)</span><input type="number" name="transfer_overdue_days" min="1" max="365" value="{{ old('transfer_overdue_days', $rules['transfer_overdue_days']) }}"></label>
                             <label class="stock-control-field"><span>Alerte péremption avant (jours)</span><input type="number" name="expiry_alert_days" min="1" max="3650" value="{{ old('expiry_alert_days', $rules['expiry_alert_days']) }}"></label>
                             <label class="stock-control-field"><span>Intervalle inventaire (jours)</span><input type="number" name="inventory_interval_days" min="1" max="365" value="{{ old('inventory_interval_days', $rules['inventory_interval_days']) }}"></label>
@@ -137,6 +138,7 @@
                         <div><span>Alerte péremption</span><strong>{{ $rules['expiry_alert_days'] }} jour(s)</strong></div>
                         <div><span>Fréquence inventaire</span><strong>{{ $rules['inventory_interval_days'] }} jour(s)</strong></div>
                         <div><span>Sortie des commandes</span><strong>{{ $salesLocations->firstWhere('id', $rules['default_sales_location_id'] ?? null)?->name ?? 'Non configuré' }}</strong></div>
+                        <div><span>Sortie des commandes grossistes</span><strong>{{ $salesLocations->firstWhere('id', $rules['wholesale_sales_location_id'] ?? null)?->name ?? 'Non configuré' }}</strong></div>
                     </div>
                 @endif
             </section>

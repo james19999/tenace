@@ -50,7 +50,9 @@ class LivreurController extends Controller
      */
     public function create()
     {
-        return view('livreurs.create', ['countries' => WestAfricaShippingCatalog::countries()]);
+        return view('livreurs.create', [
+            'countries' => WestAfricaShippingCatalog::countries(),
+        ]);
     }
 
     /**
@@ -283,8 +285,21 @@ class LivreurController extends Controller
             'paid_amount.max' => 'Le montant encaissé ne peut pas dépasser le total de la commande.',
         ]);
 
-        $order->paid_amount = (int) $validated['paid_amount'];
+        $previousPaidAmount = (int) $order->paid_amount;
+        $newPaidAmount = (int) $validated['paid_amount'];
+        $order->paid_amount = $newPaidAmount;
         $order->save();
+        if ($newPaidAmount > $previousPaidAmount) {
+            $order->payments()->create([
+                'stage' => 'manual_adjustment',
+                'method' => 'manual',
+                'amount' => $newPaidAmount - $previousPaidAmount,
+                'status' => 'collected',
+                'collected_by' => Auth::id(),
+                'collected_at' => now(),
+                'notes' => 'Encaissement saisi depuis la fiche de commande.',
+            ]);
+        }
 
         return redirect()->back()->with('success', 'Le règlement de la commande a été enregistré.');
     }

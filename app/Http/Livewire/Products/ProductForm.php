@@ -35,7 +35,6 @@ class ProductForm extends Component
             'qts_seuil' => '',
             'qt_initial' => '',
             'price_market' => '',
-            'high_price' => '',
             'description' => '',
             'img' => null,
         ];
@@ -62,7 +61,6 @@ class ProductForm extends Component
             'products.*.price_market' => ['required', 'numeric', 'min:0'],
             'products.*.qt_initial' => ['required', 'integer', 'min:0'],
             'products.*.qts_seuil' => ['required', 'integer', 'min:0'],
-            'products.*.high_price' => ['required', 'numeric', 'min:0'],
             'products.*.description' => ['nullable', 'string', 'max:2000'],
             'products.*.img' => ['nullable', 'image', 'mimes:jpg,jpeg,png,webp', 'max:5120'],
         ], [], [
@@ -72,7 +70,6 @@ class ProductForm extends Component
             'products.*.price_market' => 'prix d’achat unitaire',
             'products.*.qt_initial' => 'quantité initiale',
             'products.*.qts_seuil' => 'seuil d’alerte',
-            'products.*.high_price' => 'prix de gros',
             'products.*.description' => 'description',
         ]);
 
@@ -91,7 +88,6 @@ class ProductForm extends Component
                 $product->qts_seuil = $productData['qts_seuil'];
                 $product->qt_initial = $productData['qt_initial'];
                 $product->price_market = $productData['price_market'];
-                $product->high_price = $productData['high_price'];
                 $product->description = $productData['description'] ?? null;
                 $product->save();
 

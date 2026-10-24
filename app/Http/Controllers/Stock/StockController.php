@@ -91,25 +91,6 @@ public  function out_stock(Request $request,$id){
 
   }
 
-  public function update_product_price(Request $request,  $id){
-
-    $product= Product::find($id);
-     $oldPrice = $product->high_price;
-     $product->high_price= $request->high_price;
-     $product->save();
-     StockAuditLog::query()->create([
-         'user_id' => Auth::id(), 'actor_role' => Auth::user()?->user_type,
-         'action' => 'product.wholesale_price_updated', 'subject_type' => Product::class,
-         'subject_id' => $product->id,
-         'before_values' => ['high_price' => $oldPrice],
-         'after_values' => ['product_name' => $product->name, 'high_price' => $product->high_price],
-         'origin' => 'screen', 'result' => 'success',
-     ]);
-     session()->flash('message', "Succès");
-
-    return  back();
-   }
-
    private function audit(Request $request, string $action, Product $product, ?array $before, ?array $after, string $result = 'success'): void
    {
        StockAuditLog::query()->create([

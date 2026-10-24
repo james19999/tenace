@@ -23,7 +23,7 @@
 
     <div class="row dashboard-content">
         @if (Auth::user()->user_type == 'ADMINUSER')
-            <div class="col-12 col-sm-6 col-md-6 col-lg-3">
+            <div class="col-12 col-sm-6 col-md-6 col-lg-3 dashboard-kpi-revenue">
                 <div class="card shadow">
                     <div class="card-body">
                         <div class="row">
@@ -53,7 +53,7 @@
                     </div>
                 </div>
             </div>
-            <div class="col-12 col-sm-6 col-md-6 col-lg-3">
+            <div class="col-12 col-sm-6 col-md-6 col-lg-3 dashboard-kpi-orders">
                 <div class="card shadow">
                     <div class="card-body">
                         <div class="row">
@@ -82,7 +82,7 @@
                     </div>
                 </div>
             </div>
-            <div class="col-12 col-sm-6 col-md-6 col-lg-3">
+            <div class="col-12 col-sm-6 col-md-6 col-lg-3 dashboard-kpi-orders">
                 <div class="card shadow">
                     <div class="card-body">
                         <div class="row">
@@ -108,7 +108,7 @@
                     </div>
                 </div>
             </div>
-            <div class="col-12 col-sm-6 col-md-6 col-lg-3">
+            <div class="col-12 col-sm-6 col-md-6 col-lg-3 dashboard-kpi-orders">
                 <div class="card shadow">
                     <div class="card-body">
                         <div class="row">
@@ -135,12 +135,12 @@
             </div>
 
 
-            <div class="col-12 col-sm-6 col-md-6 col-lg-3">
+            <div class="col-12 col-sm-6 col-md-6 col-lg-3 dashboard-kpi-revenue">
                 <div class="card shadow">
                     <div class="card-body">
                         <div class="row">
                             <div class="col">
-                                <h5 class="text-uppercase text-muted mb-0 card-title">Chiffre d'affaire annuel</h5><span
+                <h5 class="text-uppercase text-muted mb-0 card-title">Chiffre d'affaire annuel</h5><span
                                     style="font-size: 130%" class="h1 font-weight-bold mb-0">{{ $totalCommandes }}
                                     XOF</span>
                             </div>
@@ -160,7 +160,7 @@
                     </div>
                 </div>
             </div>
-            <div class="col-12 col-sm-6 col-md-6 col-lg-3">
+            <div class="col-12 col-sm-6 col-md-6 col-lg-3 dashboard-kpi-other">
                 <div class="card shadow">
                     <div class="card-body">
                         <div class="row">
@@ -189,7 +189,7 @@
                     </div>
                 </div>
             </div>
-            <div class="col-12 col-sm-6 col-md-6 col-lg-3">
+            <div class="col-12 col-sm-6 col-md-6 col-lg-3 dashboard-kpi-revenue">
                 <div class="card shadow">
                     <div class="card-body">
                         <div class="row">
@@ -217,7 +217,7 @@
                 </div>
             </div>
 
-            <div class="col-12 col-sm-6 col-md-6 col-lg-3">
+            <div class="col-12 col-sm-6 col-md-6 col-lg-3 dashboard-kpi-other">
                 <a href="{{ route('rupture') }}">
 
                     <div class="card shadow">
@@ -242,7 +242,9 @@
                 </a>
             </div>
 
-            <div class="col-12 col-sm-12 col-md-12 col-lg-8">
+            <div class="w-100 dashboard-kpi-analytics-break"></div>
+
+            <div class="col-12 col-sm-12 col-md-12 col-lg-8 dashboard-kpi-analytics">
                 <div class="card shadow">
                     <div class="card-body">
 
@@ -255,7 +257,7 @@
                     </div>
                 </div>
             </div>
-            <div class="col-12 col-sm-12 col-md-12 col-lg-4">
+            <div class="col-12 col-sm-12 col-md-12 col-lg-4 dashboard-kpi-analytics">
                 <div class="card shadow">
                     <div class="card-body">
                         <h3 class="card-title mb-4">{{ $chart2->options['chart_title'] }}</h3>
@@ -266,7 +268,7 @@
                     </div>
                 </div>
             </div>
-            <div class="col-12 col-md-12 col-lg-6">
+            <div class="col-12 col-md-12 col-lg-6 dashboard-kpi-analytics">
                 <div class="card shadow">
                     <div class="card-body">
                         <h3 class="card-title mb-4">{{ $chart3->options['chart_title'] }}</h3>
@@ -276,7 +278,7 @@
                     </div>
                 </div>
             </div>
-            <div class="col-12 col-sm-12 col-md-12 col-lg-6">
+            <div class="col-12 col-sm-12 col-md-12 col-lg-6 dashboard-kpi-analytics">
                 <div class="card shadow">
                     <div class="card-body">
                         <h3 class="card-title mb-4">{{ $chart4->options['chart_title'] }}</h3>
@@ -588,6 +590,10 @@
         .dashboard-date-copy strong{color:var(--dash-ink);font-size:23px;font-variant-numeric:tabular-nums;letter-spacing:.02em;line-height:1.15}
         .dashboard-date-copy small{color:#9297a1;font-size:10px}.dashboard-live-dot{align-self:flex-start;width:7px;height:7px;flex:0 0 7px;margin:2px 0 0 auto;border-radius:50%;background:#48a36b;box-shadow:0 0 0 4px rgba(72,163,107,.12)}
         .dashboard-content{row-gap:4px}.dashboard-content>.col-12>.card,.dashboard-content>.col-12>a>.card{height:calc(100% - 12px);margin-top:12px;border:1px solid #e8e9ed;border-radius:12px;box-shadow:0 5px 18px rgba(33,38,48,.04)!important;transition:transform .18s ease,box-shadow .18s ease}
+        .dashboard-content>.dashboard-kpi-revenue{order:1}
+        .dashboard-content>.dashboard-kpi-orders{order:3}
+        .dashboard-content>.dashboard-kpi-other{order:4}
+        .dashboard-content>.dashboard-kpi-analytics-break{order:5}.dashboard-content>.dashboard-kpi-analytics{order:6}
         .dashboard-content>.col-12>.card:hover,.dashboard-content>.col-12>a>.card:hover{transform:translateY(-2px);box-shadow:0 9px 22px rgba(33,38,48,.08)!important}
         .dashboard-content>.col-12>.card .card-body,.dashboard-content>.col-12>a>.card .card-body{padding:14px 15px}
         .dashboard-content .card-title{font-size:10px;letter-spacing:.04em;line-height:1.35}.dashboard-content .h1{font-size:clamp(19px,1.8vw,24px)!important;letter-spacing:-.45px}

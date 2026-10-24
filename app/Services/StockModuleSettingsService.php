@@ -23,6 +23,7 @@ class StockModuleSettingsService
             'inventory_interval_days' => 30,
             'loss_requires_attachment' => true,
             'default_sales_location_id' => null,
+            'wholesale_sales_location_id' => null,
         ];
     }
 
@@ -40,11 +41,19 @@ class StockModuleSettingsService
 
         if ($configuredShop) {
             $rules['default_sales_location_id'] = (int) $configuredShop->id;
-            return $rules;
+        } else {
+            $activeShops = StockLocation::query()->where('type', 'shop')->where('is_active', true)->limit(2)->get(['id']);
+            $rules['default_sales_location_id'] = $activeShops->count() === 1 ? (int) $activeShops->first()->id : null;
         }
 
-        $activeShops = StockLocation::query()->where('type', 'shop')->where('is_active', true)->limit(2)->get(['id']);
-        $rules['default_sales_location_id'] = $activeShops->count() === 1 ? (int) $activeShops->first()->id : null;
+        $wholesaleShop = ! empty($rules['wholesale_sales_location_id'])
+            ? StockLocation::query()->whereKey($rules['wholesale_sales_location_id'])
+                ->where('type', 'shop')->where('is_active', true)->first()
+            : null;
+        $rules['wholesale_sales_location_id'] = $wholesaleShop
+            && (int) $wholesaleShop->id !== (int) ($rules['default_sales_location_id'] ?? 0)
+                ? (int) $wholesaleShop->id
+                : null;
 
         return $rules;
     }

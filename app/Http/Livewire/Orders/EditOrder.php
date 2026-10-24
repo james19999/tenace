@@ -8,6 +8,7 @@ use App\Models\Orders\Order;
 use App\Models\Orders\OrderItem;
 use App\Services\StockModuleSettingsService;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Validation\ValidationException;
 
 class EditOrder extends Component
 {
@@ -30,6 +31,7 @@ class EditOrder extends Component
 
     public function mount(Order $order)
     {
+        $this->authorizeOrder($order);
         $this->order = $order;
 
         $this->tax = $order->tax;
@@ -75,7 +77,7 @@ class EditOrder extends Component
         }
 
 
-        $salesLocationId = app(StockModuleSettingsService::class)->rules()['default_sales_location_id'] ?? null;
+        $salesLocationId = $this->salesLocationIdForOrder();
         $shopStock = DB::table('stock_movement_lines as sml')
             ->join('stock_movements as sm', 'sm.id', '=', 'sml.movement_id')
             ->where('sm.status', 'posted')->where('sml.location_id', $salesLocationId)
@@ -110,17 +112,14 @@ class EditOrder extends Component
             return;
         }
 
-
-
         foreach($this->items as &$item){
 
 
             if($item['product_id'] == $product->id){
 
+                if ((int) $item['quantity'] >= $this->availableQuantityForOrder($product)) return;
 
                 $item['quantity']++;
-
-
                 $this->calcul();
 
 
@@ -137,6 +136,8 @@ class EditOrder extends Component
 
 
 
+        if ($this->availableQuantityForOrder($product) < 1) return;
+
         $this->items[] = [
 
             'id'=>null,
@@ -145,7 +146,7 @@ class EditOrder extends Component
 
             'name'=>$product->name,
 
-            'price'=>$product->price,
+            'price'=>$this->newProductPrice($product->id, 1, (float) $product->price),
 
             'quantity'=>1,
 
@@ -177,12 +178,15 @@ class EditOrder extends Component
         $this->subtotal = 0;
 
 
-        foreach($this->items as $item){
+        foreach($this->items as &$item){
+
+            $item['price'] = $this->newProductPrice((int) $item['product_id'], (int) $item['quantity'], (float) $item['price']);
 
             $this->subtotal +=
                 $item['price'] * $item['quantity'];
 
         }
+        unset($item);
 
 
 
@@ -227,11 +231,7 @@ class EditOrder extends Component
 
 
 
-        $salesLocationId = app(StockModuleSettingsService::class)->rules()['default_sales_location_id'] ?? null;
-        $available = $salesLocationId
-            ? (float) DB::table('stock_movement_lines as sml')->join('stock_movements as sm', 'sm.id', '=', 'sml.movement_id')
-                ->where('sm.status', 'posted')->where('sml.location_id', $salesLocationId)->where('sml.product_id', $product->id)->sum('sml.quantity_delta')
-            : (float) $product->qt_initial;
+        $available = $this->availableQuantityForOrder($product);
         if($this->items[$index]['quantity'] >= $available){
 
             return;
@@ -322,6 +322,8 @@ class EditOrder extends Component
      */
     public function save()
     {
+        $this->authorizeOrder($this->order);
+        $this->calcul();
 
 
         $this->validate([
@@ -333,6 +335,18 @@ class EditOrder extends Component
             'items'=>'required|array|min:1'
 
         ]);
+
+        if ($this->order->is_wholesale && ! collect($this->items)->contains(function (array $item): bool {
+            $product = Product::query()->with('quantityPriceTiers')->find($item['product_id']);
+            return $product && $product->quantityPriceTiers->contains(fn ($tier) => (int) $item['quantity'] >= $tier->min_quantity);
+        })) throw ValidationException::withMessages(['items' => 'Aucun produit n’atteint le seuil grossiste configuré.']);
+
+        foreach ($this->items as $item) {
+            $product = Product::query()->find($item['product_id']);
+            if ($product && (int) $item['quantity'] > $this->availableQuantityForOrder($product)) {
+                throw ValidationException::withMessages(['items' => 'Stock insuffisant dans la boutique associée à cette commande pour « '.$product->name.' ».']);
+            }
+        }
 
 
 
@@ -401,6 +415,35 @@ class EditOrder extends Component
         );
 
 
+    }
+
+    private function newProductPrice(int $productId, int $quantity, float $fallback): float
+    {
+        if (! $this->order->is_wholesale) return $fallback;
+        $product = Product::query()->with('quantityPriceTiers')->find($productId);
+        return $product ? $product->unitPriceForQuantity($quantity) : $fallback;
+    }
+
+    private function salesLocationIdForOrder(): ?int
+    {
+        $rules = app(StockModuleSettingsService::class)->rules();
+        $locationId = $this->order->is_wholesale
+            ? ($rules['wholesale_sales_location_id'] ?? null)
+            : ($rules['default_sales_location_id'] ?? null);
+        return $locationId ? (int) $locationId : null;
+    }
+
+    private function availableQuantityForOrder(Product $product): float
+    {
+        $locationId = $this->salesLocationIdForOrder();
+        if (! $locationId) return $this->order->is_wholesale ? 0 : (float) $product->qt_initial;
+        return (float) DB::table('stock_movement_lines as sml')->join('stock_movements as sm', 'sm.id', '=', 'sml.movement_id')
+            ->where('sm.status', 'posted')->where('sml.location_id', $locationId)->where('sml.product_id', $product->id)->sum('sml.quantity_delta');
+    }
+
+    private function authorizeOrder(Order $order): void
+    {
+        // Wholesale orders are handled by the same staff roles as other orders.
     }
 
 

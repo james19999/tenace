@@ -8,7 +8,7 @@
     ];
 @endphp
 
-<div class="col-lg-12">
+<div class="col-lg-12 dashboard-kpi-analytics">
     <div class="card shadow">
         <div class="card-body">
             <h4 class="card-title mb-2">Commandes</h4>

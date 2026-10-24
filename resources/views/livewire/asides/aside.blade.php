@@ -82,6 +82,8 @@
                         <span class="text">Produits</span>
                     </a>
                 </li>
+                <li><a href="{{ route('product-tier-prices.index') }}" class="{{ $active('product-tier-prices.*') }}"><span class="icon material-icons">sell</span><span class="text">Tarifs par quantité</span></a></li>
+                <li><a href="{{ route('wholesale-monitoring.index') }}" class="{{ $active('wholesale-monitoring.*') }}"><span class="icon material-icons">groups</span><span class="text">Suivi clients grossistes</span></a></li>
                 <li>
                     <a href="#adminPartnerOrdersMenu" class="{{ $active('partner-ordering.*', 'partner-monitoring.*') }}" data-toggle="collapse" aria-expanded="{{ request()->routeIs('partner-ordering.*', 'partner-monitoring.*') ? 'true' : 'false' }}">
                         <span class="caret material-icons">arrow_right</span>
@@ -440,6 +442,7 @@
                         <span class="text">Produits</span>
                     </a>
                 </li>
+                <li><a href="{{ route('product-tier-prices.index') }}" class="{{ $active('product-tier-prices.*') }}"><span class="icon material-icons">sell</span><span class="text">Tarifs par quantité</span></a></li>
                 <li>
                     <a href="#mngStockControlMenu" class="{{ $active('stock-control.*') }}" data-toggle="collapse" aria-expanded="{{ request()->routeIs('stock-control.*') ? 'true' : 'false' }}">
                         <span class="caret material-icons">arrow_right</span>
@@ -614,6 +617,7 @@
                         <span class="text">Produits</span>
                     </a>
                 </li>
+                <li><a href="{{ route('product-tier-prices.index') }}" class="{{ $active('product-tier-prices.*') }}"><span class="icon material-icons">sell</span><span class="text">Tarifs par quantité</span></a></li>
                 <li>
                     <a href="{{ route('order-liste-order') }}" class="{{ $active('order-liste-order') }}">
                         <span class="icon material-icons">add_shopping_cart</span>

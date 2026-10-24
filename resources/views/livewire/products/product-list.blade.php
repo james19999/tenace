@@ -30,7 +30,7 @@
         <div class="catalog-alert" role="status"><span class="material-icons">check_circle</span>{{ session('messages') }}</div>
     @endif
 
-    @unless ($isPartner)<section class="catalog-metrics" aria-label="Résumé du stock">
+    @if (!$isPartner)<section class="catalog-metrics" aria-label="Résumé du stock">
         <article class="catalog-metric">
             <span class="catalog-metric-icon"><span class="material-icons">inventory_2</span></span>
             <div><small>Produits référencés</small><strong>{{ number_format((int) $inventory->total_products, 0, ',', ' ') }}</strong></div>
@@ -53,7 +53,7 @@
                 <div><small>Valeur potentielle de vente</small><strong>{{ number_format((float) $inventory->retail_stock_value, 0, ',', ' ') }} F</strong></div>
             </article>
         @endif
-    </section>@endunless
+    </section>@endif
 
     <section class="catalog-panel">
         <div class="catalog-toolbar">
@@ -81,9 +81,11 @@
                 @foreach ($Products as $product)
                     @php
                         $stock = (int) ($product->shop_quantity ?? 0);
+                        $wholesaleStock = (int) ($product->wholesale_shop_quantity ?? 0);
+                        $combinedStock = $stock + $wholesaleStock;
                         $partnerStock = $partnerStockSummary[$product->id] ?? ['reserve' => 0, 'couriers' => 0, 'available' => 0];
-                        $isOut = ! $isPartner && $stock <= 0;
-                        $isLow = ! $isPartner && ! $isOut && $product->qts_seuil !== null && $stock <= (int) $product->qts_seuil;
+                        $isOut = ! $isPartner && $stock <= 0 && $wholesaleStock <= 0;
+                        $isLow = ! $isPartner && ! $isOut && $product->qts_seuil !== null && $combinedStock <= (int) $product->qts_seuil;
                     @endphp
                     <article class="product-card">
                         <div class="product-card-top">
@@ -100,7 +102,7 @@
                             @elseif ($isLow)
                                 <span class="stock-badge stock-low"><span></span>Stock faible</span>
                             @else
-                                <span class="stock-badge stock-available"><span></span>Disponible</span>
+                                <span class="stock-badge stock-available"><span></span>{{ $stock > 0 ? 'Boutique principale · '.$stock : 'Boutique grossiste · '.$wholesaleStock }}</span>
                             @endif
                         </div>
 
@@ -117,7 +119,8 @@
                                         <small>Réserve {{ number_format($partnerStock['reserve'], 0, ',', ' ') }} · Livreurs {{ number_format($partnerStock['couriers'], 0, ',', ' ') }}</small>
                                     </span>
                                 @else<span class="product-stock-number {{ $isOut ? 'text-danger' : ($isLow ? 'text-warning' : '') }}">
-                                    {{ $stock }} <small>en stock</small>
+                                    {{ $stock }} <small>principale</small>
+                                    @if($hasWholesaleLocation)<small>Grossiste {{ $wholesaleStock }}</small>@endif
                                 </span>@endif
                             </div>
 
@@ -131,8 +134,10 @@
                             @else
                             <div class="product-prices">
                                 <div><small>Prix de vente boutique</small><strong>{{ number_format((float) $product->price, 0, ',', ' ') }} <span>F</span></strong></div>
-                                <div><small>Prix en gros</small><strong>{{ $product->high_price ? number_format((float) $product->high_price, 0, ',', ' ') . ' F' : 'Non défini' }}</strong></div>
                             </div>
+                            @if($product->quantityPriceTiers->isNotEmpty())
+                                <div class="product-country-prices"><div class="product-country-prices-heading"><span>Prix selon la quantité</span><small>Tarif appliqué automatiquement</small></div>@foreach($product->quantityPriceTiers as $tier)<div class="product-country-price"><span>Dès {{ $tier->min_quantity }} unités</span><strong>{{ number_format((float) $tier->unit_price, 0, ',', ' ') }} F / unité</strong></div>@endforeach</div>
+                            @endif
                             <div class="product-country-prices">
                                 <div class="product-country-prices-heading"><span>Prix de vente par pays</span><small>Catalogue partenaire</small></div>
                                 @forelse ($product->countryPrices as $countryPrice)
@@ -146,7 +151,7 @@
                                 @endforelse
                             </div>
                             @endif
-                            @unless ($isPartner)<div class="product-commission"><span>Commission</span><strong>{{ number_format((float) $product->commission_amount, 0, ',', ' ') }} F</strong></div>@endunless
+                            @if (!$isPartner)<div class="product-commission"><span>Commission</span><strong>{{ number_format((float) $product->commission_amount, 0, ',', ' ') }} F</strong></div>@endif
 
                             @if ($isPartner)
                                 <div class="product-cart-actions product-partner-cart-action">
@@ -160,9 +165,6 @@
                             <div class="product-cart-actions">
                                 <button type="button" class="btn product-add-button" wire:click="AddToCart({{ $product->id }})" wire:loading.attr="disabled" wire:target="AddToCart({{ $product->id }})" @disabled($isOut)>
                                     <span class="material-icons">add_shopping_cart</span> Ajouter
-                                </button>
-                                <button type="button" class="btn product-wholesale-button" wire:click="AddToCartHighPrice({{ $product->id }})" wire:loading.attr="disabled" wire:target="AddToCartHighPrice({{ $product->id }})" @disabled($isOut || ! $product->high_price)>
-                                    Gros · {{ $product->high_price ? number_format((float) $product->high_price, 0, ',', ' ') . ' F' : 'Non défini' }}
                                 </button>
                             </div>
                             @endif

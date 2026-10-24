@@ -38,6 +38,7 @@ class Order extends Model
     protected $casts = [
         'assigned_at' => 'datetime',
         'delivered_at' => 'datetime',
+        'is_wholesale' => 'boolean',
     ];
 
     protected $fillable=[
@@ -47,6 +48,7 @@ class Order extends Model
         'tax',
         'total',
         'type',
+        'is_wholesale',
         'code',
         'time',
         'brouillon',

@@ -74,16 +74,27 @@ class ProductList extends Component
             }
             $price = $countryPrice->price;
         }
+        if (Auth::user()?->user_type !== \App\Models\User::ROLE_PARTNER) {
+            $cart = Cart::instance('cart');
+            $existingItems = $cart->content()->filter(fn ($item) => (int) $item->id === (int) $product->id);
+            $newQuantity = (int) $existingItems->sum('qty') + 1;
+            foreach ($existingItems as $existingItem) $cart->remove($existingItem->rowId);
+            $price = (int) $product->price;
+            $cart->add($product->id, $product->name, $newQuantity, $price)->associate(Product::class);
+            $this->cartUpdated();
+            return;
+        }
         Cart::instance('cart')->add($product->id, $product->name, 1, $price)->associate(Product::class);
         $this->cartUpdated();
     }
 
-    public function AddToCartHighPrice($id): void
+    private function shopQuantity(int $productId, ?int $locationId): int
     {
-        abort_unless(Auth::user()?->user_type !== \App\Models\User::ROLE_PARTNER, 403);
-        $product = Product::findOrFail($id);
-        Cart::instance('cart')->add($product->id, $product->name, 1, $product->high_price)->associate(Product::class);
-        $this->cartUpdated();
+        if (! $locationId) return 0;
+        return (int) DB::table('stock_movement_lines as sml')
+            ->join('stock_movements as sm', 'sm.id', '=', 'sml.movement_id')
+            ->where('sm.status', 'posted')->where('sml.location_id', $locationId)
+            ->where('sml.product_id', $productId)->sum('sml.quantity_delta');
     }
 
     private function cartUpdated(): void
@@ -100,7 +111,9 @@ class ProductList extends Component
         $user = Auth::user();
         $isPartner = $user?->user_type === \App\Models\User::ROLE_PARTNER;
         $partnerCountryCode = $isPartner ? strtoupper((string) $user->country_code) : null;
-        $salesLocationId = app(StockModuleSettingsService::class)->rules()['default_sales_location_id'] ?? null;
+        $stockRules = app(StockModuleSettingsService::class)->rules();
+        $salesLocationId = $stockRules['default_sales_location_id'] ?? null;
+        $wholesaleLocationId = $stockRules['wholesale_sales_location_id'] ?? null;
         $shopStock = DB::table('stock_movement_lines as sml')
             ->join('stock_movements as sm', 'sm.id', '=', 'sml.movement_id')
             ->join('stock_locations as sl', 'sl.id', '=', 'sml.location_id')
@@ -110,14 +123,20 @@ class ProductList extends Component
             ->select('sml.product_id')
             ->selectRaw('SUM(sml.quantity_delta) as quantity')
             ->groupBy('sml.product_id');
+        $wholesaleShopStock = DB::table('stock_movement_lines as sml')
+            ->join('stock_movements as sm', 'sm.id', '=', 'sml.movement_id')
+            ->where('sm.status', 'posted')->where('sml.location_id', $wholesaleLocationId ?: -1)
+            ->select('sml.product_id')->selectRaw('SUM(sml.quantity_delta) as quantity')->groupBy('sml.product_id');
 
         $inventoryQuery = Product::query()
             ->leftJoinSub(clone $shopStock, 'shop_stock', 'shop_stock.product_id', '=', 'products.id')
+            ->leftJoinSub(clone $wholesaleShopStock, 'wholesale_shop_stock', 'wholesale_shop_stock.product_id', '=', 'products.id')
             ->selectRaw('COUNT(*) as total_products')
-            ->selectRaw('SUM(CASE WHEN COALESCE(shop_stock.quantity, 0) <= 0 THEN 1 ELSE 0 END) as out_of_stock_count')
-            ->selectRaw('SUM(CASE WHEN COALESCE(shop_stock.quantity, 0) > 0 AND qts_seuil IS NOT NULL AND shop_stock.quantity <= qts_seuil THEN 1 ELSE 0 END) as low_stock_count')
-            ->selectRaw('SUM(CASE WHEN COALESCE(shop_stock.quantity, 0) > 0 AND (qts_seuil IS NULL OR shop_stock.quantity > qts_seuil) THEN 1 ELSE 0 END) as available_count')
-            ->selectRaw('COALESCE(SUM(shop_stock.quantity), 0) as shop_stock_total');
+            ->selectRaw('SUM(CASE WHEN (COALESCE(shop_stock.quantity, 0) + COALESCE(wholesale_shop_stock.quantity, 0)) <= 0 THEN 1 ELSE 0 END) as out_of_stock_count')
+            ->selectRaw('SUM(CASE WHEN (COALESCE(shop_stock.quantity, 0) + COALESCE(wholesale_shop_stock.quantity, 0)) > 0 AND qts_seuil IS NOT NULL AND (COALESCE(shop_stock.quantity, 0) + COALESCE(wholesale_shop_stock.quantity, 0)) <= qts_seuil THEN 1 ELSE 0 END) as low_stock_count')
+            ->selectRaw('SUM(CASE WHEN (COALESCE(shop_stock.quantity, 0) + COALESCE(wholesale_shop_stock.quantity, 0)) > 0 AND (qts_seuil IS NULL OR (COALESCE(shop_stock.quantity, 0) + COALESCE(wholesale_shop_stock.quantity, 0)) > qts_seuil) THEN 1 ELSE 0 END) as available_count')
+            ->selectRaw('COALESCE(SUM(shop_stock.quantity), 0) as shop_stock_total')
+            ->selectRaw('COALESCE(SUM(wholesale_shop_stock.quantity), 0) as wholesale_shop_stock_total');
 
         if (Auth::user()?->isAdmin()) {
             $inventoryQuery
@@ -128,12 +147,14 @@ class ProductList extends Component
         $inventory = $inventoryQuery->first();
 
         $productsQuery = Product::query()
-            ->with(['countryPrices' => fn ($query) => $query
+            ->with(['quantityPriceTiers', 'countryPrices' => fn ($query) => $query
                 ->when($isPartner, fn ($prices) => $prices->where('country_code', $partnerCountryCode)->where('is_available', true))
                 ->orderBy('country_code')])
             ->leftJoinSub(clone $shopStock, 'shop_stock', 'shop_stock.product_id', '=', 'products.id')
+            ->leftJoinSub(clone $wholesaleShopStock, 'wholesale_shop_stock', 'wholesale_shop_stock.product_id', '=', 'products.id')
             ->select('products.*')
             ->selectRaw('COALESCE(shop_stock.quantity, 0) as shop_quantity')
+            ->selectRaw('COALESCE(wholesale_shop_stock.quantity, 0) as wholesale_shop_quantity')
             ->when($isPartner, fn ($query) => $query->whereHas('countryPrices', fn ($prices) => $prices
                 ->where('country_code', $partnerCountryCode)->where('is_available', true)))
             ->when(trim($this->search) !== '', function ($query) {
@@ -143,12 +164,12 @@ class ProductList extends Component
                         ->orWhere('description', 'like', $term);
                 });
             })
-            ->when($this->stockFilter === 'out', fn ($query) => $query->whereRaw('COALESCE(shop_stock.quantity, 0) <= 0'))
-            ->when($this->stockFilter === 'low', fn ($query) => $query->whereRaw('COALESCE(shop_stock.quantity, 0) > 0')
-                ->whereNotNull('products.qts_seuil')->whereRaw('shop_stock.quantity <= products.qts_seuil'))
-            ->when($this->stockFilter === 'available', fn ($query) => $query->whereRaw('COALESCE(shop_stock.quantity, 0) > 0')
+            ->when($this->stockFilter === 'out', fn ($query) => $query->whereRaw('(COALESCE(shop_stock.quantity, 0) + COALESCE(wholesale_shop_stock.quantity, 0)) <= 0'))
+            ->when($this->stockFilter === 'low', fn ($query) => $query->whereRaw('(COALESCE(shop_stock.quantity, 0) + COALESCE(wholesale_shop_stock.quantity, 0)) > 0')
+                ->whereNotNull('products.qts_seuil')->whereRaw('(COALESCE(shop_stock.quantity, 0) + COALESCE(wholesale_shop_stock.quantity, 0)) <= products.qts_seuil'))
+            ->when($this->stockFilter === 'available', fn ($query) => $query->whereRaw('(COALESCE(shop_stock.quantity, 0) + COALESCE(wholesale_shop_stock.quantity, 0)) > 0')
                 ->where(function ($stock) {
-                    $stock->whereNull('products.qts_seuil')->orWhereRaw('shop_stock.quantity > products.qts_seuil');
+                    $stock->whereNull('products.qts_seuil')->orWhereRaw('(COALESCE(shop_stock.quantity, 0) + COALESCE(wholesale_shop_stock.quantity, 0)) > products.qts_seuil');
                 }));
 
         $Products = $productsQuery->orderBy('name')->paginate(12);
@@ -192,6 +213,7 @@ class ProductList extends Component
             'partnerCountryCode' => $partnerCountryCode,
             'partnerStockSummary' => $partnerStockSummary,
             'partnerCartQuantities' => $partnerCartQuantities,
+            'hasWholesaleLocation' => (bool) $wholesaleLocationId,
         ])
             ->extends('layouts.admin')
             ->section('content');

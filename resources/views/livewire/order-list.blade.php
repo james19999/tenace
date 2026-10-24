@@ -292,6 +292,7 @@
                                     <strong class="text-dark d-block" style="font-size: 15px;">
                                         {{ $order->code ? $order->code : 'Commande #' . $order->id }}
                                     </strong>
+                                    @if($order->is_wholesale)<span class="badge badge-warning">Commande grossiste</span>@endif
                                     <small class="text-muted">
                                         <i class="fa fa-clock mr-1"></i>
                                         {{ $order->created_at ? $order->created_at->format('d/m/Y H:i') : '-' }}

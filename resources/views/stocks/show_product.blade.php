@@ -46,7 +46,6 @@
             <nav class="nav nav-tabs product-detail-tabs" aria-label="Détails du produit">
                 <a class="nav-link active" href="#product-entry" data-toggle="tab" role="tab"><span class="material-icons">move_to_inbox</span>Entrées de stock <span class="product-detail-tab-count">{{ $product->enterstocks->count() }}</span></a>
                 <a class="nav-link" href="#product-exit" data-toggle="tab" role="tab"><span class="material-icons">outbox</span>Sorties de stock <span class="product-detail-tab-count">{{ $product->outstocks->count() }}</span></a>
-                <a class="nav-link" href="#product-wholesale" data-toggle="tab" role="tab"><span class="material-icons">price_change</span>Prix grossiste</a>
             </nav>
 
             <div class="tab-content product-detail-tab-content">
@@ -86,15 +85,6 @@
                     </div>
                 </section>
 
-                <section class="tab-pane fade" id="product-wholesale">
-                    <div class="product-detail-section-head"><div><span class="product-detail-eyebrow">TARIFICATION</span><h2>Prix grossiste</h2><p>Définis le prix appliqué aux ventes en gros.</p></div></div>
-                    <form action="{{ route('update-product-price', $product) }}" method="POST" class="product-detail-wholesale-form">
-                        @csrf
-                        @method('PUT')
-                        <label><span>Prix grossiste (FCFA)</span><input type="number" min="0" name="high_price" value="{{ old('high_price', $product->high_price) }}" required></label>
-                        <button type="submit" class="product-detail-button"><span class="material-icons">save</span>Enregistrer le prix</button>
-                    </form>
-                </section>
             </div>
         </section>
     </div>

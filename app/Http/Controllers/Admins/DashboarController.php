@@ -33,7 +33,7 @@ class DashboarController extends Controller
 
 
     }
-     public function dashboard () {
+    public function dashboard () {
 
         $todayStart = Carbon::today();
         $tomorrow = $todayStart->copy()->addDay();
@@ -289,9 +289,6 @@ class DashboarController extends Controller
             ->all();
     }
 
-
-
-
      public function edit($id){
          $product=Product::findOrfail($id);
          return view('dashboard.edit',compact('product'));
@@ -308,7 +305,6 @@ class DashboarController extends Controller
             'price_by' => ['nullable', 'numeric', 'min:0'],
             'price_market' => ['nullable', 'numeric', 'min:0'],
             'qts_seuil' => ['nullable', 'integer', 'min:0'],
-            'high_price' => ['nullable', 'numeric', 'min:0'],
             'commission_amount' => ['nullable', 'numeric', 'min:0'],
             'description' => ['nullable', 'string', 'max:2000'],
             'img' => ['nullable', 'image', 'mimes:jpg,jpeg,png,webp', 'max:5120'],
@@ -327,7 +323,6 @@ class DashboarController extends Controller
         'price_market'=>$validated['price_market'] ?? null,
         'qts_seuil'=>$validated['qts_seuil'] ?? null,
         'commission_amount'=>$validated['commission_amount'] ?? null,
-        'high_price'=>$validated['high_price'] ?? null,
         'description'=>$validated['description'] ?? null,
         'img'=>$validated['img'] ?? $product->img,
     ]);

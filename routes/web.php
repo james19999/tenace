@@ -47,6 +47,8 @@ use App\Http\Controllers\PartnerMonitoringController;
 use App\Http\Controllers\CourierPublicOrderController;
 use App\Http\Controllers\DgAppointmentController;
 use App\Http\Controllers\FedaPayWebhookController;
+use App\Http\Controllers\ProductQuantityPriceController;
+use App\Http\Controllers\WholesaleCustomerMonitoringController;
 use App\Http\Controllers\Expensive\ExpensiveController;
 use App\Http\Controllers\Brouillons\BrouillonController;
 use App\Http\Controllers\TypeExpensive\TypeExpensiveController;
@@ -106,6 +108,8 @@ Route::middleware(['auth'])->group(function () {
     Route::middleware(['role:ADMINUSER'])->group(function () {
         Route::get('/partner-monitoring', [PartnerMonitoringController::class, 'index'])->name('partner-monitoring.index');
         Route::get('/partner-monitoring/snapshot', [PartnerMonitoringController::class, 'snapshot'])->name('partner-monitoring.snapshot');
+        Route::get('/suivi-grossistes', [WholesaleCustomerMonitoringController::class, 'index'])->name('wholesale-monitoring.index');
+        Route::get('/suivi-grossistes/{customer}', [WholesaleCustomerMonitoringController::class, 'show'])->name('wholesale-monitoring.show');
         Route::post('/avis-clients/phone-display', [PublicReviewController::class, 'updatePhoneDisplay'])->name('public-reviews.phone-display');
         // Paramètres & Rôles & Sécurité
         Route::get('settings/config', [DashboarController::class, 'settings'])->name('setting');
@@ -157,6 +161,11 @@ Route::middleware(['auth'])->group(function () {
         Route::put('edit/percent/{id}', [PercentController::class, 'edit'])->name('percen-edit');
     });
 
+    Route::middleware(['role:ADMINUSER,MNG,SCR'])->group(function () {
+        Route::get('/prix-degressifs', [ProductQuantityPriceController::class, 'index'])->name('product-tier-prices.index');
+        Route::post('/prix-degressifs/{product}', [ProductQuantityPriceController::class, 'save'])->name('product-tier-prices.save');
+    });
+
     Route::middleware(['role:ADMINUSER,MNG'])->group(function () {
         Route::get('livreurs', [LivreurController::class, 'index'])->name('livreurs.index');
         Route::get('livreurs/{livreur}', [LivreurController::class, 'show'])->name('livreurs.show');
@@ -192,16 +201,10 @@ Route::middleware(['auth'])->group(function () {
         Route::post('/receipts/{receipt}/deliveries/{event}/approve', [StockReceiptController::class, 'approveDelivery'])->name('receipts.deliveries.approve');
         Route::get('/attachments/{attachment}', [StockReceiptController::class, 'downloadAttachment'])->name('attachments.download');
         Route::get('/attachments/{attachment}/preview', [StockReceiptController::class, 'previewImage'])->name('attachments.preview');
-        Route::get('/transfers', [StockTransferController::class, 'index'])->name('transfers.index');
         Route::get('/transfers/create', [StockTransferController::class, 'create'])->name('transfers.create');
         Route::post('/transfers', [StockTransferController::class, 'store'])->name('transfers.store');
-        Route::get('/transfers/{transfer}', [StockTransferController::class, 'show'])->name('transfers.show');
-        Route::get('/transfers/{transfer}/shipment-receipt', [StockTransferController::class, 'shipmentReceipt'])->name('transfers.shipment-receipt');
-        Route::get('/transfers/{transfer}/events/{event}/print', [StockTransferController::class, 'eventReceipt'])->name('transfers.event-receipt');
         Route::post('/transfers/{transfer}/authorize', [StockTransferController::class, 'authorizeTransfer'])->name('transfers.authorize');
         Route::post('/transfers/{transfer}/ship', [StockTransferController::class, 'ship'])->name('transfers.ship');
-        Route::post('/transfers/{transfer}/receive', [StockTransferController::class, 'receive'])->name('transfers.receive');
-        Route::get('/transfer-attachments/{attachment}', [StockTransferController::class, 'downloadAttachment'])->name('transfers.attachments.download');
         Route::get('/counts', [StockCountController::class, 'index'])->name('counts.index');
         Route::get('/counts/create', [StockCountController::class, 'create'])->name('counts.create');
         Route::post('/counts', [StockCountController::class, 'store'])->name('counts.store');
@@ -222,6 +225,15 @@ Route::middleware(['auth'])->group(function () {
         Route::get('/alerts', [StockAlertController::class, 'index'])->name('alerts.index');
         Route::post('/alerts/refresh', [StockAlertController::class, 'refresh'])->name('alerts.refresh');
         Route::post('/alerts/{alert}/resolve', [StockAlertController::class, 'resolve'])->name('alerts.resolve');
+    });
+
+    Route::middleware(['role:ADMINUSER,MNG'])->prefix('stock-control')->name('stock-control.')->group(function () {
+        Route::get('/transfers', [StockTransferController::class, 'index'])->name('transfers.index');
+        Route::get('/transfers/{transfer}', [StockTransferController::class, 'show'])->name('transfers.show');
+        Route::get('/transfers/{transfer}/shipment-receipt', [StockTransferController::class, 'shipmentReceipt'])->name('transfers.shipment-receipt');
+        Route::get('/transfers/{transfer}/events/{event}/print', [StockTransferController::class, 'eventReceipt'])->name('transfers.event-receipt');
+        Route::post('/transfers/{transfer}/receive', [StockTransferController::class, 'receive'])->name('transfers.receive');
+        Route::get('/transfer-attachments/{attachment}', [StockTransferController::class, 'downloadAttachment'])->name('transfers.attachments.download');
     });
 
     Route::get('stock-control/', [StockControlController::class, 'index'])
@@ -326,24 +338,24 @@ Route::middleware(['auth'])->group(function () {
         Route::get('order/show/{id}', [OrderController::class, 'show'])->name('ordershow');
         Route::get('order/show/{order}/package-photos/{photo}/download', [LivreurController::class, 'downloadPackagePhoto'])->middleware('role:ADMINUSER,MNG')->name('ordershow.package-photo.download');
         Route::post('order/show/{id}/payment', [OrderController::class, 'updatePayment'])->middleware('role:ADMINUSER,MNG')->name('ordershow.payment');
-        Route::get('order/cancel/list', [OrderController::class, 'order_cancel_list'])->name('order-cancel-list');
-        Route::get('order/report/list', [OrderController::class, 'order_report_list'])->name('order-report-list');
-        Route::get('ordered/list/ordered', [OrderController::class, 'ordered_list'])->name('ordered-list-orderer');
-        Route::put('reporte/order/{id}', [OrderController::class, 'reporte_order'])->name('reporte-order');
-        Route::put('refresh/specific/order/{id}', [OrderController::class, 'refresh_specific_order'])->name('refresh-specific-order');
-        Route::get('order/check/type/{id}', [OrderController::class, 'check_type'])->name('check-type');
-        Route::get('/orders/{order}/invoice', [OrderController::class, 'invoice'])->name('orders.invoice');
+        Route::get('order/cancel/list', [OrderController::class, 'order_cancel_list'])->middleware('role:ADMINUSER,MNG,SCR,VDS,PT,CSA')->name('order-cancel-list');
+        Route::get('order/report/list', [OrderController::class, 'order_report_list'])->middleware('role:ADMINUSER,MNG,SCR,VDS,PT,CSA')->name('order-report-list');
+        Route::get('ordered/list/ordered', [OrderController::class, 'ordered_list'])->middleware('role:ADMINUSER,MNG,SCR,VDS,PT,CSA')->name('ordered-list-orderer');
+        Route::put('reporte/order/{id}', [OrderController::class, 'reporte_order'])->middleware('role:ADMINUSER,MNG,SCR,VDS,PT,CSA')->name('reporte-order');
+        Route::put('refresh/specific/order/{id}', [OrderController::class, 'refresh_specific_order'])->middleware('role:ADMINUSER,MNG,SCR,VDS,PT,CSA')->name('refresh-specific-order');
+        Route::get('order/check/type/{id}', [OrderController::class, 'check_type'])->middleware('role:ADMINUSER,MNG,SCR,VDS,PT,CSA')->name('check-type');
+        Route::get('/orders/{order}/invoice', [OrderController::class, 'invoice'])->middleware('role:ADMINUSER,MNG,SCR,VDS,PT,CSA')->name('orders.invoice');
         Route::put('change/order/status/{id}', [OrderController::class, 'change_order_status'])->name('changestatus');
         Route::put('refresh/order/{id}', [OrderController::class, 'refresh_order'])->name('refreshorder');
         Route::put('edit/hours/{id}', [OrderController::class, 'edit_hours_order'])->name('edit-hours');
         Route::delete('delete/{id}', [OrderController::class, 'delete'])->name('deleteorder');
 
-        Route::get('/history', [DashboarController::class, 'history'])->name('history');
-        Route::get('/getProductOrders', [DashboarController::class, 'getProductOrders'])->name('getProductOrders');
-        Route::get('repport/order', [OrderController::class, 'order_repport'])->name('repport-order');
-        Route::get('costumer/achat/order', [OrderController::class, 'OrderFilter'])->name('achat');
+        Route::get('/history', [DashboarController::class, 'history'])->middleware('role:ADMINUSER,MNG,SCR,VDS,PT,CSA')->name('history');
+        Route::get('/getProductOrders', [DashboarController::class, 'getProductOrders'])->middleware('role:ADMINUSER,MNG,SCR,VDS,PT,CSA')->name('getProductOrders');
+        Route::get('repport/order', [OrderController::class, 'order_repport'])->middleware('role:ADMINUSER,MNG,SCR,VDS,PT,CSA')->name('repport-order');
+        Route::get('costumer/achat/order', [OrderController::class, 'OrderFilter'])->middleware('role:ADMINUSER,MNG,SCR,VDS,PT,CSA')->name('achat');
 
-        Route::get('ranking/ranking', [OrderController::class, 'ranking'])->name('ranking');
+        Route::get('ranking/ranking', [OrderController::class, 'ranking'])->middleware('role:ADMINUSER,MNG,SCR,VDS,PT,CSA')->name('ranking');
     });
 
     // Weekly delivery overview is also the delivery driver's ranking page.
@@ -400,7 +412,6 @@ Route::middleware(['auth'])->group(function () {
         Route::get('show/{id}/product', [StockController::class, 'show_product'])->name('show-product');
         Route::post('entrer/stock/{id}', [StockController::class, 'enter_stocks'])->name('enter_stock');
         Route::post('out/stock/{id}', [StockController::class, 'out_stock'])->name('out_stock');
-        Route::put('update/product/price/{id}', [StockController::class, 'update_product_price'])->name('update-product-price');
     });
 
     Route::middleware(['role:ADMINUSER,MNG,COMPTABLE'])->group(function () {

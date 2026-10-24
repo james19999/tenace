@@ -7,6 +7,7 @@ use Livewire\Component;
 use App\Models\Orders\Order;
 use Livewire\WithPagination;
 use Illuminate\Support\Carbon;
+use Illuminate\Support\Facades\Auth;
 
 class OrderList extends Component
 {
@@ -48,7 +49,7 @@ public $typeOrderId;
 
     public function openAssignModal($orderId)
 {
-    $order = Order::findOrFail($orderId);
+    $order = $this->visibleOrder($orderId);
 
     $this->assignOrderId = $order->id;
 
@@ -79,6 +80,7 @@ public function assignOrder()
     // Vérifier que l'utilisateur est bien un livreur
     $livreur = User::where('id', $this->selectedLivreur)
         ->where('user_type', 'LVS')
+        ->where('active', true)
         ->first();
 
     if (!$livreur) {
@@ -88,7 +90,7 @@ public function assignOrder()
         return;
     }
 
-    $order = Order::findOrFail($this->assignOrderId);
+    $order = $this->visibleOrder($this->assignOrderId);
 
     // These operational fields are intentionally not mass-assignable on Order.
     // Set them explicitly so the assignment timestamp is persisted as well.
@@ -108,7 +110,7 @@ public function assignOrder()
 }
     public function openEditModal($orderId)
 {
-    $order = Order::findOrFail($orderId);
+    $order = $this->visibleOrder($orderId);
 
     $this->selectedOrderId = $order->id;
 
@@ -128,7 +130,7 @@ public function updateDeliveryDate()
         'editTime' => 'required|date_format:H:i',
     ]);
 
-    $order = Order::findOrFail($this->selectedOrderId);
+    $order = $this->visibleOrder($this->selectedOrderId);
 
     $order->update([
         'date_order' => $this->editDate,
@@ -156,7 +158,7 @@ public function closeEditModal()
 }
 public function openChangeTypeModal($orderId)
 {
-    $order = Order::findOrFail($orderId);
+    $order = $this->visibleOrder($orderId);
 
     if ($order->type !== 'PR') {
         return;
@@ -169,7 +171,7 @@ public function openChangeTypeModal($orderId)
 
 public function confirmChangeType()
 {
-    $order = Order::findOrFail($this->typeOrderId);
+    $order = $this->visibleOrder($this->typeOrderId);
 
     if ($order->type === 'PR') {
 
@@ -230,7 +232,7 @@ public function confirmChangeType()
 
     public function openDeleteModal($orderId)
 {
-    $order = Order::findOrFail($orderId);
+    $order = $this->visibleOrder($orderId);
 
     $this->deleteOrderId = $order->id;
 
@@ -246,7 +248,7 @@ public function closeDeleteModal()
 
 public function deleteOrder()
 {
-    $order = Order::findOrFail($this->deleteOrderId);
+    $order = $this->visibleOrder($this->deleteOrderId);
 
     $order->delete();
 
@@ -311,6 +313,7 @@ public function deleteOrder()
 
     $livreurs = User::query()
         ->where('user_type', 'LVS')
+        ->where('active', true)
         ->orderBy('name')
         ->get();
 
@@ -322,5 +325,11 @@ public function deleteOrder()
             'livreurs' => $livreurs,
         ])        ->extends('layouts.admin')
         ->section('content');
+    }
+
+    private function visibleOrder(int|string $id): Order
+    {
+        $query = Order::query()->whereKey($id);
+        return $query->firstOrFail();
     }
 }

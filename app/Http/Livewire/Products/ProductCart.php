@@ -19,9 +19,12 @@ class ProductCart extends Component
     public $totals = 0;
     public $defaultFollowUpDays = 14;
     public $defaultFollowUpAt;
+    public $isWholesaleOrder = false;
+    public $stockNotice = '';
 
     public function mount()
     {
+        $this->refreshOrderTypeAndPrices();
         $this->calculateTotal();
         $settings = CostumerContactSetting::first();
         $this->defaultFollowUpDays = $settings ? (int) $settings->default_follow_up_days : 14;
@@ -37,6 +40,35 @@ class ProductCart extends Component
         $this->calculateTotal();
     }
 
+    private function refreshOrderTypeAndPrices(): void
+    {
+        if (auth()->user()?->user_type === \App\Models\User::ROLE_PARTNER) {
+            $this->isWholesaleOrder = false;
+            return;
+        }
+        $cart = Cart::instance('cart');
+        $groups = $cart->content()->groupBy(fn ($item) => (int) $item->id);
+        $this->isWholesaleOrder = false;
+        foreach ($groups as $productId => $items) {
+            $quantity = (int) $items->sum('qty');
+            $product = Product::query()->with('quantityPriceTiers')->find($productId);
+            if ($product && $product->quantityPriceTiers->contains(fn ($tier) => $quantity >= (int) $tier->min_quantity)) {
+                $this->isWholesaleOrder = true;
+                break;
+            }
+        }
+
+        foreach ($groups as $productId => $items) {
+            $first = $items->first();
+            $quantity = (int) $items->sum('qty');
+            $product = Product::query()->with('quantityPriceTiers')->find($productId);
+            if (! $product) continue;
+            $price = $this->isWholesaleOrder ? $product->unitPriceForQuantity($quantity) : (int) $product->price;
+            foreach ($items as $item) $cart->remove($item->rowId);
+            $cart->add($product->id, $first->name, $quantity, $price)->associate(Product::class);
+        }
+    }
+
     private function calculateTotal()
     {
         $subtotal = (float) Cart::instance('cart')->subtotal(2, '.', '');
@@ -48,22 +80,54 @@ class ProductCart extends Component
 
     public function destroy ($rowId){
         Cart::instance('cart')->remove($rowId);
+        $this->refreshOrderTypeAndPrices();
         $this->calculateTotal();
         $this->cartUpdated();
     }
 
     public function increment($rowId){
         $produit=Cart::instance('cart')->get($rowId);
-        if (!$produit || !$produit->model || (int) $produit->qty >= $this->availableShopQuantity($produit->model)) {
+        if (!$produit || !$produit->model) return;
+        $qty=$produit->qty+1;
+        $targetWholesale = $this->isWholesaleForCartWithQuantity($rowId, (int) $qty);
+        $available = $this->availableShopQuantity($produit->model, $targetWholesale);
+        if ((int) $qty > $available) {
+            $this->stockNotice = $this->stockLimitMessage($produit->model, $available, $targetWholesale);
             return;
         }
-        $qty=$produit->qty+1;
+        $this->stockNotice = '';
         Cart::instance('cart')->update($rowId,$qty);
+        $this->refreshOrderTypeAndPrices();
         $this->calculateTotal();
         $this->cartUpdated();
          }
 
-    private function availableShopQuantity(Product $product): int
+    public function setQuantity(string $rowId, $quantity): void
+    {
+        $item = Cart::instance('cart')->get($rowId);
+        if (! $item || ! $item->model) return;
+
+        $quantity = filter_var($quantity, FILTER_VALIDATE_INT);
+        if ($quantity === false) return;
+        $quantity = max(1, (int) $quantity);
+        $targetWholesale = $this->isWholesaleForCartWithQuantity($rowId, $quantity);
+        $available = $this->availableShopQuantity($item->model, $targetWholesale);
+        if ($quantity > $available) {
+            $this->stockNotice = $this->stockLimitMessage($item->model, $available, $targetWholesale);
+            if ($available < 1) return;
+            $quantity = $available;
+        } else {
+            $this->stockNotice = '';
+        }
+        if ($quantity < 1) return;
+
+        Cart::instance('cart')->update($rowId, $quantity);
+        $this->refreshOrderTypeAndPrices();
+        $this->calculateTotal();
+        $this->cartUpdated();
+    }
+
+    private function availableShopQuantity(Product $product, ?bool $wholesale = null): int
     {
         if (auth()->user()?->user_type === \App\Models\User::ROLE_PARTNER) {
             $partner = auth()->user();
@@ -77,9 +141,13 @@ class ProductCart extends Component
 
             return $reserve + $withCouriers;
         }
-        $locationId = app(StockModuleSettingsService::class)->rules()['default_sales_location_id'] ?? null;
+        $rules = app(StockModuleSettingsService::class)->rules();
+        $useWholesaleStock = $wholesale ?? $this->isWholesaleOrder;
+        $locationId = $useWholesaleStock
+            ? ($rules['wholesale_sales_location_id'] ?? null)
+            : ($rules['default_sales_location_id'] ?? null);
         if (! $locationId) {
-            return (int) $product->qt_initial;
+            return $useWholesaleStock ? 0 : (int) $product->qt_initial;
         }
 
         return (int) DB::table('stock_movement_lines as sml')
@@ -92,11 +160,32 @@ class ProductCart extends Component
     public function decrement($rowId){
 
         $produit=Cart::instance('cart')->get($rowId);
+        $this->stockNotice = '';
         $qty=max(1, $produit->qty-1);
         Cart::instance('cart')->update($rowId,$qty);
+        $this->refreshOrderTypeAndPrices();
         $this->calculateTotal();
         $this->cartUpdated();
       }
+
+    private function isWholesaleForCartWithQuantity(string $rowId, int $quantity): bool
+    {
+        if (auth()->user()?->user_type === \App\Models\User::ROLE_PARTNER) return false;
+        foreach (Cart::instance('cart')->content()->groupBy(fn ($item) => (int) $item->id) as $productId => $items) {
+            $total = (int) $items->sum(fn ($item) => $item->rowId === $rowId ? $quantity : (int) $item->qty);
+            $product = Product::query()->with('quantityPriceTiers')->find($productId);
+            if ($product && $product->quantityPriceTiers->contains(fn ($tier) => $total >= (int) $tier->min_quantity)) return true;
+        }
+        return false;
+    }
+
+    private function stockLimitMessage(Product $product, int $available, bool $wholesale): string
+    {
+        $store = $wholesale ? 'la boutique grossiste' : 'la boutique principale';
+        return $available > 0
+            ? 'Il ne reste que '.$available.' unité(s) de « '.$product->name.' » dans '.$store.'. La quantité a été limitée au stock disponible.'
+            : 'Il n’y a plus de quantité disponible pour « '.$product->name.' » dans '.$store.'.';
+    }
 
     private function cartUpdated(): void
     {
