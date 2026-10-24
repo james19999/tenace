@@ -7,6 +7,7 @@ use App\Models\Product;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Carbon;
 use Illuminate\Validation\ValidationException;
 use Illuminate\View\View;
 
@@ -31,6 +32,8 @@ class QuantityPromotionController extends Controller
             'min_quantity.*' => ['nullable', 'integer', 'min:1', 'max:999999'],
             'discount_percent' => ['array', 'max:8'],
             'discount_percent.*' => ['nullable', 'integer', 'min:1', 'max:90'],
+            'starts_at' => ['nullable', 'required_if:is_active,1', 'date'],
+            'duration_days' => ['nullable', 'required_if:is_active,1', 'integer', 'min:1', 'max:365'],
         ]);
 
         $tiers = [];
@@ -63,17 +66,23 @@ class QuantityPromotionController extends Controller
         if ($request->boolean('is_active') && $tiers === []) {
             throw ValidationException::withMessages(['tiers' => 'Ajoute au moins un palier avant d’activer la promotion.']);
         }
+        $startsAt = ! empty($data['starts_at']) ? Carbon::parse($data['starts_at']) : null;
+        $durationDays = isset($data['duration_days']) ? (int) $data['duration_days'] : null;
+        $endsAt = $startsAt && $durationDays ? $startsAt->copy()->addDays($durationDays) : null;
         $applicationMode = $request->boolean('apply_to_all') ? 'general' : 'product';
         if ($request->boolean('is_active') && $applicationMode === 'product' && empty($data['product_ids'])) {
             throw ValidationException::withMessages(['product_ids' => 'Sélectionne au moins un produit pour activer les promotions par produit.']);
         }
 
-        DB::transaction(function () use ($request, $data, $tiers, $applicationMode): void {
+        DB::transaction(function () use ($request, $data, $tiers, $applicationMode, $startsAt, $endsAt, $durationDays): void {
             QuantityPromotionSetting::query()->updateOrCreate(['id' => 1], [
                 'is_active' => $request->boolean('is_active'),
                 'application_mode' => $applicationMode,
                 'product_ids' => array_map('intval', $data['product_ids'] ?? []),
                 'tiers' => $tiers,
+                'starts_at' => $startsAt,
+                'ends_at' => $endsAt,
+                'duration_days' => $durationDays,
             ]);
         });
 

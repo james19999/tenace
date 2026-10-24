@@ -23,6 +23,11 @@ class ProductCart extends Component
     public $isWholesaleOrder = false;
     public $stockNotice = '';
     public $promotionSummary = '';
+    public $promotionDiscountAmount = 0;
+    public $promotionRefreshAt = null;
+    public $promotionCountdownStart = null;
+    public $promotionCountdownEnd = null;
+    public $showPromotionCountdown = false;
 
     public function mount()
     {
@@ -47,12 +52,25 @@ class ProductCart extends Component
         if (auth()->user()?->user_type === \App\Models\User::ROLE_PARTNER) {
             $this->isWholesaleOrder = false;
             $this->promotionSummary = '';
+            $this->promotionDiscountAmount = 0;
+            $this->promotionRefreshAt = null;
+            $this->promotionCountdownStart = null;
+            $this->promotionCountdownEnd = null;
+            $this->showPromotionCountdown = false;
             return;
         }
         $cart = Cart::instance('cart');
         $groups = $cart->content()->groupBy(fn ($item) => (int) $item->id);
         $promotion = QuantityPromotionSetting::current();
+        $this->promotionRefreshAt = $promotion->nextStatusChangeTimestamp();
+        $this->promotionCountdownStart = $promotion->starts_at?->timestamp;
+        $this->promotionCountdownEnd = $promotion->ends_at?->timestamp;
+        $this->showPromotionCountdown = $promotion->is_active
+            && $promotion->starts_at !== null
+            && $promotion->ends_at !== null
+            && now()->lt($promotion->ends_at);
         $maximumDiscountApplied = 0;
+        $this->promotionDiscountAmount = 0;
         $this->isWholesaleOrder = false;
         foreach ($groups as $productId => $items) {
             $quantity = (int) $items->sum('qty');
@@ -69,12 +87,14 @@ class ProductCart extends Component
             $product = Product::query()->with('quantityPriceTiers')->find($productId);
             if (! $product) continue;
             $price = $this->isWholesaleOrder ? $product->unitPriceForQuantity($quantity) : (int) $product->price;
+            $basePrice = $price;
             $discountPercent = $promotion->appliesToProduct((int) $productId)
                 ? $promotion->discountForQuantity($quantity)
                 : 0;
             if ($discountPercent > 0) {
                 $price = max(1, (int) round($price * (100 - $discountPercent) / 100));
                 $maximumDiscountApplied = max($maximumDiscountApplied, $discountPercent);
+                $this->promotionDiscountAmount += max(0, $basePrice - $price) * $quantity;
             }
             foreach ($items as $item) $cart->remove($item->rowId);
             $cart->add($product->id, $first->name, $quantity, $price)->associate(Product::class);

@@ -1,4 +1,4 @@
-<div class="product-cart-page">
+<div class="product-cart-page" data-promotion-refresh-at="{{ $promotionRefreshAt ?? '' }}">
     @if ($isPartner)
         @include('partners.orders.cart')
     @else
@@ -101,6 +101,8 @@
         .cart-summary .cart-panel-body{padding:20px}
         .cart-summary-line{display:flex;justify-content:space-between;align-items:flex-start;gap:14px;padding:10px 0;color:#656b78;font-size:14px}
         .cart-summary-line strong{color:var(--cart-ink);text-align:right;white-space:nowrap}
+        .cart-summary-promotion{display:flex;align-items:center;justify-content:space-between;gap:12px;margin:4px 0 8px;padding:11px 12px;border:1px solid #d8eadb;border-radius:9px;background:#f2faf3;color:#285e35;font-size:13px}.cart-summary-promotion-copy{display:flex;align-items:flex-start;gap:8px;min-width:0}.cart-summary-promotion .material-icons{font-size:18px;line-height:1.2}.cart-summary-promotion-copy strong,.cart-summary-promotion-copy small{display:block}.cart-summary-promotion-copy strong{font-size:13px}.cart-summary-promotion-copy small{margin-top:3px;color:#52715a;font-size:11px;line-height:1.4}.cart-summary-promotion>strong{white-space:nowrap;font-size:13px}
+        .cart-promotion-countdown{display:flex;align-items:center;justify-content:space-between;gap:10px;margin:0 0 10px;padding:10px 12px;border:1px solid #d9e9dc;border-radius:9px;background:#f5fbf6;color:#315f3b;font-size:12px}.cart-promotion-countdown span:first-child{display:flex;align-items:center;gap:7px}.cart-promotion-countdown .material-icons{font-size:17px}.cart-promotion-countdown strong{font-size:12px;font-variant-numeric:tabular-nums;white-space:nowrap}
         .cart-summary-line.total{border-top:1px solid var(--cart-line);margin-top:8px;padding-top:16px;color:var(--cart-ink);font-size:16px;font-weight:800}
         .cart-summary-line.total strong{font-size:21px;color:var(--cart-wine)}
         .cart-summary-note{padding:11px 12px;background:#f8f8fa;border-radius:9px;color:var(--cart-muted);font-size:12px;line-height:1.5;margin-top:12px}
@@ -323,7 +325,13 @@
                     <section class="cart-panel cart-summary" aria-labelledby="cart-summary-title">
                         <div class="cart-panel-head"><div><h2 id="cart-summary-title">Résumé de la commande</h2><p>Montants avant confirmation.</p></div><span class="cart-step">03</span></div>
                         <div class="cart-panel-body">
-                            <div class="cart-summary-line"><span>Sous-total des articles</span><strong id="cart-subtotal-display" data-subtotal="{{ number_format($cartSubtotal, 2, '.', '') }}">{{ number_format($cartSubtotal, 0, ',', ' ') }} F</strong></div>
+                            @if($showPromotionCountdown)
+                                <div class="cart-promotion-countdown" data-cart-promotion-countdown data-start="{{ $promotionCountdownStart }}" data-end="{{ $promotionCountdownEnd }}" role="status" aria-live="polite"><span><span class="material-icons" aria-hidden="true">schedule</span><span data-cart-promotion-label>Promotion</span></span><strong data-cart-promotion-time></strong></div>
+                            @endif
+                            @if($promotionDiscountAmount > 0)
+                                <div class="cart-summary-promotion" role="status"><span class="cart-summary-promotion-copy"><span class="material-icons" aria-hidden="true">local_offer</span><span><strong>Promotion appliquée</strong><small>Économie incluse dans le sous-total</small></span></span><strong>− {{ number_format($promotionDiscountAmount, 0, ',', ' ') }} F</strong></div>
+                            @endif
+                            <div class="cart-summary-line"><span>{{ $promotionDiscountAmount > 0 ? 'Sous-total après promotion' : 'Sous-total des articles' }}</span><strong id="cart-subtotal-display" data-subtotal="{{ number_format($cartSubtotal, 2, '.', '') }}">{{ number_format($cartSubtotal, 0, ',', ' ') }} F</strong></div>
                             <div class="cart-summary-line"><span>Remise <span id="cart-discount-rate">({{ (int) old('remis', 0) }} %)</span></span><strong id="cart-discount-display">− {{ number_format($cartSubtotal * min(100, max(0, (int) old('remis', 0))) / 100, 0, ',', ' ') }} F</strong></div>
                             <div class="cart-summary-line"><span>Livraison</span><strong id="cart-delivery-display">{{ number_format((float) old('tax', 0), 0, ',', ' ') }} F</strong></div>
                             <div class="cart-summary-line total"><span>Total estimé</span><strong id="cart-total-display">{{ number_format($cartSubtotal * (1 - min(100, max(0, (int) old('remis', 0))) / 100) + (float) old('tax', 0), 0, ',', ' ') }} F</strong></div>
@@ -667,6 +675,42 @@
                 document.addEventListener('DOMContentLoaded', bindCustomerEvents, { once: true });
             } else {
                 bindCustomerEvents();
+            }
+        })();
+    </script>
+    <script>
+        (function () {
+            var root = document.currentScript && document.currentScript.closest('.product-cart-page');
+            if (!root) root = document.querySelector('.product-cart-page');
+            if (!root) return;
+            var refreshAt = Number(root.dataset.promotionRefreshAt || 0) * 1000;
+            var countdown = root.querySelector('[data-cart-promotion-countdown]');
+            if (countdown) {
+                var start = Number(countdown.dataset.start || 0) * 1000;
+                var end = Number(countdown.dataset.end || 0) * 1000;
+                var label = countdown.querySelector('[data-cart-promotion-label]');
+                var time = countdown.querySelector('[data-cart-promotion-time]');
+                var renderCountdown = function () {
+                    var now = Date.now();
+                    var target = now < start ? start : end;
+                    var seconds = Math.max(0, Math.floor((target - now) / 1000));
+                    var days = Math.floor(seconds / 86400);
+                    var hours = Math.floor((seconds % 86400) / 3600);
+                    var minutes = Math.floor((seconds % 3600) / 60);
+                    var remaining = seconds % 60;
+                    label.textContent = now < start ? 'La promotion commence dans' : 'La promotion se termine dans';
+                    time.textContent = (days ? days + ' j ' : '') + String(hours).padStart(2, '0') + ' h ' + String(minutes).padStart(2, '0') + ' min ' + String(remaining).padStart(2, '0') + ' s';
+                };
+                renderCountdown();
+                window.setInterval(renderCountdown, 1000);
+            }
+            if (refreshAt) {
+                var timer = window.setInterval(function () {
+                    if (Date.now() >= refreshAt) {
+                        window.clearInterval(timer);
+                        window.location.reload();
+                    }
+                }, 1000);
             }
         })();
     </script>
