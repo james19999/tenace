@@ -65,8 +65,9 @@
             </div>
 
             @php
-                $applyToAll = (bool) old('apply_to_all', $promotion->application_mode !== 'product');
                 $selectedProductIds = collect(old('product_ids', $promotion->product_ids ?? []))->map(fn ($id) => (string) $id)->all();
+                $hasScopedPromotion = $promotion->application_mode === 'product' && $selectedProductIds !== [];
+                $applyToAll = (bool) old('apply_to_all', !$hasScopedPromotion);
             @endphp
             <label class="qp-all-products" for="apply-to-all-products">
                 <span class="qp-all-copy"><span class="qp-all-icon"><span class="material-icons" aria-hidden="true">inventory_2</span></span><span><strong>Appliquer à tous les produits</strong><small>La promotion sera disponible sur chaque produit de la boutique.</small></span></span>
