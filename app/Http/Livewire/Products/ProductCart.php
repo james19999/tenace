@@ -24,10 +24,6 @@ class ProductCart extends Component
     public $stockNotice = '';
     public $promotionSummary = '';
     public $promotionDiscountAmount = 0;
-    public $promotionRefreshAt = null;
-    public $promotionCountdownStart = null;
-    public $promotionCountdownEnd = null;
-    public $showPromotionCountdown = false;
 
     public function mount()
     {
@@ -59,22 +55,11 @@ class ProductCart extends Component
             $this->isWholesaleOrder = false;
             $this->promotionSummary = '';
             $this->promotionDiscountAmount = 0;
-            $this->promotionRefreshAt = null;
-            $this->promotionCountdownStart = null;
-            $this->promotionCountdownEnd = null;
-            $this->showPromotionCountdown = false;
             return;
         }
         $cart = Cart::instance('cart');
         $groups = $cart->content()->groupBy(fn ($item) => (int) $item->id);
         $promotion = QuantityPromotionSetting::current();
-        $this->promotionRefreshAt = $promotion->nextStatusChangeTimestamp();
-        $displayPeriod = $promotion->currentOrNextPeriod();
-        $this->promotionCountdownStart = $displayPeriod['start_timestamp'] ?? null;
-        $this->promotionCountdownEnd = $displayPeriod['end_timestamp'] ?? null;
-        $this->showPromotionCountdown = $promotion->is_active
-            && $displayPeriod !== null
-            && now()->lt(\Illuminate\Support\Carbon::createFromTimestamp($displayPeriod['end_timestamp']));
         $maximumDiscountApplied = 0;
         $this->promotionDiscountAmount = 0;
         $this->isWholesaleOrder = false;
