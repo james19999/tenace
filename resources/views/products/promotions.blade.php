@@ -82,7 +82,7 @@
     @if($errors->any())<div class="alert alert-danger"><ul class="mb-0">@foreach($errors->all() as $message)<li>{{ $message }}</li>@endforeach</ul></div>@endif
 
     @php($configuredPeriods = old('periods', $promotion->schedulePeriods()))
-    <details class="wp-product wp-settings" open>
+    <details class="wp-product wp-settings">
         <summary class="wp-product-summary"><div class="wp-product-summary-main"><div class="wp-product-name">Activation et période</div><div class="wp-product-summary-sub"><span>Les promotions configurées ci-dessous suivent ces dates.</span></div></div></summary>
         <div class="wp-product-body">
         <form method="POST" action="{{ route('quantity-promotions.save') }}" data-period-form>
