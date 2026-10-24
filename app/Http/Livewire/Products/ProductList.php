@@ -5,6 +5,7 @@ namespace App\Http\Livewire\Products;
 use App\Models\Product;
 use App\Models\ProductCountryPrice;
 use App\Models\PartnerProductStock;
+use App\Models\QuantityPromotionSetting;
 use Livewire\Component;
 use Livewire\WithPagination;
 use Illuminate\Support\Facades\Auth;
@@ -173,6 +174,10 @@ class ProductList extends Component
                 }));
 
         $Products = $productsQuery->orderBy('name')->paginate(12);
+        $promotionSetting = QuantityPromotionSetting::current();
+        $promotedProductIds = $Products->getCollection()
+            ->filter(fn ($product) => $promotionSetting->hasPromotionForProduct((int) $product->id))
+            ->modelKeys();
         $partnerStockSummary = collect();
         $partnerCartQuantities = collect();
         if ($isPartner) {
@@ -207,6 +212,7 @@ class ProductList extends Component
 
         return view('livewire.products.product-list', [
             'Products' => $Products,
+            'promotedProductIds' => $promotedProductIds,
             'inventory' => $inventory,
             'countryNames' => collect(WestAfricaShippingCatalog::countries())->map(fn ($country) => $country['label']),
             'isPartner' => $isPartner,

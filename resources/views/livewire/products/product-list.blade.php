@@ -95,15 +95,20 @@
                                 @endif
                                 <span class="material-icons product-image-fallback">inventory_2</span>
                             </div>
-                            @if ($isPartner)
-                                <span class="stock-badge {{ $partnerStock['available'] > 0 ? 'stock-available' : 'stock-out' }}"><span></span>{{ $partnerStock['available'] > 0 ? 'Disponible' : 'Rupture de stock' }} · {{ $countryNames[$partnerCountryCode] ?? $partnerCountryCode }}</span>
-                            @elseif ($isOut)
-                                <span class="stock-badge stock-out"><span></span>Rupture</span>
-                            @elseif ($isLow)
-                                <span class="stock-badge stock-low"><span></span>Stock faible</span>
-                            @else
-                                <span class="stock-badge stock-available"><span></span>{{ $stock > 0 ? 'Boutique principale · '.$stock : 'Boutique grossiste · '.$wholesaleStock }}</span>
-                            @endif
+                            <div class="product-card-badges">
+                                @if ($isPartner)
+                                    <span class="stock-badge {{ $partnerStock['available'] > 0 ? 'stock-available' : 'stock-out' }}"><span></span>{{ $partnerStock['available'] > 0 ? 'Disponible' : 'Rupture de stock' }} · {{ $countryNames[$partnerCountryCode] ?? $partnerCountryCode }}</span>
+                                @elseif ($isOut)
+                                    <span class="stock-badge stock-out"><span></span>Rupture</span>
+                                @elseif ($isLow)
+                                    <span class="stock-badge stock-low"><span></span>Stock faible</span>
+                                @else
+                                    <span class="stock-badge stock-available"><span></span>{{ $stock > 0 ? 'Boutique principale · '.$stock : 'Boutique grossiste · '.$wholesaleStock }}</span>
+                                @endif
+                                @if (in_array((int) $product->id, $promotedProductIds, true))
+                                    <span class="catalog-promotion-badge"><span class="material-icons" aria-hidden="true">local_offer</span> En promotion</span>
+                                @endif
+                            </div>
                         </div>
 
                         <div class="product-card-content">
@@ -278,14 +283,17 @@
         .product-card{display:flex;flex-direction:column;min-width:0;border:1px solid var(--catalog-line);border-radius:13px;background:#fff;overflow:hidden;transition:transform .18s ease,box-shadow .18s ease,border-color .18s ease}
         .product-card:hover{transform:translateY(-2px);border-color:#d9c4c3;box-shadow:0 9px 24px rgba(35,28,28,.08)}
         .product-card-top{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:13px 14px 0}
+        .product-card-badges{display:flex;flex-direction:column;align-items:flex-end;gap:6px;min-width:0;max-width:calc(100% - 64px)}
         .product-image{position:relative;display:grid;place-items:center;width:54px;height:54px;flex:0 0 54px;border:1px solid #eee;border-radius:12px;background:#faf8f8;color:#a27c7a;overflow:hidden}
         .product-image img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;z-index:1}
         .product-image-fallback{font-size:25px}
-        .stock-badge{display:inline-flex;align-items:center;gap:6px;padding:6px 9px;border-radius:20px;font-size:10px;font-weight:750;white-space:nowrap}
+        .stock-badge{display:inline-flex;align-items:center;gap:6px;max-width:100%;padding:6px 9px;border-radius:20px;font-size:10px;font-weight:750;white-space:normal;text-align:right;overflow-wrap:anywhere}
         .stock-badge>span{width:6px;height:6px;border-radius:50%;background:currentColor}
         .stock-available{color:#26764d;background:#eaf6ef}
         .stock-low{color:#9a6810;background:#fff4dc}
         .stock-out{color:#a12b28;background:#fbeceb}
+        .catalog-promotion-badge{display:inline-flex;align-items:center;justify-content:center;gap:5px;max-width:100%;padding:6px 9px;border:1px solid #f0d8ae;border-radius:20px;background:#fff7e8;color:#9a5b00;font-size:10px;font-weight:800;line-height:1.2;white-space:nowrap}
+        .catalog-promotion-badge .material-icons{font-size:14px}
         .product-card-content{display:flex;flex:1;flex-direction:column;min-width:0;padding:13px 14px 14px}
         .product-title-row{display:flex;align-items:flex-start;justify-content:space-between;gap:10px}
         .product-reference{display:block;margin-bottom:3px;color:#9a9eaa;font-size:10px;font-weight:700;letter-spacing:.5px;text-transform:uppercase}

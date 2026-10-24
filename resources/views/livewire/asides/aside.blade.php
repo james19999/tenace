@@ -284,19 +284,16 @@
                     </a>
                 </li>
                 <li>
+                    <a href="{{ route('show-deliveries') }}" class="{{ $active('show-deliveries') }}">
+                        <span class="icon material-icons">grade</span>
+                        <span class="text">Classement</span>
+                    </a>
+                </li>
+                <li>
                     <a class="{{ $active('setting') }}" href="{{ route('setting') }}">
                         <span class="icon material-icons">settings
                         </span>
                         <span class="text">Paramètre</span>
-                    </a>
-                </li>
-                <li>
-
-                    <a href=" {{ route('show-deliveries') }}
-                    " class="{{ $active('show-deliveries') }}">
-                        <span class="icon material-icons">calendar_today
-                        </span>
-                        <span class="text">Classement</span>
                     </a>
                 </li>
             @elseif (Auth::user()->user_type == 'PT')

@@ -110,9 +110,7 @@ class CheckController extends Controller
                      return redirect()->route('productcart')->withErrors(['is_wholesale' => 'Stock insuffisant dans la boutique grossiste pour « '.$product->name.' » (disponible : '.max(0, (int) $available).').'])->withInput();
                  }
                  $qualifiedWholesaleProduct = $qualifiedWholesaleProduct || $product->quantityPriceTiers->contains(fn ($tier) => $quantity >= $tier->min_quantity);
-                 $promotionPercent = $promotion->appliesToProduct((int) $productId)
-                     ? $promotion->discountForQuantity($quantity)
-                     : 0;
+                 $promotionPercent = $promotion->discountForProductQuantity((int) $productId, $quantity);
                  $unitPrice = $product->unitPriceForQuantity($quantity);
                  if ($promotionPercent > 0) {
                      $unitPrice = max(1, (int) round($unitPrice * (100 - $promotionPercent) / 100));
@@ -130,9 +128,7 @@ class CheckController extends Controller
                  $quantity = (int) $items->sum('qty');
                  $product = Product::query()->find($productId);
                  if (! $product) continue;
-                 $promotionPercent = $promotion->appliesToProduct((int) $productId)
-                     ? $promotion->discountForQuantity($quantity)
-                     : 0;
+                 $promotionPercent = $promotion->discountForProductQuantity((int) $productId, $quantity);
                  $unitPrice = (int) $product->price;
                  if ($promotionPercent > 0) {
                      $unitPrice = max(1, (int) round($unitPrice * (100 - $promotionPercent) / 100));

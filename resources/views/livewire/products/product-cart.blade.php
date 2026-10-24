@@ -1,4 +1,4 @@
-<div class="product-cart-page" data-promotion-refresh-at="{{ $promotionRefreshAt ?? '' }}">
+<div class="product-cart-page" wire:poll.15s="refreshPromotionState" data-promotion-refresh-at="{{ $promotionRefreshAt ?? '' }}">
     @if ($isPartner)
         @include('partners.orders.cart')
     @else
@@ -683,35 +683,32 @@
             var root = document.currentScript && document.currentScript.closest('.product-cart-page');
             if (!root) root = document.querySelector('.product-cart-page');
             if (!root) return;
-            var refreshAt = Number(root.dataset.promotionRefreshAt || 0) * 1000;
-            var countdown = root.querySelector('[data-cart-promotion-countdown]');
-            if (countdown) {
-                var start = Number(countdown.dataset.start || 0) * 1000;
-                var end = Number(countdown.dataset.end || 0) * 1000;
+            var renderCountdown = function () {
+                var countdown = root.querySelector('[data-cart-promotion-countdown]');
+                if (!countdown) return;
                 var label = countdown.querySelector('[data-cart-promotion-label]');
                 var time = countdown.querySelector('[data-cart-promotion-time]');
-                var renderCountdown = function () {
-                    var now = Date.now();
-                    var target = now < start ? start : end;
-                    var seconds = Math.max(0, Math.floor((target - now) / 1000));
-                    var days = Math.floor(seconds / 86400);
-                    var hours = Math.floor((seconds % 86400) / 3600);
-                    var minutes = Math.floor((seconds % 3600) / 60);
-                    var remaining = seconds % 60;
-                    label.textContent = now < start ? 'La promotion commence dans' : 'La promotion se termine dans';
-                    time.textContent = (days ? days + ' j ' : '') + String(hours).padStart(2, '0') + ' h ' + String(minutes).padStart(2, '0') + ' min ' + String(remaining).padStart(2, '0') + ' s';
-                };
-                renderCountdown();
-                window.setInterval(renderCountdown, 1000);
-            }
-            if (refreshAt) {
-                var timer = window.setInterval(function () {
-                    if (Date.now() >= refreshAt) {
-                        window.clearInterval(timer);
-                        window.location.reload();
-                    }
-                }, 1000);
-            }
+                var now = Date.now();
+                var start = Number(countdown.dataset.start || 0) * 1000;
+                var end = Number(countdown.dataset.end || 0) * 1000;
+                var target = now < start ? start : end;
+                var seconds = Math.max(0, Math.floor((target - now) / 1000));
+                var days = Math.floor(seconds / 86400);
+                var hours = Math.floor((seconds % 86400) / 3600);
+                var minutes = Math.floor((seconds % 3600) / 60);
+                var remaining = seconds % 60;
+                label.textContent = now < start ? 'La promotion commence dans' : 'La promotion se termine dans';
+                time.textContent = (days ? days + ' j ' : '') + String(hours).padStart(2, '0') + ' h ' + String(minutes).padStart(2, '0') + ' min ' + String(remaining).padStart(2, '0') + ' s';
+            };
+            renderCountdown();
+            window.setInterval(renderCountdown, 1000);
+            var timer = window.setInterval(function () {
+                var refreshAt = Number(root.dataset.promotionRefreshAt || 0) * 1000;
+                if (refreshAt && Date.now() >= refreshAt) {
+                    window.clearInterval(timer);
+                    window.location.reload();
+                }
+            }, 1000);
         })();
     </script>
     @endif
