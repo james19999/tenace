@@ -686,11 +686,83 @@
                 }
                 toggleNewCustomerFields();
             }
+
+            // Le polling Livewire actualise les promotions, mais ne doit pas
+            // réinitialiser les champs du formulaire ni leur affichage.
+            function cartFormControls() {
+                var form = root.querySelector('#product-cart-order-form');
+                return form ? Array.from(form.querySelectorAll('input, select, textarea')) : [];
+            }
+
+            function snapshotCartForm() {
+                return cartFormControls().map(function (control, index) {
+                    return {
+                        key: control.id ? 'id:' + control.id : 'index:' + index,
+                        type: control.type,
+                        value: control.value,
+                        checked: 'checked' in control ? control.checked : undefined,
+                        selectedValues: control.multiple
+                            ? Array.from(control.selectedOptions).map(function (option) { return option.value; })
+                            : null
+                    };
+                });
+            }
+
+            function restoreCartForm(snapshot) {
+                if (!snapshot) return;
+                var controls = cartFormControls();
+                snapshot.forEach(function (saved, index) {
+                    var control = saved.key.indexOf('id:') === 0
+                        ? controls.find(function (candidate) { return candidate.id === saved.key.slice(3); })
+                        : controls[index];
+                    if (!control || control.disabled || /^(button|submit|reset|file)$/i.test(control.type || '')) return;
+                    if (saved.selectedValues) {
+                        saved.selectedValues.forEach(function (value) {
+                            if (!Array.from(control.options).some(function (option) { return option.value === value; })) {
+                                control.add(new Option(value, value));
+                            }
+                        });
+                        Array.from(control.options).forEach(function (option) {
+                            option.selected = saved.selectedValues.indexOf(option.value) !== -1;
+                        });
+                    } else if (saved.type === 'checkbox' || saved.type === 'radio') {
+                        control.checked = saved.checked;
+                    } else {
+                        if (saved.value && control.tagName === 'SELECT' && !Array.from(control.options).some(function (option) { return option.value === saved.value; })) {
+                            control.add(new Option(saved.value, saved.value));
+                        }
+                        control.value = saved.value;
+                    }
+                    if (window.jQuery && control.tagName === 'SELECT') {
+                        window.jQuery(control).trigger('change.select2');
+                    }
+                });
+                updateExpeditionFields();
+                toggleNewCustomerFields();
+            }
+
+            function installCartFormPollingHooks() {
+                if (!window.Livewire || window.__tenaceCartFormPollingHooksInstalled) return;
+                window.__tenaceCartFormPollingHooksInstalled = true;
+                var snapshots = {};
+                window.Livewire.hook('message.sent', function (message, component) {
+                    if (!component || !component.el || !component.el.matches('.product-cart-page')) return;
+                    snapshots[component.id] = snapshotCartForm();
+                });
+                window.Livewire.hook('message.processed', function (message, component) {
+                    if (!component || !component.el || !component.el.matches('.product-cart-page')) return;
+                    restoreCartForm(snapshots[component.id]);
+                    delete snapshots[component.id];
+                });
+            }
+
             if (document.readyState === 'loading') {
                 document.addEventListener('DOMContentLoaded', bindCustomerEvents, { once: true });
             } else {
                 bindCustomerEvents();
             }
+            installCartFormPollingHooks();
+            document.addEventListener('livewire:load', installCartFormPollingHooks, { once: true });
         })();
     </script>
     @endif
