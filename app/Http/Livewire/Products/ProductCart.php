@@ -81,9 +81,17 @@ class ProductCart extends Component
             $quantity = (int) $items->sum('qty');
             $product = Product::query()->with('quantityPriceTiers')->find($productId);
             if (! $product) continue;
-            $price = $this->isWholesaleOrder ? $product->unitPriceForQuantity($quantity) : (int) $product->price;
-            $basePrice = $price;
-            $promotionPricing = $promotion->priceAfterPromotionForProductQuantity((int) $productId, $quantity, $basePrice);
+            $hasWholesalePrice = $product->quantityPriceTiers->contains(
+                fn ($tier) => $quantity >= (int) $tier->min_quantity
+            );
+            $basePrice = $hasWholesalePrice
+                ? $product->unitPriceForQuantity($quantity)
+                : (int) $product->price;
+            // Le tarif grossiste atteint pour ce produit remplace la promotion.
+            $promotionPricing = $hasWholesalePrice
+                ? null
+                : $promotion->priceAfterPromotionForProductQuantity((int) $productId, $quantity, $basePrice);
+            $price = $basePrice;
             if ($promotionPricing) {
                 $price = $promotionPricing['unit_price'];
                 $this->cartRegularUnitPrices[(int) $productId] = $basePrice;
