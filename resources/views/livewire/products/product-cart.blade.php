@@ -1,4 +1,4 @@
-<div class="product-cart-page" wire:poll.5s="refreshPromotionState">
+<div class="product-cart-page">
     @if ($isPartner)
         @include('partners.orders.cart')
     @else
@@ -35,6 +35,8 @@
         .cart-order-category .form-control{height:46px;border:1px solid #dfe2e8;border-radius:8px;font-weight:750}
         .cart-form-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:16px}
         .cart-field{min-width:0}.cart-field.full{grid-column:1/-1}
+        .cart-field.expedition-city-field{grid-column:1/-1}
+        .cart-city-custom-label{display:block;margin:10px 0 6px!important;color:#555c69!important;font-size:12px!important;font-weight:700!important}
         .cart-field.anonymous-customer-help{padding:12px 14px;border-left:3px solid var(--cart-wine);background:#f8f3f3;color:#5f626c;font-size:12px;line-height:1.5}
         .cart-customer-create-actions{display:flex;flex-wrap:nowrap;align-items:stretch;gap:6px;margin-top:7px;width:100%;max-width:100%}
         .cart-customer-mode{display:inline-flex;flex:1 1 0;min-width:0;align-items:center;justify-content:center;gap:6px;min-height:36px;padding:6px 9px;border:1px solid #d8dce3;background:#fff;color:#505765;font-size:11px;font-weight:700;white-space:nowrap;cursor:pointer}
@@ -285,7 +287,7 @@
                         @endif
                     </section>
 
-                    <section class="cart-panel" aria-labelledby="cart-customer-title">
+                    <section class="cart-panel" aria-labelledby="cart-customer-title" wire:ignore>
                         <div class="cart-panel-head"><div><h2 id="cart-customer-title">Cliente et livraison</h2><p>Les champs nécessaires à la préparation de la commande.</p></div><span class="cart-step">02</span></div>
                         <div class="cart-panel-body">
                             <div class="cart-form-grid">
@@ -325,11 +327,21 @@
                                         <option value="{{ old('transport_company') }}" selected>{{ old('transport_company') }}</option>
                                     @endif
                                 </select><small class="cart-help">Les transporteurs déjà créés sont proposés. Tu peux aussi saisir un nouveau nom : il sera enregistré automatiquement.</small>@error('transport_company')<span class="cart-field-error">{{ $message }}</span>@enderror</div>
-                                <div class="cart-field expedition-field" data-expedition-field @if(old('delivery_mode', 'local') !== 'expedition') hidden @endif><label for="shipping-country">Pays de destination <span class="text-danger">*</span></label><select class="form-control js-country-search" id="shipping-country" name="shipping_country"><option value="">Choisir un pays</option>@foreach(\App\Support\WestAfricaShippingCatalog::countries() as $countryCode => $countryData)<option value="{{ $countryCode }}" @selected(old('shipping_country') === $countryCode)>{{ $countryData['label'] }}</option>@endforeach</select>@error('shipping_country')<span class="cart-field-error">{{ $message }}</span>@enderror</div>
-                                <div class="cart-field expedition-field" data-expedition-field @if(old('delivery_mode', 'local') !== 'expedition') hidden @endif><label for="shipping-city">Ville de destination <span class="text-danger">*</span></label><select class="form-control js-shipping-city" id="shipping-city" name="shipping_city" data-selected-city="{{ old('shipping_city') }}" data-cities-url-template="{{ route('shipping.cities', ['country' => '__COUNTRY__']) }}"><option value="">Choisir d’abord un pays</option>@if(old('shipping_city'))<option value="{{ old('shipping_city') }}" selected>{{ old('shipping_city') }}</option>@endif</select><small class="cart-help">Choisis une ville proposée ou saisis son nom si elle n’est pas dans la liste.</small>@error('shipping_city')<span class="cart-field-error">{{ $message }}</span>@enderror</div>
+                                <div class="cart-field expedition-field" data-expedition-field @if(old('delivery_mode', 'local') !== 'expedition') hidden @endif><label for="shipping-country">Pays de destination <span class="text-danger">*</span></label><select class="form-control js-country-search" id="shipping-country" name="shipping_country" style="width:100%" onchange="window.refreshProductCartShippingCities(this)"><option value="">Choisir un pays</option>@foreach(\App\Support\WestAfricaShippingCatalog::countries() as $countryCode => $countryData)<option value="{{ $countryCode }}" @selected(old('shipping_country') === $countryCode)>{{ $countryData['label'] }}</option>@endforeach</select>@error('shipping_country')<span class="cart-field-error">{{ $message }}</span>@enderror</div>
+                                <div class="cart-field expedition-field expedition-city-field" data-expedition-field @if(old('delivery_mode', 'local') !== 'expedition') hidden @endif>
+                                    <label for="shipping-city">Ville de destination <span class="text-danger">*</span></label>
+                                    <select class="form-control" id="shipping-city" name="shipping_city" data-selected-city="{{ old('shipping_city') }}" data-cities-url-template="{{ route('shipping.cities', ['country' => '__COUNTRY__']) }}" required>
+                                        <option value="">Choisis d’abord un pays</option>
+                                        @if(old('shipping_city'))<option value="{{ old('shipping_city') }}" selected>{{ old('shipping_city') }}</option>@endif
+                                    </select>
+                                    <label class="cart-city-custom-label" for="shipping-city-custom">Ville absente de la liste ?</label>
+                                    <input type="text" class="form-control" id="shipping-city-custom" placeholder="Saisis le nom de la ville" autocomplete="off">
+                                    <small class="cart-help" data-shipping-city-status>Choisis une suggestion ou saisis une autre ville dans le champ ci-dessus.</small>
+                                    @error('shipping_city')<span class="cart-field-error">{{ $message }}</span>@enderror
+                                </div>
                             </div>
 
-                            <div class="cart-subsection"><p class="cart-subsection-title">Planification et détails</p>
+                            <div class="cart-subsection" wire:ignore><p class="cart-subsection-title">Planification et détails</p>
                                 <div class="cart-form-grid">
                                     <div class="cart-field"><label for="date_order">Date de livraison <span class="text-danger">*</span></label><input type="date" class="form-control" id="date_order" name="date_order" value="{{ old('date_order', now()->toDateString()) }}">@error('date_order')<span class="cart-field-error">{{ $message }}</span>@enderror</div>
                                     <div class="cart-field"><label for="time">Heure de livraison <span class="text-danger">*</span></label><input type="time" name="time" id="time" value="{{ old('time') }}" class="form-control">@error('time')<span class="cart-field-error">{{ $message }}</span>@enderror</div>
@@ -384,7 +396,10 @@
             var expeditionFields = Array.from(root.querySelectorAll('[data-expedition-field]'));
             var shippingCountry = root.querySelector('#shipping-country');
             var shippingCity = root.querySelector('#shipping-city');
+            var shippingCityCustom = root.querySelector('#shipping-city-custom');
+            var shippingCityStatus = root.querySelector('[data-shipping-city-status]');
             var shippingCitiesUrlTemplate = shippingCity ? (shippingCity.getAttribute('data-cities-url-template') || '') : '';
+            var shippingCitiesRequest = 0;
 
             function updateExpeditionFields() {
                 var isExpedition = deliveryMode && deliveryMode.value === 'expedition';
@@ -395,34 +410,140 @@
                 });
             }
 
-            function updateShippingCities(selectedCity) {
+            function updateShippingCities(selectedCity, selectedCountryCode) {
+                var currentRoot = document.querySelector('.product-cart-page');
+                if (currentRoot) {
+                    root = currentRoot;
+                    shippingCountry = root.querySelector('#shipping-country');
+                    shippingCity = root.querySelector('#shipping-city');
+                    shippingCityCustom = root.querySelector('#shipping-city-custom');
+                    shippingCityStatus = root.querySelector('[data-shipping-city-status]');
+                    shippingCitiesUrlTemplate = shippingCity ? (shippingCity.getAttribute('data-cities-url-template') || '') : '';
+                }
                 if (!shippingCountry || !shippingCity) return;
+                if (selectedCountryCode) shippingCountry.value = selectedCountryCode;
                 var countryCode = (shippingCountry.value || '').toUpperCase();
-                var citiesUrl = countryCode && shippingCitiesUrlTemplate
+
+                // Ne pas recharger inutilement si les villes de ce pays sont déjà chargées
+                var currentlyLoadedCountry = shippingCity.getAttribute('data-loaded-country');
+                if (countryCode && countryCode === currentlyLoadedCountry && shippingCity.options.length > 1) {
+                    if (selectedCity) shippingCity.value = selectedCity;
+                    return;
+                }
+
+                if (!countryCode) {
+                    shippingCity.removeAttribute('data-loaded-country');
+                    shippingCity.replaceChildren(new Option('Choisis d’abord un pays', ''));
+                    shippingCity.disabled = true;
+                    if (shippingCityStatus) shippingCityStatus.textContent = 'Choisis un pays puis sélectionne une ville ou saisis-la dans le champ ci-dessus.';
+                    return;
+                }
+
+                var citiesUrl = shippingCitiesUrlTemplate
                     ? shippingCitiesUrlTemplate.replace('__COUNTRY__', encodeURIComponent(countryCode))
                     : '';
+                if (!citiesUrl) return;
+
                 shippingCity.setAttribute('data-cities-url', citiesUrl);
-                shippingCity.disabled = !countryCode;
-                shippingCity.replaceChildren(new Option(countryCode ? 'Choisir ou saisir une ville' : 'Choisir d’abord un pays', ''));
-                if (selectedCity && !Array.from(shippingCity.options).some(function (option) { return option.value === selectedCity; })) {
-                    shippingCity.add(new Option(selectedCity, selectedCity, true, true));
+                shippingCity.disabled = true;
+                shippingCity.replaceChildren(new Option('Chargement des villes…', ''));
+                if (shippingCityStatus) shippingCityStatus.textContent = 'Chargement des villes du pays sélectionné…';
+                if (shippingCityCustom && !selectedCity) shippingCityCustom.value = '';
+                var requestId = ++shippingCitiesRequest;
+
+                function applyCityOptions(cities) {
+                    var currentRoot = document.querySelector('.product-cart-page');
+                    if (currentRoot) {
+                        shippingCity = currentRoot.querySelector('#shipping-city');
+                        shippingCityCustom = currentRoot.querySelector('#shipping-city-custom');
+                    }
+                    if (!shippingCity) return;
+                    shippingCity.setAttribute('data-loaded-country', countryCode);
+                    var manuallyEnteredCity = shippingCityCustom ? shippingCityCustom.value.trim() : '';
+                    shippingCity.replaceChildren(new Option(cities.length ? 'Choisir une ville' : 'Aucune ville proposée', ''));
+                    cities.forEach(function (city) { shippingCity.add(new Option(city.text, city.id)); });
+                    var cityToSelect = manuallyEnteredCity || selectedCity;
+                    if (cityToSelect && !Array.from(shippingCity.options).some(function (option) { return option.value.toLocaleLowerCase() === cityToSelect.toLocaleLowerCase(); })) {
+                        var customOption = new Option(cityToSelect, cityToSelect, true, true);
+                        customOption.dataset.customCity = '1';
+                        shippingCity.add(customOption);
+                    }
+                    if (cityToSelect) {
+                        var matchedOption = Array.from(shippingCity.options).find(function (option) { return option.value.toLocaleLowerCase() === cityToSelect.toLocaleLowerCase(); });
+                        if (matchedOption) shippingCity.value = matchedOption.value;
+                    }
+                    shippingCity.disabled = false;
+                    if (shippingCityStatus) shippingCityStatus.textContent = cities.length
+                        ? 'Choisis une suggestion ou saisis une autre ville dans le champ ci-dessus.'
+                        : 'Aucune suggestion disponible pour ce pays : saisis la ville dans le champ ci-dessus.';
                 }
-                if (window.jQuery) {
-                    var $shippingCity = window.jQuery(shippingCity);
-                    $shippingCity.val(selectedCity || '');
-                    $shippingCity.trigger('change.select2');
-                }
+                fetch(citiesUrl, { headers: { 'Accept': 'application/json' }, credentials: 'same-origin' })
+                    .then(function (response) {
+                        if (!response.ok) throw new Error('Chargement des villes impossible');
+                        return response.json();
+                    })
+                    .then(function (data) {
+                        if (requestId !== shippingCitiesRequest || countryCode !== (shippingCountry.value || '').toUpperCase()) return;
+                        var cities = data.results || [];
+                        applyCityOptions(cities);
+                    })
+                    .catch(function () {
+                        if (requestId !== shippingCitiesRequest) return;
+                        applyCityOptions([]);
+                    });
             }
+
+            window.refreshProductCartShippingCities = function (countrySelect) {
+                var countryCode = countrySelect && countrySelect.value ? String(countrySelect.value).toUpperCase() : '';
+                updateShippingCities('', countryCode);
+            };
 
             if (deliveryMode) {
                 deliveryMode.addEventListener('change', updateExpeditionFields);
                 updateExpeditionFields();
             }
+            if (shippingCountry) {
+                shippingCountry.addEventListener('change', function () {
+                    updateShippingCities('', this.value);
+                });
+                shippingCountry.addEventListener('cart-shipping-country-changed', function () {
+                    updateShippingCities('', this.value);
+                });
+                if (window.jQuery) {
+                    window.jQuery(shippingCountry).on('select2:select select2:clear', function () {
+                        updateShippingCities('', this.value);
+                    });
+                }
+            }
             if (shippingCountry && shippingCity) {
-                updateShippingCities(shippingCity.getAttribute('data-selected-city'));
-                var resetShippingCity = function () { updateShippingCities(''); };
-                shippingCountry.addEventListener('change', resetShippingCity);
-                shippingCountry.addEventListener('cart-shipping-country-changed', resetShippingCity);
+                var initialCountry = (shippingCountry.value || '').toUpperCase();
+                var initialCity = shippingCity.getAttribute('data-selected-city') || '';
+                if (initialCountry) {
+                    updateShippingCities(initialCity, initialCountry);
+                }
+            }
+            if (shippingCity && shippingCityCustom) {
+                shippingCity.addEventListener('change', function () {
+                    if (!shippingCity.selectedOptions[0]?.dataset.customCity) shippingCityCustom.value = '';
+                });
+                shippingCityCustom.addEventListener('input', function () {
+                    var cityName = shippingCityCustom.value.trim();
+                    if (!cityName) {
+                        var selected = shippingCity.selectedOptions[0];
+                        if (selected && selected.dataset.customCity) {
+                            selected.remove();
+                            shippingCity.value = '';
+                        }
+                        return;
+                    }
+                    var option = Array.from(shippingCity.options).find(function (item) { return item.value.toLocaleLowerCase() === cityName.toLocaleLowerCase(); });
+                    if (!option) {
+                        option = new Option(cityName, cityName);
+                        option.dataset.customCity = '1';
+                        shippingCity.add(option);
+                    }
+                    shippingCity.value = option.value;
+                });
             }
 
             if (followUpDate && deliveryDate) {
@@ -692,89 +813,11 @@
                 toggleNewCustomerFields();
             }
 
-            // Le polling Livewire actualise les promotions, mais ne doit pas
-            // réinitialiser les champs du formulaire ni leur affichage.
-            function cartFormControls() {
-                var form = root.querySelector('#product-cart-order-form');
-                return form
-                    ? Array.from(form.querySelectorAll('input, select, textarea')).filter(function (control) {
-                        // Ces champs sont pilotés par Livewire (saisie/incrément).
-                        // Restaurer l’ancienne valeur écraserait la quantité recalculée.
-                        return !control.closest('.cart-quantity');
-                    })
-                    : [];
-            }
-
-            function snapshotCartForm() {
-                return cartFormControls().map(function (control, index) {
-                    return {
-                        key: control.id ? 'id:' + control.id : 'index:' + index,
-                        type: control.type,
-                        value: control.value,
-                        checked: 'checked' in control ? control.checked : undefined,
-                        selectedValues: control.multiple
-                            ? Array.from(control.selectedOptions).map(function (option) { return option.value; })
-                            : null
-                    };
-                });
-            }
-
-            function restoreCartForm(snapshot) {
-                if (!snapshot) return;
-                var controls = cartFormControls();
-                snapshot.forEach(function (saved, index) {
-                    var control = saved.key.indexOf('id:') === 0
-                        ? controls.find(function (candidate) { return candidate.id === saved.key.slice(3); })
-                        : controls[index];
-                    if (!control || control.disabled || /^(button|submit|reset|file)$/i.test(control.type || '')) return;
-                    if (saved.selectedValues) {
-                        saved.selectedValues.forEach(function (value) {
-                            if (!Array.from(control.options).some(function (option) { return option.value === value; })) {
-                                control.add(new Option(value, value));
-                            }
-                        });
-                        Array.from(control.options).forEach(function (option) {
-                            option.selected = saved.selectedValues.indexOf(option.value) !== -1;
-                        });
-                    } else if (saved.type === 'checkbox' || saved.type === 'radio') {
-                        control.checked = saved.checked;
-                    } else {
-                        if (saved.value && control.tagName === 'SELECT' && !Array.from(control.options).some(function (option) { return option.value === saved.value; })) {
-                            control.add(new Option(saved.value, saved.value));
-                        }
-                        control.value = saved.value;
-                    }
-                    if (window.jQuery && control.tagName === 'SELECT') {
-                        window.jQuery(control).trigger('change.select2');
-                    }
-                });
-                updateExpeditionFields();
-                toggleNewCustomerFields();
-                updateSummary();
-            }
-
-            function installCartFormPollingHooks() {
-                if (!window.Livewire || window.__tenaceCartFormPollingHooksInstalled) return;
-                window.__tenaceCartFormPollingHooksInstalled = true;
-                var snapshots = {};
-                window.Livewire.hook('message.sent', function (message, component) {
-                    if (!component || !component.el || !component.el.matches('.product-cart-page')) return;
-                    snapshots[component.id] = snapshotCartForm();
-                });
-                window.Livewire.hook('message.processed', function (message, component) {
-                    if (!component || !component.el || !component.el.matches('.product-cart-page')) return;
-                    restoreCartForm(snapshots[component.id]);
-                    delete snapshots[component.id];
-                });
-            }
-
             if (document.readyState === 'loading') {
                 document.addEventListener('DOMContentLoaded', bindCustomerEvents, { once: true });
             } else {
                 bindCustomerEvents();
             }
-            installCartFormPollingHooks();
-            document.addEventListener('livewire:load', installCartFormPollingHooks, { once: true });
         })();
     </script>
     @endif

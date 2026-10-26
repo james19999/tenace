@@ -527,7 +527,7 @@
                 });
             function initCartShippingSearch(root) {
                 var $root = root ? $(root) : $(document);
-                $root.find('select.js-transport-company, select.js-shipping-city').addBack('select.js-transport-company, select.js-shipping-city').each(function() {
+                $root.find('select.js-transport-company').addBack('select.js-transport-company').each(function() {
                     var $select = $(this);
                     if ($select.hasClass('select2-hidden-accessible')) return;
                     var options = {
@@ -539,17 +539,6 @@
                             searching: function() { return 'Recherche…'; }
                         }
                     };
-                    if ($select.hasClass('js-shipping-city')) {
-                        options.ajax = {
-                            url: function() { return $select.attr('data-cities-url') || ''; },
-                            dataType: 'json',
-                            delay: 200,
-                            data: function(params) { return { q: params.term || '' }; },
-                            processResults: function(data) { return data; },
-                            cache: true
-                        };
-                        options.minimumInputLength = 0;
-                    }
                     $select.select2(options);
                 });
             }
