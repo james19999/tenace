@@ -200,10 +200,25 @@ class ProductCart extends Component
 
 
     public function decrement($rowId){
-
         $produit=Cart::instance('cart')->get($rowId);
+        if (!$produit || !$produit->model) return;
         $this->stockNotice = '';
         $qty=max(1, $produit->qty-1);
+
+        $targetWholesale = $this->isWholesaleForCartWithQuantity($rowId, (int) $qty);
+        if (! $targetWholesale) {
+            $mainShopQuantity = $this->availableShopQuantity($produit->model, false);
+            if ($qty > $mainShopQuantity) {
+                if ($mainShopQuantity < 1) {
+                    $this->stockNotice = 'La quantité ne remplit plus le palier grossiste et la boutique principale n’a plus de stock disponible.';
+                    return;
+                }
+
+                $qty = $mainShopQuantity;
+                $this->stockNotice = 'Le palier grossiste n’est plus atteint. La quantité est revenue au stock disponible de la boutique principale ('.$mainShopQuantity.' unité(s)).';
+            }
+        }
+
         Cart::instance('cart')->update($rowId,$qty);
         $this->refreshOrderTypeAndPrices();
         $this->calculateTotal();
