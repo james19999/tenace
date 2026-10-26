@@ -691,7 +691,13 @@
             // réinitialiser les champs du formulaire ni leur affichage.
             function cartFormControls() {
                 var form = root.querySelector('#product-cart-order-form');
-                return form ? Array.from(form.querySelectorAll('input, select, textarea')) : [];
+                return form
+                    ? Array.from(form.querySelectorAll('input, select, textarea')).filter(function (control) {
+                        // Ces champs sont pilotés par Livewire (saisie/incrément).
+                        // Restaurer l’ancienne valeur écraserait la quantité recalculée.
+                        return !control.closest('.cart-quantity');
+                    })
+                    : [];
             }
 
             function snapshotCartForm() {
