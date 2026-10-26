@@ -64,6 +64,7 @@ class User extends Authenticatable
     const ROLE_PARTNER     = 'PT';
     const ROLE_CASHIER     = 'CSA';
     const ROLE_ACCOUNTANT  = 'COMPTABLE';
+    const ROLE_COMMERCIAL_MANAGER = 'RCM';
 
     // -------------------------------------------------------
     // Helpers de rôle
@@ -116,6 +117,7 @@ class User extends Authenticatable
             self::ROLE_PARTNER     => $this->country_code ? route('partner.dashboard') : route('product'),
             self::ROLE_LIVREUR     => $this->country_code ? route('courier.public-orders.index') : route('Admin'),
             self::ROLE_SALES       => route('product'),
+            self::ROLE_COMMERCIAL_MANAGER => route('product'),
             self::ROLE_CASHIER     => route('order-liste-order'),
             default                => route('Admin'),
         };

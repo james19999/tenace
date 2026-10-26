@@ -256,7 +256,7 @@
                         <div class="od-total-row"><span>Déjà payé</span><strong>{{ number_format((float) $paidAmount, 0, ',', ' ') }} F</strong></div>
                         <div class="od-total-row"><span>Reste à payer</span><strong>{{ number_format($remainingAmount, 0, ',', ' ') }} F</strong></div>
                     @endif
-                    @if (in_array(auth()->user()?->user_type, ['ADMINUSER', 'MNG'], true))
+                    @if (in_array(auth()->user()?->user_type, ['ADMINUSER', 'MNG', \App\Models\User::ROLE_COMMERCIAL_MANAGER], true))
                         <form action="{{ route('ordershow.payment', $Orders->id) }}" method="POST" class="od-payment-form no-print">
                             @csrf
                             <div class="od-field">

@@ -54,7 +54,7 @@ class CheckController extends Controller
     public function brouillons () {
         $auth = Auth::user();
 
-        if (in_array($auth->user_type, ['ADMINUSER', 'MNG', 'SCR', 'VDS', 'CSA'], true)) {
+        if (in_array($auth->user_type, ['ADMINUSER', 'MNG', 'SCR', 'VDS', 'CSA', User::ROLE_COMMERCIAL_MANAGER], true)) {
             return 1;
         }
 
@@ -66,6 +66,29 @@ class CheckController extends Controller
          $cartItems = Cart::instance('cart')->content();
          if ($cartItems->isEmpty()) {
             return redirect()->route('productcart')->with('error', 'Ajoute au moins un produit avant de valider la commande.');
+         }
+
+         if (Auth::user()?->user_type === User::ROLE_COMMERCIAL_MANAGER) {
+             $wholesaleLocationId = app(StockModuleSettingsService::class)->rules()['wholesale_sales_location_id'] ?? null;
+             $wholesaleLocation = $wholesaleLocationId
+                 ? StockLocation::query()->whereKey($wholesaleLocationId)->where('type', 'shop')->where('is_active', true)->first()
+                 : null;
+             if (! $wholesaleLocation) {
+                 return redirect()->route('productcart')->withErrors(['is_wholesale' => 'La boutique grossiste n’est pas configurée. Contacte l’administration.']);
+             }
+
+             foreach ($cartItems->groupBy(fn ($item) => (int) $item->id) as $productId => $items) {
+                 $available = (int) DB::table('stock_movement_lines as sml')
+                     ->join('stock_movements as sm', 'sm.id', '=', 'sml.movement_id')
+                     ->where('sm.status', 'posted')->where('sml.location_id', $wholesaleLocation->id)
+                     ->where('sml.product_id', $productId)->sum('sml.quantity_delta');
+                 if ($available <= 0 || $available < (int) $items->sum('qty')) {
+                     $product = Product::query()->find($productId);
+                     return redirect()->route('productcart')->withErrors([
+                         'is_wholesale' => 'Le stock grossiste est insuffisant pour « '.($product?->name ?? 'ce produit').' » (disponible : '.max(0, $available).').',
+                     ]);
+                 }
+             }
          }
 
          $request->validate([
@@ -86,6 +109,23 @@ class CheckController extends Controller
                  return $product && $product->quantityPriceTiers->contains(fn ($tier) => $quantity >= (int) $tier->min_quantity);
              });
          $promotion = QuantityPromotionSetting::current();
+         if (Auth::user()?->user_type === User::ROLE_COMMERCIAL_MANAGER && ! $isWholesaleOrder) {
+             return redirect()->route('productcart')->withErrors([
+                 'is_wholesale' => 'Cette fonction est réservée aux commandes grossistes. Augmente la quantité jusqu’à atteindre un palier grossiste.',
+             ])->withInput();
+         }
+         if (Auth::user()?->user_type === User::ROLE_COMMERCIAL_MANAGER) {
+             foreach ($cartItems->groupBy(fn ($item) => (int) $item->id) as $productId => $items) {
+                 $product = Product::query()->with('quantityPriceTiers')->find($productId);
+                 $quantity = (int) $items->sum('qty');
+                 $minimum = (int) ($product?->quantityPriceTiers->min('min_quantity') ?? 0);
+                 if ($minimum < 1 || $quantity < $minimum) {
+                     return redirect()->route('productcart')->withErrors([
+                         'is_wholesale' => 'Chaque produit doit atteindre son palier grossiste. « '.($product?->name ?? 'Produit').' » exige au moins '.max(0, $minimum).' unité(s).',
+                     ])->withInput();
+                 }
+             }
+         }
          if ($isWholesaleOrder && Auth::user()?->user_type === User::ROLE_PARTNER) {
              return redirect()->route('productcart')->withErrors(['is_wholesale' => 'Le tarif grossiste de la boutique n’est pas disponible pour les commandes partenaires.'])->withInput();
          }
@@ -109,9 +149,12 @@ class CheckController extends Controller
                  if ($available < $quantity) {
                      return redirect()->route('productcart')->withErrors(['is_wholesale' => 'Stock insuffisant dans la boutique grossiste pour « '.$product->name.' » (disponible : '.max(0, (int) $available).').'])->withInput();
                  }
-                 $qualifiedWholesaleProduct = $qualifiedWholesaleProduct || $product->quantityPriceTiers->contains(fn ($tier) => $quantity >= $tier->min_quantity);
-                 $unitPrice = $product->unitPriceForQuantity($quantity);
-                 $promotionPricing = $promotion->priceAfterPromotionForProductQuantity((int) $productId, $quantity, $unitPrice);
+                 $hasWholesalePrice = $product->quantityPriceTiers->contains(fn ($tier) => $quantity >= (int) $tier->min_quantity);
+                 $qualifiedWholesaleProduct = $qualifiedWholesaleProduct || $hasWholesalePrice;
+                 $unitPrice = $hasWholesalePrice ? $product->unitPriceForQuantity($quantity) : (int) $product->price;
+                 $promotionPricing = $hasWholesalePrice
+                     ? null
+                     : $promotion->priceAfterPromotionForProductQuantity((int) $productId, $quantity, $unitPrice);
                  if ($promotionPricing) $unitPrice = $promotionPricing['unit_price'];
                  foreach ($items as $item) Cart::instance('cart')->remove($item->rowId);
                  Cart::instance('cart')->add($product->id, $items->first()->name, $quantity,
@@ -267,7 +310,7 @@ class CheckController extends Controller
                           $orderItem->save();
                       }
 
-                        if (in_array(Auth::user()->user_type, ['ADMINUSER', 'MNG', 'SCR', 'VDS', 'CSA'], true)) {
+                        if (in_array(Auth::user()->user_type, ['ADMINUSER', 'MNG', 'SCR', 'VDS', 'CSA', User::ROLE_COMMERCIAL_MANAGER], true)) {
                               if ($request->type=="PU") {
                                  foreach ($users as $key => $user) {
                                      try {
@@ -352,7 +395,7 @@ class CheckController extends Controller
 
 
 
-                        if (in_array(Auth::user()->user_type, ['ADMINUSER', 'MNG', 'SCR', 'VDS', 'CSA'], true)) {
+                        if (in_array(Auth::user()->user_type, ['ADMINUSER', 'MNG', 'SCR', 'VDS', 'CSA', User::ROLE_COMMERCIAL_MANAGER], true)) {
                               if ($request->type=="PU") {
                                 # code...
 

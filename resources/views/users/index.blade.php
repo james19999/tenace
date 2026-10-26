@@ -17,6 +17,7 @@
             <option value="MNG" @selected($userType === 'MNG')>Manager</option>
             <option value="SCR" @selected($userType === 'SCR')>Secrétaire</option>
             <option value="CALLCENTER" @selected($userType === 'CALLCENTER')>SAV</option>
+            <option value="RCM" @selected($userType === 'RCM')>Responsable commercial</option>
             <option value="ADMINUSER" @selected($userType === 'ADMINUSER')>Administrateur</option>
         </select>
         <noscript><button type="submit" class="btn btn-secondary">Afficher</button></noscript>

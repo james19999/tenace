@@ -36,6 +36,7 @@ class OrderController extends Controller
 
     public function invoice(Order $order)
     {
+        $this->authorizeWholesalerOrder($order);
         $order->load('orderItems.product', 'costumer');
 
         return view('orders.invoice', compact('order'));
@@ -45,6 +46,7 @@ class OrderController extends Controller
         if (Auth::user()?->user_type === User::ROLE_PARTNER) {
             return app(PartnerOrderController::class)->index($request);
         }
+        $wholesaleOnly = Auth::user()?->user_type === User::ROLE_COMMERCIAL_MANAGER;
 
         $filter = $request->get('filter', 'today');
         if (! in_array($filter, ['today', 'week', 'month', 'year', 'all'], true)) {
@@ -55,6 +57,7 @@ class OrderController extends Controller
         $tomorrow = $today->copy()->addDay();
         $dashboardOrders = fn () => Order::with(['costumer', 'user'])
             ->where('brouillon', 1)
+            ->when($wholesaleOnly, fn ($query) => $query->where('is_wholesale', true))
             ->orderByDesc('assigned_at')
             ->orderByDesc('updated_at');
 
@@ -78,7 +81,8 @@ class OrderController extends Controller
             ->where('date_order', '<', $today->toDateString())
             ->paginate(10, ['*'], 'overduePage');
 
-        $historyOrdersQuery = Order::with(['costumer', 'user'])->where('brouillon', 1);
+        $historyOrdersQuery = Order::with(['costumer', 'user'])->where('brouillon', 1)
+            ->when($wholesaleOnly, fn ($query) => $query->where('is_wholesale', true));
         switch ($filter) {
             case 'today':
                 $historyOrdersQuery->where('created_at', '>=', $today)->where('created_at', '<', $tomorrow);
@@ -118,6 +122,7 @@ class OrderController extends Controller
     {
 
         $Orders = Order::with('user:id,name,user_type,country_code')->findOrFail($id);
+        $this->authorizeWholesalerOrder($Orders);
         if (Auth::user()?->user_type === User::ROLE_PARTNER) {
             abort_unless((int) $Orders->partner_id === (int) Auth::id() || (int) $Orders->created_user === (int) Auth::id(), 404);
         }
@@ -343,7 +348,9 @@ class OrderController extends Controller
 
     private function authorizeWholesalerOrder(Order $order): void
     {
-        // Wholesale is a type of order, not a user role.
+        if (Auth::user()?->user_type === User::ROLE_COMMERCIAL_MANAGER && ! $order->is_wholesale) {
+            abort(404);
+        }
     }
 
 
@@ -441,6 +448,7 @@ class OrderController extends Controller
     {
 
         $orders = Order::findOrfail($id);
+        $this->authorizeWholesalerOrder($orders);
 
 
         if ($orders) {

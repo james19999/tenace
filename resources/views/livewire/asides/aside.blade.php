@@ -348,6 +348,31 @@
                         <span class="text">Demande de virement</span>
                     </a>
                 </li>
+            @elseif (Auth::user()->user_type === \App\Models\User::ROLE_COMMERCIAL_MANAGER)
+                <li>
+                    <a href="{{ route('product') }}" class="{{ $active('product') }}">
+                        <span class="icon material-icons">store</span>
+                        <span class="text">Produits</span>
+                    </a>
+                </li>
+                <li>
+                    <a href="{{ route('productcart') }}" class="{{ $active('productcart') }}">
+                        <span class="icon material-icons">add_shopping_cart</span>
+                        <span class="text">Panier <span class="badge badge-pill badge-danger js-cart-count">{{ $cartCount }}</span></span>
+                    </a>
+                </li>
+                <li>
+                    <a href="{{ route('order') }}" class="{{ $active('order') }}">
+                        <span class="icon material-icons">shopping_cart</span>
+                        <span class="text">Commandes grossistes</span>
+                    </a>
+                </li>
+                <li>
+                    <a href="{{ route('wholesale-monitoring.index') }}" class="{{ $active('wholesale-monitoring.*') }}">
+                        <span class="icon material-icons">insights</span>
+                        <span class="text">Suivi grossistes</span>
+                    </a>
+                </li>
             @elseif(Auth::user()->user_type == 'VDS')
                 <li>
                     <a href="#vdsHistoryCollapse" class="{{ $active('history', 'ordered-list-orderer', 'order-report-list', 'order-cancel-list') }}" data-toggle="collapse">

@@ -29,6 +29,7 @@ class ProductCart extends Component
 
     public function mount()
     {
+        $this->removeUnavailableWholesaleCartItems();
         $this->refreshOrderTypeAndPrices();
         $this->calculateTotal();
         $settings = CostumerContactSetting::first();
@@ -38,6 +39,20 @@ class ProductCart extends Component
             'follow_up_at',
             $deliveryDate->addDays($this->defaultFollowUpDays)->setTime(9, 0)->format('Y-m-d\\TH:i')
         );
+    }
+
+    private function removeUnavailableWholesaleCartItems(): void
+    {
+        if (auth()->user()?->user_type !== \App\Models\User::ROLE_COMMERCIAL_MANAGER) return;
+
+        $locationId = app(StockModuleSettingsService::class)->rules()['wholesale_sales_location_id'] ?? null;
+        foreach (Cart::instance('cart')->content() as $item) {
+            $available = $locationId ? (int) DB::table('stock_movement_lines as sml')
+                ->join('stock_movements as sm', 'sm.id', '=', 'sml.movement_id')
+                ->where('sm.status', 'posted')->where('sml.location_id', $locationId)
+                ->where('sml.product_id', $item->id)->sum('sml.quantity_delta') : 0;
+            if ($available <= 0) Cart::instance('cart')->remove($item->rowId);
+        }
     }
 
     public function updatedRemis()
@@ -128,10 +143,24 @@ class ProductCart extends Component
     }
 
     public function increment($rowId){
+        if (auth()->user()?->user_type === \App\Models\User::ROLE_COMMERCIAL_MANAGER) return;
         $produit=Cart::instance('cart')->get($rowId);
         if (!$produit || !$produit->model) return;
         $qty=$produit->qty+1;
         $targetWholesale = $this->isWholesaleForCartWithQuantity($rowId, (int) $qty);
+        if (! $targetWholesale && $qty > $this->availableShopQuantity($produit->model, false)) {
+            $cartQuantity = (int) Cart::instance('cart')->content()
+                ->where('id', $produit->id)->sum('qty');
+            $nextTier = $produit->model->quantityPriceTiers()
+                ->where('min_quantity', '>', $cartQuantity)
+                ->orderBy('min_quantity')
+                ->first();
+
+            if ($nextTier) {
+                $qty = (int) $produit->qty + (int) $nextTier->min_quantity - $cartQuantity;
+                $targetWholesale = $this->isWholesaleForCartWithQuantity($rowId, (int) $qty);
+            }
+        }
         $available = $this->availableShopQuantity($produit->model, $targetWholesale);
         if ((int) $qty > $available) {
             $this->stockNotice = $this->stockLimitMessage($produit->model, $available, $targetWholesale);
@@ -152,11 +181,20 @@ class ProductCart extends Component
         $quantity = filter_var($quantity, FILTER_VALIDATE_INT);
         if ($quantity === false) return;
         $quantity = max(1, (int) $quantity);
+        if (auth()->user()?->user_type === \App\Models\User::ROLE_COMMERCIAL_MANAGER) {
+            $minimum = (int) $item->model->quantityPriceTiers()->min('min_quantity');
+            if ($minimum < 1 || $quantity < $minimum) {
+                $this->stockNotice = $minimum > 0
+                    ? 'La quantité minimale pour « '.$item->model->name.' » est de '.$minimum.' unités.'
+                    : 'Aucun palier grossiste n’est configuré pour « '.$item->model->name.' ». Retire ce produit du panier.';
+                return;
+            }
+        }
         $targetWholesale = $this->isWholesaleForCartWithQuantity($rowId, $quantity);
         $available = $this->availableShopQuantity($item->model, $targetWholesale);
         if ($quantity > $available) {
             $this->stockNotice = $this->stockLimitMessage($item->model, $available, $targetWholesale);
-            if ($available < 1) return;
+            if ($available < 1 || (auth()->user()?->user_type === \App\Models\User::ROLE_COMMERCIAL_MANAGER && $available < $minimum)) return;
             $quantity = $available;
         } else {
             $this->stockNotice = '';
@@ -184,7 +222,8 @@ class ProductCart extends Component
             return $reserve + $withCouriers;
         }
         $rules = app(StockModuleSettingsService::class)->rules();
-        $useWholesaleStock = $wholesale ?? $this->isWholesaleOrder;
+        $isCommercialManager = auth()->user()?->user_type === \App\Models\User::ROLE_COMMERCIAL_MANAGER;
+        $useWholesaleStock = $isCommercialManager || ($wholesale ?? $this->isWholesaleOrder);
         $locationId = $useWholesaleStock
             ? ($rules['wholesale_sales_location_id'] ?? null)
             : ($rules['default_sales_location_id'] ?? null);
@@ -200,13 +239,14 @@ class ProductCart extends Component
 
 
     public function decrement($rowId){
+        if (auth()->user()?->user_type === \App\Models\User::ROLE_COMMERCIAL_MANAGER) return;
         $produit=Cart::instance('cart')->get($rowId);
         if (!$produit || !$produit->model) return;
         $this->stockNotice = '';
         $qty=max(1, $produit->qty-1);
 
         $targetWholesale = $this->isWholesaleForCartWithQuantity($rowId, (int) $qty);
-        if (! $targetWholesale) {
+        if (! $targetWholesale && auth()->user()?->user_type !== \App\Models\User::ROLE_COMMERCIAL_MANAGER) {
             $mainShopQuantity = $this->availableShopQuantity($produit->model, false);
             if ($qty > $mainShopQuantity) {
                 if ($mainShopQuantity < 1) {
@@ -259,6 +299,7 @@ class ProductCart extends Component
     {
         $user = auth()->user();
         $isPartner = $user?->user_type === \App\Models\User::ROLE_PARTNER;
+        $isCommercialManager = $user?->user_type === \App\Models\User::ROLE_COMMERCIAL_MANAGER;
         $partnerCartItems = Cart::instance('cart')->content();
         $partnerDeliveryFeeTotal = 0;
         return view('livewire.products.product-cart', [
@@ -273,6 +314,7 @@ class ProductCart extends Component
             'defaultFollowUpAt' => $this->defaultFollowUpAt,
             'transportCompanies' => TransportCompany::query()->orderBy('name')->pluck('name'),
             'isPartner' => $isPartner,
+            'isCommercialManager' => $isCommercialManager,
             'partnerCountryCode' => $isPartner ? $user->country_code : null,
             'partnerCountry' => $isPartner ? (\App\Support\WestAfricaShippingCatalog::countries()[$user->country_code]['label'] ?? $user->country_code) : null,
             'partnerCities' => $isPartner ? (\App\Support\WestAfricaShippingCatalog::countries()[$user->country_code]['cities'] ?? []) : [],

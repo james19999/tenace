@@ -380,6 +380,7 @@
                                             'PT'          => ['label' => 'Partenaire',     'class' => 'badge-secondary'],
                                             'CSA'         => ['label' => 'Caissier',       'class' => 'badge-dark'],
                                             'COMPTABLE'   => ['label' => 'Comptable',      'class' => 'badge-primary'],
+                                            'RCM'         => ['label' => 'Responsable commercial', 'class' => 'badge-success'],
                                             'User'        => ['label' => 'Utilisateur',    'class' => 'badge-light border'],
                                         ];
                                         $badge = $roleLabels[$u->user_type] ?? ['label' => $u->user_type, 'class' => 'badge-secondary'];

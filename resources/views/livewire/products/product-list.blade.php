@@ -2,13 +2,14 @@
     @php
         $isAdmin = Auth::user()->isAdmin();
         $isPartner = $isPartner ?? false;
+        $isWholesaleSalesRole = Auth::user()?->user_type === \App\Models\User::ROLE_COMMERCIAL_MANAGER;
     @endphp
 
     <div class="catalog-header">
         <div>
             <span class="catalog-eyebrow">GESTION DU CATALOGUE</span>
             <h1>Produits</h1>
-            <p>{{ $isPartner ? 'Consulte les produits proposés et leurs prix dans ' . ($countryNames[$partnerCountryCode] ?? 'ton pays') . '.' : 'Retrouve rapidement un produit, vérifie son stock et ajoute-le à une commande.' }}</p>
+            <p>{{ $isPartner ? 'Consulte les produits proposés et leurs prix dans ' . ($countryNames[$partnerCountryCode] ?? 'ton pays') . '.' : ($isWholesaleSalesRole ? 'Produits disponibles dans la boutique grossiste.' : 'Retrouve rapidement un produit, vérifie son stock et ajoute-le à une commande.') }}</p>
         </div>
         @if ($isAdmin)
             <div class="catalog-header-actions">
@@ -30,7 +31,7 @@
         <div class="catalog-alert" role="status"><span class="material-icons">check_circle</span>{{ session('messages') }}</div>
     @endif
 
-    @if (!$isPartner)<section class="catalog-metrics" aria-label="Résumé du stock">
+    @if (!$isPartner && !$isWholesaleSalesRole)<section class="catalog-metrics" aria-label="Résumé du stock">
         <article class="catalog-metric">
             <span class="catalog-metric-icon"><span class="material-icons">inventory_2</span></span>
             <div><small>Produits référencés</small><strong>{{ number_format((int) $inventory->total_products, 0, ',', ' ') }}</strong></div>
@@ -67,7 +68,7 @@
                     <input type="search" wire:model.debounce.300ms="search" placeholder="Rechercher un produit…" aria-label="Rechercher un produit">
                     <span wire:loading wire:target="search" class="spinner-border spinner-border-sm" role="status"></span>
                 </label>
-                @unless ($isPartner)<select wire:model="stockFilter" class="catalog-stock-filter" aria-label="Filtrer par niveau de stock">
+                @unless ($isPartner || $isWholesaleSalesRole)<select wire:model="stockFilter" class="catalog-stock-filter" aria-label="Filtrer par niveau de stock">
                     <option value="all">Tous les stocks</option>
                     <option value="available">Disponibles</option>
                     <option value="low">Stock faible</option>
@@ -98,6 +99,8 @@
                             <div class="product-card-badges">
                                 @if ($isPartner)
                                     <span class="stock-badge {{ $partnerStock['available'] > 0 ? 'stock-available' : 'stock-out' }}"><span></span>{{ $partnerStock['available'] > 0 ? 'Disponible' : 'Rupture de stock' }} · {{ $countryNames[$partnerCountryCode] ?? $partnerCountryCode }}</span>
+                                @elseif ($isWholesaleSalesRole)
+                                    <span class="stock-badge stock-available"><span></span>Boutique grossiste · {{ $wholesaleStock }}</span>
                                 @elseif ($isOut)
                                     <span class="stock-badge stock-out"><span></span>Rupture</span>
                                 @elseif ($isLow)
@@ -123,6 +126,8 @@
                                         <small>disponible(s)</small>
                                         <small>Réserve {{ number_format($partnerStock['reserve'], 0, ',', ' ') }} · Livreurs {{ number_format($partnerStock['couriers'], 0, ',', ' ') }}</small>
                                     </span>
+                                @elseif ($isWholesaleSalesRole)
+                                    <span class="product-stock-number">{{ $wholesaleStock }} <small>grossiste</small></span>
                                 @else<span class="product-stock-number {{ $isOut ? 'text-danger' : ($isLow ? 'text-warning' : '') }}">
                                     {{ $stock }} <small>principale</small>
                                     @if($hasWholesaleLocation)<small>Grossiste {{ $wholesaleStock }}</small>@endif
@@ -130,10 +135,34 @@
                             </div>
 
                             @if ($product->description)
-                                <p class="product-description">{{ \Illuminate\Support\Str::limit($product->description, 100) }}</p>
+                                <p class="product-description">{{ $isWholesaleSalesRole ? $product->description : \Illuminate\Support\Str::limit($product->description, 100) }}</p>
                             @endif
 
-                            @if ($isPartner)
+                            @if ($isWholesaleSalesRole)
+                                @php
+                                    $minimumWholesaleQuantity = (int) $product->quantityPriceTiers->min('min_quantity');
+                                    $alreadyInWholesaleCart = (int) ($wholesaleCartQuantities[$product->id] ?? 0);
+                                    $remainingWholesaleStock = max(0, $wholesaleStock - $alreadyInWholesaleCart);
+                                @endphp
+                                <div class="product-cart-actions product-wholesale-quantity-action">
+                                    <small class="product-wholesale-minimum">{{ $minimumWholesaleQuantity > 0 ? 'Minimum grossiste : '.$minimumWholesaleQuantity.' unités' : 'Aucun palier grossiste configuré' }}</small>
+                                    <button type="button" class="btn product-add-button" wire:click="addWholesaleQuantity({{ $product->id }})" wire:loading.attr="disabled" wire:target="addWholesaleQuantity({{ $product->id }})" @disabled($minimumWholesaleQuantity < 1 || $remainingWholesaleStock < $minimumWholesaleQuantity)>
+                                        <span class="material-icons">add_shopping_cart</span> Ajouter {{ $minimumWholesaleQuantity > 0 ? $minimumWholesaleQuantity.' unités' : 'en gros' }}
+                                    </button>
+                                    @if ($minimumWholesaleQuantity < 1)<small>Aucun palier grossiste configuré pour ce produit.</small>@elseif ($remainingWholesaleStock < $minimumWholesaleQuantity)<small>Stock insuffisant pour ajouter le minimum grossiste ({{ $remainingWholesaleStock }} unité(s) restante(s)).</small>@endif
+                                </div>
+                            @endif
+
+                            @if ($isWholesaleSalesRole)
+                                <div class="product-wholesale-prices">
+                                    <div class="product-wholesale-prices-heading"><span class="material-icons" aria-hidden="true">storefront</span><div><strong>Tarifs grossiste</strong><small>Prix unitaire selon la quantité</small></div></div>
+                                    @forelse ($product->quantityPriceTiers->sortBy('min_quantity') as $tier)
+                                        <div class="product-wholesale-tier"><span>Dès <strong>{{ number_format((int) $tier->min_quantity, 0, ',', ' ') }}</strong> unités</span><strong class="product-wholesale-tier-price">{{ number_format((float) $tier->unit_price, 0, ',', ' ') }} <small>F / unité</small></strong></div>
+                                    @empty
+                                        <p class="product-wholesale-no-tier">Aucun tarif grossiste configuré pour ce produit.</p>
+                                    @endforelse
+                                </div>
+                            @elseif ($isPartner)
                                 @php($countryPrice = $product->countryPrices->first())
                                 <div class="product-prices product-partner-price"><div><small>Prix de vente · {{ $countryNames[$partnerCountryCode] ?? $partnerCountryCode }}</small><strong>{{ number_format((float) $countryPrice->price, 0, ',', ' ') }} <span>F</span></strong></div></div>
                             @else
@@ -157,7 +186,7 @@
                                 @endforelse
                             </div>
                             @endif
-                            @if (!$isPartner)<div class="product-commission"><span>Commission</span><strong>{{ number_format((float) $product->commission_amount, 0, ',', ' ') }} F</strong></div>@endif
+                            @if (!$isPartner && !$isWholesaleSalesRole)<div class="product-commission"><span>Commission</span><strong>{{ number_format((float) $product->commission_amount, 0, ',', ' ') }} F</strong></div>@endif
 
                             @if ($isPartner)
                                 <div class="product-cart-actions product-partner-cart-action">
@@ -167,7 +196,7 @@
                                         <span class="material-icons">{{ $partnerStockReached ? 'block' : 'add_shopping_cart' }}</span> {{ $partnerStock['available'] < 1 ? 'Stock épuisé' : ($partnerStockReached ? 'Quantité maximale atteinte' : 'Ajouter au panier') }}
                                     </button>
                                 </div>
-                            @else
+                            @elseif (!$isWholesaleSalesRole)
                             <div class="product-cart-actions">
                                 <button type="button" class="btn product-add-button" wire:click="AddToCart({{ $product->id }})" wire:loading.attr="disabled" wire:target="AddToCart({{ $product->id }})" @disabled($isOut)>
                                     <span class="material-icons">add_shopping_cart</span> Ajouter
@@ -322,6 +351,22 @@
         .product-commission strong{color:#525865;font-weight:700}
         .product-cart-actions{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:7px;margin-top:auto;padding-top:8px}
         .product-cart-actions .btn{display:inline-flex;align-items:center;justify-content:center;gap:6px;min-height:39px;border-radius:9px;font-size:11px;font-weight:750;white-space:nowrap}
+        .product-wholesale-quantity-action{display:block}
+        .product-wholesale-quantity-action .product-add-button{width:100%}
+        .product-wholesale-minimum{display:block;margin:0 0 6px;color:var(--catalog-muted);font-size:10px;font-weight:700}
+        .product-wholesale-prices{display:grid;gap:6px;margin-top:12px;padding:11px;border:1px solid #eadede;border-radius:10px;background:#fcf8f8}
+        .product-wholesale-prices-heading{display:flex;align-items:center;gap:8px;padding-bottom:6px;border-bottom:1px solid #eee3e3;color:var(--catalog-burgundy)}
+        .product-wholesale-prices-heading>.material-icons{font-size:19px}
+        .product-wholesale-prices-heading strong,.product-wholesale-prices-heading small{display:block}
+        .product-wholesale-prices-heading strong{font-size:12px;font-weight:800}
+        .product-wholesale-prices-heading small{margin-top:2px;color:var(--catalog-muted);font-size:9px}
+        .product-wholesale-tier{display:flex;align-items:center;justify-content:space-between;gap:8px;padding:6px 2px;color:var(--catalog-ink);font-size:11px}
+        .product-wholesale-tier>span{color:var(--catalog-muted)}
+        .product-wholesale-tier>span strong{color:var(--catalog-ink)}
+        .product-wholesale-tier-price{white-space:nowrap;font-size:12px;font-weight:850;color:var(--catalog-burgundy)}
+        .product-wholesale-tier-price small{font-size:9px;font-weight:650}
+        .product-wholesale-no-tier{margin:0;color:var(--catalog-muted);font-size:10px}
+        .product-wholesale-quantity-action>small{display:block;margin-top:6px;color:#a12b28;font-size:10px}
         .product-add-button{background:var(--catalog-burgundy);color:white}
         .product-add-button:hover:not(:disabled){background:#63110f;color:#fff}
         .product-add-button .material-icons{font-size:17px}

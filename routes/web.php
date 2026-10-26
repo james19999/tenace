@@ -109,8 +109,6 @@ Route::middleware(['auth'])->group(function () {
     Route::middleware(['role:ADMINUSER'])->group(function () {
         Route::get('/partner-monitoring', [PartnerMonitoringController::class, 'index'])->name('partner-monitoring.index');
         Route::get('/partner-monitoring/snapshot', [PartnerMonitoringController::class, 'snapshot'])->name('partner-monitoring.snapshot');
-        Route::get('/suivi-grossistes', [WholesaleCustomerMonitoringController::class, 'index'])->name('wholesale-monitoring.index');
-        Route::get('/suivi-grossistes/{customer}', [WholesaleCustomerMonitoringController::class, 'show'])->name('wholesale-monitoring.show');
         Route::get('/promotions', [QuantityPromotionController::class, 'index'])->name('quantity-promotions.index');
         Route::post('/promotions', [QuantityPromotionController::class, 'save'])->name('quantity-promotions.save');
         Route::post('/promotions/products/{product}', [QuantityPromotionController::class, 'saveProduct'])->name('quantity-promotions.products.save');
@@ -164,6 +162,11 @@ Route::middleware(['auth'])->group(function () {
         Route::get('list/percent', [PercentController::class, 'index'])->name('list-percent');
         Route::post('post/percent', [PercentController::class, 'create'])->name('create-post');
         Route::put('edit/percent/{id}', [PercentController::class, 'edit'])->name('percen-edit');
+    });
+
+    Route::middleware(['role:ADMINUSER,RCM'])->group(function () {
+        Route::get('/suivi-grossistes', [WholesaleCustomerMonitoringController::class, 'index'])->name('wholesale-monitoring.index');
+        Route::get('/suivi-grossistes/{customer}', [WholesaleCustomerMonitoringController::class, 'show'])->name('wholesale-monitoring.show');
     });
 
     Route::middleware(['role:ADMINUSER,MNG,SCR'])->group(function () {
@@ -331,25 +334,25 @@ Route::middleware(['auth'])->group(function () {
     // 5. PRODUITS (LECTURE), COMMANDES, HISTORIQUES, CLASSEMENT
     //    (Accessible à ADMINUSER, MNG, SCR, VDS, CSA, PT)
     // -------------------------------------------------------------------------
-    Route::middleware(['role:ADMINUSER,MNG,SCR,VDS,PT,CSA'])->group(function () {
+    Route::middleware(['role:ADMINUSER,MNG,SCR,VDS,PT,CSA,RCM'])->group(function () {
         Route::get('shipping/countries/{country}/cities', [CheckController::class, 'shippingCities'])->where('country', '[A-Za-z]{2}')->name('shipping.cities');
         Route::get('product/list', ProductList::class)->name('product');
         Route::get('product/cart', ProductCart::class)->name('productcart');
-        Route::post('costumer/anonymize-all', [CostumerController::class, 'anonymizeAllFromCart'])->name('costumer.anonymize-all');
+        Route::post('costumer/anonymize-all', [CostumerController::class, 'anonymizeAllFromCart'])->middleware('role:ADMINUSER,MNG,SCR,VDS,PT,CSA')->name('costumer.anonymize-all');
         Route::post('palce/order', [CheckController::class, 'palce_order'])->name('palceorder');
-        Route::get('order/liste', OrderList::class)->name('order-liste-order');
-        Route::get('edit/order/{order}', EditOrder::class)->name('edit-order');
+        Route::get('order/liste', OrderList::class)->middleware('role:ADMINUSER,MNG,SCR,VDS,PT,CSA')->name('order-liste-order');
+        Route::get('edit/order/{order}', EditOrder::class)->middleware('role:ADMINUSER,MNG,SCR,VDS,PT,CSA')->name('edit-order');
         Route::get('order/list', [OrderController::class, 'index'])->name('order');
         Route::get('order/show/{id}', [OrderController::class, 'show'])->name('ordershow');
         Route::get('order/show/{order}/package-photos/{photo}/download', [LivreurController::class, 'downloadPackagePhoto'])->middleware('role:ADMINUSER,MNG')->name('ordershow.package-photo.download');
-        Route::post('order/show/{id}/payment', [OrderController::class, 'updatePayment'])->middleware('role:ADMINUSER,MNG')->name('ordershow.payment');
+        Route::post('order/show/{id}/payment', [OrderController::class, 'updatePayment'])->middleware('role:ADMINUSER,MNG,RCM')->name('ordershow.payment');
         Route::get('order/cancel/list', [OrderController::class, 'order_cancel_list'])->middleware('role:ADMINUSER,MNG,SCR,VDS,PT,CSA')->name('order-cancel-list');
         Route::get('order/report/list', [OrderController::class, 'order_report_list'])->middleware('role:ADMINUSER,MNG,SCR,VDS,PT,CSA')->name('order-report-list');
         Route::get('ordered/list/ordered', [OrderController::class, 'ordered_list'])->middleware('role:ADMINUSER,MNG,SCR,VDS,PT,CSA')->name('ordered-list-orderer');
         Route::put('reporte/order/{id}', [OrderController::class, 'reporte_order'])->middleware('role:ADMINUSER,MNG,SCR,VDS,PT,CSA')->name('reporte-order');
         Route::put('refresh/specific/order/{id}', [OrderController::class, 'refresh_specific_order'])->middleware('role:ADMINUSER,MNG,SCR,VDS,PT,CSA')->name('refresh-specific-order');
         Route::get('order/check/type/{id}', [OrderController::class, 'check_type'])->middleware('role:ADMINUSER,MNG,SCR,VDS,PT,CSA')->name('check-type');
-        Route::get('/orders/{order}/invoice', [OrderController::class, 'invoice'])->middleware('role:ADMINUSER,MNG,SCR,VDS,PT,CSA')->name('orders.invoice');
+        Route::get('/orders/{order}/invoice', [OrderController::class, 'invoice'])->middleware('role:ADMINUSER,MNG,SCR,VDS,PT,CSA,RCM')->name('orders.invoice');
         Route::put('change/order/status/{id}', [OrderController::class, 'change_order_status'])->name('changestatus');
         Route::put('refresh/order/{id}', [OrderController::class, 'refresh_order'])->name('refreshorder');
         Route::put('edit/hours/{id}', [OrderController::class, 'edit_hours_order'])->name('edit-hours');
@@ -388,7 +391,7 @@ Route::middleware(['auth'])->group(function () {
     // -------------------------------------------------------------------------
     // 7. CLIENTS, COMPTABILITÉ & STOCKS (ADMINUSER, MNG, CALLCENTER/VDS pour fiche client)
     // -------------------------------------------------------------------------
-    Route::middleware(['role:ADMINUSER,MNG,SCR,VDS,PT,CSA,CALLCENTER'])->group(function () {
+    Route::middleware(['role:ADMINUSER,MNG,SCR,VDS,PT,CSA,CALLCENTER,RCM'])->group(function () {
         Route::get('view/costumer/{id}', [CostumerController::class, 'viewcostumer'])->name('view-costumers');
         Route::get('costumer/search', [CostumerController::class, 'search'])->name('costumer.search');
     });

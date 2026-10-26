@@ -6,6 +6,7 @@
         $cartItems = Cart::instance('cart')->content();
         $cartSubtotal = (float) Cart::instance('cart')->subtotal(2, '.', '');
         $customerMode = old('costumer_id');
+        $isCommercialManager = $isCommercialManager ?? false;
     @endphp
 
     <style>
@@ -160,8 +161,8 @@
     <div class="cart-shell">
         <div class="cart-heading">
             <div>
-                <p class="cart-eyebrow">Gestion des commandes</p>
-                <h1>Panier de commande</h1>
+                <p class="cart-eyebrow">{{ $isCommercialManager ? 'Ventes grossistes' : 'Gestion des commandes' }}</p>
+                <h1>{{ $isCommercialManager ? 'Panier grossiste' : 'Panier de commande' }}</h1>
                 <p>Vérifie les articles et les informations de livraison avant validation.</p>
             </div>
             <a class="cart-back-link" href="{{ route('product') }}"><span class="material-icons" aria-hidden="true">arrow_back</span>Retour au catalogue</a>
@@ -182,7 +183,7 @@
         <form method="POST" action="{{ route('palceorder') }}" id="product-cart-order-form">
             @csrf
 
-            <section class="cart-panel cart-order-category" aria-labelledby="cart-order-category-title">
+            @unless ($isCommercialManager)<section class="cart-panel cart-order-category" aria-labelledby="cart-order-category-title">
                 <div class="cart-panel-body">
                     <div class="cart-order-category-copy">
                         <strong id="cart-order-category-title">Type de commande détecté automatiquement</strong>
@@ -194,7 +195,7 @@
                     </div>
                     @if($promotionSummary !== '')<div class="cart-order-category-copy" aria-live="polite"><strong>Promotion</strong><small>{{ $promotionSummary }}</small></div>@endif
                 </div>
-            </section>
+            </section>@endunless
             <input type="hidden" name="is_wholesale" value="{{ $isWholesaleOrder ? 1 : 0 }}">
 
             <div class="cart-layout">
@@ -213,6 +214,9 @@
                                         @foreach ($cartItems as $items)
                                             @php
                                                 $productImage = $items->model->img ?? null;
+                                                $minimumWholesaleQuantity = $isCommercialManager
+                                                    ? (int) $items->model->quantityPriceTiers()->min('min_quantity')
+                                                    : 1;
                                                 $productImageUrl = null;
                                                 if ($productImage) {
                                                     if (\Illuminate\Support\Str::startsWith($productImage, ['http://', 'https://', '/'])) {
@@ -249,10 +253,11 @@
                                                 </td>
                                                 <td>
                                                     <div class="cart-quantity" aria-label="Quantité">
-                                                        <button type="button" aria-label="Diminuer la quantité" wire:click.prevent="decrement('{{ $items->rowId }}')" @disabled($items->qty <= 1)>−</button>
-                                                        <input type="number" min="1" max="{{ max((int) $items->qty, $this->availableShopQuantity($items->model)) }}" value="{{ $items->qty }}" aria-label="Quantité de {{ $items->model->name ?? 'produit' }}" wire:input.debounce.400ms="setQuantity('{{ $items->rowId }}', $event.target.value)">
-                                                        <button type="button" aria-label="Augmenter la quantité" wire:click.prevent="increment('{{ $items->rowId }}')" wire:loading.attr="disabled" wire:target="increment('{{ $items->rowId }}')">+</button>
+                                                        @unless ($isCommercialManager)<button type="button" aria-label="Diminuer la quantité" wire:click.prevent="decrement('{{ $items->rowId }}')" @disabled($items->qty <= 1)>−</button>@endunless
+                                                        <input type="number" min="{{ max(1, $minimumWholesaleQuantity) }}" max="{{ max((int) $items->qty, $this->availableShopQuantity($items->model)) }}" value="{{ $items->qty }}" aria-label="Quantité de {{ $items->model->name ?? 'produit' }}" wire:input.debounce.400ms="setQuantity('{{ $items->rowId }}', $event.target.value)">
+                                                        @unless ($isCommercialManager)<button type="button" aria-label="Augmenter la quantité" wire:click.prevent="increment('{{ $items->rowId }}')" wire:loading.attr="disabled" wire:target="increment('{{ $items->rowId }}')">+</button>@endunless
                                                     </div>
+                                                    @if ($isCommercialManager)<small class="cart-help">Modification par quantité, minimum {{ $minimumWholesaleQuantity }} unités.</small>@endif
                                                 </td>
                                                 <td class="cart-price">
                                                     @if(isset($cartRegularUnitPrices[$items->id]))

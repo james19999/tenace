@@ -71,6 +71,7 @@
                              <option value="SCR" @selected(old('user_type') === 'SCR')>Secrétaire</option>
                              <option value="CALLCENTER" @selected(old('user_type') === 'CALLCENTER')>SAV</option>
                              <option value="COMPTABLE" @selected(old('user_type') === 'COMPTABLE')>Comptable</option>
+                             <option value="RCM" @selected(old('user_type') === 'RCM')>Responsable commercial</option>
                              <option value="ADMINUSER" @selected(old('user_type') === 'ADMINUSER')>Administrateur</option>
                          </select>
                          @error('user_type') <span class="text-danger">{{ $message }}</span>@enderror

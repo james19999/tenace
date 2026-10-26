@@ -66,7 +66,7 @@ class LivreurController extends Controller
                  'password' => ['required', 'string', 'min:8', 'confirmed'],
                  'adresse' => ['required', 'string'],
                  'phone' => ['required', 'string', 'max:32', 'unique:users,phone'],
-                 'user_type' => ['required', 'in:LVS,VDS,CSA,MNG,SCR,CALLCENTER,ADMINUSER,COMPTABLE'],
+                 'user_type' => ['required', 'in:LVS,VDS,CSA,MNG,SCR,CALLCENTER,ADMINUSER,COMPTABLE,RCM'],
                  'country_code' => ['nullable', Rule::in(array_keys(WestAfricaShippingCatalog::countries()))],
                  'emergency_contact_name' => ['nullable', 'string', 'max:160'],
                  'emergency_contact_phone' => ['nullable', 'string', 'max:32'],
@@ -155,7 +155,7 @@ class LivreurController extends Controller
             'email' => ['required', 'string', 'email', 'max:255', Rule::unique('users', 'email')->ignore($id)],
             'adresse' => ['required', 'string'],
             'phone' => ['required', 'string', 'max:32', Rule::unique('users', 'phone')->ignore($id)],
-            'user_type' => ['required', 'in:LVS,PT,VDS,CSA,MNG,SCR,CALLCENTER,ADMINUSER,COMPTABLE'],
+            'user_type' => ['required', 'in:LVS,PT,VDS,CSA,MNG,SCR,CALLCENTER,ADMINUSER,COMPTABLE,RCM'],
             'country_code' => ['nullable', Rule::in(array_keys(WestAfricaShippingCatalog::countries()))],
             'emergency_contact_name' => ['nullable', 'string', 'max:160'],
             'emergency_contact_phone' => ['nullable', 'string', 'max:32'],
@@ -204,7 +204,7 @@ class LivreurController extends Controller
 
     public function user_admin_list(Request $request){
         $userType = $request->query('user_type', 'LVS');
-        $allowedTypes = ['LVS', 'PT', 'VDS', 'CSA', 'MNG', 'SCR', 'CALLCENTER', 'ADMINUSER', 'COMPTABLE'];
+        $allowedTypes = ['LVS', 'PT', 'VDS', 'CSA', 'MNG', 'SCR', 'CALLCENTER', 'ADMINUSER', 'COMPTABLE', 'RCM'];
         if (! in_array($userType, $allowedTypes, true)) {
             $userType = 'LVS';
         }

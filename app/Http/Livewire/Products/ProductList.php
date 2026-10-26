@@ -44,8 +44,21 @@ class ProductList extends Component
 
     public function AddToCart($id): void
     {
+        if (Auth::user()?->user_type === \App\Models\User::ROLE_COMMERCIAL_MANAGER) {
+            $this->addWholesaleQuantity((int) $id);
+            return;
+        }
         $product = Product::findOrFail($id);
         $price = $product->price;
+        if (Auth::user()?->user_type === \App\Models\User::ROLE_COMMERCIAL_MANAGER) {
+            $wholesaleLocationId = app(StockModuleSettingsService::class)->rules()['wholesale_sales_location_id'] ?? null;
+            $available = $this->shopQuantity((int) $product->id, $wholesaleLocationId ? (int) $wholesaleLocationId : null);
+            if ($available <= 0) {
+                $this->cartMessage = 'Ce produit n’est pas disponible dans la boutique grossiste.';
+                $this->cartMessageIsError = true;
+                return;
+            }
+        }
         if (Auth::user()?->user_type === \App\Models\User::ROLE_PARTNER) {
             $partner = Auth::user();
             $countryCode = strtoupper((string) $partner->country_code);
@@ -89,6 +102,39 @@ class ProductList extends Component
         $this->cartUpdated();
     }
 
+    public function addWholesaleQuantity(int $id): void
+    {
+        if (! Auth::check()) return;
+
+        $product = Product::query()->with('quantityPriceTiers')->findOrFail($id);
+        $minimum = (int) $product->quantityPriceTiers->min('min_quantity');
+        $quantity = $minimum;
+        if ($minimum < 1) {
+            $this->cartMessage = $minimum > 0
+                ? 'La quantité minimale pour « '.$product->name.' » est de '.$minimum.' unités.'
+                : 'Aucun palier grossiste n’est configuré pour « '.$product->name.' ».';
+            $this->cartMessageIsError = true;
+            return;
+        }
+
+        $locationId = app(StockModuleSettingsService::class)->rules()['wholesale_sales_location_id'] ?? null;
+        $available = $this->shopQuantity((int) $product->id, $locationId ? (int) $locationId : null);
+        $cart = Cart::instance('cart');
+        $existingItems = $cart->content()->filter(fn ($item) => (int) $item->id === (int) $product->id);
+        $alreadyInCart = (int) $existingItems->sum('qty');
+        $newTotal = $alreadyInCart + (int) $quantity;
+        if ($newTotal > $available) {
+            $remaining = max(0, $available - $alreadyInCart);
+            $this->cartMessage = 'Il reste '.$remaining.' unité(s) disponibles pour « '.$product->name.' » dans la boutique grossiste.';
+            $this->cartMessageIsError = true;
+            return;
+        }
+
+        foreach ($existingItems as $item) $cart->remove($item->rowId);
+        $cart->add($product->id, $product->name, $newTotal, (int) $product->price)->associate(Product::class);
+        $this->cartUpdated();
+    }
+
     private function shopQuantity(int $productId, ?int $locationId): int
     {
         if (! $locationId) return 0;
@@ -111,6 +157,7 @@ class ProductList extends Component
     {
         $user = Auth::user();
         $isPartner = $user?->user_type === \App\Models\User::ROLE_PARTNER;
+        $isCommercialManager = $user?->user_type === \App\Models\User::ROLE_COMMERCIAL_MANAGER;
         $partnerCountryCode = $isPartner ? strtoupper((string) $user->country_code) : null;
         $stockRules = app(StockModuleSettingsService::class)->rules();
         $salesLocationId = $stockRules['default_sales_location_id'] ?? null;
@@ -158,6 +205,7 @@ class ProductList extends Component
             ->selectRaw('COALESCE(wholesale_shop_stock.quantity, 0) as wholesale_shop_quantity')
             ->when($isPartner, fn ($query) => $query->whereHas('countryPrices', fn ($prices) => $prices
                 ->where('country_code', $partnerCountryCode)->where('is_available', true)))
+            ->when($isCommercialManager, fn ($query) => $query->whereRaw('COALESCE(wholesale_shop_stock.quantity, 0) > 0'))
             ->when(trim($this->search) !== '', function ($query) {
                 $term = '%'.trim($this->search).'%';
                 $query->where(function ($search) use ($term) {
@@ -175,6 +223,9 @@ class ProductList extends Component
 
         $Products = $productsQuery->orderBy('name')->paginate(12);
         $promotionSetting = QuantityPromotionSetting::current();
+        $wholesaleCartQuantities = Cart::instance('cart')->content()
+            ->groupBy(fn ($item) => (int) $item->id)
+            ->map(fn ($items) => (int) $items->sum('qty'));
         $promotedProductIds = $Products->getCollection()
             ->filter(fn ($product) => $promotionSetting->hasPromotionForProduct((int) $product->id))
             ->modelKeys();
@@ -240,6 +291,8 @@ class ProductList extends Component
             'inventory' => $inventory,
             'countryNames' => collect(WestAfricaShippingCatalog::countries())->map(fn ($country) => $country['label']),
             'isPartner' => $isPartner,
+            'isCommercialManager' => $isCommercialManager,
+            'wholesaleCartQuantities' => $wholesaleCartQuantities,
             'partnerCountryCode' => $partnerCountryCode,
             'partnerStockSummary' => $partnerStockSummary,
             'partnerCartQuantities' => $partnerCartQuantities,
