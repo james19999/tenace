@@ -745,6 +745,7 @@
                 });
                 updateExpeditionFields();
                 toggleNewCustomerFields();
+                updateSummary();
             }
 
             function installCartFormPollingHooks() {

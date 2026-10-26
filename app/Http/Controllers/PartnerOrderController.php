@@ -446,7 +446,7 @@ class PartnerOrderController extends Controller
 
         Cart::instance('cart')->destroy();
 
-        return redirect()->route('partner.orders.show', $order)
+        return redirect()->route('partner.orders.index')
             ->with('success', 'La commande est créée avec les prix de '.$country['label'].'.');
     }
 

@@ -117,6 +117,7 @@ html[data-app-theme="dark"] .partner-cart-page{--pc-ink:var(--app-text);--pc-mut
 
     const subtotal = {{ $partnerSubtotal }};
     let manuallyEditedDelivery = false;
+    let manuallyEditedDeliveryValue = null;
     const money = (amount) => new Intl.NumberFormat('fr-FR').format(amount) + ' F';
     const updateTotal = () => {
         const currentFeeInput = document.getElementById('partner-delivery-fee');
@@ -128,6 +129,7 @@ html[data-app-theme="dark"] .partner-cart-page{--pc-ink:var(--app-text);--pc-mut
     document.addEventListener('input', (event) => {
         if (event.target?.id === 'partner-delivery-fee') {
             manuallyEditedDelivery = true;
+            manuallyEditedDeliveryValue = event.target.value;
             updateTotal();
         }
     });
@@ -136,7 +138,9 @@ html[data-app-theme="dark"] .partner-cart-page{--pc-ink:var(--app-text);--pc-mut
         const cartRoot = document.querySelector('[data-partner-cart]');
         const currentFeeInput = document.getElementById('partner-delivery-fee');
         if (!cartRoot || !currentFeeInput) return;
-        if (!manuallyEditedDelivery) {
+        if (manuallyEditedDelivery) {
+            currentFeeInput.value = manuallyEditedDeliveryValue ?? currentFeeInput.value;
+        } else {
             currentFeeInput.value = cartRoot.dataset.configuredDelivery || '0';
         }
         updateTotal();
