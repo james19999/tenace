@@ -24,6 +24,11 @@
         </div>
         <ul>
 
+            @if (in_array(Auth::user()->user_type, ['SCR', 'VDS', 'CSA', 'CALLCENTER', 'LVS', 'RCM'], true))
+                <li><a href="{{ route('finance.expenses.index') }}" class="{{ $active('finance.expenses.*') }}"><span class="icon material-icons">request_quote</span><span class="text">Demandes de dépenses</span></a></li>
+                <li><a href="{{ route('finance.remittances.index') }}" class="{{ $active('finance.remittances.*') }}"><span class="icon material-icons">payments</span><span class="text">Remises à collecter</span></a></li>
+            @endif
+
             @if (Auth::user()->user_type == 'LVS' && Auth::user()->country_code)
                 <li>
                     <a href="{{ route('courier.public-orders.index') }}" class="{{ $active('courier.public-orders.*') }}">
@@ -41,13 +46,19 @@
                     </a>
                 </li>
                 <li>
-                    <a href="#adminAccountingCollapse" class="{{ $active('type-expensives', 'expensives', 'list-percent', 'virementverify') }}" data-toggle="collapse">
+                    <a href="#adminAccountingCollapse" class="{{ $active('finance.*', 'type-expensives', 'expensives', 'list-percent', 'virementverify') }}" data-toggle="collapse">
                         <span class="caret material-icons">arrow_right</span>
                         <span class="icon material-icons">money</span>
                         <span class="text">Comptabilité</span>
                     </a>
 
-                    <ul class="collapse {{ $active('type-expensives', 'expensives', 'list-percent', 'virementverify') ? 'show' : '' }}" id="adminAccountingCollapse">
+                    <ul class="collapse {{ $active('finance.*', 'type-expensives', 'expensives', 'list-percent', 'virementverify') ? 'show' : '' }}" id="adminAccountingCollapse">
+                        <li><a href="{{ route('finance.dashboard') }}" class="{{ $active('finance.dashboard') }}"><span class="icon material-icons">remove</span><span class="text">Trésorerie</span></a></li>
+                        <li><a href="{{ route('finance.remittances.index') }}" class="{{ $active('finance.remittances.*') }}"><span class="icon material-icons">remove</span><span class="text">Remises boutiques</span></a></li>
+                        <li><a href="{{ route('finance.expenses.index') }}" class="{{ $active('finance.expenses.*') }}"><span class="icon material-icons">remove</span><span class="text">Dépenses · validations</span></a></li>
+                        <li><a href="{{ route('finance.suppliers.index') }}" class="{{ $active('finance.suppliers.*') }}"><span class="icon material-icons">remove</span><span class="text">Factures fournisseurs</span></a></li>
+                        <li><a href="{{ route('finance.reports.index') }}" class="{{ $active('finance.reports.*') }}"><span class="icon material-icons">remove</span><span class="text">Rapports et exports</span></a></li>
+                        <li><a href="{{ route('finance.audit.index') }}" class="{{ $active('finance.audit.*') }}"><span class="icon material-icons">remove</span><span class="text">Journal d’audit</span></a></li>
                         <li>
                             <a href="{{ route('type-expensives') }}" class="{{ $active('type-expensives') }}">
                                 <span class="icon material-icons">remove</span>
@@ -582,12 +593,16 @@
                     </ul>
                 </li>
                 <li>
-                    <a href="#mngComptaCollapse" class="{{ $active('type-expensives', 'expensives') }}" data-toggle="collapse">
+                    <a href="#mngComptaCollapse" class="{{ $active('finance.*', 'type-expensives', 'expensives') }}" data-toggle="collapse">
                         <span class="caret material-icons">arrow_right</span>
                         <span class="icon material-icons">money</span>
                         <span class="text">Comptabilité</span>
                     </a>
-                    <ul class="collapse {{ $active('type-expensives', 'expensives') ? 'show' : '' }}" id="mngComptaCollapse">
+                    <ul class="collapse {{ $active('finance.*', 'type-expensives', 'expensives') ? 'show' : '' }}" id="mngComptaCollapse">
+                        <li><a href="{{ route('finance.dashboard') }}" class="{{ $active('finance.dashboard') }}"><span class="icon material-icons">remove</span><span class="text">Trésorerie</span></a></li>
+                        <li><a href="{{ route('finance.remittances.index') }}" class="{{ $active('finance.remittances.*') }}"><span class="icon material-icons">remove</span><span class="text">Remises boutiques</span></a></li>
+                        <li><a href="{{ route('finance.expenses.index') }}" class="{{ $active('finance.expenses.*') }}"><span class="icon material-icons">remove</span><span class="text">Demandes de dépenses</span></a></li>
+                        <li><a href="{{ route('finance.suppliers.index') }}" class="{{ $active('finance.suppliers.*') }}"><span class="icon material-icons">remove</span><span class="text">Factures fournisseurs</span></a></li>
                         <li>
                             <a href="{{ route('type-expensives') }}" class="{{ $active('type-expensives') }}">
                                 <span class="icon material-icons">remove</span>
@@ -616,12 +631,18 @@
                     </a>
                 </li>
                 <li>
-                    <a href="#accountantAccountingCollapse" class="{{ $active('type-expensives', 'expensives') }}" data-toggle="collapse" aria-expanded="{{ request()->routeIs('type-expensives', 'expensives') ? 'true' : 'false' }}">
+                    <a href="#accountantAccountingCollapse" class="{{ $active('finance.*', 'type-expensives', 'expensives') }}" data-toggle="collapse" aria-expanded="{{ request()->routeIs('finance.*', 'type-expensives', 'expensives') ? 'true' : 'false' }}">
                         <span class="caret material-icons">arrow_right</span>
                         <span class="icon material-icons">money</span>
                         <span class="text">Comptabilité</span>
                     </a>
-                    <ul class="collapse {{ $active('type-expensives', 'expensives') ? 'show' : '' }}" id="accountantAccountingCollapse">
+                    <ul class="collapse {{ $active('finance.*', 'type-expensives', 'expensives') ? 'show' : '' }}" id="accountantAccountingCollapse">
+                        <li><a href="{{ route('finance.dashboard') }}" class="{{ $active('finance.dashboard') }}"><span class="icon material-icons">remove</span><span class="text">Trésorerie</span></a></li>
+                        <li><a href="{{ route('finance.remittances.index') }}" class="{{ $active('finance.remittances.*') }}"><span class="icon material-icons">remove</span><span class="text">Remises boutiques</span></a></li>
+                        <li><a href="{{ route('finance.expenses.index') }}" class="{{ $active('finance.expenses.*') }}"><span class="icon material-icons">remove</span><span class="text">Dépenses à contrôler</span></a></li>
+                        <li><a href="{{ route('finance.suppliers.index') }}" class="{{ $active('finance.suppliers.*') }}"><span class="icon material-icons">remove</span><span class="text">Dettes fournisseurs</span></a></li>
+                        <li><a href="{{ route('finance.reports.index') }}" class="{{ $active('finance.reports.*') }}"><span class="icon material-icons">remove</span><span class="text">Rapports et exports</span></a></li>
+                        <li><a href="{{ route('finance.audit.index') }}" class="{{ $active('finance.audit.*') }}"><span class="icon material-icons">remove</span><span class="text">Journal d’audit</span></a></li>
                         <li><a href="{{ route('type-expensives') }}" class="{{ $active('type-expensives') }}"><span class="icon material-icons">remove</span><span class="text">Type de dépense</span></a></li>
                         <li><a href="{{ route('expensives') }}" class="{{ $active('expensives') }}"><span class="icon material-icons">remove</span><span class="text">Dépenses</span></a></li>
                     </ul>

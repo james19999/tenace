@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Stock;
 use App\Http\Controllers\Controller;
 use App\Models\Product;
 use App\Models\EnterStock;
+use App\Models\FinanceSupplierInvoice;
 use App\Models\StockAlert;
 use App\Models\StockAttachment;
 use App\Models\StockAuditLog;
@@ -153,8 +154,12 @@ class StockReceiptController extends Controller
 
         $systemLocations = StockLocation::query()->whereIn('code', ['BLOQUE'])->where('is_active', true)->get(['id', 'code', 'name']);
         $rules = app(StockModuleSettingsService::class)->rules();
+        $linkedSupplierInvoice = FinanceSupplierInvoice::query()
+            ->where('stock_receipt_id', $receipt->id)
+            ->whereIn('status', ['awaiting_review', 'approved'])
+            ->latest('id')->first();
 
-        return view('stocks.receipts.show', compact('receipt', 'systemLocations', 'rules'));
+        return view('stocks.receipts.show', compact('receipt', 'systemLocations', 'rules', 'linkedSupplierInvoice'));
     }
 
     public function deliveryReceipt(StockReceipt $receipt, StockReceiptEvent $event): View

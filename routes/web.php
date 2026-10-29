@@ -51,6 +51,10 @@ use App\Http\Controllers\ProductQuantityPriceController;
 use App\Http\Controllers\QuantityPromotionController;
 use App\Http\Controllers\WholesaleCustomerMonitoringController;
 use App\Http\Controllers\Expensive\ExpensiveController;
+use App\Http\Controllers\Finance\FinanceController;
+use App\Http\Controllers\Finance\FinanceSupplierInvoiceController;
+use App\Http\Controllers\Finance\FinanceReportController;
+use App\Http\Controllers\Finance\FinanceAuditController;
 use App\Http\Controllers\Brouillons\BrouillonController;
 use App\Http\Controllers\TypeExpensive\TypeExpensiveController;
 
@@ -102,6 +106,43 @@ Route::post('/store/pathner',[DashboarController::class,'store_pathner'])->name(
 
 
 Route::middleware(['auth'])->group(function () {
+
+    Route::middleware(['role:ADMINUSER,MNG,COMPTABLE,SCR,VDS,CSA,LVS,CALLCENTER,RCM'])->prefix('comptabilite')->name('finance.')->group(function () {
+        Route::get('/', [FinanceController::class, 'index'])->name('dashboard');
+        Route::get('/rapports', [FinanceReportController::class, 'index'])->middleware('role:ADMINUSER,COMPTABLE,CSA')->name('reports.index');
+        Route::get('/rapports/export', [FinanceReportController::class, 'export'])->middleware('role:ADMINUSER,COMPTABLE,CSA')->name('reports.export');
+        Route::get('/audit', [FinanceAuditController::class, 'index'])->middleware('role:ADMINUSER,COMPTABLE')->name('audit.index');
+        Route::post('/caisse/fonds-initial', [FinanceController::class, 'initializeCash'])->middleware('role:ADMINUSER')->name('cash.opening');
+        Route::post('/caisse/fonds-initial-boutique', [FinanceController::class, 'initializeShopCash'])->middleware('role:ADMINUSER,MNG')->name('cash.shop-opening');
+        Route::post('/caisse/clotures', [FinanceController::class, 'storeCashClosure'])->middleware('role:ADMINUSER,CSA')->name('cash.closures.store');
+        Route::post('/caisse/clotures/{closure}/controle', [FinanceController::class, 'reviewCashClosure'])->middleware('role:ADMINUSER,COMPTABLE')->name('cash.closures.review');
+        Route::get('/remises', [FinanceController::class, 'remittances'])->name('remittances.index');
+        Route::get('/remises/nouvelle', [FinanceController::class, 'createRemittance'])->middleware('role:MNG')->name('remittances.create');
+        Route::get('/remises/montant-attendu', [FinanceController::class, 'expectedRemittanceAmount'])->middleware('role:MNG')->name('remittances.expected-amount');
+        Route::post('/remises', [FinanceController::class, 'storeRemittance'])->middleware('role:MNG')->name('remittances.store');
+        Route::get('/remises/{remittance}/bon', [FinanceController::class, 'printRemittance'])->name('remittances.print');
+        Route::get('/remises/{remittance}', [FinanceController::class, 'showRemittance'])->name('remittances.show');
+        Route::post('/remises/{remittance}/signature-collecteur', [FinanceController::class, 'signRemittance'])->middleware('role:ADMINUSER,MNG,COMPTABLE,SCR,VDS,CSA,LVS,CALLCENTER,RCM')->name('remittances.sign');
+        Route::post('/remises/{remittance}/reception', [FinanceController::class, 'confirmRemittance'])->middleware('role:ADMINUSER')->name('remittances.receive');
+        Route::post('/remises/{remittance}/resoudre-ecart', [FinanceController::class, 'resolveRemittance'])->middleware('role:ADMINUSER')->name('remittances.resolve');
+
+        Route::get('/depenses', [FinanceController::class, 'expenses'])->name('expenses.index');
+        Route::get('/depenses/nouvelle', [FinanceController::class, 'createExpense'])->name('expenses.create');
+        Route::post('/depenses', [FinanceController::class, 'storeExpense'])->name('expenses.store');
+        Route::get('/depenses/{expense}', [FinanceController::class, 'showExpense'])->name('expenses.show');
+        Route::post('/depenses/{expense}/controle-financier', [FinanceController::class, 'financeDecision'])->middleware('role:COMPTABLE')->name('expenses.finance-decision');
+        Route::post('/depenses/{expense}/decision-dg', [FinanceController::class, 'directorDecision'])->middleware('role:ADMINUSER')->name('expenses.director-decision');
+        Route::post('/depenses/{expense}/paiements', [FinanceController::class, 'payExpense'])->middleware('role:ADMINUSER,MNG,CSA,COMPTABLE')->name('expenses.pay');
+        Route::get('/depenses/paiements/{payment}/bon', [FinanceController::class, 'printExpensePayment'])->name('expenses.payments.voucher');
+        Route::get('/fournisseurs/factures', [FinanceSupplierInvoiceController::class, 'index'])->name('suppliers.index');
+        Route::get('/fournisseurs/factures/nouvelle', [FinanceSupplierInvoiceController::class, 'create'])->name('suppliers.create');
+        Route::post('/fournisseurs/factures', [FinanceSupplierInvoiceController::class, 'store'])->name('suppliers.store');
+        Route::get('/fournisseurs/factures/{invoice}', [FinanceSupplierInvoiceController::class, 'show'])->name('suppliers.show');
+        Route::post('/fournisseurs/factures/{invoice}/controle', [FinanceSupplierInvoiceController::class, 'review'])->middleware('role:ADMINUSER,COMPTABLE')->name('suppliers.review');
+        Route::post('/fournisseurs/factures/{invoice}/paiements', [FinanceSupplierInvoiceController::class, 'pay'])->middleware('role:ADMINUSER,COMPTABLE,CSA')->name('suppliers.pay');
+        Route::get('/fournisseurs/pieces/{kind}/{id}', [FinanceSupplierInvoiceController::class, 'attachment'])->whereIn('kind', ['supplier-invoice', 'supplier-payment'])->name('suppliers.attachments.download');
+        Route::get('/pieces/{kind}/{id}', [FinanceController::class, 'downloadAttachment'])->whereIn('kind', ['remittance', 'signed-voucher', 'expense', 'payment'])->name('attachments.download');
+    });
 
     // -------------------------------------------------------------------------
     // 1. ROUTES STRICTEMENT ADMINISTRATEUR (ADMINUSER)

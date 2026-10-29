@@ -4,6 +4,8 @@ namespace App\Providers;
 
 use Illuminate\Pagination\Paginator;
 use App\Models\AppThemeSetting;
+use App\Models\OrderPayment;
+use App\Observers\OrderPaymentObserver;
 use Illuminate\Support\Facades\URL;
 use Illuminate\Support\ServiceProvider;
 
@@ -22,6 +24,7 @@ class AppServiceProvider extends ServiceProvider
      */
     public function boot(): void
     {
+        OrderPayment::observe(OrderPaymentObserver::class);
         Paginator::useBootstrap();
 
         if (app()->environment('production') || request()->isSecure() || strtolower((string) request()->header('x-forwarded-proto')) === 'https') {

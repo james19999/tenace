@@ -75,11 +75,40 @@ class CourierFedaPayMobilePaymentTest extends TestCase
             $table->timestamp('confirmed_at')->nullable();
             $table->timestamps();
         });
+        Schema::create('order_items', function (Blueprint $table): void {
+            $table->id();
+            $table->unsignedBigInteger('order_id');
+            $table->unsignedBigInteger('product_id')->nullable();
+            $table->decimal('price')->default(0);
+            $table->integer('quantity')->default(0);
+            $table->timestamps();
+        });
+        Schema::create('stock_locations', function (Blueprint $table): void {
+            $table->id();
+            $table->string('code')->unique();
+            $table->string('name');
+            $table->string('type');
+            $table->unsignedBigInteger('responsible_user_id')->nullable();
+            $table->boolean('is_active')->default(true);
+            $table->timestamps();
+        });
+        Schema::create('stock_module_settings', function (Blueprint $table): void {
+            $table->id();
+            $table->json('rules')->nullable();
+            $table->unsignedBigInteger('updated_by')->nullable();
+            $table->timestamps();
+        });
+        Schema::create('stock_movements', function (Blueprint $table): void {
+            $table->id();
+            $table->unsignedBigInteger('order_id')->nullable();
+            $table->string('type');
+            $table->string('status');
+        });
     }
 
     protected function tearDown(): void
     {
-        foreach (['order_payments', 'order_courier_handoffs', 'costumers', 'orders'] as $table) {
+        foreach (['stock_movements', 'stock_module_settings', 'stock_locations', 'order_items', 'order_payments', 'order_courier_handoffs', 'costumers', 'orders'] as $table) {
             Schema::dropIfExists($table);
         }
         DB::purge('sqlite');
@@ -203,7 +232,7 @@ class CourierFedaPayMobilePaymentTest extends TestCase
         $order = $this->orderForCourier($courier, 5000, 0);
 
         $this->post(route('courier.public-orders.deliver', $order), ['payment_method' => 'mobile_money'])
-            ->assertConflict();
+            ->assertRedirect()->assertSessionHasErrors('delivery');
         $this->assertSame('out_for_delivery', $order->fresh()->partner_order_status);
         $this->assertSame(0, OrderPayment::query()->count());
     }

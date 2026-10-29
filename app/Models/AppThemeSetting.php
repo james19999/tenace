@@ -21,25 +21,23 @@ class AppThemeSetting extends Model
             'surface_color' => '#ffffff', 'text_color' => '#292d38', 'corner_style' => 'soft', 'appearance_mode' => 'light',
         ];
 
-        if (! Schema::hasTable('app_theme_settings')) {
-            return $theme;
-        }
-
-        $stored = static::query()->find(1)?->getAttributes() ?? [];
-        foreach (array_keys($theme) as $key) {
-            if (! array_key_exists($key, $stored)) {
-                continue;
-            }
-            if ($key === 'corner_style') {
-                if (in_array($stored[$key], ['square', 'soft', 'rounded'], true)) {
+        if (Schema::hasTable('app_theme_settings')) {
+            $stored = static::query()->find(1)?->getAttributes() ?? [];
+            foreach (array_keys($theme) as $key) {
+                if (! array_key_exists($key, $stored)) {
+                    continue;
+                }
+                if ($key === 'corner_style') {
+                    if (in_array($stored[$key], ['square', 'soft', 'rounded'], true)) {
+                        $theme[$key] = $stored[$key];
+                    }
+                } elseif ($key === 'appearance_mode') {
+                    if (in_array($stored[$key], ['light', 'dark'], true)) {
+                        $theme[$key] = $stored[$key];
+                    }
+                } elseif (is_string($stored[$key]) && preg_match('/^#[0-9a-fA-F]{6}$/', $stored[$key])) {
                     $theme[$key] = $stored[$key];
                 }
-            } elseif ($key === 'appearance_mode') {
-                if (in_array($stored[$key], ['light', 'dark'], true)) {
-                    $theme[$key] = $stored[$key];
-                }
-            } elseif (is_string($stored[$key]) && preg_match('/^#[0-9a-fA-F]{6}$/', $stored[$key])) {
-                $theme[$key] = $stored[$key];
             }
         }
 

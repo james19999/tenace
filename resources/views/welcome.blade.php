@@ -55,7 +55,9 @@
             <div class="welcome-login-background">
                 <div class="card shadow welcome-login-card">
                     @php
-                    $settings=App\Models\Setting::all();
+                    $settings=Illuminate\Support\Facades\Schema::hasTable('settings')
+                        ? App\Models\Setting::all()
+                        : collect();
                     @endphp
                     @forelse ($settings as $setting )
                     <img src="{{ url('image/',$setting->img) }}" height="50" alt="Moss Logo" class="logo justify-content-center d-flex mx-auto mb-3">

@@ -47,6 +47,13 @@ class StockDeliveryService
                 $location = $location ?: StockLocation::query()->where('responsible_user_id', (int) $lockedOrder->user_id)
                     ->where('type', 'sales_rep')->where('is_active', true)->first();
             }
+            if (! $lockedOrder->is_wholesale && ! $location) {
+                $orderOwnerId = $lockedOrder->created_user ?: $lockedOrder->order_by;
+                if ($orderOwnerId) {
+                    $location = StockLocation::query()->where('responsible_user_id', (int) $orderOwnerId)
+                        ->where('type', 'shop')->where('is_active', true)->first();
+                }
+            }
             if (! $lockedOrder->is_wholesale && ! $location && ! empty($rules['default_sales_location_id'])) {
                 $location = StockLocation::query()->whereKey($rules['default_sales_location_id'])
                     ->where('is_active', true)->whereNotIn('type', ['transit', 'blocked'])->first();
@@ -117,6 +124,10 @@ class StockDeliveryService
                     'after_values' => ['order_id' => $lockedOrder->id, 'location_id' => $location->id, 'line_count' => $lockedOrder->orderItems->count()],
                     'origin' => 'order', 'result' => 'success',
                 ]);
+            }
+
+            if ($location?->type === 'shop') {
+                app(FinanceOrderCashIntegrationService::class)->syncOrder($lockedOrder, $location->id, $actorId);
             }
 
             return true;

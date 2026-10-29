@@ -167,7 +167,7 @@ class OrderController extends Controller
                 'status' => 'collected',
                 'collected_by' => Auth::id(),
                 'collected_at' => now(),
-                'notes' => 'Encaissement saisi depuis la fiche de commande.',
+                'notes' => 'Encaissement espèces saisi depuis la fiche de commande.',
             ]);
         }
 
