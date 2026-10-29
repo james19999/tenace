@@ -53,6 +53,23 @@
                     </div>
                 </div>
             </div>
+            <div class="col-12 col-sm-6 col-md-6 col-lg-3 dashboard-kpi-revenue">
+                <div class="card shadow">
+                    <div class="card-body">
+                        <div class="row">
+                            <div class="col">
+                                <h5 class="text-uppercase text-muted mb-0 card-title">Chiffre d’affaires hebdomadaire</h5>
+                                <span style="font-size: 130%" class="h1 font-weight-bold mb-0">{{ number_format((float) $totalOrdersThisWeek, 0, ',', ' ') }} XOF</span>
+                            </div>
+                            <div class="col-auto col">
+                                <div class="btn btn-transparent-primary btn-lg btn-circle">
+                                    <img src="{{ asset('assets/images/hb.png') }}" width="40" height="40" alt="">
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
             <div class="col-12 col-sm-6 col-md-6 col-lg-3 dashboard-kpi-orders">
                 <div class="card shadow">
                     <div class="card-body">
@@ -160,6 +177,24 @@
                     </div>
                 </div>
             </div>
+            <div class="col-12 col-sm-6 col-md-6 col-lg-3 dashboard-kpi-revenue">
+                <div class="card shadow">
+                    <div class="card-body">
+                        <h5 class="text-uppercase text-muted mb-0 card-title">Chiffre d’affaires grossiste livré · année</h5>
+                        <span style="font-size: 130%" class="h1 font-weight-bold mb-0">{{ number_format((float) $totalWholesaleCommandes, 0, ',', ' ') }} XOF</span>
+                        <small class="d-block text-muted mt-2">Produits livrés, hors frais de livraison</small>
+                    </div>
+                </div>
+            </div>
+            <div class="col-12 col-sm-6 col-md-6 col-lg-3 dashboard-kpi-revenue">
+                <div class="card shadow">
+                    <div class="card-body">
+                        <h5 class="text-uppercase text-muted mb-0 card-title">Chiffre d’affaires grossiste livré · semaine</h5>
+                        <span style="font-size: 130%" class="h1 font-weight-bold mb-0">{{ number_format((float) $totalWholesaleOrdersThisWeek, 0, ',', ' ') }} XOF</span>
+                        <small class="d-block text-muted mt-2">Produits livrés cette semaine, hors frais de livraison</small>
+                    </div>
+                </div>
+            </div>
             <div class="col-12 col-sm-6 col-md-6 col-lg-3 dashboard-kpi-other">
                 <div class="card shadow">
                     <div class="card-body">
@@ -189,34 +224,6 @@
                     </div>
                 </div>
             </div>
-            <div class="col-12 col-sm-6 col-md-6 col-lg-3 dashboard-kpi-revenue">
-                <div class="card shadow">
-                    <div class="card-body">
-                        <div class="row">
-                            <div class="col">
-                                <h5 class="text-uppercase text-muted mb-0 card-title">Chiffre d'affaire hebdomadaire</h5>
-                                <span style="font-size: 130%" class="h1 font-weight-bold mb-0">{{ $totalOrdersThisWeek }}
-                                    XOF</span>
-                            </div>
-                            <div class="col-auto col">
-                                <div>
-                                    <button class="btn btn-transparent-primary btn-lg btn-circle">
-                                        <img src="{{ asset('assets/images/hb.png') }}" width="40" height="40"
-                                            alt="" srcset="">
-
-                                    </button>
-                                </div>
-                            </div>
-                        </div>
-                        {{-- <p class="mt-3 mb-0 text-sm">
-                    <span class="text-nowrap">since last month</span>
-                    <span class="text-danger float-right ml-2"> <i class="fa fa-arrow-down"></i>
-                        3.48%</span>
-                </p> --}}
-                    </div>
-                </div>
-            </div>
-
             <div class="col-12 col-sm-6 col-md-6 col-lg-3 dashboard-kpi-other">
                 <a href="{{ route('rupture') }}">
 
@@ -304,6 +311,15 @@
                                 </div>
                             </div>
                         </div>
+                    </div>
+                </div>
+            </div>
+            <div class="col-12 col-sm-6 col-md-6 col-lg-3">
+                <div class="card shadow">
+                    <div class="card-body">
+                        <h5 class="text-uppercase text-muted mb-0 card-title">Ventes grossistes livrées aujourd’hui</h5>
+                        <span style="font-size: 130%" class="h1 font-weight-bold mb-0">{{ number_format((float) $wholesaleDeliveredTodayAmount, 0, ',', ' ') }} XOF</span>
+                        <small class="d-block text-muted mt-2">Produits uniquement, hors frais de livraison</small>
                     </div>
                 </div>
             </div>

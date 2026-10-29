@@ -19,6 +19,14 @@ class WholesaleCustomerMonitoringController extends Controller
         $search = trim((string) $request->query('search', ''));
         $productSearch = trim((string) $request->query('product_search', ''));
         $wholesaleOrders = fn ($query) => $query->where('is_wholesale', true);
+        $deliveredWholesaleOrders = fn ($query) => $query->where('is_wholesale', true)
+            ->where(function ($status) {
+                $status->where('status', 'delivered')->orWhere('partner_order_status', 'delivered');
+            })
+            ->where('status', '!=', 'canceled')
+            ->where(function ($status) {
+                $status->whereNull('partner_order_status')->orWhere('partner_order_status', '!=', 'canceled');
+            });
         $customers = Costumer::query()
             ->whereHas('orders', $wholesaleOrders)
             ->when($search !== '', fn ($query) => $query->where(function ($customerQuery) use ($search) {
@@ -27,7 +35,7 @@ class WholesaleCustomerMonitoringController extends Controller
                     ->orWhere('email', 'like', '%'.$search.'%');
             }))
             ->withCount(['orders as wholesale_orders_count' => $wholesaleOrders])
-            ->withSum(['orders as wholesale_revenue' => $wholesaleOrders], 'subtotal')
+            ->withSum(['orders as wholesale_revenue' => $deliveredWholesaleOrders], 'subtotal')
             ->withMax(['orders as last_wholesale_order_at' => $wholesaleOrders], 'date_order')
             ->orderByDesc('last_wholesale_order_at')
             ->paginate(15)->withQueryString();
@@ -35,10 +43,10 @@ class WholesaleCustomerMonitoringController extends Controller
         $stats = Order::query()->where('is_wholesale', true)
             ->selectRaw('COUNT(*) as orders_count')
             ->selectRaw('COUNT(DISTINCT costumer_id) as customers_count')
-            ->selectRaw('COALESCE(SUM(subtotal), 0) as revenue')
-            ->selectRaw("SUM(CASE WHEN status = 'ordered' THEN 1 ELSE 0 END) as in_progress")
-            ->selectRaw("SUM(CASE WHEN status = 'delivered' THEN 1 ELSE 0 END) as delivered")
-            ->selectRaw("SUM(CASE WHEN status = 'canceled' THEN 1 ELSE 0 END) as canceled")
+            ->selectRaw("COALESCE(SUM(CASE WHEN (status = 'delivered' OR partner_order_status = 'delivered') AND status <> 'canceled' AND COALESCE(partner_order_status, '') <> 'canceled' THEN subtotal ELSE 0 END), 0) as revenue")
+            ->selectRaw("SUM(CASE WHEN status = 'ordered' AND COALESCE(partner_order_status, '') NOT IN ('delivered', 'canceled') THEN 1 ELSE 0 END) as in_progress")
+            ->selectRaw("SUM(CASE WHEN (status = 'delivered' OR partner_order_status = 'delivered') AND status <> 'canceled' AND COALESCE(partner_order_status, '') <> 'canceled' THEN 1 ELSE 0 END) as delivered")
+            ->selectRaw("SUM(CASE WHEN status = 'canceled' OR partner_order_status = 'canceled' THEN 1 ELSE 0 END) as canceled")
             ->first();
 
         $rules = app(StockModuleSettingsService::class)->rules();
@@ -88,11 +96,11 @@ class WholesaleCustomerMonitoringController extends Controller
 
         $summary = $customer->orders()->where('is_wholesale', true)
             ->selectRaw('COUNT(*) as orders_count')
-            ->selectRaw('COALESCE(SUM(subtotal), 0) as revenue')
+            ->selectRaw("COALESCE(SUM(CASE WHEN (status = 'delivered' OR partner_order_status = 'delivered') AND status <> 'canceled' AND COALESCE(partner_order_status, '') <> 'canceled' THEN subtotal ELSE 0 END), 0) as revenue")
             ->selectRaw('COALESCE(SUM(paid_amount), 0) as paid')
-            ->selectRaw("SUM(CASE WHEN status = 'ordered' THEN 1 ELSE 0 END) as in_progress")
-            ->selectRaw("SUM(CASE WHEN status = 'delivered' THEN 1 ELSE 0 END) as delivered")
-            ->selectRaw("SUM(CASE WHEN status = 'canceled' THEN 1 ELSE 0 END) as canceled")
+            ->selectRaw("SUM(CASE WHEN status = 'ordered' AND COALESCE(partner_order_status, '') NOT IN ('delivered', 'canceled') THEN 1 ELSE 0 END) as in_progress")
+            ->selectRaw("SUM(CASE WHEN (status = 'delivered' OR partner_order_status = 'delivered') AND status <> 'canceled' AND COALESCE(partner_order_status, '') <> 'canceled' THEN 1 ELSE 0 END) as delivered")
+            ->selectRaw("SUM(CASE WHEN status = 'canceled' OR partner_order_status = 'canceled' THEN 1 ELSE 0 END) as canceled")
             ->first();
 
         return view('wholesale-monitoring.show', compact('customer', 'orders', 'summary'));

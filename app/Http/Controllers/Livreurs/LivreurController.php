@@ -235,10 +235,17 @@ class LivreurController extends Controller
         if (Auth::user()?->user_type === User::ROLE_LIVREUR) {
             $courierCountry = $this->courierCountryCode(Auth::user());
             $defaultCountry = strtoupper((string) config('services.fedapay.country_code', 'TG'));
-            $query->whereRaw(
-                "UPPER(COALESCE(NULLIF(country_code, ''), NULLIF(shipping_country, ''), ?)) = ?",
-                [$defaultCountry, $courierCountry]
-            );
+            $query->where(function ($countryOrders) use ($defaultCountry, $courierCountry) {
+                $countryOrders->whereRaw(
+                    "UPPER(COALESCE(NULLIF(country_code, ''), NULLIF(shipping_country, ''), ?)) = ?",
+                    [$defaultCountry, $courierCountry]
+                );
+                if (blank(Auth::user()->country_code)) {
+                    // Wholesale orders are assigned to general couriers (no country
+                    // on their profile), including orders shipped outside Togo.
+                    $countryOrders->orWhere('is_wholesale', true);
+                }
+            });
         }
 
         $orders = $query->latest()->get();
@@ -252,14 +259,16 @@ class LivreurController extends Controller
         $Orders=Order::with(['costumer', 'user', 'createduser', 'transportCompany', 'deliveryPhotos.user', 'orderItems.product'])->findOrfail($id);
         $isCourier = auth()->user()?->user_type === 'LVS';
         if ($isCourier) {
-            $courierCountry = $this->courierCountryCode(auth()->user());
+            $courier = auth()->user();
+            $canHandleCountry = $this->orderCountryCode($Orders) === $this->courierCountryCode($courier);
+            $canHandleWholesale = (bool) $Orders->is_wholesale && blank($courier->country_code);
             $isAssignedToCourier = (string) $Orders->user_id === (string) auth()->id();
             $isAvailableInCourierCountry = ! $Orders->user_id
                 && ! $Orders->take
                 && ! $Orders->status_order
                 && $Orders->status === 'ordered'
-                && $this->orderCountryCode($Orders) === $courierCountry;
-            abort_unless($this->orderCountryCode($Orders) === $courierCountry
+                && ($canHandleCountry || $canHandleWholesale);
+            abort_unless(($canHandleCountry || $canHandleWholesale)
                 && ($isAssignedToCourier || $isAvailableInCourierCountry), 403);
         }
         $isPartnerPublicOrder = $Orders->partner_id && $Orders->public_tracking_token;
@@ -720,9 +729,9 @@ class LivreurController extends Controller
     $user = Auth::user();
 
       if ($user?->user_type === User::ROLE_LIVREUR) {
-          $courierCountry = $this->courierCountryCode($user);
-          $orderCountry = $this->orderCountryCode($orders);
-          abort_unless($orderCountry === $courierCountry, 403,
+          $canHandleCountry = $this->orderCountryCode($orders) === $this->courierCountryCode($user);
+          $canHandleWholesale = (bool) $orders->is_wholesale && blank($user->country_code);
+          abort_unless($canHandleCountry || $canHandleWholesale, 403,
               'Cette commande ne correspond pas au pays de ton compte livreur.');
       }
 
