@@ -30,9 +30,9 @@
         </section>
     @endif
 
-    @if($shopOpeningsNeeded->isNotEmpty() && (auth()->user()->isAdmin() || auth()->user()->isManager()))
+    @if($shopOpeningsNeeded->isNotEmpty() && (auth()->user()->isManager() || (auth()->user()->isAdmin() && ! $hasOpeningBalance)))
         <section class="finance-panel finance-opening">
-            <div><h2>Solde initial des boutiques</h2><p>Avant de suivre les remises, enregistre l’argent déjà présent dans chaque boutique à la date de démarrage. Un solde nul peut aussi être confirmé.</p></div>
+            <div><h2>Solde initial des boutiques (facultatif)</h2><p>Tu peux renseigner l’argent déjà présent dans une boutique au démarrage. Cette saisie n’est pas nécessaire pour initialiser la caisse générale.</p></div>
             <form method="POST" action="{{ route('finance.cash.shop-opening') }}" class="finance-opening-form">@csrf
                 <label>Boutique<select class="form-control" name="stock_location_id" required>@foreach($shopOpeningsNeeded as $location)<option value="{{ $location->id }}">{{ $location->name }}</option>@endforeach</select></label>
                 <label>Espèces présentes (F CFA)<input class="form-control" type="number" min="0" step="1" name="amount" required></label>
@@ -91,6 +91,12 @@
                 <tr><td>{{ $movement->occurred_at?->format('d/m/Y H:i') }}</td><td><strong>{{ \App\Support\FinanceDisplayLabels::movement($movement->movement_type) }}</strong><small class="d-block text-muted">{{ $movement->source_reference ?? $movement->entry_number }}</small></td><td>{{ $movement->location?->name ?? '—' }}</td><td>{{ \App\Support\FinanceDisplayLabels::custody($movement->from_custody) }}</td><td>{{ \App\Support\FinanceDisplayLabels::custody($movement->to_custody) }}</td><td class="text-right font-weight-bold">{{ number_format($movement->amount, 0, ',', ' ') }} F</td></tr>
             @empty<tr><td colspan="6" class="text-center text-muted py-4">Aucun mouvement financier enregistré.</td></tr>@endforelse
         </tbody></table></div>
+        @if ($recentMovements->hasPages())
+            <div class="d-flex justify-content-between align-items-center mt-3">
+                <small class="text-muted">Affichage de {{ $recentMovements->firstItem() }} à {{ $recentMovements->lastItem() }} sur {{ $recentMovements->total() }} mouvements</small>
+                {{ $recentMovements->links() }}
+            </div>
+        @endif
     </section>
 </div>
 

@@ -10,14 +10,14 @@
         <section class="sc-global-notification-menu" aria-label="Notifications TENACOS">
             <header class="sc-global-notification-head">
                 <span class="sc-global-notification-title-icon"><span class="material-icons">notifications_active</span></span>
-                <span class="sc-global-notification-title"><strong>Notifications</strong><small>Service client · Stocks · Rendez-vous</small></span>
+                <span class="sc-global-notification-title"><strong>Notifications</strong><small>Service client · Stocks · Rendez-vous · Comptabilité</small></span>
                 <span class="sc-global-notification-unread">{{ $notificationCount }} non lue(s)</span>
             </header>
             @forelse($notifications as $notification)
                 <article>
                     <a href="{{ $notification->data['url'] ?? route('service-cases.index') }}" wire:click.prevent="openNotification('{{ $notification->id }}')">
-                        <span class="sc-global-notification-icon"><span class="material-icons">{{ $notification->data['icon'] ?? (str_contains($notification->data['reminder_type'] ?? '', 'due') || str_contains($notification->data['reminder_type'] ?? '', 'overdue') ? 'event' : 'folder_shared') }}</span></span>
-                        <span class="sc-global-notification-copy"><strong>{{ $notification->data['message'] ?? 'Mise à jour TENACOS.' }}</strong><small>@if(!empty($notification->data['case_number'])){{ $notification->data['case_number'] }}@elseif(($notification->data['module'] ?? '') === 'stock_control'){{ $notification->data['title'] ?? 'Contrôle des stocks' }}@endif · {{ $notification->created_at->diffForHumans() }}</small></span>
+                        <span class="sc-global-notification-icon"><span class="material-icons">{{ $notification->data['icon'] ?? (($notification->data['module'] ?? '') === 'finance' ? 'account_balance_wallet' : (str_contains($notification->data['reminder_type'] ?? '', 'due') || str_contains($notification->data['reminder_type'] ?? '', 'overdue') ? 'event' : 'folder_shared')) }}</span></span>
+                        <span class="sc-global-notification-copy"><strong>{{ $notification->data['message'] ?? 'Mise à jour TENACOS.' }}</strong><small>@if(!empty($notification->data['case_number'])){{ $notification->data['case_number'] }}@elseif(in_array(($notification->data['module'] ?? ''), ['stock_control', 'finance'], true)){{ $notification->data['title'] ?? (($notification->data['module'] ?? '') === 'finance' ? 'Comptabilité' : 'Contrôle des stocks') }}@endif · {{ $notification->created_at->diffForHumans() }}</small></span>
                     </a>
                     <button type="button" wire:click="markAsRead('{{ $notification->id }}')" aria-label="Marquer comme lue" title="Marquer comme lue"><span class="material-icons">done</span></button>
                 </article>
@@ -75,7 +75,7 @@
                 toast.className = 'sc-notification-toast';
                 var icon = document.createElement('span');
                 icon.className = 'material-icons sc-notification-toast-icon';
-                icon.textContent = 'notifications_active';
+                icon.textContent = item.icon || 'notifications_active';
                 var copy = document.createElement('span');
                 copy.className = 'sc-notification-toast-copy';
                 var title = document.createElement('strong');

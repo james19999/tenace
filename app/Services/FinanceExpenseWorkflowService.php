@@ -9,6 +9,7 @@ use App\Models\StockLocation;
 use App\Models\TypeExpensive;
 use App\Models\User;
 use App\Notifications\FinanceExpenseReportNotification;
+use App\Notifications\FinanceWorkflowNotification;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Notification;
 use Illuminate\Support\Str;
@@ -58,6 +59,16 @@ class FinanceExpenseWorkflowService
             $expense->update(['reference' => sprintf('DEP-%s-%06d', now()->format('Y'), $expense->id)]);
             $this->audit->record($expense, 'submitted', null, $expense->fresh()->toArray());
 
+            Notification::send(
+                User::query()->where('user_type', User::ROLE_ACCOUNTANT)->where('active', true)->where('id', '<>', $requester->id)->get(),
+                new FinanceWorkflowNotification(
+                    'Dépense à contrôler',
+                    'Une demande de dépense attend le contrôle financier : '.$expense->reference.'.',
+                    route('finance.expenses.show', $expense->id),
+                    'request_quote',
+                ),
+            );
+
             return $expense->fresh();
         });
     }
@@ -93,6 +104,14 @@ class FinanceExpenseWorkflowService
                     ? 'Une dépense de plus de 50 000 F attend la décision du DG.'
                     : 'Le responsable financier a autorisé une dépense. Elle est signalée au DG.');
             $this->notifyDirectors($locked, $message);
+            $locked->requester?->notify(new FinanceWorkflowNotification(
+                $decision === 'approved' ? 'Contrôle financier effectué' : 'Demande de dépense rejetée',
+                $decision === 'approved'
+                    ? ((int) $locked->amount > self::DIRECTOR_APPROVAL_THRESHOLD ? 'Le contrôle financier est terminé. La décision du DG est maintenant attendue.' : 'Le responsable financier a autorisé la dépense. Le DG en a été informé.')
+                    : 'Le responsable financier a rejeté la demande '.$locked->reference.'.',
+                route('finance.expenses.show', $locked->id),
+                'request_quote',
+            ));
 
             return $locked->fresh();
         });
@@ -134,6 +153,12 @@ class FinanceExpenseWorkflowService
                 'decided_by' => $director->id, 'comment' => $comment, 'decided_at' => now(),
             ]);
             $this->audit->record($locked, $decision === 'approved' ? 'director_approved' : 'director_rejected', $before, $locked->only(['status', 'director_decided_by', 'director_decided_at']), $comment);
+            $locked->requester?->notify(new FinanceWorkflowNotification(
+                $decision === 'approved' ? 'Dépense autorisée par le DG' : 'Demande de dépense rejetée par le DG',
+                'La décision du DG concernant '.$locked->reference.' a été enregistrée.'.($comment ? ' Motif : '.$comment : ''),
+                route('finance.expenses.show', $locked->id),
+                'request_quote',
+            ));
 
             return $locked->fresh();
         });
@@ -186,6 +211,12 @@ class FinanceExpenseWorkflowService
             $locked->status = $locked->payment_status === 'paid' ? 'paid' : 'partially_paid';
             $locked->save();
             $this->audit->record($locked, 'payment_recorded', null, ['amount' => $amount, 'custody' => $custody, 'paid_amount' => $locked->paid_amount]);
+            $locked->requester?->notify(new FinanceWorkflowNotification(
+                'Paiement de dépense enregistré',
+                'Un paiement de '.number_format($amount, 0, ',', ' ').' F a été enregistré pour '.$locked->reference.'.',
+                route('finance.expenses.show', $locked->id),
+                'payments',
+            ));
 
             return $payment;
         });

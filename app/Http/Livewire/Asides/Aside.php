@@ -4,6 +4,7 @@ namespace App\Http\Livewire\Asides;
 
 use Livewire\Component;
 use App\Models\Orders\Order;
+use App\Services\FinanceSidebarBadgeService;
 use App\Services\StockControlSidebarBadgeService;
 
 
@@ -35,6 +36,9 @@ class Aside extends Component
             'counts' => Order::where('brouillon', 0)->count('brouillon'),
             'stockBadges' => in_array(auth()->user()?->user_type, ['ADMINUSER', 'MNG'], true)
                 ? app(StockControlSidebarBadgeService::class)->counts(auth()->user())
+                : [],
+            'financeBadges' => in_array(auth()->user()?->user_type, ['ADMINUSER', 'MNG', 'COMPTABLE', 'CSA', 'SCR', 'VDS', 'CALLCENTER', 'LVS', 'RCM'], true)
+                ? app(FinanceSidebarBadgeService::class)->counts(auth()->user())
                 : [],
         ]);
     }

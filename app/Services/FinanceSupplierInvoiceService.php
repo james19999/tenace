@@ -6,7 +6,9 @@ use App\Models\FinanceSupplierInvoice;
 use App\Models\FinanceSupplierPayment;
 use App\Models\StockReceipt;
 use App\Models\User;
+use App\Notifications\FinanceWorkflowNotification;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Notification;
 use Illuminate\Validation\ValidationException;
 
 class FinanceSupplierInvoiceService
@@ -60,6 +62,15 @@ class FinanceSupplierInvoiceService
             $invoice->invoice_number = sprintf('TEN-FAC-%s-%06d', now()->format('Y'), $invoice->id);
             $invoice->save();
             $this->audit->record($invoice, 'supplier_invoice_registered', null, $invoice->toArray());
+            Notification::send(
+                User::query()->whereIn('user_type', [User::ROLE_ADMIN, User::ROLE_ACCOUNTANT])->where('active', true)->where('id', '<>', $actor->id)->get(),
+                new FinanceWorkflowNotification(
+                    'Facture fournisseur à contrôler',
+                    'Une facture de '.$invoice->supplier_name.' attend son contrôle : '.$invoice->invoice_number.'.',
+                    route('finance.suppliers.show', $invoice->id),
+                    'receipt_long',
+                ),
+            );
 
             return $invoice->fresh();
         });
@@ -91,6 +102,23 @@ class FinanceSupplierInvoiceService
             $locked->review_comment = $comment;
             $locked->save();
             $this->audit->record($locked, 'supplier_invoice_'.$decision, $before, $locked->only(['status', 'reviewed_by', 'reviewed_at', 'review_comment']), $comment);
+            $locked->creator?->notify(new FinanceWorkflowNotification(
+                $decision === 'approved' ? 'Facture fournisseur validée' : 'Facture fournisseur refusée',
+                'La facture '.$locked->invoice_number.' de '.$locked->supplier_name.' a été '.($decision === 'approved' ? 'validée' : 'refusée').'.',
+                route('finance.suppliers.show', $locked->id),
+                'receipt_long',
+            ));
+            if ($decision === 'approved') {
+                Notification::send(
+                    User::query()->whereIn('user_type', [User::ROLE_ADMIN, User::ROLE_ACCOUNTANT, User::ROLE_CASHIER])->where('active', true)->where('id', '<>', $reviewer->id)->get(),
+                    new FinanceWorkflowNotification(
+                        'Facture fournisseur à régler',
+                        'La facture '.$locked->invoice_number.' est validée et attend son règlement.',
+                        route('finance.suppliers.show', $locked->id),
+                        'payments',
+                    ),
+                );
+            }
 
             return $locked->fresh();
         });
@@ -125,6 +153,12 @@ class FinanceSupplierInvoiceService
             $this->audit->record($locked, 'supplier_invoice_payment_recorded', null, [
                 'payment_id' => $payment->id, 'amount' => $amount, 'paid_amount' => $locked->paid_amount,
             ]);
+            $locked->creator?->notify(new FinanceWorkflowNotification(
+                'Règlement fournisseur enregistré',
+                'Un règlement de '.number_format($amount, 0, ',', ' ').' F a été enregistré pour la facture '.$locked->invoice_number.'.',
+                route('finance.suppliers.show', $locked->id),
+                'payments',
+            ));
 
             return $payment;
         });

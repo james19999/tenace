@@ -22,6 +22,7 @@ class FinanceCashCountAlertNotification extends Notification
     public function toArray(object $notifiable): array
     {
         return [
+            'module' => 'finance',
             'type' => 'finance_cash_count_discrepancy',
             'title' => 'Écart au comptage de la caisse générale',
             'message' => 'Un écart de '.number_format(abs((int) $this->closure->variance_amount), 0, ',', ' ')
@@ -29,6 +30,7 @@ class FinanceCashCountAlertNotification extends Notification
                 $this->closure->closing_date->format('d/m/Y').'. Le contrôle du DG ou du responsable financier est attendu.',
             'closure_id' => $this->closure->id,
             'url' => route('finance.dashboard'),
+            'icon' => 'warning',
         ];
     }
 }

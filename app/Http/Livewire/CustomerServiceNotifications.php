@@ -7,6 +7,9 @@ use App\Models\CustomerServiceCase;
 use App\Models\CustomerServiceSupportMilestone;
 use App\Notifications\StockControlNotification;
 use App\Notifications\DgAppointmentNotification;
+use App\Notifications\FinanceCashCountAlertNotification;
+use App\Notifications\FinanceExpenseReportNotification;
+use App\Notifications\FinanceWorkflowNotification;
 use Illuminate\Support\Facades\Auth;
 use Livewire\Component;
 
@@ -94,7 +97,14 @@ class CustomerServiceNotifications extends Component
 
     protected function notificationTypes(): array
     {
-        return [CustomerServiceCaseNotification::class, StockControlNotification::class, DgAppointmentNotification::class];
+        return [
+            CustomerServiceCaseNotification::class,
+            StockControlNotification::class,
+            DgAppointmentNotification::class,
+            FinanceCashCountAlertNotification::class,
+            FinanceExpenseReportNotification::class,
+            FinanceWorkflowNotification::class,
+        ];
     }
 
     protected function createDueFollowUpNotificationsForCurrentUser(): void

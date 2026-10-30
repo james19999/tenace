@@ -6,6 +6,7 @@ use App\Models\FinanceCashClosure;
 use App\Models\FinanceCashMovement;
 use App\Models\User;
 use App\Notifications\FinanceCashCountAlertNotification;
+use App\Notifications\FinanceWorkflowNotification;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Notification;
 use Illuminate\Validation\ValidationException;
@@ -57,11 +58,17 @@ class FinanceCashClosureService
                 $closure = FinanceCashClosure::query()->create($values);
                 $this->audit->record($closure, 'cash_count_submitted', null, $closure->toArray(), $note);
             }
+            $reviewers = User::query()->whereIn('user_type', [User::ROLE_ADMIN, User::ROLE_ACCOUNTANT])
+                ->where('active', true)->where('id', '<>', $counter->id)->get();
             if ($variance !== 0) {
-                Notification::send(
-                    User::query()->where('user_type', User::ROLE_ADMIN)->where('active', true)->get(),
-                    new FinanceCashCountAlertNotification($closure)
-                );
+                Notification::send($reviewers, new FinanceCashCountAlertNotification($closure));
+            } else {
+                Notification::send($reviewers, new FinanceWorkflowNotification(
+                    'Comptage de caisse à valider',
+                    'Un comptage de la caisse générale attend une validation indépendante.',
+                    route('finance.dashboard'),
+                    'fact_check',
+                ));
             }
 
             return $closure;
@@ -95,6 +102,14 @@ class FinanceCashClosureService
             $locked->resolution_note = $resolutionNote;
             $locked->save();
             $this->audit->record($locked, $decision === 'approved' ? 'cash_closure_approved' : 'cash_closure_reopened', null, $locked->fresh()->toArray(), $resolutionNote);
+            User::query()->find($locked->counted_by)?->notify(new FinanceWorkflowNotification(
+                $decision === 'approved' ? 'Comptage de caisse validé' : 'Caisse rouverte pour correction',
+                $decision === 'approved'
+                    ? 'Le comptage de la caisse générale du '.$locked->closing_date->format('d/m/Y').' a été validé.'
+                    : 'Le DG a rouvert le comptage du '.$locked->closing_date->format('d/m/Y').' pour correction.',
+                route('finance.dashboard'),
+                $decision === 'approved' ? 'task_alt' : 'edit',
+            ));
 
             return $locked->fresh();
         });

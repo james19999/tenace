@@ -71,7 +71,7 @@ class FinanceController extends Controller
             'pendingExpenses' => (clone $expenses)->whereIn('status', ['awaiting_finance', 'awaiting_director'])->count(),
             'supplierPayables' => $supplierPayables,
             'overdueSupplierInvoices' => $overdueSupplierInvoices,
-            'recentMovements' => $movements->latest('occurred_at')->limit(12)->get(),
+            'recentMovements' => $movements->latest('occurred_at')->paginate(10, ['*'], 'movements_page')->withQueryString(),
             'weeklySummary' => [
                 'start' => $weekStart,
                 'end' => $weekEnd,

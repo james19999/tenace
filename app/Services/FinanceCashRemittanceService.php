@@ -5,7 +5,9 @@ namespace App\Services;
 use App\Models\FinanceCashRemittance;
 use App\Models\StockLocation;
 use App\Models\User;
+use App\Notifications\FinanceWorkflowNotification;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Notification;
 use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
 
@@ -66,6 +68,12 @@ class FinanceCashRemittanceService
             ]);
             $remittance->update(['reference' => sprintf('REM-%s-%06d', now()->format('Y'), $remittance->id)]);
             $this->audit->record($remittance, 'prepared_and_shop_signed', null, $remittance->fresh()->toArray());
+            $collector->notify(new FinanceWorkflowNotification(
+                'Remise à récupérer',
+                'Une remise de '.$location->name.' attend ta confirmation : '.$remittance->reference.'.',
+                route('finance.remittances.show', $remittance->id),
+                'payments',
+            ));
 
             return $remittance->fresh();
         });
@@ -110,6 +118,15 @@ class FinanceCashRemittanceService
                 'created_by' => $collector->id,
             ]);
             $this->audit->record($locked, 'collector_signed_handover', null, ['collector_id' => $collector->id, 'amount' => $locked->handed_over_amount]);
+            Notification::send(
+                User::query()->where('user_type', User::ROLE_ADMIN)->where('active', true)->get(),
+                new FinanceWorkflowNotification(
+                    'Remise à confirmer',
+                    'La remise '.$locked->reference.' est en transit et attend la confirmation du DG.',
+                    route('finance.remittances.show', $locked->id),
+                    'approval',
+                ),
+            );
 
             return $locked->fresh();
         });
@@ -158,6 +175,18 @@ class FinanceCashRemittanceService
             $locked->status = $hasDifference ? 'discrepancy_open' : 'received';
             $locked->save();
             $this->audit->record($locked, 'receipt_confirmed', null, ['received_amount' => $receivedAmount, 'status' => $locked->status]);
+            $message = $hasDifference
+                ? 'La remise '.$locked->reference.' présente un écart et demande une résolution.'
+                : 'La réception de la remise '.$locked->reference.' a été confirmée par le DG.';
+            Notification::send(
+                User::query()->whereIn('id', array_filter([$locked->shop_manager_id, $locked->collector_id]))->get(),
+                new FinanceWorkflowNotification(
+                    $hasDifference ? 'Écart sur une remise' : 'Remise reçue',
+                    $message,
+                    route('finance.remittances.show', $locked->id),
+                    $hasDifference ? 'warning' : 'task_alt',
+                ),
+            );
 
             return $locked->fresh();
         });
@@ -199,6 +228,15 @@ class FinanceCashRemittanceService
                 'resolved_by' => $director->id, 'resolved_at' => now(),
             ]);
             $this->audit->record($locked, 'discrepancy_resolved', $before, $locked->fresh()->only(['status', 'resolution_note', 'resolved_by', 'resolved_at']), $note);
+            Notification::send(
+                User::query()->whereIn('id', array_filter([$locked->shop_manager_id, $locked->collector_id]))->get(),
+                new FinanceWorkflowNotification(
+                    'Écart de remise traité',
+                    'Le DG a clôturé l’écart de la remise '.$locked->reference.'.',
+                    route('finance.remittances.show', $locked->id),
+                    'task_alt',
+                ),
+            );
 
             return $locked->fresh();
         });
