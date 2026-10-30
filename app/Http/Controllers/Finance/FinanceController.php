@@ -53,9 +53,60 @@ class FinanceController extends Controller
                 $scope->whereIn('stock_location_id', $locationIds)
                     ->orWhereIn('remittance_id', FinanceCashRemittance::query()->select('id')->where('collector_id', $user->id));
             }));
-        $weekStart = now()->startOfWeek();
-        $weekEnd = now()->endOfWeek();
-        $weeklyMovements = (clone $movements)->whereBetween('occurred_at', [$weekStart, $weekEnd]);
+        $currentMonthStart = now()->startOfMonth();
+        $previousMonthStart = $currentMonthStart->copy()->subMonthNoOverflow();
+        $today = now()->startOfDay();
+        $trackedCustody = $canSeeCentral ? 'general_cash' : 'shop';
+        $cashFlowQuery = FinanceCashMovement::query()
+            ->where(fn ($query) => $query->where('to_custody', $trackedCustody)->orWhere('from_custody', $trackedCustody))
+            ->when(! $canSeeCentral, fn ($query) => $query->whereIn('stock_location_id', $locationIds));
+        $openingBalance = (int) (clone $cashFlowQuery)->where('occurred_at', '<', $previousMonthStart)
+            ->selectRaw('COALESCE(SUM(CASE WHEN to_custody = ? THEN amount ELSE 0 END), 0) - COALESCE(SUM(CASE WHEN from_custody = ? THEN amount ELSE 0 END), 0) as balance', [$trackedCustody, $trackedCustody])
+            ->value('balance');
+        $dailyCashChanges = (clone $cashFlowQuery)->whereBetween('occurred_at', [$previousMonthStart, $today->copy()->endOfDay()])
+            ->selectRaw('DATE(occurred_at) as movement_date, SUM(CASE WHEN to_custody = ? THEN amount ELSE 0 END) - SUM(CASE WHEN from_custody = ? THEN amount ELSE 0 END) as net_change', [$trackedCustody, $trackedCustody])
+            ->groupBy('movement_date')->orderBy('movement_date')->get()->keyBy('movement_date');
+        $previousDailyBalances = [];
+        $previousBalance = $openingBalance;
+        $previousMonthEnd = $currentMonthStart->copy()->subDay();
+        for ($day = $previousMonthStart->copy(); $day->lte($previousMonthEnd); $day->addDay()) {
+            $key = $day->toDateString();
+            $previousBalance += (int) ($dailyCashChanges->get($key)?->net_change ?? 0);
+            $previousDailyBalances[(int) $day->format('j')] = $previousBalance;
+        }
+        $currentDailyBalances = [];
+        $currentBalance = $previousBalance;
+        for ($day = $currentMonthStart->copy(); $day->lte($today); $day->addDay()) {
+            $key = $day->toDateString();
+            $currentBalance += (int) ($dailyCashChanges->get($key)?->net_change ?? 0);
+            $currentDailyBalances[(int) $day->format('j')] = $currentBalance;
+        }
+        $chartDays = (int) $currentMonthStart->daysInMonth;
+        $lastPreviousDay = (int) $previousMonthEnd->format('j');
+        $cashTrend = [
+            'labels' => range(1, $chartDays),
+            'current' => array_map(fn ($day) => $currentDailyBalances[$day] ?? null, range(1, $chartDays)),
+            'previous' => array_map(fn ($day) => $previousDailyBalances[min($day, $lastPreviousDay)] ?? $openingBalance, range(1, $chartDays)),
+            'current_month' => $currentMonthStart->translatedFormat('F Y'),
+            'previous_month' => $previousMonthStart->translatedFormat('F Y'),
+            'current_month_net' => $currentBalance - $previousBalance,
+            'previous_month_net' => (int) array_sum($dailyCashChanges->filter(fn ($row, $date) => $date >= $previousMonthStart->toDateString() && $date <= $previousMonthEnd->toDateString())->pluck('net_change')->all()),
+            'custody_label' => $canSeeCentral ? 'Caisse générale' : 'Espèces de ta boutique',
+        ];
+        $monthlyCashTotals = function ($start, $end) use ($cashFlowQuery, $trackedCustody): array {
+            $totals = (clone $cashFlowQuery)->whereBetween('occurred_at', [$start, $end])
+                ->selectRaw('COALESCE(SUM(CASE WHEN to_custody = ? THEN amount ELSE 0 END), 0) as cash_in, COALESCE(SUM(CASE WHEN from_custody = ? THEN amount ELSE 0 END), 0) as cash_out', [$trackedCustody, $trackedCustody])
+                ->first();
+
+            return ['in' => (int) $totals->cash_in, 'out' => (int) $totals->cash_out];
+        };
+        $previousCashTotals = $monthlyCashTotals($previousMonthStart, $previousMonthEnd->copy()->endOfDay());
+        $currentCashTotals = $monthlyCashTotals($currentMonthStart, $today->copy()->endOfDay());
+        $cashFlowComparison = [
+            'labels' => [$previousMonthStart->translatedFormat('M Y'), $currentMonthStart->translatedFormat('M Y').' · en cours'],
+            'in' => [$previousCashTotals['in'], $currentCashTotals['in']],
+            'out' => [$previousCashTotals['out'], $currentCashTotals['out']],
+        ];
         $supplierInvoices = FinanceSupplierInvoice::query()->where('status', 'approved')
             ->whereIn('payment_status', ['unpaid', 'partial']);
         $supplierPayables = (clone $supplierInvoices)->sum(\Illuminate\Support\Facades\DB::raw('amount - paid_amount'));
@@ -72,14 +123,8 @@ class FinanceController extends Controller
             'supplierPayables' => $supplierPayables,
             'overdueSupplierInvoices' => $overdueSupplierInvoices,
             'recentMovements' => $movements->latest('occurred_at')->paginate(10, ['*'], 'movements_page')->withQueryString(),
-            'weeklySummary' => [
-                'start' => $weekStart,
-                'end' => $weekEnd,
-                'sales_cash' => (clone $weeklyMovements)->where('movement_type', 'sale_cash_received')->sum('amount'),
-                'expenses_paid' => (clone $weeklyMovements)->where('movement_type', 'expense_payment')->sum('amount'),
-                'remitted' => (clone $weeklyMovements)->where('movement_type', 'remittance_handover')->sum('amount'),
-                'received' => (clone $weeklyMovements)->whereIn('movement_type', ['central_cash_received', 'bank_deposit_confirmed'])->sum('amount'),
-            ],
+            'cashTrend' => $cashTrend,
+            'cashFlowComparison' => $cashFlowComparison,
             'canSeeAll' => $canSeeAll,
             'canSeeCentral' => $canSeeCentral,
             'hasOpeningBalance' => \Illuminate\Support\Facades\DB::table('finance_general_openings')->exists(),

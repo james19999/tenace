@@ -30,7 +30,7 @@ class FinanceAuditController extends Controller
             ->latest('created_at');
 
         return view('finance.audit.index', [
-            'events' => $query->paginate(30)->withQueryString(),
+            'events' => $query->paginate(7)->withQueryString(),
             'filters' => $filters,
             'users' => User::query()->where('active', true)->orderBy('name')->get(['id', 'name']),
             'actions' => FinanceAuditEvent::query()->select('action')->distinct()->orderBy('action')->pluck('action'),
