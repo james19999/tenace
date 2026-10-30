@@ -14,6 +14,7 @@ class ProductAuditReport extends Component
     protected $paginationTheme = 'bootstrap';
 
     public $filterType = 'day';
+    public $saleChannel = 'shop';
 
     public $selectedDay;
     public $selectedWeek;
@@ -38,6 +39,7 @@ class ProductAuditReport extends Component
         if (
             in_array($propertyName, [
                 'filterType',
+                'saleChannel',
                 'selectedDay',
                 'selectedWeek',
                 'selectedMonth',
@@ -54,7 +56,8 @@ class ProductAuditReport extends Component
         $query = DB::table('products')
             ->join('order_items', 'products.id', '=', 'order_items.product_id')
             ->join('orders', 'orders.id', '=', 'order_items.order_id')
-            ->where('orders.status', 'delivered');
+            ->where('orders.status', 'delivered')
+            ->where('orders.is_wholesale', $this->saleChannel === 'wholesale');
 
         switch ($this->filterType) {
 
@@ -112,7 +115,9 @@ class ProductAuditReport extends Component
 
     protected function deliveredOrdersQuery()
     {
-        $query = Order::query()->where('status', 'delivered');
+        $query = Order::query()
+            ->where('status', 'delivered')
+            ->where('is_wholesale', $this->saleChannel === 'wholesale');
 
         switch ($this->filterType) {
             case 'day':

@@ -54,7 +54,7 @@ class CheckController extends Controller
     public function brouillons () {
         $auth = Auth::user();
 
-        if (in_array($auth->user_type, ['ADMINUSER', 'MNG', 'SCR', 'VDS', 'CSA', User::ROLE_COMMERCIAL_MANAGER], true)) {
+        if (in_array($auth->user_type, ['ADMINUSER', 'MNG', 'SCR', 'VDS', 'CSA', User::ROLE_CALL_CENTER, User::ROLE_COMMERCIAL_MANAGER], true)) {
             return 1;
         }
 
@@ -310,7 +310,7 @@ class CheckController extends Controller
                           $orderItem->save();
                       }
 
-                        if (in_array(Auth::user()->user_type, ['ADMINUSER', 'MNG', 'SCR', 'VDS', 'CSA', User::ROLE_COMMERCIAL_MANAGER], true)) {
+                        if (in_array(Auth::user()->user_type, ['ADMINUSER', 'MNG', 'SCR', 'VDS', 'CSA', User::ROLE_CALL_CENTER, User::ROLE_COMMERCIAL_MANAGER], true)) {
                               if ($request->type=="PU") {
                                  foreach ($users as $key => $user) {
                                      try {
@@ -395,7 +395,7 @@ class CheckController extends Controller
 
 
 
-                        if (in_array(Auth::user()->user_type, ['ADMINUSER', 'MNG', 'SCR', 'VDS', 'CSA', User::ROLE_COMMERCIAL_MANAGER], true)) {
+                        if (in_array(Auth::user()->user_type, ['ADMINUSER', 'MNG', 'SCR', 'VDS', 'CSA', User::ROLE_CALL_CENTER, User::ROLE_COMMERCIAL_MANAGER], true)) {
                               if ($request->type=="PU") {
                                 # code...
 

@@ -332,9 +332,9 @@ Route::middleware(['auth'])->group(function () {
 
     // -------------------------------------------------------------------------
     // 5. PRODUITS (LECTURE), COMMANDES, HISTORIQUES, CLASSEMENT
-    //    (Accessible à ADMINUSER, MNG, SCR, VDS, CSA, PT)
+    //    (Accessible à ADMINUSER, MNG, SCR, VDS, CSA, CALLCENTER, PT et RCM)
     // -------------------------------------------------------------------------
-    Route::middleware(['role:ADMINUSER,MNG,SCR,VDS,PT,CSA,RCM'])->group(function () {
+    Route::middleware(['role:ADMINUSER,MNG,SCR,VDS,PT,CSA,CALLCENTER,RCM'])->group(function () {
         Route::get('shipping/countries/{country}/cities', [CheckController::class, 'shippingCities'])->where('country', '[A-Za-z]{2}')->name('shipping.cities');
         Route::get('product/list', ProductList::class)->name('product');
         Route::get('product/cart', ProductCart::class)->name('productcart');
@@ -353,10 +353,10 @@ Route::middleware(['auth'])->group(function () {
         Route::put('refresh/specific/order/{id}', [OrderController::class, 'refresh_specific_order'])->middleware('role:ADMINUSER,MNG,SCR,VDS,PT,CSA')->name('refresh-specific-order');
         Route::get('order/check/type/{id}', [OrderController::class, 'check_type'])->middleware('role:ADMINUSER,MNG,SCR,VDS,PT,CSA')->name('check-type');
         Route::get('/orders/{order}/invoice', [OrderController::class, 'invoice'])->middleware('role:ADMINUSER,MNG,SCR,VDS,PT,CSA,RCM')->name('orders.invoice');
-        Route::put('change/order/status/{id}', [OrderController::class, 'change_order_status'])->name('changestatus');
-        Route::put('refresh/order/{id}', [OrderController::class, 'refresh_order'])->name('refreshorder');
-        Route::put('edit/hours/{id}', [OrderController::class, 'edit_hours_order'])->name('edit-hours');
-        Route::delete('delete/{id}', [OrderController::class, 'delete'])->name('deleteorder');
+        Route::put('change/order/status/{id}', [OrderController::class, 'change_order_status'])->middleware('role:ADMINUSER,MNG,SCR,VDS,PT,CSA,CALLCENTER,RCM')->name('changestatus');
+        Route::put('refresh/order/{id}', [OrderController::class, 'refresh_order'])->middleware('role:ADMINUSER,MNG,SCR,VDS,PT,CSA,RCM')->name('refreshorder');
+        Route::put('edit/hours/{id}', [OrderController::class, 'edit_hours_order'])->middleware('role:ADMINUSER,MNG,SCR,VDS,PT,CSA,CALLCENTER,RCM')->name('edit-hours');
+        Route::delete('delete/{id}', [OrderController::class, 'delete'])->middleware('role:ADMINUSER,MNG,SCR,VDS,PT,CSA,RCM')->name('deleteorder');
 
         Route::get('/history', [DashboarController::class, 'history'])->middleware('role:ADMINUSER,MNG,SCR,VDS,PT,CSA')->name('history');
         Route::get('/getProductOrders', [DashboarController::class, 'getProductOrders'])->middleware('role:ADMINUSER,MNG,SCR,VDS,PT,CSA')->name('getProductOrders');

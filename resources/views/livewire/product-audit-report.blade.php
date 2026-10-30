@@ -1,5 +1,6 @@
 <div class="product-audit-page">
     @php
+        $salesChannelLabel = $saleChannel === 'wholesale' ? 'Ventes grossistes' : 'Ventes boutiques';
         $periodLabel = match ($filterType) {
             'day' => $selectedDay ? \Illuminate\Support\Carbon::parse($selectedDay)->format('d/m/Y') : 'Jour sélectionné',
             'week' => $selectedWeek ? 'Semaine ' . substr($selectedWeek, -2) . ' · ' . substr($selectedWeek, 0, 4) : 'Semaine sélectionnée',
@@ -23,7 +24,7 @@
         .audit-heading-icon{display:grid;place-items:center;width:36px;height:36px;flex:0 0 36px;border-radius:11px;background:#f8eded;color:var(--audit-red)}
         .audit-card-heading h2{margin:0;font-size:16px;font-weight:800}.audit-card-heading p{margin:3px 0 0;color:var(--audit-muted);font-size:12px}
         .audit-filter-body{padding:17px 19px}
-        .audit-filters{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));align-items:end;gap:14px}
+        .audit-filters{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));align-items:end;gap:14px}
         .audit-field{min-width:0}.audit-field label{display:block;margin:0 0 7px;color:#4d5260;font-size:12px;font-weight:750}
         .audit-field .form-control{height:43px;border:1px solid #dfe2e8;border-radius:9px;box-shadow:none;font-size:14px}
         .audit-field .form-control:focus{border-color:#bd7777;box-shadow:0 0 0 3px rgba(134,27,27,.09)}
@@ -108,7 +109,7 @@
             <div>
                 <p class="audit-eyebrow">Pilotage commercial</p>
                 <h1>Audit des ventes produits</h1>
-                <p>Analyse des quantités vendues et des montants par produit sur la période choisie.</p>
+                <p>Analyse séparée des ventes boutiques ou grossistes sur la période choisie.</p>
             </div>
             <button type="button" onclick="window.print()" class="audit-print no-print"><span class="material-icons" aria-hidden="true">print</span>Imprimer le rapport</button>
         </div>
@@ -120,6 +121,13 @@
             </div>
             <div class="audit-filter-body">
                 <div class="audit-filters">
+                    <div class="audit-field">
+                        <label for="audit-sales-channel">Canal de vente</label>
+                        <select id="audit-sales-channel" wire:model="saleChannel" class="form-control">
+                            <option value="shop">Ventes boutiques</option>
+                            <option value="wholesale">Ventes grossistes</option>
+                        </select>
+                    </div>
                     <div class="audit-field">
                         <label for="audit-filter-type">Type de période</label>
                         <select id="audit-filter-type" wire:model="filterType" class="form-control">
@@ -148,9 +156,10 @@
                 <div>
                     <p class="audit-print-brand">TENACOS · GESTION COMMERCIALE</p>
                     <h1>Rapport d’audit des ventes</h1>
-                    <p class="audit-print-description">Commandes livrées, regroupées par produit.</p>
+                    <p class="audit-print-description">{{ $salesChannelLabel }} · commandes livrées, regroupées par produit.</p>
                 </div>
                 <div class="audit-print-meta">
+                    <span><strong>Canal :</strong> {{ $salesChannelLabel }}</span>
                     <span><strong>Période :</strong> {{ $periodLabel }}</span>
                     <span>Édité le {{ now()->format('d/m/Y à H:i') }} · {{ auth()->user()?->name ?? 'Équipe TENACOS' }}</span>
                 </div>
@@ -188,7 +197,7 @@
 
             <section class="audit-card audit-results-card" aria-labelledby="audit-results-title">
                 <div class="audit-results-heading">
-                    <div><h2 id="audit-results-title">Détail des ventes</h2><p>Commandes livrées · {{ $periodLabel }}</p></div>
+                    <div><h2 id="audit-results-title">{{ $salesChannelLabel }}</h2><p>Commandes livrées · {{ $periodLabel }}</p></div>
                     <span class="audit-results-count">{{ $paginatedReports->total() }} produit(s)</span>
                 </div>
                 <div class="audit-table-wrap audit-screen-only">

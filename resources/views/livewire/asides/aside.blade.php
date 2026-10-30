@@ -718,6 +718,9 @@
                 </li>
             @elseif (Auth::user()->user_type == 'CALLCENTER')
                 <li><a href="{{ route('dg-appointments.index') }}" class="{{ $active('dg-appointments.*') }}"><span class="icon material-icons">event</span><span class="text">Rendez-vous DG</span></a></li>
+                <li><a href="{{ route('product') }}" class="{{ $active('product') }}"><span class="icon material-icons">store</span><span class="text">Produits</span></a></li>
+                <li><a href="{{ route('productcart') }}" class="{{ $active('productcart') }}"><span class="icon material-icons">add_shopping_cart</span><span class="text">Panier <span class="badge badge-pill badge-danger js-cart-count">{{ $cartCount }}</span></span></a></li>
+                <li><a href="{{ route('order') }}" class="{{ $active('order', 'ordershow') }}"><span class="icon material-icons">shopping_cart</span><span class="text">Commandes</span></a></li>
                 <li>
                     <a href="{{ route('costumer.follow-up') }}" class="{{ $active('costumer.follow-up') }}">
                         <span class="icon material-icons">support_agent</span>
