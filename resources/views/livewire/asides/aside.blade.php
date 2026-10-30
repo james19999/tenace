@@ -25,8 +25,19 @@
         <ul>
 
             @if (in_array(Auth::user()->user_type, ['SCR', 'VDS', 'CSA', 'CALLCENTER', 'LVS', 'RCM'], true))
-                <li><a href="{{ route('finance.expenses.index') }}" class="{{ $active('finance.expenses.*') }}"><span class="icon material-icons">request_quote</span><span class="text">Demandes de dépenses @if(($financeBadges['expenses'] ?? 0) > 0)<span class="badge badge-pill badge-danger">{{ $financeBadges['expenses'] }}</span>@endif</span></a></li>
-                <li><a href="{{ route('finance.remittances.index') }}" class="{{ $active('finance.remittances.*') }}"><span class="icon material-icons">payments</span><span class="text">Remises à collecter @if(($financeBadges['remittances'] ?? 0) > 0)<span class="badge badge-pill badge-danger">{{ $financeBadges['remittances'] > 99 ? '99+' : $financeBadges['remittances'] }}</span>@endif</span></a></li>
+                <li>
+                    <a href="#financeOperationalCollapse" class="{{ $active('finance.*') }}" data-toggle="collapse" aria-expanded="{{ request()->routeIs('finance.*') ? 'true' : 'false' }}">
+                        <span class="caret material-icons">arrow_right</span>
+                        <span class="icon material-icons">money</span>
+                        <span class="text">Comptabilité @if(($financeBadges['total'] ?? 0) > 0)<span class="badge badge-pill badge-danger">{{ $financeBadges['total'] > 99 ? '99+' : $financeBadges['total'] }}</span>@endif</span>
+                    </a>
+                    <ul class="collapse {{ $active('finance.*') ? 'show' : '' }}" id="financeOperationalCollapse">
+                        <li><a href="{{ route('finance.dashboard') }}" class="{{ $active('finance.dashboard') }}"><span class="icon material-icons">remove</span><span class="text">Trésorerie @if(($financeBadges['treasury'] ?? 0) > 0)<span class="badge badge-pill badge-danger">{{ $financeBadges['treasury'] }}</span>@endif</span></a></li>
+                        <li><a href="{{ route('finance.remittances.index') }}" class="{{ $active('finance.remittances.*') }}"><span class="icon material-icons">remove</span><span class="text">Remises boutiques @if(($financeBadges['remittances'] ?? 0) > 0)<span class="badge badge-pill badge-danger">{{ $financeBadges['remittances'] > 99 ? '99+' : $financeBadges['remittances'] }}</span>@endif</span></a></li>
+                        <li><a href="{{ route('finance.expenses.index') }}" class="{{ $active('finance.expenses.*') }}"><span class="icon material-icons">remove</span><span class="text">Demandes de dépenses @if(($financeBadges['expenses'] ?? 0) > 0)<span class="badge badge-pill badge-danger">{{ $financeBadges['expenses'] }}</span>@endif</span></a></li>
+                        <li><a href="{{ route('finance.suppliers.index') }}" class="{{ $active('finance.suppliers.*') }}"><span class="icon material-icons">remove</span><span class="text">Factures fournisseurs @if(($financeBadges['suppliers'] ?? 0) > 0)<span class="badge badge-pill badge-danger">{{ $financeBadges['suppliers'] }}</span>@endif</span></a></li>
+                    </ul>
+                </li>
             @endif
 
             @if (Auth::user()->user_type == 'LVS' && Auth::user()->country_code)
@@ -46,31 +57,19 @@
                     </a>
                 </li>
                 <li>
-                    <a href="#adminAccountingCollapse" class="{{ $active('finance.*', 'type-expensives', 'expensives', 'list-percent', 'virementverify') }}" data-toggle="collapse">
+                    <a href="#adminAccountingCollapse" class="{{ $active('finance.*', 'list-percent', 'virementverify') }}" data-toggle="collapse">
                         <span class="caret material-icons">arrow_right</span>
                         <span class="icon material-icons">money</span>
                         <span class="text">Comptabilité @if(($financeBadges['total'] ?? 0) > 0)<span class="badge badge-pill badge-danger">{{ $financeBadges['total'] > 99 ? '99+' : $financeBadges['total'] }}</span>@endif</span>
                     </a>
 
-                    <ul class="collapse {{ $active('finance.*', 'type-expensives', 'expensives', 'list-percent', 'virementverify') ? 'show' : '' }}" id="adminAccountingCollapse">
+                    <ul class="collapse {{ $active('finance.*', 'list-percent', 'virementverify') ? 'show' : '' }}" id="adminAccountingCollapse">
                         <li><a href="{{ route('finance.dashboard') }}" class="{{ $active('finance.dashboard') }}"><span class="icon material-icons">remove</span><span class="text">Trésorerie @if(($financeBadges['treasury'] ?? 0) > 0)<span class="badge badge-pill badge-danger">{{ $financeBadges['treasury'] }}</span>@endif</span></a></li>
                         <li><a href="{{ route('finance.remittances.index') }}" class="{{ $active('finance.remittances.*') }}"><span class="icon material-icons">remove</span><span class="text">Remises boutiques @if(($financeBadges['remittances'] ?? 0) > 0)<span class="badge badge-pill badge-danger">{{ $financeBadges['remittances'] }}</span>@endif</span></a></li>
                         <li><a href="{{ route('finance.expenses.index') }}" class="{{ $active('finance.expenses.*') }}"><span class="icon material-icons">remove</span><span class="text">Dépenses · validations @if(($financeBadges['expenses'] ?? 0) > 0)<span class="badge badge-pill badge-danger">{{ $financeBadges['expenses'] }}</span>@endif</span></a></li>
                         <li><a href="{{ route('finance.suppliers.index') }}" class="{{ $active('finance.suppliers.*') }}"><span class="icon material-icons">remove</span><span class="text">Factures fournisseurs @if(($financeBadges['suppliers'] ?? 0) > 0)<span class="badge badge-pill badge-danger">{{ $financeBadges['suppliers'] }}</span>@endif</span></a></li>
                         <li><a href="{{ route('finance.reports.index') }}" class="{{ $active('finance.reports.*') }}"><span class="icon material-icons">remove</span><span class="text">Rapports et exports</span></a></li>
                         <li><a href="{{ route('finance.audit.index') }}" class="{{ $active('finance.audit.*') }}"><span class="icon material-icons">remove</span><span class="text">Journal d’audit</span></a></li>
-                        <li>
-                            <a href="{{ route('type-expensives') }}" class="{{ $active('type-expensives') }}">
-                                <span class="icon material-icons">remove</span>
-                                <span class="text">Type de dépense</span>
-                            </a>
-                        </li>
-                        <li>
-                            <a href="{{ route('expensives') }}" class="{{ $active('expensives') }}">
-                                <span class="icon material-icons">remove</span>
-                                <span class="text">Dépense</span>
-                            </a>
-                        </li>
                         <li>
                             <a href="{{ route('list-percent') }}" class="{{ $active('list-percent') }}">
                                 <span class="icon material-icons">remove</span>
@@ -463,6 +462,19 @@
                         <span class="text">Dashboard</span>
                     </a>
                 </li>
+                <li>
+                    <a href="#mngComptaCollapse" class="{{ $active('finance.*') }}" data-toggle="collapse" aria-expanded="{{ request()->routeIs('finance.*') ? 'true' : 'false' }}">
+                        <span class="caret material-icons">arrow_right</span>
+                        <span class="icon material-icons">money</span>
+                        <span class="text">Comptabilité @if(($financeBadges['total'] ?? 0) > 0)<span class="badge badge-pill badge-danger">{{ $financeBadges['total'] > 99 ? '99+' : $financeBadges['total'] }}</span>@endif</span>
+                    </a>
+                    <ul class="collapse {{ $active('finance.*') ? 'show' : '' }}" id="mngComptaCollapse">
+                        <li><a href="{{ route('finance.dashboard') }}" class="{{ $active('finance.dashboard') }}"><span class="icon material-icons">remove</span><span class="text">Trésorerie @if(($financeBadges['treasury'] ?? 0) > 0)<span class="badge badge-pill badge-danger">{{ $financeBadges['treasury'] }}</span>@endif</span></a></li>
+                        <li><a href="{{ route('finance.remittances.index') }}" class="{{ $active('finance.remittances.*') }}"><span class="icon material-icons">remove</span><span class="text">Remises boutiques @if(($financeBadges['remittances'] ?? 0) > 0)<span class="badge badge-pill badge-danger">{{ $financeBadges['remittances'] }}</span>@endif</span></a></li>
+                        <li><a href="{{ route('finance.expenses.index') }}" class="{{ $active('finance.expenses.*') }}"><span class="icon material-icons">remove</span><span class="text">Demandes de dépenses @if(($financeBadges['expenses'] ?? 0) > 0)<span class="badge badge-pill badge-danger">{{ $financeBadges['expenses'] }}</span>@endif</span></a></li>
+                        <li><a href="{{ route('finance.suppliers.index') }}" class="{{ $active('finance.suppliers.*') }}"><span class="icon material-icons">remove</span><span class="text">Factures fournisseurs @if(($financeBadges['suppliers'] ?? 0) > 0)<span class="badge badge-pill badge-danger">{{ $financeBadges['suppliers'] }}</span>@endif</span></a></li>
+                    </ul>
+                </li>
                 <li><a href="{{ route('dg-appointments.index') }}" class="{{ $active('dg-appointments.*') }}"><span class="icon material-icons">event</span><span class="text">Rendez-vous DG</span></a></li>
                 <li>
                     <a href="{{ route('partner-ordering.links') }}" class="{{ $active('partner-ordering.*') }}">
@@ -592,31 +604,6 @@
                         </li>
                     </ul>
                 </li>
-                <li>
-                    <a href="#mngComptaCollapse" class="{{ $active('finance.*', 'type-expensives', 'expensives') }}" data-toggle="collapse">
-                        <span class="caret material-icons">arrow_right</span>
-                        <span class="icon material-icons">money</span>
-                        <span class="text">Comptabilité @if(($financeBadges['total'] ?? 0) > 0)<span class="badge badge-pill badge-danger">{{ $financeBadges['total'] > 99 ? '99+' : $financeBadges['total'] }}</span>@endif</span>
-                    </a>
-                    <ul class="collapse {{ $active('finance.*', 'type-expensives', 'expensives') ? 'show' : '' }}" id="mngComptaCollapse">
-                        <li><a href="{{ route('finance.dashboard') }}" class="{{ $active('finance.dashboard') }}"><span class="icon material-icons">remove</span><span class="text">Trésorerie @if(($financeBadges['treasury'] ?? 0) > 0)<span class="badge badge-pill badge-danger">{{ $financeBadges['treasury'] }}</span>@endif</span></a></li>
-                        <li><a href="{{ route('finance.remittances.index') }}" class="{{ $active('finance.remittances.*') }}"><span class="icon material-icons">remove</span><span class="text">Remises boutiques @if(($financeBadges['remittances'] ?? 0) > 0)<span class="badge badge-pill badge-danger">{{ $financeBadges['remittances'] }}</span>@endif</span></a></li>
-                        <li><a href="{{ route('finance.expenses.index') }}" class="{{ $active('finance.expenses.*') }}"><span class="icon material-icons">remove</span><span class="text">Demandes de dépenses @if(($financeBadges['expenses'] ?? 0) > 0)<span class="badge badge-pill badge-danger">{{ $financeBadges['expenses'] }}</span>@endif</span></a></li>
-                        <li><a href="{{ route('finance.suppliers.index') }}" class="{{ $active('finance.suppliers.*') }}"><span class="icon material-icons">remove</span><span class="text">Factures fournisseurs @if(($financeBadges['suppliers'] ?? 0) > 0)<span class="badge badge-pill badge-danger">{{ $financeBadges['suppliers'] }}</span>@endif</span></a></li>
-                        <li>
-                            <a href="{{ route('type-expensives') }}" class="{{ $active('type-expensives') }}">
-                                <span class="icon material-icons">remove</span>
-                                <span class="text">Type de dépense</span>
-                            </a>
-                        </li>
-                        <li>
-                            <a href="{{ route('expensives') }}" class="{{ $active('expensives') }}">
-                                <span class="icon material-icons">remove</span>
-                                <span class="text">Dépense</span>
-                            </a>
-                        </li>
-                    </ul>
-                </li>
             @elseif (Auth::user()->user_type == 'COMPTABLE')
                 <li>
                     <a href="{{ route('stock-control.balances') }}" class="{{ $active('stock-control.balances') }}">
@@ -631,20 +618,18 @@
                     </a>
                 </li>
                 <li>
-                    <a href="#accountantAccountingCollapse" class="{{ $active('finance.*', 'type-expensives', 'expensives') }}" data-toggle="collapse" aria-expanded="{{ request()->routeIs('finance.*', 'type-expensives', 'expensives') ? 'true' : 'false' }}">
+                    <a href="#accountantAccountingCollapse" class="{{ $active('finance.*') }}" data-toggle="collapse" aria-expanded="{{ request()->routeIs('finance.*') ? 'true' : 'false' }}">
                         <span class="caret material-icons">arrow_right</span>
                         <span class="icon material-icons">money</span>
                         <span class="text">Comptabilité @if(($financeBadges['total'] ?? 0) > 0)<span class="badge badge-pill badge-danger">{{ $financeBadges['total'] > 99 ? '99+' : $financeBadges['total'] }}</span>@endif</span>
                     </a>
-                    <ul class="collapse {{ $active('finance.*', 'type-expensives', 'expensives') ? 'show' : '' }}" id="accountantAccountingCollapse">
+                    <ul class="collapse {{ $active('finance.*') ? 'show' : '' }}" id="accountantAccountingCollapse">
                         <li><a href="{{ route('finance.dashboard') }}" class="{{ $active('finance.dashboard') }}"><span class="icon material-icons">remove</span><span class="text">Trésorerie @if(($financeBadges['treasury'] ?? 0) > 0)<span class="badge badge-pill badge-danger">{{ $financeBadges['treasury'] }}</span>@endif</span></a></li>
                         <li><a href="{{ route('finance.remittances.index') }}" class="{{ $active('finance.remittances.*') }}"><span class="icon material-icons">remove</span><span class="text">Remises boutiques @if(($financeBadges['remittances'] ?? 0) > 0)<span class="badge badge-pill badge-danger">{{ $financeBadges['remittances'] }}</span>@endif</span></a></li>
                         <li><a href="{{ route('finance.expenses.index') }}" class="{{ $active('finance.expenses.*') }}"><span class="icon material-icons">remove</span><span class="text">Dépenses à contrôler @if(($financeBadges['expenses'] ?? 0) > 0)<span class="badge badge-pill badge-danger">{{ $financeBadges['expenses'] }}</span>@endif</span></a></li>
                         <li><a href="{{ route('finance.suppliers.index') }}" class="{{ $active('finance.suppliers.*') }}"><span class="icon material-icons">remove</span><span class="text">Dettes fournisseurs @if(($financeBadges['suppliers'] ?? 0) > 0)<span class="badge badge-pill badge-danger">{{ $financeBadges['suppliers'] }}</span>@endif</span></a></li>
                         <li><a href="{{ route('finance.reports.index') }}" class="{{ $active('finance.reports.*') }}"><span class="icon material-icons">remove</span><span class="text">Rapports et exports</span></a></li>
                         <li><a href="{{ route('finance.audit.index') }}" class="{{ $active('finance.audit.*') }}"><span class="icon material-icons">remove</span><span class="text">Journal d’audit</span></a></li>
-                        <li><a href="{{ route('type-expensives') }}" class="{{ $active('type-expensives') }}"><span class="icon material-icons">remove</span><span class="text">Type de dépense</span></a></li>
-                        <li><a href="{{ route('expensives') }}" class="{{ $active('expensives') }}"><span class="icon material-icons">remove</span><span class="text">Dépenses</span></a></li>
                     </ul>
                 </li>
             @elseif (Auth::user()->user_type == 'SCR')

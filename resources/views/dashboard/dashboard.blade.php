@@ -196,35 +196,6 @@
                 </div>
             </div>
             <div class="col-12 col-sm-6 col-md-6 col-lg-3 dashboard-kpi-other">
-                <div class="card shadow">
-                    <div class="card-body">
-                        <div class="row">
-                            <div class="col">
-                                <h5 class="text-uppercase text-muted mb-0 card-title">Total des dépenses</h5><span
-                                    style="font-size: 130%" class="h1 font-weight-bold mb-0">{{ $expensive }} XOF</span>
-                            </div>
-                            <div class="col-auto col">
-                                <div>
-                                    <button class="btn btn-transparent-primary btn-lg btn-circle">
-
-                                        <img src="{{ asset('assets/images/dep.png') }}" width="40" height="40"
-                                            alt="" srcset="">
-
-                                    </button>
-                                </div>
-                            </div>
-                        </div>
-                        {{-- <p class="mt-3 mb-0 text-sm">
-
-                    <span class="text-nowrap ">since last month</span>
-                    <span class="text-success float-right ml-2">
-                        <i class="fa fa-arrow-up"></i>
-                        3.48%</span>
-                </p> --}}
-                    </div>
-                </div>
-            </div>
-            <div class="col-12 col-sm-6 col-md-6 col-lg-3 dashboard-kpi-other">
                 <a href="{{ route('rupture') }}">
 
                     <div class="card shadow">
@@ -394,29 +365,6 @@
                                     <div>
                                         <button class="btn btn-transparent-primary btn-lg btn-circle">
                                             <img src="{{ asset('assets/images/rup.png') }}" width="40" height="40" alt="">
-                                        </button>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                </a>
-            </div>
-
-            <div class="col-12 col-sm-6 col-md-6 col-lg-3">
-                <a href="{{ route('expensives') }}">
-                    <div class="card shadow">
-                        <div class="card-body">
-                            <div class="row">
-                                <div class="col">
-                                    <h5 class="text-uppercase text-muted mb-0 card-title">Total des dépenses</h5><span
-                                        style="font-size: 130%; color: black"
-                                        class="h1 font-weight-bold mb-0">{{ $expensive }} XOF</span>
-                                </div>
-                                <div class="col-auto col">
-                                    <div>
-                                        <button class="btn btn-transparent-primary btn-lg btn-circle">
-                                            <img src="{{ asset('assets/images/dep.png') }}" width="40" height="40" alt="">
                                         </button>
                                     </div>
                                 </div>

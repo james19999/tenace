@@ -340,18 +340,22 @@ class FinanceController extends Controller
     public function createExpense(Request $request): View
     {
         $user = $request->user();
+        $locations = StockLocation::query()->where('type', 'shop')->where('is_active', true)
+            ->when(! $user->isAdmin(), fn ($query) => $query->where('responsible_user_id', $user->id))
+            ->orderBy('name')->get(['id', 'name']);
+        abort_if($user->isManager() && $locations->isEmpty(), 403, 'Aucune boutique ne t’est affectée pour demander une dépense.');
+
         return view('finance.expenses.create', [
             'categories' => TypeExpensive::query()->orderBy('name')->get(),
-            'locations' => StockLocation::query()->where('type', 'shop')->where('is_active', true)
-                ->when(! $user->isAdmin(), fn ($query) => $query->where('responsible_user_id', $user->id))
-                ->orderBy('name')->get(['id', 'name']),
+            'locations' => $locations,
+            'isShopManager' => $user->isManager(),
         ]);
     }
 
     public function storeExpense(Request $request, FinanceExpenseWorkflowService $service): RedirectResponse
     {
         $data = $request->validate([
-            'stock_location_id' => ['nullable', 'integer', 'exists:stock_locations,id'],
+            'stock_location_id' => [$request->user()->isManager() ? 'required' : 'nullable', 'integer', 'exists:stock_locations,id'],
             'category_id' => ['nullable', 'integer', 'exists:type_expensives,id', 'required_without:category_name'],
             'category_name' => ['nullable', 'string', 'max:120', 'required_without:category_id'],
             'description' => ['required', 'string', 'max:5000'],

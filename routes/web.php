@@ -445,7 +445,7 @@ Route::middleware(['auth'])->group(function () {
 
     Route::middleware(['role:ADMINUSER,MNG,COMPTABLE'])->group(function () {
         Route::get('type/expensives', [TypeExpensiveController::class, 'index'])->name('type-expensives');
-        Route::get('/expensives', [ExpensiveController::class, 'index'])->name('expensives');
+        Route::get('/expensives', fn () => redirect()->route('finance.expenses.index'))->name('expensives');
         Route::get('erport/expensive/repport/expensives', [ExpensiveController::class, 'repport'])->name('repport-expensives');
     });
 

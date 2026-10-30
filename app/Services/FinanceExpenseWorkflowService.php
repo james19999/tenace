@@ -27,6 +27,9 @@ class FinanceExpenseWorkflowService
 
     public function submit(array $data, User $requester): FinanceExpenseRequest
     {
+        if ($requester->isManager() && empty($data['stock_location_id'])) {
+            throw ValidationException::withMessages(['stock_location_id' => 'Une demande du responsable de boutique doit être imputée à sa boutique.']);
+        }
         if (empty($data['justification_path']) && ! trim((string) ($data['justification_note'] ?? ''))) {
             throw ValidationException::withMessages(['justification_note' => 'Ajoute un justificatif ou explique pourquoi il n’est pas disponible.']);
         }
@@ -38,12 +41,14 @@ class FinanceExpenseWorkflowService
         }
 
         return DB::transaction(function () use ($data, $requester): FinanceExpenseRequest {
-            $category = ! empty($data['category_id']) ? TypeExpensive::query()->findOrFail($data['category_id']) : null;
+            $category = ! empty($data['category_id'])
+                ? TypeExpensive::query()->findOrFail($data['category_id'])
+                : TypeExpensive::query()->firstOrCreate(['name' => trim((string) $data['category_name'])]);
             $expense = FinanceExpenseRequest::query()->create([
                 'reference' => 'TMP-'.Str::uuid(),
                 'stock_location_id' => $data['stock_location_id'] ?? null,
-                'category_id' => $category?->id,
-                'category_name' => $category?->name ?? $data['category_name'],
+                'category_id' => $category->id,
+                'category_name' => $category->name,
                 'description' => $data['description'],
                 'amount' => $data['amount'],
                 'beneficiary' => $data['beneficiary'],
