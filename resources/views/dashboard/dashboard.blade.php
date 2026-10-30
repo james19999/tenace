@@ -500,79 +500,86 @@
 
         @if (Auth::user()->user_type == 'ADMINUSER')
             {!! $chart1->renderChartJsLibrary() !!}
-            @if (($appTheme['appearance_mode'] ?? 'light') === 'dark')
-                <script>
-                    if (window.Chart && Chart.defaults && Chart.defaults.global) {
-                        Chart.defaults.global.defaultFontColor = '#a8b1bd';
-                        Chart.defaults.global.defaultColor = '#a8b1bd';
-                        if (Chart.defaults.scale) {
-                            Chart.defaults.scale.gridLines.color = '#3b434f';
-                            Chart.defaults.scale.ticks.fontColor = '#a8b1bd';
-                            Chart.defaults.scale.scaleLabel.fontColor = '#a8b1bd';
-                        }
-                    }
-                </script>
-            @endif
             {!! $chart1->renderJs() !!}
             {!! $chart2->renderJs() !!}
             {!! $chart3->renderJs() !!}
             {!! $chart4->renderJs() !!}
-            @if (($appTheme['appearance_mode'] ?? 'light') === 'dark')
-                <script>
-                    (function () {
-                        if (!window.Chart || !Chart.instances) return;
-                        var root = getComputedStyle(document.documentElement);
-                        var primary = root.getPropertyValue('--app-primary').trim() || '#177e15';
-                        var rgb = primary.match(/^#([\da-f]{2})([\da-f]{2})([\da-f]{2})$/i);
-                        var brightPrimary = rgb
-                            ? '#' + rgb.slice(1).map(function (part) { return Math.round(parseInt(part, 16) * .52 + 255 * .48).toString(16).padStart(2, '0'); }).join('')
-                            : '#8bc28a';
-                        var seriesColors = [brightPrimary, '#60a5fa', '#fbbf24', '#f87171', '#c084fc'];
-                        Object.values(Chart.instances).forEach(function (chart) {
-                            if (!chart || !chart.config || !chart.options) return;
-                            var type = chart.config.type;
-                            var datasets = chart.config.data && chart.config.data.datasets || [];
-                            datasets.forEach(function (dataset, index) {
-                                if (type === 'pie' || type === 'doughnut' || type === 'polarArea') {
-                                    var segmentColors = dataset.backgroundColor;
-                                    if (!Array.isArray(segmentColors)) segmentColors = Array.isArray(chart.config.data.labels) ? chart.config.data.labels.map(function (_, colorIndex) { return seriesColors[colorIndex % seriesColors.length]; }) : [seriesColors[index % seriesColors.length]];
-                                    dataset.backgroundColor = segmentColors.map(function (color, colorIndex) {
-                                        return typeof color === 'string' && color.indexOf('rgba(') === 0
-                                            ? color.replace(/,[^,\)]+\)$/, ', 0.88)')
-                                            : (color || seriesColors[colorIndex % seriesColors.length]);
-                                    });
-                                    dataset.borderColor = '#1e232b';
-                                    dataset.borderWidth = 2;
-                                } else {
-                                    var color = seriesColors[index % seriesColors.length];
-                                    dataset.backgroundColor = type === 'line' ? color.replace(/^#/, 'rgba(').replace(/(..)(..)(..)$/, function (_, r, g, b) { return parseInt(r, 16) + ', ' + parseInt(g, 16) + ', ' + parseInt(b, 16) + ', 0.18)'; }) : color;
-                                    dataset.borderColor = color;
-                                    dataset.pointBackgroundColor = color;
-                                }
-                            });
-                            chart.options.legend = chart.options.legend || {};
-                            chart.options.legend.labels = chart.options.legend.labels || {};
-                            chart.options.legend.labels.fontColor = '#c5cbd4';
-                            chart.options.tooltips = chart.options.tooltips || {};
-                            chart.options.tooltips.backgroundColor = '#303742';
-                            chart.options.tooltips.titleFontColor = '#f3f5f7';
-                            chart.options.tooltips.bodyFontColor = '#edf1f5';
-                            var scales = chart.options.scales || {};
-                            ['xAxes', 'yAxes'].forEach(function (axisName) {
-                                (scales[axisName] || []).forEach(function (axis) {
-                                    axis.ticks = axis.ticks || {};
-                                    axis.ticks.fontColor = '#a8b1bd';
-                                    axis.gridLines = axis.gridLines || {};
-                                    axis.gridLines.color = '#414a57';
-                                    axis.gridLines.zeroLineColor = '#657080';
-                                    if (axis.scaleLabel) axis.scaleLabel.fontColor = '#c5cbd4';
-                                });
-                            });
-                            chart.update();
+            <script>
+                (function () {
+                    if (!window.Chart || !Chart.instances) return;
+                    var dark = document.documentElement.getAttribute('data-app-theme') === 'dark';
+                    var text = dark ? '#c5cbd4' : '#667085';
+                    var grid = dark ? '#414a57' : '#e8edf2';
+                    var surface = dark ? '#1e232b' : '#ffffff';
+                    var palettes = {
+                        rapport_mensuels: { color: dark ? '#69bd70' : '#177e15', fill: 'rgba(23,126,21,.58)' },
+                        rapport_periodique: { color: dark ? '#ff8585' : '#a83232', fill: 'rgba(168,50,50,.14)' },
+                        rapport_annuel: { color: dark ? '#74b9e8' : '#286b91', fill: 'rgba(40,107,145,.58)' }
+                    };
+                    var pieColors = dark
+                        ? ['#69bd70','#5ca9e6','#f4bd50','#ff8585','#b58ae8','#55c5c3','#f08bb4','#a6c85a']
+                        : ['#177e15','#2879b9','#e3a52f','#bd4646','#8057ad','#198c8a','#d65b8b','#729c2d'];
+                    if (Chart.defaults && Chart.defaults.global) {
+                        Chart.defaults.global.defaultFontColor = text;
+                        Chart.defaults.global.defaultFontFamily = "-apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif";
+                    }
+                    Object.keys(Chart.instances).forEach(function (key) {
+                        var chart = Chart.instances[key];
+                        if (!chart || !chart.config || !chart.options) return;
+                        var type = chart.config.type;
+                        var datasets = chart.config.data && chart.config.data.datasets || [];
+                        var label = String((datasets[0] && datasets[0].label) || '').toLowerCase()
+                            .normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+                        var palette = label.indexOf('periodique') !== -1
+                            ? palettes.rapport_periodique
+                            : (label.indexOf('annuel') !== -1 ? palettes.rapport_annuel : palettes.rapport_mensuels);
+                        datasets.forEach(function (dataset) {
+                            if (type === 'pie' || type === 'doughnut' || type === 'polarArea') {
+                                dataset.backgroundColor = (chart.config.data.labels || []).map(function (_, index) { return pieColors[index % pieColors.length]; });
+                                dataset.borderColor = surface;
+                                dataset.borderWidth = 2;
+                                dataset.hoverBorderColor = surface;
+                            } else if (type === 'line') {
+                                dataset.borderColor = palette.color;
+                                dataset.backgroundColor = palette.fill;
+                                dataset.pointBackgroundColor = palette.color;
+                                dataset.pointBorderColor = surface;
+                                dataset.pointBorderWidth = 2;
+                                dataset.pointRadius = 3;
+                                dataset.pointHoverRadius = 5;
+                                dataset.borderWidth = 3;
+                                dataset.lineTension = .3;
+                                dataset.fill = true;
+                            } else {
+                                dataset.backgroundColor = palette.fill;
+                                dataset.borderColor = palette.color;
+                                dataset.hoverBackgroundColor = palette.color;
+                                dataset.borderWidth = 2;
+                            }
                         });
-                    })();
-                </script>
-            @endif
+                        chart.options.responsive = true;
+                        chart.options.legend = chart.options.legend || {};
+                        chart.options.legend.labels = chart.options.legend.labels || {};
+                        chart.options.legend.labels.fontColor = text;
+                        chart.options.legend.labels.padding = 16;
+                        chart.options.tooltips = chart.options.tooltips || {};
+                        chart.options.tooltips.backgroundColor = dark ? '#303742' : '#252b35';
+                        chart.options.tooltips.titleFontColor = '#ffffff';
+                        chart.options.tooltips.bodyFontColor = '#ffffff';
+                        var scales = chart.options.scales || {};
+                        ['xAxes', 'yAxes'].forEach(function (axisName) {
+                            (scales[axisName] || []).forEach(function (axis) {
+                                axis.ticks = axis.ticks || {};
+                                axis.ticks.fontColor = text;
+                                axis.gridLines = axis.gridLines || {};
+                                axis.gridLines.color = grid;
+                                axis.gridLines.zeroLineColor = dark ? '#657080' : '#ccd4dd';
+                            });
+                        });
+                        chart.update();
+                    });
+                })();
+            </script>
         @endif
 
     </div>
