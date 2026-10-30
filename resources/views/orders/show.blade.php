@@ -299,11 +299,12 @@
                         <div class="od-field">
                             <label for="order-deliverer">Livreur</label>
                             <select id="order-deliverer" class="js-example-basic-single form-control" name="user_take">
-                                <option value="">Choisir un livreur du pays de la commande</option>
+                                <option value="">{{ $Orders->is_wholesale ? 'Choisir un livreur général ou du pays de livraison' : 'Choisir un livreur du pays de la commande' }}</option>
                                 @foreach ($livreurs as $livreur)
-                                    <option value="{{ $livreur->id }}" {{ $livreur->id == $Orders->user_id ? 'selected' : '' }}>{{ $livreur->name }}</option>
+                                    <option value="{{ $livreur->id }}" {{ old('user_take', $Orders->user_id) == $livreur->id ? 'selected' : '' }}>{{ $livreur->name }}{{ $livreur->country_code ? ' · '.$livreur->country_code : ' · Général' }}</option>
                                 @endforeach
                             </select>
+                            @if ($livreurs->isEmpty()) <small class="text-muted d-block mt-1">Aucun livreur actif compatible. Vérifie les comptes livreurs et leur pays d’affectation.</small> @endif
                             @error('user_take') <div class="invalid-feedback d-block">{{ $message }}</div> @enderror
                         </div>
                         <button type="submit" class="od-btn od-btn-primary">Enregistrer et relancer</button>

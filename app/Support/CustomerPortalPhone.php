@@ -8,7 +8,7 @@ final class CustomerPortalPhone
 {
     private const DIAL_CODES = [
         'BJ' => '229', 'BF' => '226', 'CI' => '225', 'GN' => '224', 'ML' => '223',
-        'MR' => '222', 'NE' => '227', 'SN' => '221', 'TG' => '228', 'CG' => '242', 'CD' => '243',
+        'MR' => '222', 'NE' => '227', 'SN' => '221', 'TG' => '228', 'CG' => '242', 'CD' => '243', 'GA' => '241',
     ];
 
     public static function dialCodes(): array

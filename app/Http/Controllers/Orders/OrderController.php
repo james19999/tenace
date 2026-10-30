@@ -130,7 +130,10 @@ class OrderController extends Controller
         $countryCode = $this->orderCountryCode($Orders);
         $livreurs = User::query()->where('user_type', User::ROLE_LIVREUR)
             ->where('active', true)
-            ->when($isWholesalerOrder, fn ($query) => $query->whereNull('country_code'), fn ($query) => $query->where('country_code', $countryCode))
+            ->when($isWholesalerOrder, fn ($query) => $query->where(function ($eligible) use ($countryCode) {
+                $eligible->whereNull('country_code')
+                    ->orWhereRaw('UPPER(country_code) = ?', [$countryCode]);
+            }), fn ($query) => $query->whereRaw('UPPER(country_code) = ?', [$countryCode]))
             ->orderBy('name')
             ->get(['id', 'name', 'phone', 'country_code']);
 
@@ -250,12 +253,15 @@ class OrderController extends Controller
             $courier = User::query()->whereKey($validated['user_take'])
                 ->where('user_type', User::ROLE_LIVREUR)
                 ->where('active', true)
-                ->when($createdByWholesaler, fn ($query) => $query->whereNull('country_code'), fn ($query) => $query->where('country_code', $this->orderCountryCode($orders)))
+                ->when($createdByWholesaler, fn ($query) => $query->where(function ($eligible) use ($orders) {
+                    $eligible->whereNull('country_code')
+                        ->orWhereRaw('UPPER(country_code) = ?', [$this->orderCountryCode($orders)]);
+                }), fn ($query) => $query->whereRaw('UPPER(country_code) = ?', [$this->orderCountryCode($orders)]))
                 ->exists();
             if (! $courier) {
                 return redirect()->back()->withErrors([
                     'user_take' => $createdByWholesaler
-                        ? 'Choisis un livreur standard actif, sans pays partenaire.'
+                        ? 'Choisis un livreur actif sans pays partenaire ou rattaché au pays de livraison.'
                         : 'Choisis un livreur actif rattaché au pays de cette commande.',
                 ])->withInput();
             }

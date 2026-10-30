@@ -78,7 +78,7 @@ class DashboarController extends Controller
                 'chart_type' => 'bar',
                 'aggregate_function' => 'sum',
                 'aggregate_field' => 'total',
-                'where_raw' => "status='delivered' ",
+                'where_raw' => "status='delivered' AND is_wholesale = 0",
             ];
 
             $chart1 = new DashboardChart($chart_options, $this->dashboardChartData(
@@ -88,7 +88,8 @@ class DashboarController extends Controller
                 'total',
                 null,
                 'delivered',
-                'delivered_at'
+                'delivered_at',
+                false
             ));
 
             $settings1 = [
@@ -121,7 +122,7 @@ class DashboarController extends Controller
                 'group_by_period' => 'day',
                 'aggregate_function' => 'sum',
                 'aggregate_field' => 'total',
-                'where_raw' => "status='delivered' ",
+                'where_raw' => "status='delivered' AND is_wholesale = 0",
                 'filter_field' => 'delivered_at',
                 'filter_days' => 30, // show only transactions for last 30 days
                 'filter_period' => 'week', // show only transactions for this week
@@ -133,7 +134,8 @@ class DashboarController extends Controller
                 'total',
                 30,
                 'delivered',
-                'delivered_at'
+                'delivered_at',
+                false
             ));
 
             $chart_options_annuel = [
@@ -145,7 +147,7 @@ class DashboarController extends Controller
                 'chart_type' => 'bar',
                 'aggregate_function' => 'sum',
                 'aggregate_field' => 'total',
-                'where_raw' => "status='delivered' ",
+                'where_raw' => "status='delivered' AND is_wholesale = 0",
             ];
 
             $chart4 = new DashboardChart($chart_options_annuel, $this->dashboardChartData(
@@ -155,14 +157,22 @@ class DashboarController extends Controller
                 'total',
                 null,
                 'delivered',
-                'delivered_at'
+                'delivered_at',
+                false
             ));
 
             $startOfWeek = Carbon::now()->startOfWeek();
 
             $totalOrdersThisWeek = Order::where('delivered_at', '>=', $startOfWeek)
                 ->where('status', 'delivered')
+                ->where('is_wholesale', false)
                 ->sum('total');
+
+            $totalWholesaleOrdersThisWeek = Order::where('delivered_at', '>=', $startOfWeek)
+                ->where('delivered_at', '<', $startOfWeek->copy()->addWeek())
+                ->where('status', 'delivered')
+                ->where('is_wholesale', true)
+                ->sum('subtotal');
 
             $anneeEnCours = now()->startOfYear();
             $debutAnneeProchaine = $anneeEnCours->copy()->addYear();
@@ -170,7 +180,14 @@ class DashboarController extends Controller
             $totalCommandes = Order::where('delivered_at', '>=', $anneeEnCours)
                 ->where('delivered_at', '<', $debutAnneeProchaine)
                 ->where('status', 'delivered')
+                ->where('is_wholesale', false)
                 ->sum('total');
+
+            $totalWholesaleCommandes = Order::where('delivered_at', '>=', $anneeEnCours)
+                ->where('delivered_at', '<', $debutAnneeProchaine)
+                ->where('status', 'delivered')
+                ->where('is_wholesale', true)
+                ->sum('subtotal');
 
         } else {
             $chart1 = null;
@@ -178,7 +195,9 @@ class DashboarController extends Controller
             $chart3 = null;
             $chart4 = null;
             $totalOrdersThisWeek = 0;
+            $totalWholesaleOrdersThisWeek = 0;
             $totalCommandes = 0;
+            $totalWholesaleCommandes = 0;
         }
 
         $createdTodaySql = '(created_at >= ? AND created_at < ?)';
@@ -207,10 +226,18 @@ class DashboarController extends Controller
 
         $deliveredTodayMetrics = Order::query()
             ->where('status', 'delivered')
+            ->where('is_wholesale', false)
             ->where('delivered_at', '>=', $todayStart)
             ->where('delivered_at', '<', $tomorrow)
             ->selectRaw('COUNT(*) as delivered_count, COALESCE(SUM(total), 0) as delivered_amount')
             ->first();
+
+        $wholesaleDeliveredTodayAmount = Order::query()
+            ->where('status', 'delivered')
+            ->where('is_wholesale', true)
+            ->where('delivered_at', '>=', $todayStart)
+            ->where('delivered_at', '<', $tomorrow)
+            ->sum('subtotal');
 
         $Ordered = (int) $todayOrderMetrics->ordered_count;
         $Orderdelivered = (int) $deliveredTodayMetrics->delivered_count;
@@ -235,7 +262,8 @@ class DashboarController extends Controller
             'totalCommandes', 'expensive', 'totalOrdersThisWeek', 'chart1',
             'chart2', 'chart3', 'chart4', 'createdTodayOrders', 'deliveryTodayOrders',
             'assignedTodayOrders', 'overdueOrders', 'Ordered',
-            'Orderdelivered', 'Ordercanceled', 'Orderall', 'OrderdeAmount'
+            'Orderdelivered', 'Ordercanceled', 'Orderall', 'OrderdeAmount',
+            'totalWholesaleCommandes', 'totalWholesaleOrdersThisWeek', 'wholesaleDeliveredTodayAmount'
         ));
      }
 
@@ -250,7 +278,8 @@ class DashboarController extends Controller
         ?string $aggregateField = null,
         ?int $filterDays = null,
         ?string $status = null,
-        string $dateField = 'created_at'
+        string $dateField = 'created_at',
+        ?bool $isWholesale = null
     ): array {
         $formats = [
             'day' => '%Y-%m-%d',
@@ -272,6 +301,10 @@ class DashboarController extends Controller
 
         if ($status !== null) {
             $query->where('status', $status);
+        }
+
+        if ($isWholesale !== null) {
+            $query->where('is_wholesale', $isWholesale);
         }
 
         if ($aggregate === 'count') {

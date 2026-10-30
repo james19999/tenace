@@ -50,6 +50,10 @@ final class WestAfricaShippingCatalog
             'label' => 'République démocratique du Congo',
             'cities' => ['Kinshasa', 'Lubumbashi', 'Goma', 'Kisangani', 'Bukavu', 'Matadi'],
         ];
+        $countries['GA'] = [
+            'label' => 'Gabon',
+            'cities' => ['Libreville', 'Port-Gentil', 'Franceville', 'Oyem', 'Moanda', 'Lambaréné'],
+        ];
 
         uasort($countries, fn (array $left, array $right): int => strcmp($left['label'], $right['label']));
 

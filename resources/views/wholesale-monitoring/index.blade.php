@@ -23,7 +23,7 @@
     <section class="wm-stats" aria-label="Résumé des commandes grossistes">
         <article class="wm-stat"><span>Clients grossistes</span><strong>{{ number_format((int) $stats->customers_count, 0, ',', ' ') }}</strong></article>
         <article class="wm-stat"><span>Commandes grossistes</span><strong>{{ number_format((int) $stats->orders_count, 0, ',', ' ') }}</strong></article>
-        <article class="wm-stat"><span>Chiffre d’affaires produits</span><strong>{{ number_format((float) $stats->revenue, 0, ',', ' ') }} F</strong><small>Hors frais de livraison</small></article>
+        <article class="wm-stat"><span>Chiffre d’affaires grossiste livré</span><strong>{{ number_format((float) $stats->revenue, 0, ',', ' ') }} F</strong><small>Commandes livrées uniquement · annulations et commandes en cours exclues</small></article>
         <article class="wm-stat"><span>En cours</span><strong>{{ number_format((int) $stats->in_progress, 0, ',', ' ') }}</strong></article>
         <article class="wm-stat"><span>Livrées</span><strong>{{ number_format((int) $stats->delivered, 0, ',', ' ') }}</strong></article>
         <article class="wm-stat"><span>Annulées</span><strong>{{ number_format((int) $stats->canceled, 0, ',', ' ') }}</strong></article>
@@ -33,7 +33,7 @@
         <div class="wm-toolbar"><div><h2>Clients qualifiés</h2><p>{{ number_format($customers->total(), 0, ',', ' ') }} client(s) avec au moins une commande grossiste</p></div>
             <form class="wm-search" method="GET" action="{{ route('wholesale-monitoring.index') }}" role="search"><input class="form-control" type="search" name="search" value="{{ $search }}" placeholder="Nom, téléphone ou courriel…" aria-label="Rechercher un client" data-live-customer-search><button type="submit">Rechercher</button></form>
         </div>
-        <div class="wm-table-wrap"><table class="wm-table"><thead><tr><th>Client</th><th>Commandes grossistes</th><th>Chiffre d’affaires</th><th>Dernière commande</th><th></th></tr></thead><tbody>
+        <div class="wm-table-wrap"><table class="wm-table"><thead><tr><th>Client</th><th>Commandes grossistes</th><th>Chiffre d’affaires livré</th><th>Dernière commande</th><th></th></tr></thead><tbody>
             @forelse($customers as $customer)
                 <tr><td><span class="wm-customer">{{ $customer->name ?: 'Client sans nom' }}</span><span class="wm-secondary">{{ $customer->phone ?: $customer->email ?: 'Aucun contact renseigné' }}</span></td><td>{{ number_format((int) $customer->wholesale_orders_count, 0, ',', ' ') }}</td><td><strong>{{ number_format((float) $customer->wholesale_revenue, 0, ',', ' ') }} F</strong></td><td>{{ $customer->last_wholesale_order_at ? \Illuminate\Support\Carbon::parse($customer->last_wholesale_order_at)->format('d/m/Y') : '—' }}</td><td><a class="wm-view" href="{{ route('wholesale-monitoring.show', $customer) }}">Voir le suivi <span aria-hidden="true">→</span></a></td></tr>
             @empty
