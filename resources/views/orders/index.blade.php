@@ -30,7 +30,14 @@
 
             <div class="orders-board">
                 <div class="orders-board-top">
-                    <div><h2>Suivi des commandes</h2><p>Les listes sont actualisées selon les dates prévues et les attributions.</p></div>
+                    <div><h2>Suivi des commandes</h2><p>Recherche par numéro de commande, nom ou téléphone du client ou du livreur. Les résultats s’actualisent pendant la saisie.</p></div>
+                    <form method="GET" action="{{ route('order') }}" class="orders-search" data-order-search-form role="search">
+                        <input type="hidden" name="ordersTab" value="{{ $activeOrdersTab }}">
+                        <input type="hidden" name="filter" value="{{ $filter }}">
+                        <label class="sr-only" for="orders-live-search">Rechercher une commande</label>
+                        <span class="material-icons" aria-hidden="true">search</span>
+                        <input id="orders-live-search" type="search" name="search" value="{{ $search }}" placeholder="N° de commande, client ou téléphone…" autocomplete="off">
+                    </form>
                 </div>
                 <div class="orders-tab-scroll">
                     <ul class="nav nav-tabs order-list-tabs" role="tablist">
@@ -38,6 +45,7 @@
                             <li class="nav-item" role="presentation">
                                 <a class="nav-link {{ $activeOrdersTab === $key ? 'active' : '' }}"
                                     id="order-list-tab-{{ $key }}" data-toggle="tab" href="#order-list-panel-{{ $key }}"
+                                    data-order-tab="{{ $key }}"
                                     role="tab" aria-controls="order-list-panel-{{ $key }}"
                                     aria-selected="{{ $activeOrdersTab === $key ? 'true' : 'false' }}">
                                     <span>{{ $tab['label'] }}</span><span class="orders-tab-count">{{ $tab['orders']->total() }}</span>
@@ -54,6 +62,7 @@
                             @if ($key === 'history')
                                 <form method="GET" action="{{ route('order') }}" class="order-history-filter mb-3">
                                     <input type="hidden" name="ordersTab" value="history">
+                                    <input type="hidden" name="search" value="{{ $search }}">
                                     <label for="order-history-filter">Période de création</label>
                                     <select id="order-history-filter" name="filter" class="form-control" onchange="this.form.submit()">
                                         <option value="today" {{ $filter === 'today' ? 'selected' : '' }}>Aujourd’hui</option>
@@ -78,7 +87,7 @@
                             @if ($tab['orders']->hasPages())
                                 <div class="orders-pagination-wrap">
                                     <small class="orders-pagination-summary">Page {{ $tab['orders']->currentPage() }} sur {{ $tab['orders']->lastPage() }}</small>
-                                    {{ $tab['orders']->appends(['ordersTab' => $key, 'filter' => $filter])->onEachSide(1)->links() }}
+                                    {{ $tab['orders']->appends(['ordersTab' => $key, 'filter' => $filter, 'search' => $search])->onEachSide(1)->links() }}
                                 </div>
                             @endif
                         </div>
@@ -98,7 +107,7 @@
         .orders-new-link{display:inline-flex;align-items:center;justify-content:center;gap:8px;min-height:44px;padding:10px 15px;border:1px solid var(--orders-red);border-radius:10px;background:var(--orders-red);color:#fff!important;font-size:13px;font-weight:750;text-decoration:none;white-space:nowrap}
         .orders-alert{border:0;border-radius:11px;margin-bottom:16px}
         .orders-board{min-width:0;overflow:hidden;border:1px solid var(--orders-line);border-radius:16px;background:#fff;box-shadow:0 8px 28px rgba(32,36,46,.045)}
-        .orders-board-top{padding:19px 21px 16px}.orders-board-top h2{margin:0;font-size:18px;font-weight:800}.orders-board-top p{margin:5px 0 0;color:var(--orders-muted);font-size:12px}
+        .orders-board-top{display:flex;align-items:center;justify-content:space-between;gap:18px;padding:19px 21px 16px}.orders-board-top h2{margin:0;font-size:18px;font-weight:800}.orders-board-top p{margin:5px 0 0;color:var(--orders-muted);font-size:12px}.orders-search{position:relative;display:flex;align-items:center;width:min(100%,390px);min-width:240px}.orders-search>.material-icons{position:absolute;left:12px;color:#858b96;font-size:20px;pointer-events:none}.orders-search input{width:100%;height:42px;padding:9px 12px 9px 40px;border:1px solid #dfe2e8;border-radius:9px;background:#fff;color:var(--orders-ink);font-size:13px;outline:none}.orders-search input:focus{border-color:var(--orders-red);box-shadow:0 0 0 3px rgba(134,27,27,.1)}
         .orders-tab-scroll{overflow-x:auto;border-bottom:1px solid var(--orders-line);scrollbar-width:thin}
         .order-list-tabs{display:flex;flex-wrap:nowrap;gap:5px;min-width:max-content;margin:0;padding:0 16px;border:0;white-space:nowrap}
         .order-list-tabs .nav-item{flex:0 0 auto;margin:0}
@@ -119,7 +128,7 @@
         .orders-pagination-wrap .page-link{min-width:38px;padding:8px 10px;border-radius:7px!important;color:var(--orders-red)}
         .orders-pagination-wrap .page-item.active .page-link{border-color:var(--orders-red);background:var(--orders-red);color:#fff}
         .orders-pagination-summary{display:none;color:#687386;white-space:nowrap}
-        @media(max-width:767.98px){.order-list-page{padding-top:0}.orders-page-shell{padding:0 11px}.orders-page-heading{display:block;margin:8px 0 17px}.orders-page-heading h1{font-size:27px}.orders-page-heading p:not(.orders-eyebrow){font-size:13px;line-height:1.5}.orders-new-link{width:100%;margin-top:13px}.orders-board{border-radius:12px}.orders-board-top{padding:15px}.orders-board-top h2{font-size:16px}.order-list-tab-content{padding:14px 12px}.order-list-tabs{padding:0 7px}.order-list-tabs .nav-link{padding:11px 9px;font-size:11px}.order-history-filter{align-items:stretch;flex-direction:column;max-width:none}.order-history-filter select{width:100%;min-width:0}.orders-pagination-wrap{flex-direction:column;align-items:center;gap:6px}.orders-pagination-wrap .pagination{justify-content:center;max-width:100%}.orders-pagination-wrap .page-item:not(:first-child):not(:last-child):not(.active){display:none}.orders-pagination-wrap .page-link{min-width:40px;padding:8px 11px}.orders-pagination-summary{display:block}}
+        @media(max-width:767.98px){.order-list-page{padding-top:0}.orders-page-shell{padding:0 11px}.orders-page-heading{display:block;margin:8px 0 17px}.orders-page-heading h1{font-size:27px}.orders-page-heading p:not(.orders-eyebrow){font-size:13px;line-height:1.5}.orders-new-link{width:100%;margin-top:13px}.orders-board{border-radius:12px}.orders-board-top{align-items:stretch;flex-direction:column;padding:15px}.orders-board-top h2{font-size:16px}.orders-search{width:100%;min-width:0}.order-list-tab-content{padding:14px 12px}.order-list-tabs{padding:0 7px}.order-list-tabs .nav-link{padding:11px 9px;font-size:11px}.order-history-filter{align-items:stretch;flex-direction:column;max-width:none}.order-history-filter select{width:100%;min-width:0}.orders-pagination-wrap{flex-direction:column;align-items:center;gap:6px}.orders-pagination-wrap .pagination{justify-content:center;max-width:100%}.orders-pagination-wrap .page-item:not(:first-child):not(:last-child):not(.active){display:none}.orders-pagination-wrap .page-link{min-width:40px;padding:8px 11px}.orders-pagination-summary{display:block}}
         @media(max-width:360px){.orders-page-heading h1{font-size:24px}.order-list-tabs .nav-link{padding:10px 7px;font-size:10px}.orders-tab-count{min-width:20px;height:20px;padding:0 5px}}
         .order-list-page .orders-new-link,.order-list-page .orders-alert,.order-list-page .orders-board,
         .order-list-page .order-list-tabs .nav-link,.order-list-page .order-list-tabs .nav-link.active:after,
@@ -131,4 +140,26 @@
         .order-list-page .orders-board-top,.order-list-page .order-list-tab-content{background:#fff}
         .order-list-page .order-list-tabs .nav-link.active:after{height:2px}
     </style>
+    <script>
+        (() => {
+            const form = document.querySelector('[data-order-search-form]');
+            const input = form?.querySelector('input[name="search"]');
+            if (!form || !input || form.dataset.ready) return;
+            form.dataset.ready = '1';
+            document.querySelectorAll('[data-order-tab]').forEach(tab => tab.addEventListener('click', () => {
+                form.querySelector('input[name="ordersTab"]').value = tab.dataset.orderTab;
+            }));
+            let timer;
+            input.addEventListener('input', () => {
+                window.clearTimeout(timer);
+                timer = window.setTimeout(() => {
+                    if (input.value.trim() !== '') {
+                        form.querySelector('input[name="ordersTab"]').value = 'history';
+                        form.querySelector('input[name="filter"]').value = 'all';
+                    }
+                    form.requestSubmit();
+                }, 350);
+            });
+        })();
+    </script>
 @endsection
