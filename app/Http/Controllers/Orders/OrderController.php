@@ -52,11 +52,30 @@ class OrderController extends Controller
         if (! in_array($filter, ['today', 'week', 'month', 'year', 'all'], true)) {
             $filter = 'today';
         }
+        $search = mb_substr(trim((string) $request->query('search', '')), 0, 100);
+        $applySearch = function ($query) use ($search): void {
+            if ($search === '') return;
+
+            $query->where(function ($matches) use ($search) {
+                $matches->where('code', 'like', '%'.$search.'%')
+                    ->orWhereHas('user', fn ($user) => $user
+                        ->where('name', 'like', '%'.$search.'%')
+                        ->orWhere('phone', 'like', '%'.$search.'%'))
+                    ->orWhereHas('costumer', fn ($customer) => $customer
+                        ->where('name', 'like', '%'.$search.'%')
+                        ->orWhere('phone', 'like', '%'.$search.'%'));
+
+                if (ctype_digit($search)) {
+                    $matches->orWhere('id', (int) $search);
+                }
+            });
+        };
 
         $today = Carbon::today();
         $tomorrow = $today->copy()->addDay();
         $dashboardOrders = fn () => Order::with(['costumer', 'user'])
             ->where('brouillon', 1)
+            ->when($search !== '', $applySearch)
             ->when($wholesaleOnly, fn ($query) => $query->where('is_wholesale', true))
             ->orderByDesc('assigned_at')
             ->orderByDesc('updated_at');
@@ -82,6 +101,7 @@ class OrderController extends Controller
             ->paginate(10, ['*'], 'overduePage');
 
         $historyOrdersQuery = Order::with(['costumer', 'user'])->where('brouillon', 1)
+            ->when($search !== '', $applySearch)
             ->when($wholesaleOnly, fn ($query) => $query->where('is_wholesale', true));
         switch ($filter) {
             case 'today':
@@ -102,7 +122,7 @@ class OrderController extends Controller
         return view('orders.index', compact(
             'createdTodayOrders', 'deliveryTodayOrders', 'assignedTodayOrders',
             'overdueOrders', 'historyOrders', 'filter'
-        ));
+        ))->with('search', $search);
     }
 
 

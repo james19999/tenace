@@ -222,7 +222,7 @@
                 </div>
             </section>
 
-            @if ($Orders->deliveryPhotos->isNotEmpty())
+            @if ($Orders->deliveryPhotos->isNotEmpty() && auth()->user()?->user_type !== \App\Models\User::ROLE_CALL_CENTER)
                 <section class="od-package-photos no-print">
                     <h2>Photos des colis · {{ $Orders->deliveryPhotos->count() }}</h2>
                     <div class="od-photo-grid">
@@ -281,6 +281,7 @@
         <section class="od-actions no-print">
             <h2 class="od-actions-title">Actions sur la commande</h2>
             <div class="od-action-grid">
+                @if (auth()->user()?->user_type !== \App\Models\User::ROLE_CALL_CENTER)
                 <div class="od-panel">
                     <h3>Relancer ou réattribuer</h3>
                     <form action="{{ route('refreshorder', $Orders->id) }}" method="POST">
@@ -310,6 +311,7 @@
                         <button type="submit" class="od-btn od-btn-primary">Enregistrer et relancer</button>
                     </form>
                 </div>
+                @endif
 
                 <div class="od-panel">
                     <h3>Mettre à jour le statut</h3>
