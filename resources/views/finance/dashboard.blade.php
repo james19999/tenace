@@ -130,6 +130,17 @@ document.addEventListener('DOMContentLoaded', function () {
     var comparison = @json($cashFlowComparison);
     var number = function (value) { return new Intl.NumberFormat('fr-FR').format(value) + ' F'; };
     var dark = document.documentElement.getAttribute('data-app-theme') === 'dark';
+    var theme = getComputedStyle(document.documentElement);
+    var primary = theme.getPropertyValue('--app-primary').trim() || '#187b2a';
+    var accent = theme.getPropertyValue('--app-accent').trim() || '#e2a348';
+    var rgba = function (color, alpha) {
+        var match = color.match(/^#([\da-f]{3}|[\da-f]{6})$/i);
+        if (!match) return color;
+        var hex = match[1];
+        if (hex.length === 3) hex = hex.split('').map(function (part) { return part + part; }).join('');
+        var value = parseInt(hex, 16);
+        return 'rgba(' + ((value >> 16) & 255) + ',' + ((value >> 8) & 255) + ',' + (value & 255) + ',' + alpha + ')';
+    };
     var textColor = dark ? '#a8b1bd' : '#748093';
     var gridColor = dark ? '#343b46' : '#e8ecf1';
     var trendCanvas = document.getElementById('finance-cash-trend');
@@ -137,7 +148,7 @@ document.addEventListener('DOMContentLoaded', function () {
         new Chart(trendCanvas.getContext('2d'), {
             type: 'line',
             data: { labels: trend.labels, datasets: [
-                { label: trend.current_month, data: trend.current, borderColor: '#18832c', backgroundColor: 'rgba(24,131,44,.10)', borderWidth: 3, pointRadius: 1, pointHoverRadius: 5, lineTension: .28, fill: true, spanGaps: false },
+                { label: trend.current_month, data: trend.current, borderColor: primary, backgroundColor: rgba(primary, .12), borderWidth: 3, pointRadius: 1, pointHoverRadius: 5, lineTension: .28, fill: true, spanGaps: false },
                 { label: trend.previous_month, data: trend.previous, borderColor: '#9ca7b5', backgroundColor: 'rgba(156,167,181,.04)', borderWidth: 2, borderDash: [6, 5], pointRadius: 0, pointHoverRadius: 4, lineTension: .25, fill: false, spanGaps: true }
             ] },
             options: { responsive: true, maintainAspectRatio: false, legend: { display: true, position: 'bottom', labels: { fontColor: textColor, usePointStyle: true, padding: 20 } }, tooltips: { mode: 'index', intersect: false, callbacks: { label: function (item, data) { return data.datasets[item.datasetIndex].label + ' : ' + number(item.yLabel); } } }, hover: { mode: 'nearest', intersect: false }, scales: { xAxes: [{ gridLines: { display: false }, ticks: { fontColor: textColor, maxTicksLimit: 16, callback: function (value) { return 'J' + value; } } }], yAxes: [{ gridLines: { color: gridColor }, ticks: { fontColor: textColor, callback: number } }] } }
@@ -148,8 +159,8 @@ document.addEventListener('DOMContentLoaded', function () {
         new Chart(flowCanvas.getContext('2d'), {
             type: 'bar',
             data: { labels: comparison.labels, datasets: [
-                { label: 'Entrées', data: comparison.in, backgroundColor: 'rgba(24,131,44,.82)', borderRadius: 5 },
-                { label: 'Sorties', data: comparison.out, backgroundColor: 'rgba(226,163,72,.82)', borderRadius: 5 }
+                { label: 'Entrées', data: comparison.in, backgroundColor: rgba(primary, .82), borderRadius: 5 },
+                { label: 'Sorties', data: comparison.out, backgroundColor: rgba(accent, .82), borderRadius: 5 }
             ] },
             options: { responsive: true, maintainAspectRatio: false, legend: { display: false }, tooltips: { callbacks: { label: function (item, data) { return data.datasets[item.datasetIndex].label + ' : ' + number(item.yLabel); } } }, scales: { xAxes: [{ gridLines: { display: false }, ticks: { fontColor: textColor } }], yAxes: [{ gridLines: { color: gridColor }, ticks: { beginAtZero: true, fontColor: textColor, callback: number } }] } }
         });
