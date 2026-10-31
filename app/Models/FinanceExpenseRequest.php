@@ -14,6 +14,7 @@ class FinanceExpenseRequest extends Model
         'justification_path', 'justification_note', 'requested_by', 'submitted_at', 'finance_reviewed_by', 'finance_reviewed_at',
         'finance_comment', 'director_decided_by', 'director_decided_at', 'director_comment', 'payment_status',
         'paid_amount', 'paid_at', 'paid_by', 'cancellation_reason',
+        'staff_user_id', 'commission_user_id', 'commission_period_start', 'commission_period_end',
     ];
 
     protected $casts = [
@@ -59,5 +60,15 @@ class FinanceExpenseRequest extends Model
     public function approvals(): HasMany
     {
         return $this->hasMany(FinanceExpenseApproval::class, 'expense_request_id')->orderBy('decided_at');
+    }
+
+    public function staffMember(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'staff_user_id');
+    }
+
+    public function commissionMember(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'commission_user_id');
     }
 }

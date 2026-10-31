@@ -33,6 +33,7 @@
         <a href="{{ route('finance.expenses.index') }}"><span class="material-icons">request_quote</span><span><strong>Dépenses</strong><small>{{ $pendingExpenses }} en attente</small></span><span class="material-icons finance-action-arrow">chevron_right</span></a>
         @if($canSeeAll)<a href="{{ route('finance.suppliers.index') }}"><span class="material-icons">receipt_long</span><span><strong>Factures fournisseurs</strong><small>{{ $overdueSupplierInvoices }} échue(s) · {{ number_format($supplierPayables, 0, ',', ' ') }} F à régler</small></span><span class="material-icons finance-action-arrow">chevron_right</span></a>@endif
         @if(auth()->user()->isAdmin())<a href="{{ route('finance.expenses.index', ['status' => 'awaiting_director']) }}"><span class="material-icons">verified_user</span><span><strong>Décisions du DG</strong><small>Dépenses qui attendent ton avis</small></span><span class="material-icons finance-action-arrow">chevron_right</span></a>@endif
+        @if(auth()->user()->isAdmin() || auth()->user()->isAccountant())<a href="{{ route('finance.management.index') }}"><span class="material-icons">account_balance_wallet</span><span><strong>Créances et prévisions</strong><small>Budgets, avances et immobilisations</small></span><span class="material-icons finance-action-arrow">chevron_right</span></a>@endif
     </nav>
 
     @if (auth()->user()->isAdmin() && ! $hasOpeningBalance)

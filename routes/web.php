@@ -111,6 +111,14 @@ Route::middleware(['auth'])->group(function () {
         Route::get('/', [FinanceController::class, 'index'])->name('dashboard');
         Route::get('/rapports', [FinanceReportController::class, 'index'])->middleware('role:ADMINUSER,COMPTABLE,CSA')->name('reports.index');
         Route::get('/rapports/export', [FinanceReportController::class, 'export'])->middleware('role:ADMINUSER,COMPTABLE,CSA')->name('reports.export');
+        Route::get('/gestion', [\App\Http\Controllers\Finance\FinanceManagementController::class, 'index'])->middleware('role:ADMINUSER,COMPTABLE')->name('management.index');
+        Route::post('/gestion/budgets', [\App\Http\Controllers\Finance\FinanceManagementController::class, 'storeBudget'])->middleware('role:ADMINUSER,COMPTABLE')->name('management.budgets.store');
+        Route::post('/gestion/avances', [\App\Http\Controllers\Finance\FinanceManagementController::class, 'storeAdvance'])->middleware('role:ADMINUSER,COMPTABLE')->name('management.advances.store');
+        Route::post('/gestion/avances/{advance}/remboursement', [\App\Http\Controllers\Finance\FinanceManagementController::class, 'repayAdvance'])->middleware('role:ADMINUSER,COMPTABLE')->name('management.advances.repay');
+        Route::post('/gestion/commissions/reglement', [\App\Http\Controllers\Finance\FinanceManagementController::class, 'settleCommission'])->middleware('role:ADMINUSER,COMPTABLE')->name('management.commissions.settle');
+        Route::post('/gestion/immobilisations', [\App\Http\Controllers\Finance\FinanceManagementController::class, 'storeAsset'])->middleware('role:ADMINUSER,COMPTABLE')->name('management.assets.store');
+        Route::get('/gestion/immobilisations/{asset}/piece', [\App\Http\Controllers\Finance\FinanceManagementController::class, 'downloadAssetDocument'])->middleware('role:ADMINUSER,COMPTABLE')->name('management.assets.document');
+        Route::get('/gestion/immobilisations/export', [\App\Http\Controllers\Finance\FinanceManagementController::class, 'exportAssets'])->middleware('role:ADMINUSER,COMPTABLE')->name('management.assets.export');
         Route::get('/audit', [FinanceAuditController::class, 'index'])->middleware('role:ADMINUSER,COMPTABLE')->name('audit.index');
         Route::post('/caisse/fonds-initial', [FinanceController::class, 'initializeCash'])->middleware('role:ADMINUSER')->name('cash.opening');
         Route::post('/caisse/fonds-initial-boutique', [FinanceController::class, 'initializeShopCash'])->middleware('role:ADMINUSER,MNG')->name('cash.shop-opening');

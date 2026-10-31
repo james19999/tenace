@@ -59,6 +59,10 @@ class FinanceExpenseWorkflowService
                 'justification_path' => $data['justification_path'] ?? null,
                 'justification_note' => $data['justification_note'] ?? null,
                 'requested_by' => $requester->id,
+                'staff_user_id' => $data['staff_user_id'] ?? null,
+                'commission_user_id' => $data['commission_user_id'] ?? null,
+                'commission_period_start' => $data['commission_period_start'] ?? null,
+                'commission_period_end' => $data['commission_period_end'] ?? null,
                 'submitted_at' => now(),
             ]);
             $expense->update(['reference' => sprintf('DEP-%s-%06d', now()->format('Y'), $expense->id)]);
@@ -215,6 +219,26 @@ class FinanceExpenseWorkflowService
             $locked->paid_by = $payer->id;
             $locked->status = $locked->payment_status === 'paid' ? 'paid' : 'partially_paid';
             $locked->save();
+            if ($locked->staff_user_id) {
+                $advance = \App\Models\FinanceStaffAdvance::query()->create([
+                    'reference' => 'TMP-'.Str::uuid(), 'user_id' => $locked->staff_user_id,
+                    'finance_expense_payment_id' => $payment->id, 'amount' => $amount,
+                    'granted_on' => $payment->paid_at->toDateString(), 'reason' => $locked->description,
+                    'created_by' => $payer->id,
+                ]);
+                $advance->update(['reference' => sprintf('AV-%s-%06d', now()->format('Y'), $advance->id)]);
+                $this->audit->record($advance, 'staff_advance_disbursed', null, $advance->fresh()->toArray());
+            }
+            if ($locked->commission_user_id) {
+                $settlement = \App\Models\FinanceCommissionSettlement::query()->create([
+                    'reference' => 'TMP-'.Str::uuid(), 'user_id' => $locked->commission_user_id,
+                    'amount' => $amount, 'period_start' => $locked->commission_period_start,
+                    'period_end' => $locked->commission_period_end, 'paid_at' => $payment->paid_at,
+                    'paid_by' => $payer->id,
+                ]);
+                $settlement->update(['reference' => sprintf('COM-%s-%06d', now()->format('Y'), $settlement->id)]);
+                $this->audit->record($settlement, 'commission_settled', null, $settlement->fresh()->toArray());
+            }
             $this->audit->record($locked, 'payment_recorded', null, ['amount' => $amount, 'custody' => $custody, 'paid_amount' => $locked->paid_amount]);
             $locked->requester?->notify(new FinanceWorkflowNotification(
                 'Paiement de dépense enregistré',
