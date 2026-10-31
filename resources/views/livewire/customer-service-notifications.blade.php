@@ -71,6 +71,27 @@
                 var host = document.getElementById('customer-service-notification-push');
                 if (!host || !item.message) return;
 
+                // A page reload can replay an unread notification. Keep its toast
+                // and sound to one display per browser, while leaving it unread
+                // in the notification list until the user marks it as read.
+                var seenKey = 'tenacos_notification_toasts_seen';
+                var seenIds = [];
+                try {
+                    seenIds = JSON.parse(window.localStorage.getItem(seenKey) || '[]');
+                    if (!Array.isArray(seenIds)) seenIds = [];
+                } catch (error) {
+                    seenIds = [];
+                }
+                if (item.id && seenIds.indexOf(String(item.id)) !== -1) return;
+                if (item.id) {
+                    seenIds.push(String(item.id));
+                    try {
+                        window.localStorage.setItem(seenKey, JSON.stringify(seenIds.slice(-200)));
+                    } catch (error) {
+                        // The toast still works when browser storage is unavailable.
+                    }
+                }
+
                 var toast = document.createElement('div');
                 toast.className = 'sc-notification-toast';
                 var icon = document.createElement('span');
