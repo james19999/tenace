@@ -14,6 +14,7 @@ class Kernel extends ConsoleKernel
     {
         $schedule->command('service-cases:send-reminders')->everyFifteenMinutes()->withoutOverlapping();
         $schedule->command('customer-loyalty:recalculate')->dailyAt('02:15')->withoutOverlapping();
+        $schedule->command('finance:backup')->dailyAt('01:45')->withoutOverlapping();
     }
 
     /**

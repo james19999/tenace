@@ -113,7 +113,7 @@ class User extends Authenticatable
     {
         return match ($this->user_type) {
             self::ROLE_CALL_CENTER => route('costumer.follow-up'),
-            self::ROLE_ACCOUNTANT  => route('expensives'),
+            self::ROLE_ACCOUNTANT  => route('finance.dashboard'),
             self::ROLE_PARTNER     => $this->country_code ? route('partner.dashboard') : route('product'),
             self::ROLE_LIVREUR     => $this->country_code ? route('courier.public-orders.index') : route('Admin'),
             self::ROLE_SALES       => route('product'),
@@ -145,6 +145,16 @@ class User extends Authenticatable
 
     public function commissions(){
         return $this->hasMany(Commission::class);
+    }
+
+    public function employeeProfile(): \Illuminate\Database\Eloquent\Relations\HasOne
+    {
+        return $this->hasOne(EmployeeProfile::class);
+    }
+
+    public function employeePayrollPeriods(): HasMany
+    {
+        return $this->hasMany(EmployeePayrollPeriod::class, 'user_id');
     }
     public function wallets(){
         return $this->hasMany(Wallet::class);

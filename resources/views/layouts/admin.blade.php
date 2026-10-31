@@ -340,6 +340,9 @@
         html[data-app-theme="dark"] .apexcharts-tooltip * { color: var(--app-text) !important; }
     </style>
 
+    @if (request()->routeIs('finance.*'))
+        @include('partials.finance-theme-overrides')
+    @endif
 </head>
 
 <body class="{{ $squareAdminPages ? 'legacy-square-pages' : '' }}">

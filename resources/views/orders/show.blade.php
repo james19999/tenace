@@ -260,7 +260,7 @@
                         <form action="{{ route('ordershow.payment', $Orders->id) }}" method="POST" class="od-payment-form no-print">
                             @csrf
                             <div class="od-field">
-                                <label for="order-paid-amount">Montant déjà payé (F CFA)</label>
+                                <label for="order-paid-amount">Montant encaissé en espèces (F CFA)</label>
                                 <input id="order-paid-amount" type="number" class="form-control @error('paid_amount') is-invalid @enderror" name="paid_amount" min="0" max="{{ (int) $amountDue }}" step="1" value="{{ old('paid_amount', $paidAmount ?? 0) }}" required>
                                 @error('paid_amount') <div class="invalid-feedback">{{ $message }}</div> @enderror
                             </div>

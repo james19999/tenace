@@ -50,12 +50,12 @@ class FedaPayServiceTest extends TestCase
     {
         Http::fake([
             'https://sandbox-api.fedapay.com/v1/transactions/123/token' => Http::response(['token' => 'sandbox-token']),
-            'https://sandbox-api.fedapay.com/v1/togocel' => Http::response(['v1/transaction' => ['id' => 123, 'status' => 'pending']]),
+            'https://sandbox-api.fedapay.com/v1/momo_test' => Http::response(['v1/transaction' => ['id' => 123, 'status' => 'pending']]),
         ]);
 
         app(FedaPayService::class)->requestMobilePayment('123', 'togocel');
 
-        Http::assertSent(fn (Request $request): bool => str_ends_with($request->url(), '/togocel')
+        Http::assertSent(fn (Request $request): bool => str_ends_with($request->url(), '/momo_test')
             && $request['token'] === 'sandbox-token');
     }
 

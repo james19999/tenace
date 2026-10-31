@@ -289,7 +289,7 @@ class CheckController extends Controller
                           ,'is_wholesale' => $isWholesaleOrder
                       ]);
 
-                      if ($isWholesaleOrder && $paidAmount > 0) {
+                      if ($paidAmount > 0) {
                           $order->payments()->create([
                               'stage' => 'at_order', 'method' => 'manual', 'amount' => $paidAmount,
                               'status' => 'collected', 'collected_by' => Auth::id(), 'collected_at' => now(),
@@ -373,7 +373,7 @@ class CheckController extends Controller
                 ,'is_wholesale' => $isWholesaleOrder
             ]);
 
-            if ($isWholesaleOrder && $paidAmount > 0) {
+            if ($paidAmount > 0) {
                 $order->payments()->create([
                     'stage' => 'at_order', 'method' => 'manual', 'amount' => $paidAmount,
                     'status' => 'collected', 'collected_by' => Auth::id(), 'collected_at' => now(),

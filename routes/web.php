@@ -51,6 +51,10 @@ use App\Http\Controllers\ProductQuantityPriceController;
 use App\Http\Controllers\QuantityPromotionController;
 use App\Http\Controllers\WholesaleCustomerMonitoringController;
 use App\Http\Controllers\Expensive\ExpensiveController;
+use App\Http\Controllers\Finance\FinanceController;
+use App\Http\Controllers\Finance\FinanceSupplierInvoiceController;
+use App\Http\Controllers\Finance\FinanceReportController;
+use App\Http\Controllers\Finance\FinanceAuditController;
 use App\Http\Controllers\Brouillons\BrouillonController;
 use App\Http\Controllers\TypeExpensive\TypeExpensiveController;
 
@@ -103,10 +107,60 @@ Route::post('/store/pathner',[DashboarController::class,'store_pathner'])->name(
 
 Route::middleware(['auth'])->group(function () {
 
+    Route::middleware(['role:ADMINUSER,MNG,COMPTABLE,SCR,VDS,CSA,LVS,CALLCENTER,RCM'])->prefix('comptabilite')->name('finance.')->group(function () {
+        Route::get('/', [FinanceController::class, 'index'])->name('dashboard');
+        Route::get('/rapports', [FinanceReportController::class, 'index'])->middleware('role:ADMINUSER,COMPTABLE,CSA')->name('reports.index');
+        Route::get('/rapports/export', [FinanceReportController::class, 'export'])->middleware('role:ADMINUSER,COMPTABLE,CSA')->name('reports.export');
+        Route::get('/gestion', [\App\Http\Controllers\Finance\FinanceManagementController::class, 'index'])->middleware('role:ADMINUSER,COMPTABLE')->name('management.index');
+        Route::post('/gestion/budgets', [\App\Http\Controllers\Finance\FinanceManagementController::class, 'storeBudget'])->middleware('role:ADMINUSER,COMPTABLE')->name('management.budgets.store');
+        Route::post('/gestion/avances', [\App\Http\Controllers\Finance\FinanceManagementController::class, 'storeAdvance'])->middleware('role:ADMINUSER,COMPTABLE')->name('management.advances.store');
+        Route::post('/gestion/avances/{advance}/remboursement', [\App\Http\Controllers\Finance\FinanceManagementController::class, 'repayAdvance'])->middleware('role:ADMINUSER,COMPTABLE')->name('management.advances.repay');
+        Route::post('/gestion/commissions/reglement', [\App\Http\Controllers\Finance\FinanceManagementController::class, 'settleCommission'])->middleware('role:ADMINUSER,COMPTABLE')->name('management.commissions.settle');
+        Route::post('/gestion/immobilisations', [\App\Http\Controllers\Finance\FinanceManagementController::class, 'storeAsset'])->middleware('role:ADMINUSER,COMPTABLE')->name('management.assets.store');
+        Route::get('/gestion/immobilisations/{asset}/piece', [\App\Http\Controllers\Finance\FinanceManagementController::class, 'downloadAssetDocument'])->middleware('role:ADMINUSER,COMPTABLE')->name('management.assets.document');
+        Route::get('/gestion/immobilisations/export', [\App\Http\Controllers\Finance\FinanceManagementController::class, 'exportAssets'])->middleware('role:ADMINUSER,COMPTABLE')->name('management.assets.export');
+        Route::get('/audit', [FinanceAuditController::class, 'index'])->middleware('role:ADMINUSER,COMPTABLE')->name('audit.index');
+        Route::post('/caisse/fonds-initial', [FinanceController::class, 'initializeCash'])->middleware('role:ADMINUSER')->name('cash.opening');
+        Route::post('/caisse/fonds-initial-boutique', [FinanceController::class, 'initializeShopCash'])->middleware('role:ADMINUSER,MNG')->name('cash.shop-opening');
+        Route::post('/caisse/clotures', [FinanceController::class, 'storeCashClosure'])->middleware('role:ADMINUSER,CSA')->name('cash.closures.store');
+        Route::post('/caisse/clotures/{closure}/controle', [FinanceController::class, 'reviewCashClosure'])->middleware('role:ADMINUSER,COMPTABLE')->name('cash.closures.review');
+        Route::get('/remises', [FinanceController::class, 'remittances'])->name('remittances.index');
+        Route::get('/remises/nouvelle', [FinanceController::class, 'createRemittance'])->middleware('role:MNG')->name('remittances.create');
+        Route::get('/remises/montant-attendu', [FinanceController::class, 'expectedRemittanceAmount'])->middleware('role:MNG')->name('remittances.expected-amount');
+        Route::post('/remises', [FinanceController::class, 'storeRemittance'])->middleware('role:MNG')->name('remittances.store');
+        Route::get('/remises/{remittance}/bon', [FinanceController::class, 'printRemittance'])->name('remittances.print');
+        Route::get('/remises/{remittance}', [FinanceController::class, 'showRemittance'])->name('remittances.show');
+        Route::post('/remises/{remittance}/signature-collecteur', [FinanceController::class, 'signRemittance'])->middleware('role:ADMINUSER,MNG,COMPTABLE,SCR,VDS,CSA,LVS,CALLCENTER,RCM')->name('remittances.sign');
+        Route::post('/remises/{remittance}/reception', [FinanceController::class, 'confirmRemittance'])->middleware('role:ADMINUSER')->name('remittances.receive');
+        Route::post('/remises/{remittance}/resoudre-ecart', [FinanceController::class, 'resolveRemittance'])->middleware('role:ADMINUSER')->name('remittances.resolve');
+
+        Route::get('/depenses', [FinanceController::class, 'expenses'])->name('expenses.index');
+        Route::get('/depenses/nouvelle', [FinanceController::class, 'createExpense'])->name('expenses.create');
+        Route::post('/depenses', [FinanceController::class, 'storeExpense'])->name('expenses.store');
+        Route::get('/depenses/{expense}', [FinanceController::class, 'showExpense'])->name('expenses.show');
+        Route::post('/depenses/{expense}/controle-financier', [FinanceController::class, 'financeDecision'])->middleware('role:COMPTABLE')->name('expenses.finance-decision');
+        Route::post('/depenses/{expense}/decision-dg', [FinanceController::class, 'directorDecision'])->middleware('role:ADMINUSER')->name('expenses.director-decision');
+        Route::post('/depenses/{expense}/paiements', [FinanceController::class, 'payExpense'])->middleware('role:ADMINUSER,MNG,CSA,COMPTABLE')->name('expenses.pay');
+        Route::get('/depenses/paiements/{payment}/bon', [FinanceController::class, 'printExpensePayment'])->name('expenses.payments.voucher');
+        Route::get('/fournisseurs/factures', [FinanceSupplierInvoiceController::class, 'index'])->name('suppliers.index');
+        Route::get('/fournisseurs/factures/nouvelle', [FinanceSupplierInvoiceController::class, 'create'])->name('suppliers.create');
+        Route::post('/fournisseurs/factures', [FinanceSupplierInvoiceController::class, 'store'])->name('suppliers.store');
+        Route::get('/fournisseurs/factures/{invoice}', [FinanceSupplierInvoiceController::class, 'show'])->name('suppliers.show');
+        Route::post('/fournisseurs/factures/{invoice}/controle', [FinanceSupplierInvoiceController::class, 'review'])->middleware('role:ADMINUSER,COMPTABLE')->name('suppliers.review');
+        Route::post('/fournisseurs/factures/{invoice}/paiements', [FinanceSupplierInvoiceController::class, 'pay'])->middleware('role:ADMINUSER,COMPTABLE,CSA')->name('suppliers.pay');
+        Route::get('/fournisseurs/pieces/{kind}/{id}', [FinanceSupplierInvoiceController::class, 'attachment'])->whereIn('kind', ['supplier-invoice', 'supplier-payment'])->name('suppliers.attachments.download');
+        Route::get('/pieces/{kind}/{id}', [FinanceController::class, 'downloadAttachment'])->whereIn('kind', ['remittance', 'signed-voucher', 'expense', 'payment'])->name('attachments.download');
+    });
+
     // -------------------------------------------------------------------------
     // 1. ROUTES STRICTEMENT ADMINISTRATEUR (ADMINUSER)
     // -------------------------------------------------------------------------
     Route::middleware(['role:ADMINUSER'])->group(function () {
+        Route::bind('employee', function (string $trackingId): \App\Models\User {
+            return \App\Models\User::query()
+                ->whereHas('employeeProfile', fn ($profile) => $profile->where('tracking_id', $trackingId))
+                ->firstOrFail();
+        });
         Route::get('/partner-monitoring', [PartnerMonitoringController::class, 'index'])->name('partner-monitoring.index');
         Route::get('/partner-monitoring/snapshot', [PartnerMonitoringController::class, 'snapshot'])->name('partner-monitoring.snapshot');
         Route::get('/promotions', [QuantityPromotionController::class, 'index'])->name('quantity-promotions.index');
@@ -130,6 +184,14 @@ Route::middleware(['auth'])->group(function () {
         Route::get('livreurs/{user}/documents/{document}', [LivreurController::class, 'showCourierDocument'])->name('livreurs.documents.show');
         Route::get('user/admin/list', [LivreurController::class, 'user_admin_list'])->name('useradminlist');
         Route::get('user/show/{id}', [LivreurController::class, 'user_show'])->name('user-show');
+        Route::get('/personnel', [\App\Http\Controllers\EmployeeCrmController::class, 'index'])->name('employees.index');
+        Route::get('/personnel/{employee}', [\App\Http\Controllers\EmployeeCrmController::class, 'show'])->where('employee', 'EMP-[A-Z0-9]{12}')->name('employees.show');
+        Route::get('/personnel/{employee}/modifier', [\App\Http\Controllers\EmployeeCrmController::class, 'edit'])->where('employee', 'EMP-[A-Z0-9]{12}')->name('employees.edit');
+        Route::put('/personnel/{employee}', [\App\Http\Controllers\EmployeeCrmController::class, 'update'])->where('employee', 'EMP-[A-Z0-9]{12}')->name('employees.update');
+        Route::get('/personnel/{employee}/paie', [\App\Http\Controllers\EmployeePayrollController::class, 'index'])->where('employee', 'EMP-[A-Z0-9]{12}')->name('employees.payroll.index');
+        Route::post('/personnel/{employee}/paie/periodes', [\App\Http\Controllers\EmployeePayrollController::class, 'createPeriod'])->where('employee', 'EMP-[A-Z0-9]{12}')->name('employees.payroll.periods.store');
+        Route::post('/personnel/{employee}/paie/periodes/{period}/versements', [\App\Http\Controllers\EmployeePayrollController::class, 'recordPayment'])->where('employee', 'EMP-[A-Z0-9]{12}')->name('employees.payroll.payments.store');
+        Route::get('/personnel/paie/versements/{payment}/bon', [\App\Http\Controllers\EmployeePayrollController::class, 'voucher'])->name('employees.payroll.payments.voucher');
 
         // Produits - Création, Modification, Suppression
         Route::get('product/form', ProductForm::class)->name('productform');
@@ -404,7 +466,7 @@ Route::middleware(['auth'])->group(function () {
 
     Route::middleware(['role:ADMINUSER,MNG,COMPTABLE'])->group(function () {
         Route::get('type/expensives', [TypeExpensiveController::class, 'index'])->name('type-expensives');
-        Route::get('/expensives', [ExpensiveController::class, 'index'])->name('expensives');
+        Route::get('/expensives', fn () => redirect()->route('finance.expenses.index'))->name('expensives');
         Route::get('erport/expensive/repport/expensives', [ExpensiveController::class, 'repport'])->name('repport-expensives');
     });
 

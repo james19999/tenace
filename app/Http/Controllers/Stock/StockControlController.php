@@ -39,7 +39,8 @@ class StockControlController extends Controller
                 ->get(),
             'warehouseConfigured' => StockLocation::query()->where('type', 'warehouse')->exists(),
             'salesLocations' => StockLocation::query()->where('is_active', true)->where('type', 'shop')->orderBy('name')->get(['id', 'name', 'code', 'type']),
-            'users' => \App\Models\User::query()->where('active', true)->whereIn('user_type', ['ADMINUSER', 'MNG'])->orderBy('name')->get(['id', 'name', 'user_type']),
+            'users' => \App\Models\User::query()->where('active', true)->whereIn('user_type', $this->employeeRoleTypes())->orderBy('name')->get(['id', 'name', 'user_type']),
+            'employeeRoleLabels' => $this->employeeRoleLabels(),
             'rules' => $settings->rules(),
             'locationTypes' => self::LOCATION_TYPES,
             'systemLocationCodes' => array_column(self::SYSTEM_LOCATIONS, 'code'),
@@ -278,14 +279,44 @@ class StockControlController extends Controller
         $eligible = \App\Models\User::query()
             ->whereKey($userId)
             ->where('active', true)
-            ->whereIn('user_type', ['ADMINUSER', 'MNG'])
+            ->whereIn('user_type', $this->employeeRoleTypes())
             ->exists();
 
         if (! $eligible) {
             throw ValidationException::withMessages([
-                'responsible_user_id' => 'Le responsable doit être un Admin ou un Manager actif, autorisé à valider les opérations de stock.',
+                'responsible_user_id' => 'Le responsable doit être un employé actif de TENACOS.',
             ]);
         }
+    }
+
+    private function employeeRoleTypes(): array
+    {
+        return [
+            \App\Models\User::ROLE_ADMIN,
+            \App\Models\User::ROLE_CALL_CENTER,
+            \App\Models\User::ROLE_SALES,
+            \App\Models\User::ROLE_MANAGER,
+            \App\Models\User::ROLE_SECRETARY,
+            \App\Models\User::ROLE_LIVREUR,
+            \App\Models\User::ROLE_CASHIER,
+            \App\Models\User::ROLE_ACCOUNTANT,
+            \App\Models\User::ROLE_COMMERCIAL_MANAGER,
+        ];
+    }
+
+    private function employeeRoleLabels(): array
+    {
+        return [
+            \App\Models\User::ROLE_ADMIN => 'Administrateur',
+            \App\Models\User::ROLE_CALL_CENTER => 'SAV',
+            \App\Models\User::ROLE_SALES => 'Vendeur',
+            \App\Models\User::ROLE_MANAGER => 'Manager',
+            \App\Models\User::ROLE_SECRETARY => 'Secrétaire',
+            \App\Models\User::ROLE_LIVREUR => 'Livreur',
+            \App\Models\User::ROLE_CASHIER => 'Caissier',
+            \App\Models\User::ROLE_ACCOUNTANT => 'Comptable',
+            \App\Models\User::ROLE_COMMERCIAL_MANAGER => 'Responsable commercial',
+        ];
     }
 
     private function ensureTechnicalLocations(): void
