@@ -146,6 +146,16 @@ class User extends Authenticatable
     public function commissions(){
         return $this->hasMany(Commission::class);
     }
+
+    public function employeeProfile(): \Illuminate\Database\Eloquent\Relations\HasOne
+    {
+        return $this->hasOne(EmployeeProfile::class);
+    }
+
+    public function employeePayrollPeriods(): HasMany
+    {
+        return $this->hasMany(EmployeePayrollPeriod::class, 'user_id');
+    }
     public function wallets(){
         return $this->hasMany(Wallet::class);
     }

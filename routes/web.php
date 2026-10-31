@@ -156,6 +156,11 @@ Route::middleware(['auth'])->group(function () {
     // 1. ROUTES STRICTEMENT ADMINISTRATEUR (ADMINUSER)
     // -------------------------------------------------------------------------
     Route::middleware(['role:ADMINUSER'])->group(function () {
+        Route::bind('employee', function (string $trackingId): \App\Models\User {
+            return \App\Models\User::query()
+                ->whereHas('employeeProfile', fn ($profile) => $profile->where('tracking_id', $trackingId))
+                ->firstOrFail();
+        });
         Route::get('/partner-monitoring', [PartnerMonitoringController::class, 'index'])->name('partner-monitoring.index');
         Route::get('/partner-monitoring/snapshot', [PartnerMonitoringController::class, 'snapshot'])->name('partner-monitoring.snapshot');
         Route::get('/promotions', [QuantityPromotionController::class, 'index'])->name('quantity-promotions.index');
@@ -179,6 +184,14 @@ Route::middleware(['auth'])->group(function () {
         Route::get('livreurs/{user}/documents/{document}', [LivreurController::class, 'showCourierDocument'])->name('livreurs.documents.show');
         Route::get('user/admin/list', [LivreurController::class, 'user_admin_list'])->name('useradminlist');
         Route::get('user/show/{id}', [LivreurController::class, 'user_show'])->name('user-show');
+        Route::get('/personnel', [\App\Http\Controllers\EmployeeCrmController::class, 'index'])->name('employees.index');
+        Route::get('/personnel/{employee}', [\App\Http\Controllers\EmployeeCrmController::class, 'show'])->where('employee', 'EMP-[A-Z0-9]{12}')->name('employees.show');
+        Route::get('/personnel/{employee}/modifier', [\App\Http\Controllers\EmployeeCrmController::class, 'edit'])->where('employee', 'EMP-[A-Z0-9]{12}')->name('employees.edit');
+        Route::put('/personnel/{employee}', [\App\Http\Controllers\EmployeeCrmController::class, 'update'])->where('employee', 'EMP-[A-Z0-9]{12}')->name('employees.update');
+        Route::get('/personnel/{employee}/paie', [\App\Http\Controllers\EmployeePayrollController::class, 'index'])->where('employee', 'EMP-[A-Z0-9]{12}')->name('employees.payroll.index');
+        Route::post('/personnel/{employee}/paie/periodes', [\App\Http\Controllers\EmployeePayrollController::class, 'createPeriod'])->where('employee', 'EMP-[A-Z0-9]{12}')->name('employees.payroll.periods.store');
+        Route::post('/personnel/{employee}/paie/periodes/{period}/versements', [\App\Http\Controllers\EmployeePayrollController::class, 'recordPayment'])->where('employee', 'EMP-[A-Z0-9]{12}')->name('employees.payroll.payments.store');
+        Route::get('/personnel/paie/versements/{payment}/bon', [\App\Http\Controllers\EmployeePayrollController::class, 'voucher'])->name('employees.payroll.payments.voucher');
 
         // Produits - Création, Modification, Suppression
         Route::get('product/form', ProductForm::class)->name('productform');

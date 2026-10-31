@@ -267,6 +267,13 @@
                 </li>
 
                 <li>
+                    <a href="{{ route('employees.index') }}" class="{{ $active('employees.*') }}">
+                        <span class="icon material-icons">badge</span>
+                        <span class="text">Dossiers employés</span>
+                    </a>
+                </li>
+
+                <li>
                     <a href="{{ route('livrable') }}" class="{{ $active('livrable') }}">
                         <span class="icon material-icons">bike_scooter
                         </span>
