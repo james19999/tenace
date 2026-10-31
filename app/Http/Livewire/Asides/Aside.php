@@ -37,7 +37,7 @@ class Aside extends Component
             'stockBadges' => in_array(auth()->user()?->user_type, ['ADMINUSER', 'MNG'], true)
                 ? app(StockControlSidebarBadgeService::class)->counts(auth()->user())
                 : [],
-            'financeBadges' => in_array(auth()->user()?->user_type, ['ADMINUSER', 'MNG', 'COMPTABLE', 'CSA', 'SCR', 'VDS', 'CALLCENTER', 'LVS', 'RCM'], true)
+            'financeBadges' => in_array(auth()->user()?->user_type, ['ADMINUSER', 'MNG', 'COMPTABLE', 'CSA', 'SCR', 'VDS', 'CALLCENTER', 'RCM'], true)
                 ? app(FinanceSidebarBadgeService::class)->counts(auth()->user())
                 : [],
         ]);

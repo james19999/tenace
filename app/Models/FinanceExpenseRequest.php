@@ -14,7 +14,7 @@ class FinanceExpenseRequest extends Model
         'justification_path', 'justification_note', 'requested_by', 'submitted_at', 'finance_reviewed_by', 'finance_reviewed_at',
         'finance_comment', 'director_decided_by', 'director_decided_at', 'director_comment', 'payment_status',
         'paid_amount', 'paid_at', 'paid_by', 'cancellation_reason',
-        'staff_user_id', 'commission_user_id', 'commission_period_start', 'commission_period_end',
+        'staff_user_id', 'staff_advance_type', 'staff_payroll_period_id', 'commission_user_id', 'commission_period_start', 'commission_period_end',
     ];
 
     protected $casts = [
@@ -65,6 +65,11 @@ class FinanceExpenseRequest extends Model
     public function staffMember(): BelongsTo
     {
         return $this->belongsTo(User::class, 'staff_user_id');
+    }
+
+    public function staffPayrollPeriod(): BelongsTo
+    {
+        return $this->belongsTo(EmployeePayrollPeriod::class, 'staff_payroll_period_id');
     }
 
     public function commissionMember(): BelongsTo

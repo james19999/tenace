@@ -11,6 +11,7 @@ use App\Models\FinanceCommissionSettlement;
 use App\Models\FinanceExpenseRequest;
 use App\Models\FinanceStaffAdvance;
 use App\Models\FinanceStaffAdvanceRepayment;
+use App\Models\EmployeePayrollPeriod;
 use App\Models\FinanceSupplierInvoice;
 use App\Models\OrderPayment;
 use App\Models\Orders\Order;
@@ -56,7 +57,7 @@ class FinanceManagementController extends Controller
         $budgetActualTotal = $budgets->sum('actual_amount');
         $budgets = $this->paginateCollection($budgets, $request, 'budget_page');
 
-        $advances = FinanceStaffAdvance::query()->with(['employee', 'repayments.receiver'])->latest('granted_on')->paginate(10, ['*'], 'advance_page')->withQueryString();
+        $advances = FinanceStaffAdvance::query()->with(['employee', 'payrollPeriod', 'repayments.receiver'])->latest('granted_on')->paginate(10, ['*'], 'advance_page')->withQueryString();
         $commissionSummary = Commission::query()->whereBetween('created_at', [now()->startOfYear(), now()->endOfDay()])->select('user_id', DB::raw('SUM(amount) as accrued'))
             ->groupBy('user_id')->get()->map(function ($commission) {
                 $user = User::query()->find((int) $commission->user_id);
@@ -87,8 +88,9 @@ class FinanceManagementController extends Controller
             'locations' => StockLocation::query()->where('type', 'shop')->where('is_active', true)->orderBy('name')->get(['id', 'name']),
             'categories' => DB::table('type_expensives')->orderBy('name')->pluck('name'),
             'employees' => User::query()->where('active', true)->where('user_type', '<>', User::ROLE_PARTNER)->orderBy('name')->get(['id', 'name', 'user_type']),
+            'salaryPeriods' => EmployeePayrollPeriod::query()->with('employee')->orderByDesc('period_start')->limit(100)->get(),
             'advances' => $advances,
-            'advanceOutstanding' => (int) FinanceStaffAdvance::query()->sum(DB::raw('amount - repaid_amount')),
+            'advanceOutstanding' => (int) FinanceStaffAdvance::query()->where('advance_type', 'loan')->sum(DB::raw('amount - repaid_amount')),
             'commissionSummary' => $commissionSummary,
             'assets' => $assets,
             'assetCostTotal' => (int) FinanceAsset::query()->where('status', 'in_service')->sum('purchase_amount'),
@@ -118,18 +120,42 @@ class FinanceManagementController extends Controller
         $data = $request->validate([
             'user_id' => ['required', 'integer', 'exists:users,id'], 'amount' => ['required', 'integer', 'min:1'],
             'granted_on' => ['required', 'date', 'before_or_equal:today'], 'reason' => ['required', 'string', 'max:2000'],
+            'advance_type' => ['required', Rule::in(['loan', 'salary_advance'])],
+            'payroll_period_id' => ['nullable', 'required_if:advance_type,salary_advance', 'integer', 'exists:employee_payroll_periods,id'],
         ]);
         $employee = User::query()->where('active', true)->where('user_type', '<>', User::ROLE_PARTNER)->findOrFail($data['user_id']);
+        $payrollPeriod = null;
+        if ($data['advance_type'] === 'salary_advance') {
+            $payrollPeriod = EmployeePayrollPeriod::query()
+                ->where('user_id', $employee->id)
+                ->findOrFail($data['payroll_period_id']);
+            $alreadyPaid = (int) $payrollPeriod->payments()->where('kind', 'salary')->sum('amount');
+            $alreadyAdvanced = (int) FinanceStaffAdvance::query()
+                ->where('payroll_period_id', $payrollPeriod->id)
+                ->sum('amount');
+            $pendingAdvances = (int) FinanceExpenseRequest::query()
+                ->where('staff_payroll_period_id', $payrollPeriod->id)
+                ->whereIn('status', ['awaiting_finance', 'awaiting_director', 'authorized_to_pay', 'partially_paid'])
+                ->sum(DB::raw('amount - paid_amount'));
+            $remaining = max(0, (int) $payrollPeriod->salary_amount - $alreadyPaid - $alreadyAdvanced - $pendingAdvances);
+            if ((int) $data['amount'] > $remaining) {
+                throw ValidationException::withMessages(['amount' => 'L’avance dépasse le reste du salaire de ce mois ('.number_format($remaining, 0, ',', ' ').' F).']);
+            }
+        }
         $workflow->submit([
-            'category_name' => 'Avance au personnel',
-            'description' => 'Avance au personnel : '.$data['reason'],
+            'category_name' => $data['advance_type'] === 'salary_advance' ? 'Avance sur salaire' : 'Prêt au personnel',
+            'description' => ($data['advance_type'] === 'salary_advance' ? 'Avance sur salaire' : 'Prêt au personnel').': '.$data['reason'],
             'beneficiary' => $employee->name,
             'amount' => $data['amount'],
             'requested_payment_date' => $data['granted_on'],
-            'justification_note' => 'Avance au personnel demandée pour : '.$data['reason'],
+            'justification_note' => 'Demande au personnel : '.$data['reason'],
             'staff_user_id' => $employee->id,
-        ], $request->user());
-        return back()->with('success', 'Demande d’avance transmise au circuit de validation. Elle sera inscrite au suivi après son paiement autorisé.');
+            'staff_advance_type' => $data['advance_type'],
+            'staff_payroll_period_id' => $payrollPeriod?->id,
+        ], $request->user(), $request->user()->isAdmin());
+        return back()->with('success', $request->user()->isAdmin()
+            ? 'Avance autorisée par le DG. Enregistre ensuite son paiement pour mettre à jour la caisse et le suivi du salarié.'
+            : 'Demande d’avance transmise au circuit de validation. Elle sera inscrite au suivi après son paiement autorisé.');
     }
 
     public function repayAdvance(Request $request, FinanceStaffAdvance $advance, FinanceCashLedgerService $ledger, FinanceAuditService $audit): RedirectResponse
@@ -138,6 +164,7 @@ class FinanceManagementController extends Controller
         $data = $request->validate(['amount' => ['required', 'integer', 'min:1'], 'received_at' => ['required', 'date', 'before_or_equal:now']]);
         DB::transaction(function () use ($advance, $data, $request, $ledger, $audit): void {
             $locked = FinanceStaffAdvance::query()->lockForUpdate()->findOrFail($advance->id);
+            abort_if($locked->advance_type !== 'loan', 422, 'Une avance sur salaire est déduite du mois concerné et ne se rembourse pas dans cette liste.');
             $remaining = $locked->amount - $locked->repaid_amount;
             if ($data['amount'] > $remaining) throw ValidationException::withMessages(['amount' => 'Le remboursement dépasse le solde de l’avance ('.number_format($remaining, 0, ',', ' ').' F).']);
             $repayment = FinanceStaffAdvanceRepayment::query()->create(['advance_id' => $locked->id, 'amount' => $data['amount'], 'received_at' => $data['received_at'], 'received_by' => $request->user()->id]);

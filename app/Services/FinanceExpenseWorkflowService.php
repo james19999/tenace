@@ -25,8 +25,9 @@ class FinanceExpenseWorkflowService
     ) {
     }
 
-    public function submit(array $data, User $requester): FinanceExpenseRequest
+    public function submit(array $data, User $requester, bool $directlyAuthorizedByDirector = false): FinanceExpenseRequest
     {
+        abort_if($directlyAuthorizedByDirector && ! $requester->isAdmin(), 403);
         if ($requester->isManager() && empty($data['stock_location_id'])) {
             throw ValidationException::withMessages(['stock_location_id' => 'Une demande du responsable de boutique doit être imputée à sa boutique.']);
         }
@@ -40,7 +41,7 @@ class FinanceExpenseWorkflowService
             }
         }
 
-        return DB::transaction(function () use ($data, $requester): FinanceExpenseRequest {
+        return DB::transaction(function () use ($data, $requester, $directlyAuthorizedByDirector): FinanceExpenseRequest {
             $category = ! empty($data['category_id'])
                 ? TypeExpensive::query()->findOrFail($data['category_id'])
                 : TypeExpensive::query()->firstOrCreate(['name' => trim((string) $data['category_name'])]);
@@ -54,29 +55,48 @@ class FinanceExpenseWorkflowService
                 'beneficiary' => $data['beneficiary'],
                 'budget_reference' => $data['budget_reference'] ?? null,
                 'requested_payment_date' => $data['requested_payment_date'] ?? null,
-                'status' => 'awaiting_finance',
-                'approval_route' => (int) $data['amount'] > self::DIRECTOR_APPROVAL_THRESHOLD ? 'finance_and_director' : 'finance',
+                'status' => $directlyAuthorizedByDirector ? 'authorized_to_pay' : 'awaiting_finance',
+                'approval_route' => $directlyAuthorizedByDirector
+                    ? 'director_direct'
+                    : ((int) $data['amount'] > self::DIRECTOR_APPROVAL_THRESHOLD ? 'finance_and_director' : 'finance'),
                 'justification_path' => $data['justification_path'] ?? null,
                 'justification_note' => $data['justification_note'] ?? null,
                 'requested_by' => $requester->id,
                 'staff_user_id' => $data['staff_user_id'] ?? null,
+                'staff_advance_type' => $data['staff_advance_type'] ?? null,
+                'staff_payroll_period_id' => $data['staff_payroll_period_id'] ?? null,
                 'commission_user_id' => $data['commission_user_id'] ?? null,
                 'commission_period_start' => $data['commission_period_start'] ?? null,
                 'commission_period_end' => $data['commission_period_end'] ?? null,
                 'submitted_at' => now(),
+                'director_decided_by' => $directlyAuthorizedByDirector ? $requester->id : null,
+                'director_decided_at' => $directlyAuthorizedByDirector ? now() : null,
+                'director_comment' => $directlyAuthorizedByDirector ? 'Autorisation directe du DG à la création de l’avance.' : null,
             ]);
             $expense->update(['reference' => sprintf('DEP-%s-%06d', now()->format('Y'), $expense->id)]);
-            $this->audit->record($expense, 'submitted', null, $expense->fresh()->toArray());
+            if ($directlyAuthorizedByDirector) {
+                FinanceExpenseApproval::query()->create([
+                    'expense_request_id' => $expense->id,
+                    'stage' => 'director',
+                    'decision' => 'approved',
+                    'decided_by' => $requester->id,
+                    'comment' => 'Autorisation directe du DG à la création de l’avance.',
+                    'decided_at' => now(),
+                ]);
+            }
+            $this->audit->record($expense, $directlyAuthorizedByDirector ? 'director_authorized_at_creation' : 'submitted', null, $expense->fresh()->toArray());
 
-            Notification::send(
-                User::query()->where('user_type', User::ROLE_ACCOUNTANT)->where('active', true)->where('id', '<>', $requester->id)->get(),
-                new FinanceWorkflowNotification(
-                    'Dépense à contrôler',
-                    'Une demande de dépense attend le contrôle financier : '.$expense->reference.'.',
-                    route('finance.expenses.show', $expense->id),
-                    'request_quote',
-                ),
-            );
+            if (! $directlyAuthorizedByDirector) {
+                Notification::send(
+                    User::query()->where('user_type', User::ROLE_ACCOUNTANT)->where('active', true)->where('id', '<>', $requester->id)->get(),
+                    new FinanceWorkflowNotification(
+                        'Dépense à contrôler',
+                        'Une demande de dépense attend le contrôle financier : '.$expense->reference.'.',
+                        route('finance.expenses.show', $expense->id),
+                        'request_quote',
+                    ),
+                );
+            }
 
             return $expense->fresh();
         });
@@ -197,6 +217,27 @@ class FinanceExpenseWorkflowService
                 throw ValidationException::withMessages(['amount' => 'Le paiement dépasse le reste autorisé de la dépense.']);
             }
 
+            $payrollPeriod = null;
+            if ($locked->staff_user_id && $locked->staff_advance_type === 'salary_advance') {
+                $payrollPeriod = \App\Models\EmployeePayrollPeriod::query()
+                    ->where('user_id', $locked->staff_user_id)
+                    ->lockForUpdate()
+                    ->findOrFail($locked->staff_payroll_period_id);
+                $alreadyPaid = (int) $payrollPeriod->payments()->sum('amount');
+                $alreadyAdvanced = (int) \App\Models\FinanceStaffAdvance::query()
+                    ->where('payroll_period_id', $payrollPeriod->id)
+                    ->sum('amount');
+                $pendingAdvances = (int) FinanceExpenseRequest::query()
+                    ->where('staff_payroll_period_id', $payrollPeriod->id)
+                    ->where('id', '<>', $locked->id)
+                    ->whereIn('status', ['awaiting_finance', 'awaiting_director', 'authorized_to_pay', 'partially_paid'])
+                    ->sum(DB::raw('amount - paid_amount'));
+                $currentRequestRemaining = max(0, (int) $locked->amount - (int) $locked->paid_amount);
+                if ($alreadyPaid + $alreadyAdvanced + $pendingAdvances + $currentRequestRemaining > (int) $payrollPeriod->salary_amount) {
+                    throw ValidationException::withMessages(['amount' => 'Le paiement dépasserait le salaire restant de ce mois. Vérifie les avances et demandes en cours.']);
+                }
+            }
+
             $payment = FinanceExpensePayment::query()->create([
                 'expense_request_id' => $locked->id, 'amount' => $amount, 'custody_account' => $custody,
                 'stock_location_id' => $custody === 'shop' ? $locationId : null,
@@ -223,6 +264,8 @@ class FinanceExpenseWorkflowService
                 $advance = \App\Models\FinanceStaffAdvance::query()->create([
                     'reference' => 'TMP-'.Str::uuid(), 'user_id' => $locked->staff_user_id,
                     'finance_expense_payment_id' => $payment->id, 'amount' => $amount,
+                    'advance_type' => $locked->staff_advance_type ?: 'loan',
+                    'payroll_period_id' => $payrollPeriod?->id,
                     'granted_on' => $payment->paid_at->toDateString(), 'reason' => $locked->description,
                     'created_by' => $payer->id,
                 ]);

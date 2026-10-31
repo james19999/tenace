@@ -5,7 +5,8 @@ namespace App\Http\Controllers;
 use App\Models\EmployeePayrollPayment;
 use App\Models\EmployeePayrollPeriod;
 use App\Models\FinanceAuditEvent;
-use App\Models\FinanceCashMovement;
+use App\Models\FinanceExpenseRequest;
+use App\Models\FinanceStaffAdvance;
 use App\Models\User;
 use App\Services\FinanceCashLedgerService;
 use Illuminate\Http\RedirectResponse;
@@ -25,10 +26,19 @@ class EmployeePayrollController extends Controller
 
         $periods = EmployeePayrollPeriod::query()
             ->where('user_id', $employee->id)
-            ->with(['payments.payer'])
+            ->with(['payments.payer', 'staffAdvances.creator', 'staffAdvances.financeExpensePayment.expense', 'staffAdvances.employeePayrollPayment.payer'])
             ->orderByDesc('period_start')
             ->paginate(12)
             ->withQueryString();
+        $pendingAdvanceAmounts = FinanceExpenseRequest::query()
+            ->whereIn('staff_payroll_period_id', $periods->getCollection()->pluck('id'))
+            ->whereIn('status', ['awaiting_finance', 'awaiting_director', 'authorized_to_pay', 'partially_paid'])
+            ->select('staff_payroll_period_id', DB::raw('SUM(amount - paid_amount) as pending_amount'))
+            ->groupBy('staff_payroll_period_id')
+            ->pluck('pending_amount', 'staff_payroll_period_id');
+        $periods->getCollection()->each(function (EmployeePayrollPeriod $period) use ($pendingAdvanceAmounts): void {
+            $period->setAttribute('pending_advance_amount', (int) ($pendingAdvanceAmounts[$period->id] ?? 0));
+        });
 
         return view('employees.payroll.index', compact('employee', 'periods'));
     }
@@ -92,7 +102,7 @@ class EmployeePayrollController extends Controller
 
         $data = $request->validate([
             'submission_key' => ['required', 'uuid'],
-            'kind' => ['required', Rule::in(['advance', 'salary'])],
+            'kind' => ['required', Rule::in(['salary'])],
             'amount' => ['required', 'integer', 'min:1', 'max:1000000000'],
             'paid_at' => ['required', 'date', 'before_or_equal:today'],
             'payment_reference' => ['nullable', 'string', 'max:120'],
@@ -103,8 +113,13 @@ class EmployeePayrollController extends Controller
             if ($locked->payments()->where('submission_key', $data['submission_key'])->exists()) {
                 return;
             }
-            $alreadyPaid = (int) $locked->payments()->sum('amount');
-            $remaining = max(0, (int) $locked->salary_amount - $alreadyPaid);
+            $alreadyPaid = (int) $locked->payments()->where('kind', 'salary')->sum('amount');
+            $alreadyAdvanced = (int) FinanceStaffAdvance::query()->where('payroll_period_id', $locked->id)->sum('amount');
+            $pendingAdvances = (int) FinanceExpenseRequest::query()
+                ->where('staff_payroll_period_id', $locked->id)
+                ->whereIn('status', ['awaiting_finance', 'awaiting_director', 'authorized_to_pay', 'partially_paid'])
+                ->sum(DB::raw('amount - paid_amount'));
+            $remaining = max(0, (int) $locked->salary_amount - $alreadyPaid - $alreadyAdvanced - $pendingAdvances);
             if ((int) $data['amount'] > $remaining) {
                 throw ValidationException::withMessages([
                     'amount' => 'Le versement dépasse le solde dû de '.number_format($remaining, 0, ',', ' ').' F CFA.',
@@ -124,9 +139,8 @@ class EmployeePayrollController extends Controller
             ]);
             $payment->update(['reference' => sprintf('PAI-%s-%06d', now()->format('Y'), $payment->id)]);
 
-            $kindLabel = $payment->kind === 'advance' ? 'Avance sur salaire' : 'Versement de salaire';
             $movement = $ledger->record([
-                'movement_type' => $payment->kind === 'advance' ? 'salary_advance' : 'salary_payment',
+                'movement_type' => 'salary_payment',
                 'from_custody' => 'general_cash',
                 'to_custody' => 'external',
                 'amount' => $payment->amount,
@@ -135,7 +149,7 @@ class EmployeePayrollController extends Controller
                 'source_key' => 'employee-payroll-payment:'.$payment->id,
                 'source_reference' => Str::limit($payment->reference.' · '.$employee->name.' · '.$locked->period_start->format('m/Y'), 120, ''),
                 'occurred_at' => $paidAt,
-                'description' => $kindLabel.' remis(e) à '.$employee->name.' pour '.$locked->period_start->translatedFormat('F Y').'.',
+                'description' => 'Versement de salaire remis à '.$employee->name.' pour '.$locked->period_start->translatedFormat('F Y').'.',
                 'created_by' => $request->user()->id,
             ]);
             $payment->update(['finance_cash_movement_id' => $movement->id]);
@@ -143,7 +157,7 @@ class EmployeePayrollController extends Controller
             FinanceAuditEvent::query()->create([
                 'subject_type' => 'EmployeePayrollPayment',
                 'subject_id' => $payment->id,
-                'action' => $payment->kind === 'advance' ? 'salary_advance_paid' : 'salary_payment_paid',
+                'action' => 'salary_payment_paid',
                 'after_values' => [
                     'reference' => $payment->reference,
                     'employee' => $employee->name,

@@ -15,4 +15,5 @@ class EmployeePayrollPeriod extends Model
     public function employee(): BelongsTo { return $this->belongsTo(User::class, 'user_id'); }
     public function creator(): BelongsTo { return $this->belongsTo(User::class, 'created_by'); }
     public function payments(): HasMany { return $this->hasMany(EmployeePayrollPayment::class, 'period_id')->orderBy('paid_at'); }
+    public function staffAdvances(): HasMany { return $this->hasMany(FinanceStaffAdvance::class, 'payroll_period_id')->orderBy('granted_on'); }
 }

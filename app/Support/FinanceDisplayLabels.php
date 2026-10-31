@@ -96,6 +96,7 @@ class FinanceDisplayLabels
             'finance_review_approved' => 'Contrôle financier validé',
             'finance_review_rejected' => 'Contrôle financier refusé',
             'director_approved' => 'Dépense autorisée par le DG',
+            'director_authorized_at_creation' => 'Avance autorisée directement par le DG',
             'director_rejected' => 'Dépense refusée par le DG',
             'payment_recorded' => 'Paiement enregistré',
             'cash_count_submitted' => 'Comptage de caisse transmis',

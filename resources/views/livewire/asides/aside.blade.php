@@ -24,7 +24,7 @@
         </div>
         <ul>
 
-            @if (in_array(Auth::user()->user_type, ['SCR', 'VDS', 'CSA', 'CALLCENTER', 'LVS', 'RCM'], true))
+            @if (in_array(Auth::user()->user_type, ['SCR', 'VDS', 'CSA', 'CALLCENTER', 'RCM'], true))
                 <li>
                     <a href="#financeOperationalCollapse" class="{{ $active('finance.*') }}" data-toggle="collapse" aria-expanded="{{ request()->routeIs('finance.*') ? 'true' : 'false' }}">
                         <span class="caret material-icons">arrow_right</span>
