@@ -67,6 +67,7 @@ class FinanceManagementController extends Controller
                     ->sum(DB::raw('amount - paid_amount'));
                 return (object) ['user' => $user, 'accrued' => (int) $commission->accrued, 'paid' => $paid, 'due' => max(0, (int) $commission->accrued - $paid - $pending)];
             })->filter(fn ($row) => $row->user
+                && $row->user->user_type !== User::ROLE_ADMIN
                 && $row->user->user_type !== User::ROLE_PARTNER
                 && $row->due > 0)->sortByDesc('due')->values();
         $commissionSummary = $this->paginateCollection($commissionSummary, $request, 'commission_page');
