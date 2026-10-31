@@ -1,7 +1,7 @@
 @php
     $active = fn (...$routes) => request()->routeIs(...$routes) ? 'active' : '';
 @endphp
-<aside class="sidebar" wire:poll.30s>
+<aside class="sidebar" data-sidebar-user="{{ auth()->id() }}" wire:poll.30s>
     <nav class="navbar">
         <a class="navbar-brand brand-title" href="#">
             @php

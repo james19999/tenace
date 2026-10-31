@@ -415,6 +415,44 @@
     <script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
 
     <script>
+        (function ($) {
+            if (!$) return;
+            var sidebarSelector = '.sidebar';
+            var storageKey = 'tenacos.sidebar.open-menus.' + (document.querySelector(sidebarSelector)?.dataset.sidebarUser || 'guest');
+            var readOpenMenus = function () {
+                try { return JSON.parse(sessionStorage.getItem(storageKey) || '[]'); }
+                catch (error) { return []; }
+            };
+            var writeOpenMenus = function (ids) {
+                try { sessionStorage.setItem(storageKey, JSON.stringify(Array.from(new Set(ids)))); }
+                catch (error) { /* Le menu reste utilisable si le stockage du navigateur est désactivé. */ }
+            };
+            var setOpen = function (id, open) {
+                var ids = readOpenMenus().filter(function (savedId) { return savedId !== id; });
+                if (open) ids.push(id);
+                writeOpenMenus(ids);
+            };
+            var restoreOpenMenus = function () {
+                readOpenMenus().forEach(function (id) {
+                    var menu = document.getElementById(id);
+                    if (menu && menu.closest(sidebarSelector) && !menu.classList.contains('show')) $(menu).collapse('show');
+                });
+            };
+
+            $(document)
+                .on('shown.bs.collapse', sidebarSelector + ' .collapse[id]', function () { setOpen(this.id, true); })
+                .on('hidden.bs.collapse', sidebarSelector + ' .collapse[id]', function () { setOpen(this.id, false); });
+
+            restoreOpenMenus();
+            document.addEventListener('livewire:load', function () {
+                if (window.Livewire && typeof Livewire.hook === 'function') {
+                    Livewire.hook('message.processed', restoreOpenMenus);
+                }
+            }, { once: true });
+        })(window.jQuery);
+    </script>
+
+    <script>
         (function () {
             if (document.documentElement.dataset.appTheme !== 'dark' || typeof Chart === 'undefined') return;
 
