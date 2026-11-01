@@ -2,7 +2,7 @@
     $active = fn (...$routes) => request()->routeIs(...$routes) ? 'active' : '';
     $employeeFinanceRoles = ['MNG', 'SCR', 'VDS', 'CSA', 'LVS', 'CALLCENTER', 'COMPTABLE', 'RCM', 'GRO', 'INFO'];
     $showEquipmentPurchases = false;
-    $tontineRoles = ['ADMINUSER', 'MNG', 'COMPTABLE', 'SCR', 'VDS', 'CSA', 'LVS', 'CALLCENTER', 'RCM', 'GRO', 'INFO'];
+    $tontineRoles = ['ADMINUSER', 'MNG', 'COMPTABLE', 'SCR', 'VDS', 'CSA', 'LVS', 'CALLCENTER', 'RCM', 'GRO'];
     $showTontines = Auth::check() && in_array(Auth::user()->user_type, $tontineRoles, true);
     $hasTontineAccountingMenu = Auth::check() && in_array(Auth::user()->user_type, ['ADMINUSER', 'MNG', 'COMPTABLE', 'SCR', 'VDS', 'CSA', 'CALLCENTER', 'RCM'], true);
     $dashboard = match (Auth::user()->user_type) {
