@@ -37,6 +37,13 @@ class DashboarController extends Controller
 
         $todayStart = Carbon::today();
         $tomorrow = $todayStart->copy()->addDay();
+        $startOfWeek = Carbon::now()->startOfWeek();
+        $startOfNextWeek = $startOfWeek->copy()->addWeek();
+        $totalOrdersThisWeek = Order::where('delivered_at', '>=', $startOfWeek)
+            ->where('delivered_at', '<', $startOfNextWeek)
+            ->where('status', 'delivered')
+            ->where('is_wholesale', false)
+            ->sum('total');
 
         $dashboardOrders = fn () => Order::with(['costumer', 'user'])
             ->where('brouillon', 1)
@@ -161,13 +168,6 @@ class DashboarController extends Controller
                 false
             ));
 
-            $startOfWeek = Carbon::now()->startOfWeek();
-
-            $totalOrdersThisWeek = Order::where('delivered_at', '>=', $startOfWeek)
-                ->where('status', 'delivered')
-                ->where('is_wholesale', false)
-                ->sum('total');
-
             $totalWholesaleOrdersThisWeek = Order::where('delivered_at', '>=', $startOfWeek)
                 ->where('delivered_at', '<', $startOfWeek->copy()->addWeek())
                 ->where('status', 'delivered')
@@ -194,7 +194,6 @@ class DashboarController extends Controller
             $chart2 = null;
             $chart3 = null;
             $chart4 = null;
-            $totalOrdersThisWeek = 0;
             $totalWholesaleOrdersThisWeek = 0;
             $totalCommandes = 0;
             $totalWholesaleCommandes = 0;

@@ -58,12 +58,13 @@ class EmployeePayrollController extends Controller
         $purchaseRequests = class_exists(\App\Models\FinanceEquipmentPurchaseRequest::class)
             ? \App\Models\FinanceEquipmentPurchaseRequest::query()->where('assigned_to', $employee->id)->latest()->limit(20)->get()
             : collect();
-        $purchaseAssigneeId = FinanceEquipmentPurchaseSetting::query()->whereKey(1)->value('assignee_user_id');
+        $purchaseSetting = FinanceEquipmentPurchaseSetting::query()->with('assignee')->find(1);
+        $purchaseAssigneeId = $purchaseSetting?->assignee_user_id;
         $canCreatePurchases = (int) $purchaseAssigneeId === (int) $employee->id;
         $canManagePurchases = $canCreatePurchases || $purchaseRequests->isNotEmpty();
         abort_unless($activePage !== 'purchases' || $canManagePurchases, 404);
 
-        return view('employees.self-service', compact('employee', 'profile', 'periods', 'advanceRequests', 'personalLoans', 'purchaseRequests', 'availableForAdvance', 'activePage', 'canManagePurchases', 'canCreatePurchases'));
+        return view('employees.self-service', compact('employee', 'profile', 'periods', 'advanceRequests', 'personalLoans', 'purchaseRequests', 'purchaseSetting', 'availableForAdvance', 'activePage', 'canManagePurchases', 'canCreatePurchases'));
     }
 
     public function requestOwnAdvance(Request $request, FinanceExpenseWorkflowService $workflow): RedirectResponse

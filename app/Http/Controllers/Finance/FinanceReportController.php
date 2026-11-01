@@ -13,6 +13,7 @@ use App\Models\User;
 use App\Support\FinanceDisplayLabels;
 use Illuminate\Http\Request;
 use Illuminate\Support\Carbon;
+use Illuminate\Support\Collection;
 use Illuminate\Validation\Rule;
 use Illuminate\View\View;
 use Illuminate\Support\Str;
@@ -27,11 +28,14 @@ class FinanceReportController extends Controller
         $filters = $this->filters($request);
         $user = $request->user();
         abort_unless($user->isAdmin() || $user->isAccountant() || $user->hasRole(User::ROLE_CASHIER), 403);
+        $allRows = $this->rows($filters, $user);
 
         return view('finance.reports.index', [
             'filters' => $filters,
             'rows' => $this->query($filters, $user)->paginate(30)->withQueryString(),
             'total' => $this->total($filters, $user),
+            'overviewTotals' => $this->overviewTotals($filters, $user),
+            'locationTotals' => $this->locationTotals($filters, $allRows),
             'locations' => StockLocation::query()->where('type', 'shop')->orderBy('name')->get(['id', 'name']),
             'recentExports' => FinanceReportExport::query()->with('exporter')
                 ->when(! $user->isAdmin() && ! $user->isAccountant(), fn ($query) => $query->where('exported_by', $user->id))
@@ -47,10 +51,13 @@ class FinanceReportController extends Controller
         $user = $request->user();
         abort_unless($user->isAdmin() || $user->isAccountant() || $user->hasRole(User::ROLE_CASHIER), 403);
         $rows = $this->rows($filters, $user);
+        $filters['location_name'] = $filters['stock_location_id']
+            ? StockLocation::query()->whereKey($filters['stock_location_id'])->value('name')
+            : null;
         $exportLog = FinanceReportExport::query()->create([
             'reference' => 'TMP-'.Str::uuid(),
             'report_type' => $filters['type'],
-            'filters' => ['from' => $filters['from'], 'to' => $filters['to'], 'stock_location_id' => $filters['stock_location_id']],
+            'filters' => ['from' => $filters['from'], 'to' => $filters['to'], 'stock_location_id' => $filters['stock_location_id'], 'location_name' => $filters['location_name']],
             'row_count' => $rows->count(),
             'amount_total' => $this->total($filters, $user),
             'exported_by' => $user->id,
@@ -60,7 +67,7 @@ class FinanceReportController extends Controller
         $headers = match ($filters['type']) {
             'remittances' => ['Référence', 'Boutique', 'Période', 'Responsable', 'Collecteur', 'Déclaré', 'Reçu caisse générale', 'Statut', 'Reçu le'],
             'expenses' => ['Référence', 'Date demande', 'Catégorie', 'Description', 'Bénéficiaire', 'Montant autorisé', 'Payé', 'Statut', 'Point de vente'],
-            'suppliers' => ['Fournisseur', 'Référence TENACOS', 'N° facture fournisseur', 'Date facture', 'Échéance', 'Montant', 'Payé', 'Reste dû', 'Statut', 'Réception stock'],
+            'suppliers' => ['Fournisseur', 'Référence TENACOS', 'N° facture fournisseur', 'Date facture', 'Échéance', 'Montant', 'Payé', 'Reste dû', 'Statut', 'Boutique de réception', 'Réception stock'],
             default => ['N° écriture', 'Date', 'Opération', 'Référence source', 'Point de vente', 'Origine', 'Destination', 'Montant', 'Description'],
         };
         $baseName = 'tenacos-'.str_replace('_', '-', $filters['type']).'-'.$filters['from'].'-'.$filters['to'];
@@ -72,6 +79,9 @@ class FinanceReportController extends Controller
                 'filters' => $filters,
                 'headers' => $headers,
                 'rows' => $rows->map(fn ($row) => $this->csvRow($filters['type'], $row)),
+                'total' => $this->total($filters, $user),
+                'overviewTotals' => $this->overviewTotals($filters, $user),
+                'locationTotals' => $this->locationTotals($filters, $rows),
                 'generatedAt' => now(),
             ])->setPaper('a4', 'landscape')->download($baseName.'.pdf');
         }
@@ -174,7 +184,7 @@ class FinanceReportController extends Controller
             'type' => ['nullable', Rule::in(['cash', 'remittances', 'expenses', 'suppliers'])],
             'from' => ['nullable', 'date'],
             'to' => ['nullable', 'date', 'after_or_equal:from'],
-            'stock_location_id' => ['nullable', 'integer', 'exists:stock_locations,id'],
+            'stock_location_id' => ['nullable', 'integer', Rule::exists('stock_locations', 'id')->where(fn ($query) => $query->where('type', 'shop'))],
         ]);
         $from = Carbon::parse($data['from'] ?? now()->startOfMonth()->toDateString())->startOfDay();
         $to = Carbon::parse($data['to'] ?? now()->toDateString())->endOfDay();
@@ -186,6 +196,9 @@ class FinanceReportController extends Controller
             'from_at' => $from,
             'to_at' => $to,
             'stock_location_id' => $data['stock_location_id'] ?? null,
+            'location_name' => ! empty($data['stock_location_id'])
+                ? StockLocation::query()->whereKey($data['stock_location_id'])->value('name')
+                : null,
         ];
     }
 
@@ -201,13 +214,17 @@ class FinanceReportController extends Controller
                 ->whereBetween('created_at', [$filters['from_at'], $filters['to_at']]),
             'expenses' => FinanceExpenseRequest::query()->with(['location', 'requester'])
                 ->whereBetween('created_at', [$filters['from_at'], $filters['to_at']]),
-            'suppliers' => FinanceSupplierInvoice::query()->with(['receipt'])
+            'suppliers' => FinanceSupplierInvoice::query()->with(['receipt.location'])
                 ->whereBetween('invoice_date', [$filters['from'], $filters['to']]),
             default => FinanceCashMovement::query()->with('location')
                 ->whereBetween('occurred_at', [$filters['from_at'], $filters['to_at']]),
         };
-        if ($filters['stock_location_id'] && $filters['type'] !== 'suppliers') {
-            $query->where('stock_location_id', $filters['stock_location_id']);
+        if ($filters['stock_location_id']) {
+            if ($filters['type'] === 'suppliers') {
+                $query->whereHas('receipt', fn ($receipt) => $receipt->where('location_id', $filters['stock_location_id']));
+            } else {
+                $query->where('stock_location_id', $filters['stock_location_id']);
+            }
         }
         if (! $user->isAdmin() && ! $user->isAccountant()) {
             if ($user->hasRole(User::ROLE_CASHIER)) {
@@ -241,12 +258,55 @@ class FinanceReportController extends Controller
         });
     }
 
+    private function locationTotals(array $filters, Collection $rows): Collection
+    {
+        return $rows->groupBy(function ($row) use ($filters): string {
+            $location = $filters['type'] === 'suppliers' ? $row->receipt?->location : $row->location;
+
+            return $location?->name ?? 'Non rattaché à une boutique';
+        })->map(function (Collection $group, string $name) use ($filters): array {
+            return [
+                'name' => $name,
+                'count' => $group->count(),
+                'total' => (int) $group->sum(match ($filters['type']) {
+                    'remittances' => 'received_amount',
+                    'expenses' => 'paid_amount',
+                    default => 'amount',
+                }),
+                'requested' => $filters['type'] === 'expenses' ? (int) $group->sum('amount') : null,
+            ];
+        })->sortBy('name')->values();
+    }
+
+    private function overviewTotals(array $filters, User $user): array
+    {
+        $totals = [];
+        foreach (['cash', 'remittances', 'expenses', 'suppliers'] as $type) {
+            $scope = [...$filters, 'type' => $type];
+            $query = $this->query($scope, $user);
+            $totals[$type] = match ($type) {
+                'expenses' => [
+                    'amount' => (int) (clone $query)->sum('amount'),
+                    'paid' => (int) (clone $query)->sum('paid_amount'),
+                ],
+                'suppliers' => [
+                    'amount' => (int) (clone $query)->sum('amount'),
+                    'paid' => (int) (clone $query)->sum('paid_amount'),
+                ],
+                'remittances' => ['amount' => (int) (clone $query)->sum('received_amount')],
+                default => ['amount' => (int) (clone $query)->sum('amount')],
+            };
+        }
+
+        return $totals;
+    }
+
     private function csvRow(string $type, $row): array
     {
         return match ($type) {
             'remittances' => [$row->reference, $row->location?->name, $row->period_start?->format('d/m/Y').' - '.$row->period_end?->format('d/m/Y'), $row->shopManager?->name, $row->collector?->name, $row->handed_over_amount, $row->received_amount, FinanceDisplayLabels::status($row->status), $row->received_at?->format('d/m/Y H:i')],
             'expenses' => [$row->reference, $row->created_at?->format('d/m/Y H:i'), $row->category_name, $row->description, $row->beneficiary, $row->amount, $row->paid_amount, FinanceDisplayLabels::status($row->status), $row->location?->name],
-            'suppliers' => [$row->supplier_name, $row->invoice_number, $row->supplier_invoice_number, $row->invoice_date?->format('d/m/Y'), $row->due_date?->format('d/m/Y'), $row->amount, $row->paid_amount, max(0, $row->amount - $row->paid_amount), FinanceDisplayLabels::status($row->status).' / '.FinanceDisplayLabels::status($row->payment_status), $row->receipt?->receipt_number],
+            'suppliers' => [$row->supplier_name, $row->invoice_number, $row->supplier_invoice_number, $row->invoice_date?->format('d/m/Y'), $row->due_date?->format('d/m/Y'), $row->amount, $row->paid_amount, max(0, $row->amount - $row->paid_amount), FinanceDisplayLabels::status($row->status).' / '.FinanceDisplayLabels::status($row->payment_status), $row->receipt?->location?->name, $row->receipt?->receipt_number],
             default => [$row->entry_number, $row->occurred_at?->format('d/m/Y H:i'), FinanceDisplayLabels::movement($row->movement_type), $row->source_reference, $row->location?->name, FinanceDisplayLabels::custody($row->from_custody), FinanceDisplayLabels::custody($row->to_custody), $row->amount, $row->description],
         };
     }
