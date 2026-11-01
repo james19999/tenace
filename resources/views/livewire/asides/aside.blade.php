@@ -801,6 +801,38 @@
 </aside>
 @once
     <script>
+        document.addEventListener('livewire:load', function () {
+            if (!window.Livewire || window.tenaceSidebarCollapseStateHooked) return;
+            window.tenaceSidebarCollapseStateHooked = true;
+
+            var openMenusByComponent = new Map();
+            var isSidebarComponent = function (component) {
+                return component && component.el && component.el.matches('.sidebar');
+            };
+
+            // The sidebar polls for fresh badges. Keep the user's expanded
+            // menus open when Livewire refreshes that component.
+            window.Livewire.hook('message.sent', function (message, component) {
+                if (!isSidebarComponent(component)) return;
+                openMenusByComponent.set(component.id, Array.from(component.el.querySelectorAll('.navigation .collapse.show'))
+                    .map(function (menu) { return menu.id; }));
+            });
+
+            window.Livewire.hook('message.processed', function (message, component) {
+                if (!isSidebarComponent(component) || !openMenusByComponent.has(component.id)) return;
+
+                var openIds = openMenusByComponent.get(component.id);
+                openMenusByComponent.delete(component.id);
+                component.el.querySelectorAll('.navigation .collapse[id]').forEach(function (menu) {
+                    menu.classList.remove('collapsing');
+                    menu.style.height = '';
+                    menu.classList.toggle('show', openIds.includes(menu.id));
+                    var trigger = component.el.querySelector('a[href="#' + menu.id + '"]');
+                    if (trigger) trigger.setAttribute('aria-expanded', openIds.includes(menu.id) ? 'true' : 'false');
+                });
+            });
+        });
+
         window.addEventListener('stock-notification-read', function () {
             var aside = document.querySelector('.sidebar[wire\\:id]');
             if (!aside || !window.Livewire) return;
