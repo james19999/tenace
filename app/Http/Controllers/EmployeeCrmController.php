@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\EmployeeProfile;
 use App\Models\FinanceAuditEvent;
 use App\Models\User;
+use App\Models\StockLocation;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
@@ -26,7 +27,7 @@ class EmployeeCrmController extends Controller
 
     public function index(Request $request): View
     {
-        $query = User::query()->with(['employeeProfile', 'responsibleStockLocations:id,name,responsible_user_id'])->whereIn('user_type', self::EMPLOYEE_ROLES)
+        $query = User::query()->with(['employeeProfile', 'primaryStockLocation:id,name', 'responsibleStockLocations:id,name,responsible_user_id'])->whereIn('user_type', self::EMPLOYEE_ROLES)
             ->when($request->filled('role'), fn ($users) => $users->where('user_type', (string) $request->query('role')))
             ->when($request->query('status') === 'active', fn ($users) => $users->where('active', true))
             ->when($request->query('status') === 'inactive', fn ($users) => $users->where('active', false))
@@ -62,7 +63,7 @@ class EmployeeCrmController extends Controller
     public function show(User $employee): View
     {
         $this->ensureEmployee($employee);
-        $employee->load(['employeeProfile', 'responsibleStockLocations:id,name,responsible_user_id']);
+        $employee->load(['employeeProfile', 'primaryStockLocation:id,name', 'responsibleStockLocations:id,name,responsible_user_id']);
 
         return view('employees.show', ['employee' => $employee, 'roleLabel' => $this->roleLabels()[$employee->user_type]]);
     }
@@ -70,9 +71,14 @@ class EmployeeCrmController extends Controller
     public function edit(User $employee): View
     {
         $this->ensureEmployee($employee);
-        $employee->load(['employeeProfile', 'responsibleStockLocations:id,name,responsible_user_id']);
+        $employee->load(['employeeProfile', 'primaryStockLocation:id,name', 'responsibleStockLocations:id,name,responsible_user_id']);
 
-        return view('employees.edit', ['employee' => $employee]);
+        return view('employees.edit', [
+            'employee' => $employee,
+            'shopLocations' => StockLocation::query()->where('type', 'shop')->where('is_active', true)
+                ->whereRaw('LOWER(name) NOT LIKE ?', ['%grossiste%'])->whereRaw('LOWER(code) NOT LIKE ?', ['%grossiste%'])
+                ->orderBy('name')->get(['id', 'name']),
+        ]);
     }
 
     public function update(Request $request, User $employee): RedirectResponse
@@ -91,6 +97,7 @@ class EmployeeCrmController extends Controller
             'salary_effective_from' => ['nullable', 'required_with:monthly_salary', 'date_format:Y-m'],
             'work_site' => ['nullable', 'string', 'max:160'],
             'notes' => ['nullable', 'string', 'max:3000'],
+            'primary_stock_location_id' => [Rule::requiredIf(! $employee->isAdmin()), 'nullable', 'integer', Rule::exists('stock_locations', 'id')->where(fn ($query) => $query->where('type', 'shop')->where('is_active', true)->whereRaw('LOWER(name) NOT LIKE ?', ['%grossiste%'])->whereRaw('LOWER(code) NOT LIKE ?', ['%grossiste%']))],
         ]);
 
         $profile = EmployeeProfile::query()->firstOrNew(['user_id' => $employee->id]);
@@ -101,6 +108,7 @@ class EmployeeCrmController extends Controller
 
         $employee->update(collect($data)->only([
             'name', 'phone', 'adresse', 'emergency_contact_name', 'emergency_contact_phone',
+            'primary_stock_location_id',
         ])->all());
 
         $profile->fill(collect($data)->only([

@@ -74,7 +74,18 @@
                              <option value="RCM" @selected(old('user_type') === 'RCM')>Responsable commercial</option>
                              <option value="ADMINUSER" @selected(old('user_type') === 'ADMINUSER')>Administrateur</option>
                          </select>
-                         @error('user_type') <span class="text-danger">{{ $message }}</span>@enderror
+                        @error('user_type') <span class="text-danger">{{ $message }}</span>@enderror
+                        </div>
+
+                        <div class="form-group">
+                            <label for="primary_stock_location_id">Boutique de rattachement</label>
+                            <select class="form-control" id="primary_stock_location_id" name="primary_stock_location_id">
+                                @foreach($shopLocations as $location)
+                                    <option value="{{ $location->id }}" @selected((string)old('primary_stock_location_id', $defaultShopLocationId)===(string)$location->id)>{{ $location->name }}</option>
+                                @endforeach
+                            </select>
+                            <small class="form-text text-muted">Le compte sera rattaché à une boutique classique, jamais à la boutique grossiste.</small>
+                            @error('primary_stock_location_id') <span class="text-danger">{{ $message }}</span>@enderror
                         </div>
 
                         <div class="form-group" id="country-code-group">

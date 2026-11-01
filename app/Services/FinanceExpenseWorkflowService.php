@@ -28,7 +28,7 @@ class FinanceExpenseWorkflowService
     public function submit(array $data, User $requester, bool $directlyAuthorizedByDirector = false): FinanceExpenseRequest
     {
         abort_if($directlyAuthorizedByDirector && ! $requester->isAdmin(), 403);
-        if ($requester->isManager() && empty($data['stock_location_id'])) {
+        if ($requester->isManager() && empty($data['stock_location_id']) && empty($data['staff_user_id'])) {
             throw ValidationException::withMessages(['stock_location_id' => 'Une demande du responsable de boutique doit être imputée à sa boutique.']);
         }
         if (empty($data['justification_path']) && ! trim((string) ($data['justification_note'] ?? ''))) {
@@ -87,12 +87,17 @@ class FinanceExpenseWorkflowService
             $this->audit->record($expense, $directlyAuthorizedByDirector ? 'director_authorized_at_creation' : 'submitted', null, $expense->fresh()->toArray());
 
             if (! $directlyAuthorizedByDirector) {
+                $reviewers = ! empty($data['staff_advance_type'])
+                    ? User::query()->where('user_type', User::ROLE_ADMIN)
+                    : User::query()->where('user_type', User::ROLE_ACCOUNTANT);
                 Notification::send(
-                    User::query()->where('user_type', User::ROLE_ACCOUNTANT)->where('active', true)->where('id', '<>', $requester->id)->get(),
+                    $reviewers->where('active', true)->where('id', '<>', $requester->id)->get(),
                     new FinanceWorkflowNotification(
-                        'Dépense à contrôler',
-                        'Une demande de dépense attend le contrôle financier : '.$expense->reference.'.',
-                        route('finance.expenses.show', $expense->id),
+                        ! empty($data['staff_advance_type']) ? 'Demande d’avance d’un employé' : 'Dépense à contrôler',
+                        ! empty($data['staff_advance_type'])
+                            ? 'Un employé demande une avance sur salaire : '.$expense->reference.'.'
+                            : 'Une demande de dépense attend le contrôle financier : '.$expense->reference.'.',
+                        ! empty($data['staff_advance_type']) ? route('finance.management.index', ['tab' => 'team']) : route('finance.expenses.show', $expense->id),
                         'request_quote',
                     ),
                 );
@@ -117,7 +122,7 @@ class FinanceExpenseWorkflowService
             $locked->finance_reviewed_at = now();
             $locked->finance_comment = $comment;
             $locked->status = $decision === 'approved'
-                ? ((int) $locked->amount > self::DIRECTOR_APPROVAL_THRESHOLD ? 'awaiting_director' : 'authorized_to_pay')
+                ? (! empty($locked->staff_advance_type) || (int) $locked->amount > self::DIRECTOR_APPROVAL_THRESHOLD ? 'awaiting_director' : 'authorized_to_pay')
                 : 'rejected';
             $locked->save();
 

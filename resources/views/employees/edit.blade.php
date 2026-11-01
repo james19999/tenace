@@ -18,6 +18,7 @@
             <label>Service<input class="form-control" name="department" value="{{ old('department',$employee->employeeProfile?->department) }}" placeholder="Ex. Vente" maxlength="120"></label>
             <label>Date d’arrivée<input class="form-control" type="date" name="hired_on" value="{{ old('hired_on',$employee->employeeProfile?->hired_on?->format('Y-m-d')) }}" max="{{ today()->toDateString() }}"></label>
             <label>Lieu de travail<input class="form-control" name="work_site" value="{{ old('work_site',$employee->employeeProfile?->work_site) }}" placeholder="Ex. Boutique Djagblé" maxlength="160"></label>
+            @if(!$employee->isAdmin())<label>Boutique de rattachement<select class="form-control" name="primary_stock_location_id" required><option value="">Choisir une boutique</option>@foreach($shopLocations as $location)<option value="{{ $location->id }}" @selected((string)old('primary_stock_location_id',$employee->primary_stock_location_id)===(string)$location->id)>{{ $location->name }}</option>@endforeach</select><small>Les boutiques grossistes ne sont pas proposées ici.</small></label>@endif
             <label class="ec-wide">Note interne<textarea class="form-control" name="notes" rows="4" maxlength="3000" placeholder="Information utile pour le suivi de cet employé">{{ old('notes',$employee->employeeProfile?->notes) }}</textarea></label>
         </div>
         <h2>Salaire convenu</h2><p class="ec-payroll-help">Suivi interne en F CFA. Aucun calcul de retenues légales ni bulletin de paie.</p><div class="ec-edit-grid">

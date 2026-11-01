@@ -9,6 +9,9 @@ use App\Models\FinanceBudget;
 use App\Models\FinanceCashMovement;
 use App\Models\FinanceCommissionSettlement;
 use App\Models\FinanceExpenseRequest;
+use App\Models\FinanceExpenseApproval;
+use App\Models\FinanceEquipmentPurchaseRequest;
+use App\Models\FinanceEquipmentPurchaseSetting;
 use App\Models\FinanceStaffAdvance;
 use App\Models\FinanceStaffAdvanceRepayment;
 use App\Models\EmployeePayrollPeriod;
@@ -19,6 +22,7 @@ use App\Models\StockLocation;
 use App\Models\User;
 use App\Services\FinanceAuditService;
 use App\Services\FinanceCashLedgerService;
+use App\Notifications\FinanceWorkflowNotification;
 use Illuminate\Database\Eloquent\Collection as EloquentCollection;
 use Illuminate\Pagination\LengthAwarePaginator;
 use Illuminate\Http\RedirectResponse;
@@ -36,7 +40,7 @@ class FinanceManagementController extends Controller
     public function index(Request $request, FinanceCashLedgerService $ledger): View
     {
         $this->authorizeFinance($request->user());
-        $tab = in_array($request->query('tab'), ['receivables', 'planning', 'team', 'assets'], true) ? $request->query('tab') : 'receivables';
+        $tab = in_array($request->query('tab'), ['receivables', 'planning', 'team', 'purchases'], true) ? $request->query('tab') : 'receivables';
         $monthStart = now()->startOfMonth();
         $monthEnd = now()->endOfMonth();
 
@@ -58,20 +62,8 @@ class FinanceManagementController extends Controller
         $budgets = $this->paginateCollection($budgets, $request, 'budget_page');
 
         $advances = FinanceStaffAdvance::query()->with(['employee', 'payrollPeriod', 'repayments.receiver'])->latest('granted_on')->paginate(10, ['*'], 'advance_page')->withQueryString();
-        $commissionSummary = Commission::query()->whereBetween('created_at', [now()->startOfYear(), now()->endOfDay()])->select('user_id', DB::raw('SUM(amount) as accrued'))
-            ->groupBy('user_id')->get()->map(function ($commission) {
-                $user = User::query()->find((int) $commission->user_id);
-                $paid = (int) FinanceCommissionSettlement::query()->where('user_id', (int) $commission->user_id)->whereDate('period_start', '>=', now()->startOfYear())->sum('amount');
-                $pending = (int) FinanceExpenseRequest::query()->where('commission_user_id', (int) $commission->user_id)
-                    ->whereIn('status', ['awaiting_finance', 'awaiting_director', 'authorized_to_pay', 'partially_paid'])
-                    ->sum(DB::raw('amount - paid_amount'));
-                return (object) ['user' => $user, 'accrued' => (int) $commission->accrued, 'paid' => $paid, 'due' => max(0, (int) $commission->accrued - $paid - $pending)];
-            })->filter(fn ($row) => $row->user
-                && $row->user->user_type !== User::ROLE_ADMIN
-                && $row->user->user_type !== User::ROLE_PARTNER
-                && $row->due > 0)->sortByDesc('due')->values();
-        $commissionSummary = $this->paginateCollection($commissionSummary, $request, 'commission_page');
-
+        $pendingEmployeeAdvances = FinanceExpenseRequest::query()->with(['staffMember', 'requester'])
+            ->whereIn('staff_advance_type', ['salary_advance', 'loan'])->whereIn('status', ['awaiting_finance', 'awaiting_director'])->latest('submitted_at')->paginate(10, ['*'], 'staff_advance_page')->withQueryString();
         $assets = FinanceAsset::query()->with('location')->where('status', 'in_service')->orderBy('name')->paginate(10, ['*'], 'asset_page')->withQueryString();
         $assets->getCollection()->transform(function (FinanceAsset $asset): FinanceAsset {
             $elapsedMonths = $this->completedMonths($asset->acquired_on, now());
@@ -79,6 +71,9 @@ class FinanceManagementController extends Controller
             $asset->estimated_book_value = max($asset->residual_amount, $asset->purchase_amount - (int) floor($depreciable * min($elapsedMonths, $asset->useful_life_months) / max(1, $asset->useful_life_months)));
             return $asset;
         });
+        $purchaseRequests = FinanceEquipmentPurchaseRequest::query()->with(['assignee', 'creator', 'approver', 'issuer', 'reviewer'])
+            ->latest()->paginate(10, ['*'], 'purchase_page')->withQueryString();
+        $purchaseSetting = FinanceEquipmentPurchaseSetting::query()->with('assignee')->find(1);
         return view('finance.management.index', [
             'tab' => $tab,
             'receivables' => $receivables,
@@ -88,11 +83,13 @@ class FinanceManagementController extends Controller
             'budgetActualTotal' => $budgetActualTotal,
             'locations' => StockLocation::query()->where('type', 'shop')->where('is_active', true)->orderBy('name')->get(['id', 'name']),
             'categories' => DB::table('type_expensives')->orderBy('name')->pluck('name'),
-            'employees' => User::query()->where('active', true)->where('user_type', '<>', User::ROLE_PARTNER)->orderBy('name')->get(['id', 'name', 'user_type']),
+            'employees' => User::query()->where('active', true)->whereNotIn('user_type', [User::ROLE_PARTNER, User::ROLE_ADMIN])->orderBy('name')->get(['id', 'name', 'user_type']),
             'salaryPeriods' => EmployeePayrollPeriod::query()->with('employee')->orderByDesc('period_start')->limit(100)->get(),
             'advances' => $advances,
+            'pendingEmployeeAdvances' => $pendingEmployeeAdvances,
+            'purchaseRequests' => $purchaseRequests,
+            'purchaseSetting' => $purchaseSetting,
             'advanceOutstanding' => (int) FinanceStaffAdvance::query()->where('advance_type', 'loan')->sum(DB::raw('amount - repaid_amount')),
-            'commissionSummary' => $commissionSummary,
             'assets' => $assets,
             'assetCostTotal' => (int) FinanceAsset::query()->where('status', 'in_service')->sum('purchase_amount'),
             'forecast' => $this->forecast($ledger),
@@ -157,6 +154,45 @@ class FinanceManagementController extends Controller
         return back()->with('success', $request->user()->isAdmin()
             ? 'Avance autorisée par le DG. Enregistre ensuite son paiement pour mettre à jour la caisse et le suivi du salarié.'
             : 'Demande d’avance transmise au circuit de validation. Elle sera inscrite au suivi après son paiement autorisé.');
+    }
+
+    public function decideEmployeeAdvance(Request $request, FinanceExpenseRequest $expense, FinanceAuditService $audit): RedirectResponse
+    {
+        abort_unless($request->user()->isAdmin(), 403);
+        $data = $request->validate([
+            'decision' => ['required', Rule::in(['approved', 'rejected'])],
+            'comment' => ['nullable', 'string', 'max:2000', Rule::requiredIf(fn () => $request->input('decision') === 'rejected')],
+        ]);
+        abort_unless(in_array($expense->staff_advance_type, ['salary_advance', 'loan'], true) && $expense->staff_user_id, 404);
+        abort_unless(in_array($expense->status, ['awaiting_finance', 'awaiting_director'], true), 409);
+
+        DB::transaction(function () use ($expense, $data, $request, $audit): void {
+            $locked = FinanceExpenseRequest::query()->lockForUpdate()->findOrFail($expense->id);
+            abort_unless(in_array($locked->staff_advance_type, ['salary_advance', 'loan'], true) && in_array($locked->status, ['awaiting_finance', 'awaiting_director'], true), 409);
+            $before = $locked->only(['status', 'director_decided_by', 'director_decided_at']);
+            $locked->status = $data['decision'] === 'approved' ? 'authorized_to_pay' : 'rejected';
+            $locked->director_decided_by = $request->user()->id;
+            $locked->director_decided_at = now();
+            $locked->director_comment = $data['comment'] ?? null;
+            $locked->save();
+
+            FinanceExpenseApproval::query()->create([
+                'expense_request_id' => $locked->id, 'stage' => 'director', 'decision' => $data['decision'],
+                'decided_by' => $request->user()->id, 'comment' => $data['comment'] ?? null, 'decided_at' => now(),
+            ]);
+            $audit->record($locked, $data['decision'] === 'approved' ? 'director_approved' : 'director_rejected', $before, $locked->only(['status', 'director_decided_by', 'director_decided_at']), $data['comment'] ?? null);
+
+            $locked->requester?->notify(new FinanceWorkflowNotification(
+                $data['decision'] === 'approved' ? 'Avance acceptée par la Direction' : 'Demande d’avance refusée',
+                $data['decision'] === 'approved'
+                    ? 'Ta demande '.$locked->reference.' est acceptée. Tu peux venir récupérer l’avance ; le paiement sera enregistré par la caisse.'
+                    : 'Ta demande '.$locked->reference.' a été refusée.'.(! empty($data['comment']) ? ' Motif : '.$data['comment'] : ''),
+                route('employees.self-service'),
+                'payments',
+            ));
+        });
+
+        return back()->with('success', $data['decision'] === 'approved' ? 'Avance acceptée. Le salarié peut venir la récupérer ; enregistre le paiement lors de la remise.' : 'Demande d’avance refusée.');
     }
 
     public function repayAdvance(Request $request, FinanceStaffAdvance $advance, FinanceCashLedgerService $ledger, FinanceAuditService $audit): RedirectResponse

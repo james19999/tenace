@@ -1,0 +1,140 @@
+@extends('layouts.admin')
+
+@section('content')
+<main class="employee-self-service">
+    @if(session('success'))<div class="alert alert-success">{{ session('success') }}</div>@endif
+    @if($errors->any())<div class="alert alert-danger"><ul class="mb-0">@foreach($errors->all() as $error)<li>{{ $error }}</li>@endforeach</ul></div>@endif
+    <header class="ess-heading"><div><span>MON ESPACE PERSONNEL</span><h1>{{ $activePage === 'purchases' ? 'Achats de matériel' : 'Bonjour '.$employee->name }}</h1><p>{{ $activePage === 'purchases' ? 'Envoie les besoins d’achat au DG, puis joins les reçus après avoir reçu les fonds.' : 'Retrouve ici ton salaire, tes avances et tes prêts.' }}</p></div><small>{{ $employee->primaryStockLocation?->name ?? 'Boutique non renseignée' }}</small></header>
+
+    @if($activePage==='payroll')
+    <section class="ess-summary">
+        <article><span>Salaire mensuel convenu</span><strong>{{ $profile->monthly_salary ? number_format($profile->monthly_salary,0,',',' ').' F CFA' : 'À renseigner' }}</strong><small>@if($profile->salary_effective_from)Applicable depuis {{ $profile->salary_effective_from->format('m/Y') }}@else Demande à l’administration de renseigner ton salaire @endif</small></article>
+        <article><span>Disponible pour une avance ce mois</span><strong>{{ number_format($availableForAdvance,0,',',' ') }} F CFA</strong><small>Le montant tient compte du salaire déjà versé et des avances demandées ou payées.</small></article>
+    </section>
+
+    <section class="ess-card"><div class="ess-card-head"><div><h2>Demander une avance ou un prêt</h2><p>Choisis une avance déduite de ton salaire ou un prêt à rembourser séparément. Le DG prend la décision et le paiement est enregistré au moment où l’argent t’est remis.</p></div></div>
+        <form class="ess-request-form" method="POST" action="{{ route('employees.self-service.advances.store') }}">@csrf
+            <label>Type de demande<select class="form-control" name="advance_type" id="ess-advance-type" required><option value="salary_advance">Avance sur salaire</option><option value="loan">Prêt à rembourser séparément</option></select></label>
+            <label>Montant demandé (F CFA)<input class="form-control" id="ess-advance-amount" data-salary-max="{{ $availableForAdvance }}" type="number" name="amount" min="1" max="{{ $availableForAdvance ?: '' }}" step="1" required><small id="ess-advance-cap">@if($profile->monthly_salary && $profile->salary_effective_from)Maximum sur salaire : {{ number_format($availableForAdvance,0,',',' ') }} F CFA.@elseLe salaire n’est pas encore renseigné ; une avance sur salaire ne pourra pas être demandée.@endif</small></label>
+            <label>Motif<textarea class="form-control" name="reason" rows="3" maxlength="2000" required placeholder="Explique brièvement le motif de ta demande"></textarea></label>
+            <button class="btn btn-primary">Envoyer ma demande</button>
+        </form>
+        <script>
+            (function(){const type=document.getElementById('ess-advance-type'),amount=document.getElementById('ess-advance-amount'),note=document.getElementById('ess-advance-cap');if(!type||!amount||!note)return;const salaryMax=Number(amount.dataset.salaryMax||0);const update=()=>{if(type.value==='loan'){amount.removeAttribute('max');note.textContent='Le prêt sera suivi séparément et devra être remboursé.';}else{if(salaryMax>0)amount.max=String(salaryMax);else amount.removeAttribute('max');note.textContent=salaryMax>0?'Maximum sur salaire : '+new Intl.NumberFormat('fr-FR').format(salaryMax)+' F CFA.':'Ton salaire n’est pas renseigné ou aucun montant n’est disponible pour une avance sur salaire.';}};type.addEventListener('change',update);update();})();
+        </script>
+    </section>
+
+    <section class="ess-card"><div class="ess-card-head"><div><h2>Mes demandes d’avance</h2><p>Tu peux suivre chaque demande et savoir si elle est en attente, acceptée, payée ou refusée.</p></div></div>
+        <div class="ess-request-list">
+            @forelse($advanceRequests as $advanceRequest)
+                @php
+                    $statusLabel = match ($advanceRequest->status) {
+                        'awaiting_finance' => 'En attente de décision',
+                        'awaiting_director' => 'En attente du DG',
+                        'authorized_to_pay' => 'Acceptée · argent à récupérer',
+                        'partially_paid' => 'Partiellement remise',
+                        'paid' => 'Payée',
+                        'rejected' => 'Refusée',
+                        'cancelled' => 'Annulée',
+                        default => 'En cours',
+                    };
+                @endphp
+                <article><div><strong>{{ $advanceRequest->reference }} · {{ $advanceRequest->staff_advance_type === 'loan' ? 'Prêt' : 'Avance sur salaire' }}</strong><span>{{ $advanceRequest->description }}</span><small>Demandée le {{ $advanceRequest->submitted_at?->format('d/m/Y') ?? $advanceRequest->created_at->format('d/m/Y') }} · demandé : {{ number_format($advanceRequest->amount,0,',',' ') }} F CFA · déjà remis : {{ number_format($advanceRequest->paid_amount,0,',',' ') }} F CFA</small></div><b class="ess-status ess-status-{{ $advanceRequest->status }}">{{ $statusLabel }}</b></article>
+                @if($advanceRequest->finance_comment)<p class="ess-comment">Commentaire : {{ $advanceRequest->finance_comment }}</p>@endif
+                @if($advanceRequest->director_comment)<p class="ess-comment">Décision de la Direction : {{ $advanceRequest->director_comment }}</p>@endif
+            @empty<p class="ess-empty">Tu n’as pas encore envoyé de demande d’avance.</p>@endforelse
+        </div>
+    </section>
+
+    <section class="ess-card"><div class="ess-card-head"><div><h2>Mes prêts à rembourser</h2><p>Chaque prêt payé apparaît avec les remboursements déjà reçus et le solde qu’il te reste à rendre.</p></div></div>
+        @forelse($personalLoans as $loan)<article class="ess-loan"><div><strong>{{ $loan->reference }}</strong><span>{{ $loan->reason ?: 'Prêt au personnel' }} · accordé le {{ $loan->granted_on?->format('d/m/Y') }}</span>@foreach($loan->repayments as $repayment)<small>Remboursement du {{ $repayment->received_at->format('d/m/Y') }} : {{ number_format($repayment->amount,0,',',' ') }} F CFA</small>@endforeach</div><div class="ess-loan-balance"><small>Montant reçu</small><strong>{{ number_format($loan->amount,0,',',' ') }} F</strong><small>Remboursé : {{ number_format($loan->repaid_amount,0,',',' ') }} F · reste dû</small><strong>{{ number_format(max(0,$loan->amount-$loan->repaid_amount),0,',',' ') }} F</strong></div></article>
+        @empty<p class="ess-empty">Aucun prêt à rembourser n’est enregistré dans ton dossier.</p>@endforelse
+    </section>
+
+    <section class="ess-card"><div class="ess-card-head"><div><h2>Suivi des salaires</h2><p>Les paiements et avances déjà enregistrés apparaissent ici.</p></div></div>
+        <div class="table-responsive"><table class="table ess-table"><thead><tr><th>Mois</th><th>Salaire convenu</th><th>Avances payées</th><th>Salaire versé</th><th>Reste à verser</th></tr></thead><tbody>
+            @forelse($periods as $period)
+                @php
+                    $salaryPaid = (int) $period->payments->where('kind', 'salary')->sum('amount');
+                    $advancePaid = (int) $period->staffAdvances->sum('amount') + (int) $period->payments->where('kind', 'advance')->sum('amount');
+                @endphp
+                <tr><td>{{ $period->period_start->translatedFormat('F Y') }}</td><td>{{ number_format($period->salary_amount,0,',',' ') }} F</td><td>{{ number_format($advancePaid,0,',',' ') }} F</td><td>{{ number_format($salaryPaid,0,',',' ') }} F</td><td><strong>{{ number_format(max(0,$period->salary_amount-$salaryPaid-$advancePaid),0,',',' ') }} F</strong></td></tr>
+            @empty<tr><td colspan="5" class="ess-empty">Le suivi des salaires sera affiché dès qu’un mois aura été enregistré.</td></tr>@endforelse
+        </tbody></table></div>
+    </section>
+
+    @else
+    <div class="ess-material-page">
+        <section class="ess-material-steps" aria-label="Étapes d’un achat de matériel">
+            <article><span class="ess-step-number">1</span><div><strong>Décris le besoin</strong><small>Indique les articles et le montant estimé.</small></div></article>
+            <article><span class="ess-step-number">2</span><div><strong>Attends le DG</strong><small>L’argent n’est remis qu’après validation.</small></div></article>
+            <article><span class="ess-step-number">3</span><div><strong>Envoie les reçus</strong><small>Après l’achat, déclare les dépenses et joins les preuves.</small></div></article>
+        </section>
+
+        @if($canCreatePurchases)
+            <section class="ess-material-card ess-material-new">
+                <div class="ess-material-card-heading"><span class="material-icons">add_shopping_cart</span><div><h2>Nouvelle demande d’achat</h2><p>Tu es le responsable désigné. Tu peux envoyer chaque nouveau besoin ici ; le DG validera le montant avant la remise des fonds.</p></div></div>
+                <form class="ess-material-form" method="POST" action="{{ route('employees.self-service.purchases.store') }}">@csrf
+                    <label>Objet de l’achat<input class="form-control" name="title" maxlength="160" required value="{{ old('title') }}" placeholder="Ex. fournitures pour la boutique"></label>
+                    <label>Montant estimé <span>(F CFA)</span><input class="form-control" type="number" name="requested_amount" min="1" required value="{{ old('requested_amount') }}" placeholder="Ex. 25 000"></label>
+                    <label class="ess-material-wide">Articles et quantités<textarea class="form-control" name="needed_items" rows="3" maxlength="5000" required placeholder="Ex. 2 chaises, 1 rallonge électrique…">{{ old('needed_items') }}</textarea></label>
+                    <div class="ess-material-submit"><small>La demande sera envoyée au DG. Aucun argent ne sera débité avant son accord.</small><button class="btn btn-primary"><span class="material-icons">send</span> Envoyer la demande</button></div>
+                </form>
+            </section>
+        @endif
+
+        <section class="ess-material-card">
+            <div class="ess-material-list-heading"><div><h2>Suivi de mes achats</h2><p>Retrouve ici les décisions du DG et les actions à faire.</p></div><span class="ess-count">{{ $purchaseRequests->count() }} dossier{{ $purchaseRequests->count() > 1 ? 's' : '' }}</span></div>
+            @if($purchaseRequests->isEmpty())
+                <div class="ess-material-empty"><span class="material-icons">inventory_2</span><strong>Aucun dossier pour le moment</strong><p>@if($canCreatePurchases)Tes demandes et leur avancement apparaîtront ici.@elseLe DG ne t’a pas encore confié d’achat de matériel.@endif</p></div>
+            @else
+            @foreach($purchaseRequests as $purchase)
+                @php
+                    $purchaseStatus = [
+                        'assigned' => ['À compléter', 'pencil'],
+                        'awaiting_director' => ['En attente du DG', 'schedule'],
+                        'funds_issued' => ['Fonds remis · achat à effectuer', 'payments'],
+                        'submitted_for_review' => ['Reçus envoyés · contrôle du DG', 'hourglass_top'],
+                        'closed' => ['Achat clôturé', 'task_alt'],
+                    ][$purchase->status] ?? ['En cours', 'info'];
+                @endphp
+                <article class="ess-material-request">
+                    <div class="ess-material-request-top"><div><span class="ess-material-reference">{{ $purchase->reference }}</span><h3>{{ $purchase->title }}</h3></div><span class="ess-material-status status-{{ $purchase->status }}"><span class="material-icons">{{ $purchaseStatus[1] }}</span>{{ $purchaseStatus[0] }}</span></div>
+                    <div class="ess-material-amounts"><div><small>Montant demandé</small><strong>{{ number_format($purchase->requested_amount,0,',',' ') }} F</strong></div>@if($purchase->cash_issued)<div><small>Argent remis</small><strong>{{ number_format($purchase->cash_issued,0,',',' ') }} F</strong></div>@endif @if($purchase->spent_amount !== null)<div><small>Dépensé · reliquat</small><strong>{{ number_format($purchase->spent_amount,0,',',' ') }} F · {{ number_format($purchase->returned_amount,0,',',' ') }} F</strong></div>@endif</div>
+                    @if($purchase->needed_items)<div class="ess-material-detail"><small>Articles prévus</small><p>{{ $purchase->needed_items }}</p></div>@endif
+                    @if($purchase->assignment_notes)<div class="ess-material-note"><strong>Consignes</strong><p>{{ $purchase->assignment_notes }}</p></div>@endif
+                    @if($purchase->review_note)<div class="ess-material-note"><strong>Message du DG</strong><p>{{ $purchase->review_note }}</p></div>@endif
+                    @if($purchase->status==='assigned')
+                        <form class="ess-material-action" method="POST" action="{{ route('employees.self-service.purchases.estimate',$purchase) }}">@csrf
+                            <label>Articles à acheter<textarea class="form-control" name="needed_items" rows="3" required placeholder="Précise les articles et les quantités">{{ old('needed_items') }}</textarea></label>
+                            <label>Montant estimé (F CFA)<input class="form-control" type="number" name="requested_amount" min="1" value="{{ old('requested_amount') }}" required></label>
+                            <button class="btn btn-primary">Envoyer au DG</button>
+                        </form>
+                    @endif
+                    @if($purchase->status==='funds_issued')
+                        <form class="ess-material-action ess-material-report" method="POST" enctype="multipart/form-data" action="{{ route('employees.self-service.purchases.report',$purchase) }}">@csrf
+                            <label>Montant réellement dépensé (F CFA)<input class="form-control" type="number" name="spent_amount" min="0" max="{{ $purchase->cash_issued }}" required></label>
+                            <label>Détail utile<textarea class="form-control" name="report_note" rows="2" maxlength="3000" placeholder="Précision facultative sur les achats"></textarea></label>
+                            <label class="ess-material-wide">Photos ou PDF des reçus <span>Jusqu’à 8 fichiers de 10 Mo. Sur téléphone, la caméra peut s’ouvrir.</span><input class="form-control-file" type="file" name="receipt_photos[]" accept="image/*,.pdf" capture="environment" multiple required></label>
+                            <button class="btn btn-primary"><span class="material-icons">upload</span> Envoyer les reçus au DG</button>
+                        </form>
+                    @endif
+                    @if($purchase->receipt_paths)<div class="ess-material-receipts">@foreach($purchase->receipt_paths as $index=>$path)<a href="{{ route('employees.self-service.purchases.receipt',[$purchase,$index]) }}" target="_blank" rel="noopener"><span class="material-icons">description</span> Reçu {{ $loop->iteration }}</a>@endforeach</div>@endif
+                </article>
+            @endforeach
+            @endif
+        </section>
+    </div>
+    @endif
+</main>
+<style>
+.employee-self-service{max-width:1180px;margin:auto;padding:clamp(14px,2vw,28px);color:var(--app-text)}.ess-heading{display:flex;justify-content:space-between;align-items:center;gap:16px;margin-bottom:18px}.ess-heading>div>span{font-size:11px;font-weight:850;letter-spacing:.08em;color:var(--app-primary)}.ess-heading h1{margin:5px 0;font-size:clamp(25px,3vw,34px);font-weight:850}.ess-heading p,.ess-card-head p{margin:0;color:var(--app-muted);line-height:1.55}.ess-heading>small{padding:8px 12px;border-radius:999px;background:var(--app-surface);border:1px solid var(--app-border);font-weight:700}.ess-summary{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px;margin-bottom:14px}.ess-summary article,.ess-card{min-width:0;padding:clamp(15px,2vw,22px);margin-bottom:14px;background:var(--app-surface);border:1px solid var(--app-border);border-radius:var(--app-radius)}.ess-summary article span,.ess-summary article strong,.ess-summary article small{display:block}.ess-summary article span{font-size:13px;color:var(--app-muted);font-weight:700}.ess-summary article strong{margin:7px 0;color:var(--app-primary);font-size:clamp(21px,3vw,28px)}.ess-summary article small{color:var(--app-muted);line-height:1.5}.ess-card-head{margin-bottom:14px}.ess-card-head h2{margin:0 0 5px;font-size:19px;font-weight:820}.ess-card-head p{font-size:13px}.ess-request-form{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));align-items:end;gap:12px}.ess-request-form label{margin:0;font-size:13px;font-weight:700}.ess-request-form .form-control{margin-top:5px}.ess-request-form small{display:block;margin-top:5px;color:var(--app-muted);font-weight:400}.ess-request-form button{white-space:nowrap;min-height:40px;grid-column:1/-1}.ess-request-form label:nth-child(3){grid-column:1/-1}.ess-empty{margin:0;padding:14px;color:var(--app-muted);background:color-mix(in srgb,var(--app-text) 4%,var(--app-surface));border-radius:8px}.ess-request-list article,.ess-purchase,.ess-loan{display:flex;justify-content:space-between;align-items:center;gap:14px;padding:13px 0;border-bottom:1px solid var(--app-border)}.ess-request-list article:last-of-type,.ess-purchase:last-child,.ess-loan:last-child{border-bottom:0}.ess-request-list article div,.ess-purchase div,.ess-loan div{min-width:0;width:100%}.ess-request-list strong,.ess-request-list span,.ess-request-list small,.ess-purchase strong,.ess-purchase span,.ess-purchase small,.ess-loan strong,.ess-loan span,.ess-loan small{display:block}.ess-request-list span,.ess-purchase span,.ess-loan span{margin-top:4px;overflow-wrap:anywhere}.ess-request-list small,.ess-purchase small,.ess-loan small{margin-top:4px;color:var(--app-muted)}.ess-status{flex:none;padding:6px 10px;border-radius:999px;background:var(--app-primary-soft);color:var(--app-primary);font-size:12px}.ess-comment{margin:0 0 8px;color:var(--app-muted);font-size:13px}.ess-table{min-width:650px;margin:0;color:var(--app-text)}.ess-table th{color:var(--app-muted);font-size:11px;text-transform:uppercase;background:color-mix(in srgb,var(--app-primary) 6%,var(--app-surface))}.ess-table td{vertical-align:middle}.ess-purchase>span{flex:none;font-weight:800;color:var(--app-primary)}.ess-purchase-form{display:grid;grid-template-columns:minmax(170px,1fr) minmax(160px,.7fr) auto;align-items:end;gap:10px;margin-top:12px;padding:12px;background:color-mix(in srgb,var(--app-primary) 4%,var(--app-surface));border:1px solid var(--app-border);border-radius:10px}.ess-purchase-form label{margin:0;font-size:12px;font-weight:700}.ess-purchase-form .form-control,.ess-purchase-form .form-control-file{display:block;width:100%;margin-top:5px}.ess-purchase-form button{white-space:nowrap}.ess-report-form{grid-template-columns:repeat(2,minmax(0,1fr))}.ess-report-form label:nth-child(3),.ess-report-form button{grid-column:1/-1}.ess-receipts{display:flex;gap:10px;flex-wrap:wrap;margin-top:10px}.ess-receipts a{color:var(--app-primary);font-weight:700}.ess-loan-balance{max-width:230px;padding:10px 14px;background:color-mix(in srgb,var(--app-primary) 5%,var(--app-surface));border-radius:9px}.ess-loan-balance strong{color:var(--app-primary)}
+@media(max-width:760px){.ess-request-form{grid-template-columns:1fr 1fr}.ess-request-form label:nth-child(2){grid-column:1/-1}.ess-request-form button{grid-column:1/-1}.ess-purchase-form{grid-template-columns:1fr 1fr}.ess-purchase-form button{grid-column:1/-1}.ess-report-form label:nth-child(3){grid-column:1/-1}}@media(max-width:560px){.employee-self-service{padding:12px 9px}.ess-heading{display:block}.ess-heading>small{display:inline-block;margin-top:10px}.ess-summary{grid-template-columns:1fr}.ess-request-form{grid-template-columns:1fr}.ess-request-form label:nth-child(2),.ess-request-form button{grid-column:auto}.ess-request-list article,.ess-purchase,.ess-loan{align-items:flex-start;flex-direction:column}.ess-purchase-form,.ess-report-form{grid-template-columns:1fr}.ess-report-form label:nth-child(3),.ess-report-form button{grid-column:auto}.ess-loan-balance{max-width:none;width:100%}}
+</style>
+<style>
+.ess-material-page{display:grid;gap:16px}.ess-material-steps{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px}.ess-material-steps article{display:flex;align-items:center;gap:12px;min-width:0;padding:16px;background:var(--app-surface);border:1px solid var(--app-border);border-radius:var(--app-radius)}.ess-step-number{display:grid;place-items:center;flex:none;width:34px;height:34px;border-radius:50%;background:var(--app-primary-soft);color:var(--app-primary);font-weight:850}.ess-material-steps strong,.ess-material-steps small{display:block}.ess-material-steps strong{font-size:14px}.ess-material-steps small{margin-top:3px;color:var(--app-muted);font-size:12px;line-height:1.4}.ess-material-card{min-width:0;padding:clamp(16px,2.2vw,24px);background:var(--app-surface);border:1px solid var(--app-border);border-radius:var(--app-radius)}.ess-material-card-heading{display:flex;align-items:flex-start;gap:12px;margin-bottom:18px}.ess-material-card-heading>.material-icons{display:grid;place-items:center;flex:none;width:42px;height:42px;border-radius:12px;background:var(--app-primary-soft);color:var(--app-primary);font-size:23px}.ess-material-card-heading h2,.ess-material-list-heading h2{margin:0 0 5px;font-size:20px;font-weight:820}.ess-material-card-heading p,.ess-material-list-heading p{margin:0;color:var(--app-muted);font-size:13px;line-height:1.5}.ess-material-form,.ess-material-action{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px;align-items:end}.ess-material-form label,.ess-material-action label{display:block;min-width:0;margin:0;font-size:13px;font-weight:750}.ess-material-form label>span,.ess-material-action label>span{font-weight:500;color:var(--app-muted)}.ess-material-form .form-control,.ess-material-action .form-control,.ess-material-action .form-control-file{display:block;width:100%;margin-top:6px}.ess-material-wide{grid-column:1/-1}.ess-material-submit{grid-column:1/-1;display:flex;justify-content:space-between;align-items:center;gap:14px;padding-top:2px}.ess-material-submit small{color:var(--app-muted);line-height:1.4}.ess-material-submit .btn,.ess-material-action .btn{display:inline-flex;justify-content:center;align-items:center;gap:7px;min-height:42px;white-space:normal}.ess-material-submit .material-icons,.ess-material-action .material-icons{font-size:18px}.ess-material-list-heading{display:flex;justify-content:space-between;align-items:center;gap:12px;margin-bottom:10px}.ess-count{flex:none;padding:6px 10px;border:1px solid var(--app-border);border-radius:999px;color:var(--app-muted);font-size:12px;font-weight:750}.ess-material-request{padding:18px 0;border-top:1px solid var(--app-border)}.ess-material-request-top{display:flex;justify-content:space-between;align-items:flex-start;gap:14px}.ess-material-reference{color:var(--app-muted);font-size:11px;font-weight:800;letter-spacing:.06em}.ess-material-request h3{margin:4px 0 0;font-size:17px;font-weight:820;overflow-wrap:anywhere}.ess-material-status{display:inline-flex;align-items:center;gap:5px;flex:none;padding:7px 10px;border-radius:999px;background:var(--app-primary-soft);color:var(--app-primary);font-size:11px;font-weight:800}.ess-material-status .material-icons{font-size:15px}.ess-material-status.status-funds_issued{background:#fff4df;color:#9a5a00}.ess-material-status.status-submitted_for_review{background:#eaf2ff;color:#285b9a}.ess-material-status.status-closed{background:#e9f7ef;color:#187344}.ess-material-amounts{display:flex;flex-wrap:wrap;gap:10px;margin:14px 0}.ess-material-amounts>div{min-width:145px;padding:10px 12px;background:color-mix(in srgb,var(--app-text) 4%,var(--app-surface));border:1px solid var(--app-border);border-radius:9px}.ess-material-amounts small,.ess-material-amounts strong{display:block}.ess-material-amounts small,.ess-material-detail>small{color:var(--app-muted);font-size:11px}.ess-material-amounts strong{margin-top:4px;font-size:15px}.ess-material-detail,.ess-material-note{margin:10px 0;padding:11px 13px;border-radius:9px;background:color-mix(in srgb,var(--app-text) 3%,var(--app-surface));border:1px solid var(--app-border)}.ess-material-detail p,.ess-material-note p{margin:4px 0 0;line-height:1.5;overflow-wrap:anywhere}.ess-material-note{background:var(--app-primary-soft);border-color:var(--app-primary-border)}.ess-material-note strong{font-size:12px}.ess-material-action{margin-top:14px;padding:15px;background:color-mix(in srgb,var(--app-primary) 4%,var(--app-surface));border:1px solid var(--app-border);border-radius:12px}.ess-material-action .btn{grid-column:1/-1;justify-self:start;padding-inline:18px}.ess-material-report label:nth-child(2){grid-column:2}.ess-material-report .ess-material-wide{grid-column:1/-1}.ess-material-receipts{display:flex;flex-wrap:wrap;gap:8px;margin-top:12px}.ess-material-receipts a{display:inline-flex;align-items:center;gap:6px;padding:8px 10px;border:1px solid var(--app-border);border-radius:8px;color:var(--app-primary);font-size:12px;font-weight:750;text-decoration:none}.ess-material-receipts a:hover{background:var(--app-primary-soft)}.ess-material-receipts .material-icons{font-size:17px}.ess-material-empty{display:grid;justify-items:center;gap:7px;padding:32px 14px;text-align:center;color:var(--app-muted);border-top:1px solid var(--app-border)}.ess-material-empty>.material-icons{font-size:30px;color:var(--app-primary)}.ess-material-empty strong{color:var(--app-text);font-size:15px}.ess-material-empty p{margin:0;font-size:13px}
+html[data-app-theme="dark"] .ess-material-status.status-funds_issued{background:#49391b;color:#f3d28b}html[data-app-theme="dark"] .ess-material-status.status-submitted_for_review{background:#20364a;color:#acd4f1}html[data-app-theme="dark"] .ess-material-status.status-closed{background:#203d30;color:#a6dfbf}
+@media(max-width:760px){.ess-material-steps{grid-template-columns:1fr}.ess-material-steps article{padding:12px}.ess-material-submit{align-items:stretch;flex-direction:column}.ess-material-submit .btn,.ess-material-action .btn{width:100%}.ess-material-report{grid-template-columns:1fr}.ess-material-report label:nth-child(2),.ess-material-report .ess-material-wide{grid-column:1}.ess-material-request-top{flex-direction:column}.ess-material-status{white-space:normal}}
+@media(max-width:560px){.ess-material-card{padding:14px}.ess-material-form,.ess-material-action{grid-template-columns:1fr}.ess-material-wide,.ess-material-action .btn,.ess-material-report label:nth-child(2),.ess-material-report .ess-material-wide{grid-column:1}.ess-material-amounts{display:grid;grid-template-columns:1fr 1fr}.ess-material-amounts>div{min-width:0}.ess-material-list-heading{align-items:flex-start;flex-direction:column}.ess-material-request{padding:15px 0}}
+</style>
+@endsection

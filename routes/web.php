@@ -107,6 +107,16 @@ Route::post('/store/pathner',[DashboarController::class,'store_pathner'])->name(
 
 Route::middleware(['auth'])->group(function () {
 
+    Route::middleware(['role:MNG,SCR,VDS,CSA,LVS,CALLCENTER,COMPTABLE,RCM'])->group(function () {
+        Route::get('/mon-espace', [\App\Http\Controllers\EmployeePayrollController::class, 'selfService'])->name('employees.self-service');
+        Route::get('/mon-espace/materiel', [\App\Http\Controllers\EmployeePayrollController::class, 'selfServicePurchases'])->name('employees.self-service.purchases.index');
+        Route::post('/mon-espace/avances', [\App\Http\Controllers\EmployeePayrollController::class, 'requestOwnAdvance'])->name('employees.self-service.advances.store');
+        Route::post('/mon-espace/materiel', [\App\Http\Controllers\Finance\FinanceEquipmentPurchaseController::class, 'requestPurchase'])->name('employees.self-service.purchases.store');
+        Route::post('/mon-espace/materiel/{purchase}/estimation', [\App\Http\Controllers\Finance\FinanceEquipmentPurchaseController::class, 'submitEstimate'])->name('employees.self-service.purchases.estimate');
+        Route::post('/mon-espace/materiel/{purchase}/compte-rendu', [\App\Http\Controllers\Finance\FinanceEquipmentPurchaseController::class, 'submitReport'])->name('employees.self-service.purchases.report');
+        Route::get('/mon-espace/materiel/{purchase}/recu/{index}', [\App\Http\Controllers\Finance\FinanceEquipmentPurchaseController::class, 'receipt'])->whereNumber('index')->name('employees.self-service.purchases.receipt');
+    });
+
     Route::middleware(['role:ADMINUSER,MNG,COMPTABLE,SCR,VDS,CSA,LVS,CALLCENTER,RCM'])->prefix('comptabilite')->name('finance.')->group(function () {
         Route::get('/', [FinanceController::class, 'index'])->name('dashboard');
         Route::get('/rapports', [FinanceReportController::class, 'index'])->middleware('role:ADMINUSER,COMPTABLE,CSA')->name('reports.index');
@@ -114,6 +124,11 @@ Route::middleware(['auth'])->group(function () {
         Route::get('/gestion', [\App\Http\Controllers\Finance\FinanceManagementController::class, 'index'])->middleware('role:ADMINUSER,COMPTABLE')->name('management.index');
         Route::post('/gestion/budgets', [\App\Http\Controllers\Finance\FinanceManagementController::class, 'storeBudget'])->middleware('role:ADMINUSER,COMPTABLE')->name('management.budgets.store');
         Route::post('/gestion/avances', [\App\Http\Controllers\Finance\FinanceManagementController::class, 'storeAdvance'])->middleware('role:ADMINUSER,COMPTABLE')->name('management.advances.store');
+        Route::post('/gestion/avances-employe/{expense}/decision', [\App\Http\Controllers\Finance\FinanceManagementController::class, 'decideEmployeeAdvance'])->middleware('role:ADMINUSER')->name('management.employee-advances.decide');
+        Route::post('/gestion/materiel/responsable', [\App\Http\Controllers\Finance\FinanceEquipmentPurchaseController::class, 'setResponsible'])->middleware('role:ADMINUSER')->name('management.purchases.responsible');
+        Route::post('/gestion/materiel/{purchase}/remettre-fonds', [\App\Http\Controllers\Finance\FinanceEquipmentPurchaseController::class, 'issueFunds'])->middleware('role:ADMINUSER')->name('management.purchases.issue');
+        Route::post('/gestion/materiel/{purchase}/controle', [\App\Http\Controllers\Finance\FinanceEquipmentPurchaseController::class, 'review'])->middleware('role:ADMINUSER')->name('management.purchases.review');
+        Route::get('/gestion/materiel/{purchase}/recu/{index}', [\App\Http\Controllers\Finance\FinanceEquipmentPurchaseController::class, 'receipt'])->whereNumber('index')->middleware('role:ADMINUSER,COMPTABLE')->name('management.purchases.receipt');
         Route::post('/gestion/avances/{advance}/remboursement', [\App\Http\Controllers\Finance\FinanceManagementController::class, 'repayAdvance'])->middleware('role:ADMINUSER,COMPTABLE')->name('management.advances.repay');
         Route::post('/gestion/commissions/reglement', [\App\Http\Controllers\Finance\FinanceManagementController::class, 'settleCommission'])->middleware('role:ADMINUSER,COMPTABLE')->name('management.commissions.settle');
         Route::post('/gestion/immobilisations', [\App\Http\Controllers\Finance\FinanceManagementController::class, 'storeAsset'])->middleware('role:ADMINUSER,COMPTABLE')->name('management.assets.store');

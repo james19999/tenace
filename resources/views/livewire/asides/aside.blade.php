@@ -1,5 +1,11 @@
 @php
     $active = fn (...$routes) => request()->routeIs(...$routes) ? 'active' : '';
+    $employeeFinanceRoles = ['MNG', 'SCR', 'VDS', 'CSA', 'LVS', 'CALLCENTER', 'COMPTABLE', 'RCM'];
+    $showEquipmentPurchases = false;
+    if (Auth::check() && in_array(Auth::user()->user_type, $employeeFinanceRoles, true)) {
+        $showEquipmentPurchases = App\Models\FinanceEquipmentPurchaseSetting::query()->whereKey(1)->where('assignee_user_id', Auth::id())->exists()
+            || App\Models\FinanceEquipmentPurchaseRequest::query()->where('assigned_to', Auth::id())->exists();
+    }
 @endphp
 <aside class="sidebar" data-sidebar-user="{{ auth()->id() }}" wire:poll.30s>
     <nav class="navbar">
@@ -23,6 +29,13 @@
             <i class="material-icons">chevron_left</i>
         </div>
         <ul>
+
+            @if(in_array(Auth::user()->user_type, ['MNG', 'SCR', 'VDS', 'CSA', 'LVS', 'CALLCENTER', 'COMPTABLE', 'RCM'], true))
+                <li><a href="{{ route('employees.self-service') }}" class="{{ $active('employees.self-service') }}"><span class="icon material-icons">badge</span><span class="text">Mon espace personnel</span></a></li>
+                @if($showEquipmentPurchases)
+                    <li><a href="{{ route('employees.self-service.purchases.index') }}" class="{{ $active('employees.self-service.purchases.*') }}"><span class="icon material-icons">shopping_bag</span><span class="text">Achats de matériel</span></a></li>
+                @endif
+            @endif
 
             @if (in_array(Auth::user()->user_type, ['SCR', 'VDS', 'CSA', 'CALLCENTER', 'RCM'], true))
                 <li>
@@ -57,13 +70,13 @@
                     </a>
                 </li>
                 <li>
-                    <a href="#adminAccountingCollapse" class="{{ $active('finance.*', 'list-percent', 'virementverify') }}" data-toggle="collapse">
+                    <a href="#adminAccountingCollapse" class="{{ $active('finance.*') }}" data-toggle="collapse">
                         <span class="caret material-icons">arrow_right</span>
                         <span class="icon material-icons">money</span>
                         <span class="text">Comptabilité @if(($financeBadges['total'] ?? 0) > 0)<span class="badge badge-pill badge-danger">{{ $financeBadges['total'] > 99 ? '99+' : $financeBadges['total'] }}</span>@endif</span>
                     </a>
 
-                    <ul class="collapse {{ $active('finance.*', 'list-percent', 'virementverify') ? 'show' : '' }}" id="adminAccountingCollapse">
+                    <ul class="collapse {{ $active('finance.*') ? 'show' : '' }}" id="adminAccountingCollapse">
                         <li><a href="{{ route('finance.dashboard') }}" class="{{ $active('finance.dashboard') }}"><span class="icon material-icons">remove</span><span class="text">Trésorerie @if(($financeBadges['treasury'] ?? 0) > 0)<span class="badge badge-pill badge-danger">{{ $financeBadges['treasury'] }}</span>@endif</span></a></li>
                         <li><a href="{{ route('finance.remittances.index') }}" class="{{ $active('finance.remittances.*') }}"><span class="icon material-icons">remove</span><span class="text">Remises boutiques @if(($financeBadges['remittances'] ?? 0) > 0)<span class="badge badge-pill badge-danger">{{ $financeBadges['remittances'] }}</span>@endif</span></a></li>
                         <li><a href="{{ route('finance.expenses.index') }}" class="{{ $active('finance.expenses.*') }}"><span class="icon material-icons">remove</span><span class="text">Dépenses · validations @if(($financeBadges['expenses'] ?? 0) > 0)<span class="badge badge-pill badge-danger">{{ $financeBadges['expenses'] }}</span>@endif</span></a></li>
@@ -71,19 +84,6 @@
                         <li><a href="{{ route('finance.management.index') }}" class="{{ $active('finance.management.*') }}"><span class="icon material-icons">remove</span><span class="text">Suivi financier avancé</span></a></li>
                         <li><a href="{{ route('finance.reports.index') }}" class="{{ $active('finance.reports.*') }}"><span class="icon material-icons">remove</span><span class="text">Rapports et exports</span></a></li>
                         <li><a href="{{ route('finance.audit.index') }}" class="{{ $active('finance.audit.*') }}"><span class="icon material-icons">remove</span><span class="text">Journal d’audit</span></a></li>
-                        <li>
-                            <a href="{{ route('list-percent') }}" class="{{ $active('list-percent') }}">
-                                <span class="icon material-icons">remove</span>
-                                <span class="text">Type de pourcentage</span>
-                            </a>
-                        </li>
-                        <li>
-                            <a href="{{ route('virementverify') }}" class="{{ $active('virementverify') }}">
-                                <span class="icon material-icons">remove</span>
-                                <span class="text">Demande virement</span>
-                            </a>
-                        </li>
-
                     </ul>
                 </li>
                 <li>

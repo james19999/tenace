@@ -8,6 +8,7 @@ use Laravel\Sanctum\HasApiTokens;
 use Illuminate\Notifications\Notifiable;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 
 class User extends Authenticatable
@@ -27,6 +28,7 @@ class User extends Authenticatable
         'phone',
         'adresse',
         'active',
+        'primary_stock_location_id',
         'country_code',
         'emergency_contact_name',
         'emergency_contact_phone',
@@ -150,6 +152,11 @@ class User extends Authenticatable
     public function employeeProfile(): \Illuminate\Database\Eloquent\Relations\HasOne
     {
         return $this->hasOne(EmployeeProfile::class);
+    }
+
+    public function primaryStockLocation(): BelongsTo
+    {
+        return $this->belongsTo(StockLocation::class, 'primary_stock_location_id');
     }
 
     public function employeePayrollPeriods(): HasMany
