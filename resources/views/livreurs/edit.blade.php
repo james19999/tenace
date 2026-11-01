@@ -87,7 +87,7 @@
                                     <option value="{{ $location->id }}" @selected((string)old('primary_stock_location_id', $users->primary_stock_location_id ?: $defaultShopLocationId)===(string)$location->id)>{{ $location->name }}</option>
                                 @endforeach
                             </select>
-                            <small class="form-text text-muted">Les boutiques grossistes ne sont pas proposées.</small>
+                            <small class="form-text text-muted">Tu peux rattacher ce compte à n’importe quelle boutique active, y compris une boutique grossiste.</small>
                             @error('primary_stock_location_id') <span class="text-danger">{{ $message }}</span>@enderror
                         </div>
 

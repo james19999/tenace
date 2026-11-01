@@ -53,7 +53,7 @@ class LivreurController extends Controller
     {
         return view('livreurs.create', [
             'countries' => WestAfricaShippingCatalog::countries(),
-            'shopLocations' => $this->generalShopLocations(),
+            'shopLocations' => $this->shopLocations(),
             'defaultShopLocationId' => $this->defaultGeneralShopLocationId(),
         ]);
     }
@@ -70,7 +70,7 @@ class LivreurController extends Controller
                  'adresse' => ['required', 'string'],
                  'phone' => ['required', 'string', 'max:32', 'unique:users,phone'],
                  'user_type' => ['required', 'in:LVS,VDS,CSA,MNG,SCR,CALLCENTER,ADMINUSER,COMPTABLE,RCM'],
-                 'primary_stock_location_id' => ['nullable', 'integer', Rule::exists('stock_locations', 'id')->where(fn ($query) => $query->where('type', 'shop')->where('is_active', true)->whereRaw('LOWER(name) NOT LIKE ?', ['%grossiste%'])->whereRaw('LOWER(code) NOT LIKE ?', ['%grossiste%']))],
+                 'primary_stock_location_id' => ['nullable', 'integer', Rule::exists('stock_locations', 'id')->where(fn ($query) => $query->where('type', 'shop')->where('is_active', true))],
                  'country_code' => ['nullable', Rule::in(array_keys(WestAfricaShippingCatalog::countries()))],
                  'emergency_contact_name' => ['nullable', 'string', 'max:160'],
                  'emergency_contact_phone' => ['nullable', 'string', 'max:32'],
@@ -134,7 +134,7 @@ class LivreurController extends Controller
         return view('livreurs.edit', [
             'users' => $users->load('courierDocuments'),
             'countries' => WestAfricaShippingCatalog::countries(),
-            'shopLocations' => $this->generalShopLocations(),
+            'shopLocations' => $this->shopLocations(),
             'defaultShopLocationId' => $this->defaultGeneralShopLocationId(),
         ]);
     }
@@ -163,7 +163,7 @@ class LivreurController extends Controller
             'adresse' => ['required', 'string'],
             'phone' => ['required', 'string', 'max:32', Rule::unique('users', 'phone')->ignore($id)],
             'user_type' => ['required', 'in:LVS,PT,VDS,CSA,MNG,SCR,CALLCENTER,ADMINUSER,COMPTABLE,RCM'],
-            'primary_stock_location_id' => ['nullable', 'integer', Rule::exists('stock_locations', 'id')->where(fn ($query) => $query->where('type', 'shop')->where('is_active', true)->whereRaw('LOWER(name) NOT LIKE ?', ['%grossiste%'])->whereRaw('LOWER(code) NOT LIKE ?', ['%grossiste%']))],
+            'primary_stock_location_id' => ['nullable', 'integer', Rule::exists('stock_locations', 'id')->where(fn ($query) => $query->where('type', 'shop')->where('is_active', true))],
             'country_code' => ['nullable', Rule::in(array_keys(WestAfricaShippingCatalog::countries()))],
             'emergency_contact_name' => ['nullable', 'string', 'max:160'],
             'emergency_contact_phone' => ['nullable', 'string', 'max:32'],
@@ -219,6 +219,12 @@ class LivreurController extends Controller
         }
         $users = User::where('user_type', $userType)->latest()->get();
         return view('users.index', compact('users', 'userType'));
+    }
+
+    private function shopLocations()
+    {
+        return StockLocation::query()->where('type', 'shop')->where('is_active', true)
+            ->orderBy('name')->get(['id', 'name']);
     }
 
     private function generalShopLocations()
