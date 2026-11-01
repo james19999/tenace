@@ -20,6 +20,11 @@ class FinanceTontine extends Model
         'expected_recovery_on' => 'date',
     ];
 
+    public function getRouteKeyName(): string
+    {
+        return 'reference';
+    }
+
     public function assignees(): BelongsToMany
     {
         return $this->belongsToMany(User::class, 'finance_tontine_assignees', 'tontine_id', 'user_id')

@@ -12,9 +12,9 @@ return new class extends Migration
             $table->id();
             $table->string('reference', 40)->unique();
             $table->string('name', 160);
-            $table->date('first_contribution_on');
-            $table->date('next_contribution_on');
-            $table->date('expected_recovery_on');
+            $table->date('first_contribution_on')->nullable();
+            $table->date('next_contribution_on')->nullable();
+            $table->date('expected_recovery_on')->nullable();
             $table->string('cash_custody', 24);
             $table->foreignId('stock_location_id')->nullable()->constrained('stock_locations')->restrictOnDelete();
             $table->string('status', 24)->default('active');

@@ -5,6 +5,13 @@
     $tontineRoles = ['ADMINUSER', 'MNG', 'COMPTABLE', 'SCR', 'VDS', 'CSA', 'LVS', 'CALLCENTER', 'RCM', 'GRO'];
     $showTontines = Auth::check() && in_array(Auth::user()->user_type, $tontineRoles, true);
     $hasTontineAccountingMenu = Auth::check() && in_array(Auth::user()->user_type, ['ADMINUSER', 'MNG', 'COMPTABLE', 'SCR', 'VDS', 'CSA', 'CALLCENTER', 'RCM'], true);
+    $dashboard = match (Auth::user()->user_type) {
+        'PT' => ['route' => 'partner.dashboard', 'label' => 'Tableau de bord'],
+        \App\Models\User::ROLE_WHOLESALER => ['route' => 'wholesaler.dashboard', 'label' => 'Tableau de bord'],
+        'ADMINUSER', 'MNG', 'SCR' => ['route' => 'Admin', 'label' => 'Dashboard'],
+        'VDS', 'CSA', 'CALLCENTER', 'COMPTABLE', 'RCM' => null,
+        default => ['route' => 'Admin', 'label' => 'Dashboard'],
+    };
     if (Auth::check() && in_array(Auth::user()->user_type, $employeeFinanceRoles, true)) {
         $showEquipmentPurchases = App\Models\FinanceEquipmentPurchaseSetting::query()->whereKey(1)->where('assignee_user_id', Auth::id())->exists()
             || App\Models\FinanceEquipmentPurchaseRequest::query()->where('assigned_to', Auth::id())->exists();
@@ -32,6 +39,15 @@
             <i class="material-icons">chevron_left</i>
         </div>
         <ul>
+
+            @if($dashboard)
+                <li>
+                    <a href="{{ route($dashboard['route']) }}" class="{{ $active($dashboard['route']) }}">
+                        <span class="icon material-icons">dashboard</span>
+                        <span class="text">{{ $dashboard['label'] }}</span>
+                    </a>
+                </li>
+            @endif
 
             @if(in_array(Auth::user()->user_type, ['MNG', 'SCR', 'VDS', 'CSA', 'LVS', 'CALLCENTER', 'COMPTABLE', 'RCM', 'GRO'], true))
                 <li><a href="{{ route('employees.self-service') }}" class="{{ $active('employees.self-service') }}"><span class="icon material-icons">badge</span><span class="text">Mon espace personnel</span></a></li>
@@ -80,12 +96,6 @@
             @endif
 
             @if (Auth::user()->user_type == 'ADMINUSER')
-                <li>
-                    <a href="{{ route('Admin') }}" class="{{ $active('Admin') }}">
-                        <span class="icon material-icons">dashboard</span>
-                        <span class="text">Dashboard</span>
-                    </a>
-                </li>
                 <li>
                     <a href="#adminAccountingCollapse" class="{{ $active('finance.*') }}" data-toggle="collapse">
                         <span class="caret material-icons">arrow_right</span>
@@ -333,12 +343,6 @@
                     </a>
                 </li>
             @elseif (Auth::user()->user_type == 'PT')
-                <li>
-                    <a href="{{ route('partner.dashboard') }}" class="{{ $active('partner.dashboard') }}">
-                        <span class="icon material-icons">dashboard</span>
-                        <span class="text">Tableau de bord</span>
-                    </a>
-                </li>
                 @if (Auth::user()->country_code)
                     <li>
                         <a href="{{ route('partner-ordering.prices', Auth::user()->country_code) }}" class="{{ $active('partner-ordering.prices*') }}">
@@ -385,12 +389,6 @@
                     </a>
                 </li>
             @elseif (Auth::user()->user_type === \App\Models\User::ROLE_WHOLESALER)
-                <li>
-                    <a href="{{ route('wholesaler.dashboard') }}" class="{{ $active('wholesaler.dashboard') }}">
-                        <span class="icon material-icons">dashboard</span>
-                        <span class="text">Tableau de bord</span>
-                    </a>
-                </li>
                 <li>
                     <a href="{{ route('product') }}" class="{{ $active('product') }}">
                         <span class="icon material-icons">store</span>
@@ -523,12 +521,6 @@
                     </a>
                 </li>
             @elseif (Auth::user()->user_type == 'MNG')
-                <li>
-                    <a href="{{ route('Admin') }}" class="{{ $active('Admin') }}">
-                        <span class="icon material-icons">dashboard</span>
-                        <span class="text">Dashboard</span>
-                    </a>
-                </li>
                 <li>
                     <a href="#mngComptaCollapse" class="{{ $active('finance.*') }}" data-toggle="collapse" aria-expanded="{{ request()->routeIs('finance.*') ? 'true' : 'false' }}">
                         <span class="caret material-icons">arrow_right</span>
@@ -703,12 +695,6 @@
                     </ul>
                 </li>
             @elseif (Auth::user()->user_type == 'SCR')
-                <li>
-                    <a href="{{ route('Admin') }}" class="{{ $active('Admin') }}">
-                        <span class="icon material-icons">dashboard</span>
-                        <span class="text">Dashboard</span>
-                    </a>
-                </li>
                 <li><a href="{{ route('dg-appointments.index') }}" class="{{ $active('dg-appointments.*') }}"><span class="icon material-icons">event</span><span class="text">Rendez-vous DG</span></a></li>
                 <li>
                     <a href="{{ route('product') }}" class="{{ $active('product') }}">
@@ -810,12 +796,6 @@
                     </a>
                 </li>
             @else
-                <li>
-                    <a href="{{ route('Admin') }}" class="{{ $active('Admin') }}">
-                        <span class="icon material-icons">dashboard</span>
-                        <span class="text">Dashboard</span>
-                    </a>
-                </li>
                 @if (in_array(Auth::user()->user_type, ['MNG', 'SCR'], true))
                     <li>
                         <a href="{{ route('service-cases.index') }}" class="{{ $active('service-cases.index') }}">

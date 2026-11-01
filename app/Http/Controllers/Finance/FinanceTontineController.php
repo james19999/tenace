@@ -41,9 +41,12 @@ class FinanceTontineController extends Controller
     public function index(Request $request): View
     {
         $user = $request->user();
+        $weekStart = today()->startOfWeek()->startOfDay();
+        $nextWeekStart = $weekStart->copy()->addWeek();
         $query = FinanceTontine::query()
             ->when(! $user->isAdmin(), fn (Builder $scope) => $scope->whereHas('assignees', fn (Builder $assignees) => $assignees->whereKey($user->id)))
             ->with(['assignees', 'location'])
+            ->withExists(['movements as contribution_this_week' => fn (Builder $movements) => $movements->where('type', 'contribution')->where('occurred_at', '>=', $weekStart)->where('occurred_at', '<', $nextWeekStart)])
             ->withSum(['movements as contributed_amount' => fn (Builder $movements) => $movements->where('type', 'contribution')], 'amount')
             ->withSum(['movements as recovered_amount' => fn (Builder $movements) => $movements->where('type', 'recovery')], 'amount')
             ->latest('created_at');
@@ -78,6 +81,23 @@ class FinanceTontineController extends Controller
             'locations' => StockLocation::query()->where('type', 'shop')->where('is_active', true)->orderBy('name')->get(['id', 'name']),
             'selectedAssignees' => User::query()->where('active', true)->whereIn('user_type', self::ASSIGNABLE_ROLES)
                 ->whereIn('id', $oldAssigneeIds)->orderBy('name')->get(['id', 'name', 'user_type']),
+            'isEditing' => false,
+            'tontine' => null,
+        ]);
+    }
+
+    public function edit(Request $request, FinanceTontine $tontine): View
+    {
+        abort_unless($request->user()->isAdmin(), 403);
+        $tontine->load('assignees');
+        $oldAssigneeIds = old('assignee_ids', $tontine->assignees->pluck('id')->all());
+        $oldAssigneeIds = is_array($oldAssigneeIds) ? $oldAssigneeIds : [];
+
+        return view('finance.tontines.create', [
+            'locations' => StockLocation::query()->where('type', 'shop')->where('is_active', true)->orderBy('name')->get(['id', 'name']),
+            'selectedAssignees' => User::query()->whereIn('id', $oldAssigneeIds)->orderBy('name')->get(['id', 'name', 'user_type']),
+            'isEditing' => true,
+            'tontine' => $tontine,
         ]);
     }
 
@@ -104,8 +124,6 @@ class FinanceTontineController extends Controller
         abort_unless($request->user()->isAdmin(), 403);
         $data = $request->validate([
             'name' => ['required', 'string', 'max:160'],
-            'first_contribution_on' => ['required', 'date'],
-            'expected_recovery_on' => ['required', 'date', 'after_or_equal:first_contribution_on'],
             'cash_custody' => ['required', Rule::in(['general_cash', 'shop'])],
             'stock_location_id' => ['nullable', 'required_if:cash_custody,shop', 'integer', Rule::exists('stock_locations', 'id')->where(fn ($query) => $query->where('type', 'shop')->where('is_active', true))],
             'assignee_ids' => ['required', 'array', 'min:1'],
@@ -120,9 +138,9 @@ class FinanceTontineController extends Controller
             $tontine = FinanceTontine::query()->create([
                 'reference' => 'TMP-'.Str::uuid(),
                 'name' => $data['name'],
-                'first_contribution_on' => $data['first_contribution_on'],
-                'next_contribution_on' => $data['first_contribution_on'],
-                'expected_recovery_on' => $data['expected_recovery_on'],
+                'first_contribution_on' => null,
+                'next_contribution_on' => null,
+                'expected_recovery_on' => null,
                 'cash_custody' => $data['cash_custody'],
                 'stock_location_id' => $data['stock_location_id'] ?? null,
                 'status' => 'active',
@@ -134,8 +152,6 @@ class FinanceTontineController extends Controller
             $audit->record($tontine, 'tontine_created', null, [
                 'reference' => $tontine->reference,
                 'name' => $tontine->name,
-                'first_contribution_on' => $tontine->first_contribution_on->format('d/m/Y'),
-                'expected_recovery_on' => $tontine->expected_recovery_on->format('d/m/Y'),
                 'cash_custody' => $tontine->cash_custody === 'shop' ? 'Espèces · '.StockLocation::query()->whereKey($tontine->stock_location_id)->value('name') : 'Caisse générale',
                 'assigned_users' => User::query()->whereIn('id', $data['assignee_ids'])->orderBy('name')->pluck('name')->all(),
                 'notes' => $tontine->notes,
@@ -153,6 +169,74 @@ class FinanceTontineController extends Controller
         )));
 
         return redirect()->route('finance.tontines.show', $tontine)->with('success', 'Tontine créée et personnes chargées notifiées.');
+    }
+
+    public function update(Request $request, FinanceTontine $tontine, FinanceAuditService $audit): RedirectResponse
+    {
+        abort_unless($request->user()->isAdmin(), 403);
+        $data = $request->validate([
+            'name' => ['required', 'string', 'max:160'],
+            'cash_custody' => ['required', Rule::in(['general_cash', 'shop'])],
+            'stock_location_id' => ['nullable', 'required_if:cash_custody,shop', 'integer', Rule::exists('stock_locations', 'id')->where(fn ($query) => $query->where('type', 'shop')->where('is_active', true))],
+            'assignee_ids' => ['required', 'array', 'min:1'],
+            'assignee_ids.*' => ['required', 'integer', 'distinct', Rule::exists('users', 'id')->where(fn ($query) => $query->where('active', true)->whereIn('user_type', self::ASSIGNABLE_ROLES))],
+            'notes' => ['nullable', 'string', 'max:2000'],
+        ]);
+        if ($data['cash_custody'] === 'general_cash') {
+            $data['stock_location_id'] = null;
+        }
+
+        $addedAssigneeIds = DB::transaction(function () use ($data, $request, $tontine, $audit): array {
+            $lockedTontine = FinanceTontine::query()->lockForUpdate()->findOrFail($tontine->id);
+            $lockedTontine->load(['location', 'assignees']);
+            $currentAssigneeIds = $lockedTontine->assignees->pluck('id')->all();
+            $newAssigneeIds = array_map('intval', $data['assignee_ids']);
+            $added = array_values(array_diff($newAssigneeIds, $currentAssigneeIds));
+            $removed = array_values(array_diff($currentAssigneeIds, $newAssigneeIds));
+            $cashLabel = fn (string $custody, ?int $locationId): string => $custody === 'shop'
+                ? 'Espèces · '.StockLocation::query()->whereKey($locationId)->value('name')
+                : 'Caisse générale';
+            $before = [
+                'name' => $lockedTontine->name,
+                'cash_custody' => $cashLabel($lockedTontine->cash_custody, $lockedTontine->stock_location_id),
+                'assigned_users' => $lockedTontine->assignees->pluck('name')->sort()->values()->all(),
+                'notes' => $lockedTontine->notes,
+            ];
+
+            $lockedTontine->update([
+                'name' => $data['name'],
+                'cash_custody' => $data['cash_custody'],
+                'stock_location_id' => $data['stock_location_id'] ?? null,
+                'notes' => $data['notes'] ?? null,
+            ]);
+            if ($removed !== []) {
+                $lockedTontine->assignees()->detach($removed);
+            }
+            foreach ($added as $assigneeId) {
+                $lockedTontine->assignees()->attach($assigneeId, ['assigned_by' => $request->user()->id]);
+            }
+
+            $after = [
+                'name' => $lockedTontine->name,
+                'cash_custody' => $cashLabel($lockedTontine->cash_custody, $lockedTontine->stock_location_id),
+                'assigned_users' => User::query()->whereIn('id', $newAssigneeIds)->orderBy('name')->pluck('name')->all(),
+                'notes' => $lockedTontine->notes,
+            ];
+            $audit->record($lockedTontine, 'tontine_updated', $before, $after);
+
+            return $added;
+        });
+
+        $tontine->refresh();
+        $tontineUrl = route('finance.tontines.show', $tontine);
+        User::query()->whereIn('id', $addedAssigneeIds)->get()->each(fn (User $assignee) => $assignee->notify(new FinanceWorkflowNotification(
+            'Tontine à suivre',
+            'Tu as été désigné pour enregistrer les cotisations de '.$tontine->name.'.',
+            $tontineUrl,
+            'savings',
+        )));
+
+        return redirect()->route('finance.tontines.show', $tontine)->with('success', 'Tontine modifiée.');
     }
 
     public function show(Request $request, FinanceTontine $tontine): View
@@ -179,7 +263,8 @@ class FinanceTontineController extends Controller
             'recoveryRemaining' => $canManage ? max(0, $contributed - $recovered) : 0,
             'canManage' => $canManage,
             'displayMovements' => $displayMovements,
-            'canContribute' => $tontine->status === 'active' && $tontine->next_contribution_on->lte(today()),
+            'contributionThisWeek' => $this->hasContributionForWeek($tontine, today()),
+            'canContribute' => $tontine->status === 'active' && ! $this->hasContributionForWeek($tontine, today()),
             'contributionSubmissionKey' => (string) Str::uuid(),
             'recoverySubmissionKey' => (string) Str::uuid(),
         ]);
@@ -221,7 +306,7 @@ class FinanceTontineController extends Controller
         $rules = [
             'submission_key' => ['required', 'uuid'],
             'amount' => ['required', 'integer', 'min:1', 'max:1000000000', ...(! $isContribution ? ['max:'.$availableForRecovery] : [])],
-            'occurred_at' => ['required', 'date', 'before_or_equal:today'],
+            'occurred_at' => ['required', 'date', 'before_or_equal:today', ...($isContribution ? ['after_or_equal:'.today()->startOfWeek()->toDateString()] : [])],
             'proof' => [$isContribution ? 'nullable' : 'required', 'file', 'mimes:pdf,jpg,jpeg,png', 'max:10240'],
             'note' => ['nullable', 'string', 'max:2000'],
         ];
@@ -231,12 +316,8 @@ class FinanceTontineController extends Controller
         }
         $occurredOn = Carbon::parse($data['occurred_at'])->toDateString();
         if ($isContribution) {
-            abort_if($tontine->next_contribution_on->gt(today()), 409, 'La prochaine cotisation n’est pas encore échue.');
-            if (Carbon::parse($occurredOn)->lt($tontine->next_contribution_on)) {
-                throw ValidationException::withMessages(['occurred_at' => 'La date du versement précède l’échéance de cette cotisation.']);
-            }
-            if ($tontine->movements()->where('type', 'contribution')->whereDate('due_on', $tontine->next_contribution_on)->exists()) {
-                throw ValidationException::withMessages(['amount' => 'La cotisation prévue pour cette semaine est déjà enregistrée.']);
+            if ($this->hasContributionForWeek($tontine, Carbon::parse($occurredOn))) {
+                throw ValidationException::withMessages(['amount' => 'Une cotisation est déjà enregistrée pour cette semaine.']);
             }
         }
 
@@ -250,12 +331,8 @@ class FinanceTontineController extends Controller
                 $lockedTontine = FinanceTontine::query()->lockForUpdate()->findOrFail($tontine->id);
                 abort_unless($lockedTontine->status === 'active', 409, 'Cette tontine est déjà clôturée.');
                 if ($isContribution) {
-                    abort_unless($lockedTontine->next_contribution_on->lte(today()), 409, 'La prochaine cotisation n’est pas encore échue.');
-                    if (Carbon::parse($data['occurred_at'])->lt($lockedTontine->next_contribution_on)) {
-                        throw ValidationException::withMessages(['occurred_at' => 'La date du versement précède l’échéance de cette cotisation.']);
-                    }
-                    if ($lockedTontine->movements()->where('type', 'contribution')->whereDate('due_on', $lockedTontine->next_contribution_on)->exists()) {
-                        throw ValidationException::withMessages(['amount' => 'La cotisation prévue pour cette semaine est déjà enregistrée.']);
+                    if ($this->hasContributionForWeek($lockedTontine, Carbon::parse($data['occurred_at']))) {
+                        throw ValidationException::withMessages(['amount' => 'Une cotisation est déjà enregistrée pour cette semaine.']);
                     }
                 } else {
                     $lockedAvailableForRecovery = $this->availableForRecovery($lockedTontine);
@@ -268,7 +345,7 @@ class FinanceTontineController extends Controller
                     'submission_key' => $data['submission_key'],
                     'tontine_id' => $lockedTontine->id,
                     'type' => $type,
-                    'due_on' => $isContribution ? $lockedTontine->next_contribution_on->toDateString() : null,
+                    'due_on' => null,
                     'amount' => $data['amount'],
                     'occurred_at' => Carbon::parse($data['occurred_at'])->startOfDay(),
                     'proof_path' => $proofPath,
@@ -295,7 +372,7 @@ class FinanceTontineController extends Controller
                 ]);
                 $movement->update(['cash_movement_id' => $cashMovement->id]);
                 if ($isContribution) {
-                    $lockedTontine->next_contribution_on = $lockedTontine->next_contribution_on->copy()->addWeek()->toDateString();
+                    $lockedTontine->first_contribution_on ??= Carbon::parse($data['occurred_at'])->toDateString();
                     $lockedTontine->save();
                 }
                 $audit->record($movement, $isContribution ? 'tontine_contribution_paid' : 'tontine_recovery_received', null, [
@@ -319,6 +396,17 @@ class FinanceTontineController extends Controller
             }
             throw $exception;
         }
+    }
+
+    private function hasContributionForWeek(FinanceTontine $tontine, Carbon $date): bool
+    {
+        $weekStart = $date->copy()->startOfWeek()->startOfDay();
+        $nextWeekStart = $weekStart->copy()->addWeek();
+
+        return $tontine->movements()->where('type', 'contribution')
+            ->where('occurred_at', '>=', $weekStart)
+            ->where('occurred_at', '<', $nextWeekStart)
+            ->exists();
     }
 
     private function authorizeTontine(User $user, FinanceTontine $tontine): void
