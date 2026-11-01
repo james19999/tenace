@@ -2,6 +2,9 @@
     $active = fn (...$routes) => request()->routeIs(...$routes) ? 'active' : '';
     $employeeFinanceRoles = ['MNG', 'SCR', 'VDS', 'CSA', 'LVS', 'CALLCENTER', 'COMPTABLE', 'RCM', 'GRO'];
     $showEquipmentPurchases = false;
+    $tontineRoles = ['ADMINUSER', 'MNG', 'COMPTABLE', 'SCR', 'VDS', 'CSA', 'LVS', 'CALLCENTER', 'RCM', 'GRO'];
+    $showTontines = Auth::check() && in_array(Auth::user()->user_type, $tontineRoles, true);
+    $hasTontineAccountingMenu = Auth::check() && in_array(Auth::user()->user_type, ['ADMINUSER', 'MNG', 'COMPTABLE', 'SCR', 'VDS', 'CSA', 'CALLCENTER', 'RCM'], true);
     if (Auth::check() && in_array(Auth::user()->user_type, $employeeFinanceRoles, true)) {
         $showEquipmentPurchases = App\Models\FinanceEquipmentPurchaseSetting::query()->whereKey(1)->where('assignee_user_id', Auth::id())->exists()
             || App\Models\FinanceEquipmentPurchaseRequest::query()->where('assigned_to', Auth::id())->exists();
@@ -37,6 +40,19 @@
                 @endif
             @endif
 
+            @if($showTontines && !$hasTontineAccountingMenu)
+                <li>
+                    <a href="#tontineAccountingCollapse" class="{{ $active('finance.tontines.*') }}" data-toggle="collapse" aria-expanded="{{ request()->routeIs('finance.tontines.*') ? 'true' : 'false' }}">
+                        <span class="caret material-icons">arrow_right</span>
+                        <span class="icon material-icons">money</span>
+                        <span class="text">Comptabilité</span>
+                    </a>
+                    <ul class="collapse {{ $active('finance.tontines.*') ? 'show' : '' }}" id="tontineAccountingCollapse">
+                        <li><a href="{{ route('finance.tontines.index') }}" class="{{ $active('finance.tontines.*') }}"><span class="icon material-icons">remove</span><span class="text">Tontines</span></a></li>
+                    </ul>
+                </li>
+            @endif
+
             @if (in_array(Auth::user()->user_type, ['SCR', 'VDS', 'CSA', 'CALLCENTER', 'RCM'], true))
                 <li>
                     <a href="#financeOperationalCollapse" class="{{ $active('finance.*') }}" data-toggle="collapse" aria-expanded="{{ request()->routeIs('finance.*') ? 'true' : 'false' }}">
@@ -48,6 +64,7 @@
                         <li><a href="{{ route('finance.dashboard') }}" class="{{ $active('finance.dashboard') }}"><span class="icon material-icons">remove</span><span class="text">Trésorerie @if(($financeBadges['treasury'] ?? 0) > 0)<span class="badge badge-pill badge-danger">{{ $financeBadges['treasury'] }}</span>@endif</span></a></li>
                         <li><a href="{{ route('finance.remittances.index') }}" class="{{ $active('finance.remittances.*') }}"><span class="icon material-icons">remove</span><span class="text">{{ Auth::user()->user_type === 'RCM' ? 'Remises grossiste' : 'Remises boutiques' }} @if(($financeBadges['remittances'] ?? 0) > 0)<span class="badge badge-pill badge-danger">{{ $financeBadges['remittances'] > 99 ? '99+' : $financeBadges['remittances'] }}</span>@endif</span></a></li>
                         <li><a href="{{ route('finance.expenses.index') }}" class="{{ $active('finance.expenses.*') }}"><span class="icon material-icons">remove</span><span class="text">Demandes de dépenses @if(($financeBadges['expenses'] ?? 0) > 0)<span class="badge badge-pill badge-danger">{{ $financeBadges['expenses'] }}</span>@endif</span></a></li>
+                        @if($showTontines)<li><a href="{{ route('finance.tontines.index') }}" class="{{ $active('finance.tontines.*') }}"><span class="icon material-icons">remove</span><span class="text">Tontines</span></a></li>@endif
                         @if(Auth::user()->isAdmin())<li><a href="{{ route('finance.suppliers.index') }}" class="{{ $active('finance.suppliers.*') }}"><span class="icon material-icons">remove</span><span class="text">Factures fournisseurs @if(($financeBadges['suppliers'] ?? 0) > 0)<span class="badge badge-pill badge-danger">{{ $financeBadges['suppliers'] }}</span>@endif</span></a></li>@endif
                     </ul>
                 </li>
@@ -80,6 +97,7 @@
                         <li><a href="{{ route('finance.dashboard') }}" class="{{ $active('finance.dashboard') }}"><span class="icon material-icons">remove</span><span class="text">Trésorerie @if(($financeBadges['treasury'] ?? 0) > 0)<span class="badge badge-pill badge-danger">{{ $financeBadges['treasury'] }}</span>@endif</span></a></li>
                         <li><a href="{{ route('finance.remittances.index') }}" class="{{ $active('finance.remittances.*') }}"><span class="icon material-icons">remove</span><span class="text">Remises boutiques et grossiste @if(($financeBadges['remittances'] ?? 0) > 0)<span class="badge badge-pill badge-danger">{{ $financeBadges['remittances'] }}</span>@endif</span></a></li>
                         <li><a href="{{ route('finance.expenses.index') }}" class="{{ $active('finance.expenses.*') }}"><span class="icon material-icons">remove</span><span class="text">Dépenses · validations @if(($financeBadges['expenses'] ?? 0) > 0)<span class="badge badge-pill badge-danger">{{ $financeBadges['expenses'] }}</span>@endif</span></a></li>
+                        @if($showTontines)<li><a href="{{ route('finance.tontines.index') }}" class="{{ $active('finance.tontines.*') }}"><span class="icon material-icons">remove</span><span class="text">Tontines</span></a></li>@endif
                         @if(Auth::user()->isAdmin())<li><a href="{{ route('finance.suppliers.index') }}" class="{{ $active('finance.suppliers.*') }}"><span class="icon material-icons">remove</span><span class="text">Factures fournisseurs @if(($financeBadges['suppliers'] ?? 0) > 0)<span class="badge badge-pill badge-danger">{{ $financeBadges['suppliers'] }}</span>@endif</span></a></li>@endif
                         <li><a href="{{ route('finance.management.index') }}" class="{{ $active('finance.management.*') }}"><span class="icon material-icons">remove</span><span class="text">Suivi financier avancé</span></a></li>
                         <li><a href="{{ route('finance.reports.index') }}" class="{{ $active('finance.reports.*') }}"><span class="icon material-icons">remove</span><span class="text">Rapports et exports</span></a></li>
@@ -521,6 +539,7 @@
                         <li><a href="{{ route('finance.dashboard') }}" class="{{ $active('finance.dashboard') }}"><span class="icon material-icons">remove</span><span class="text">Trésorerie @if(($financeBadges['treasury'] ?? 0) > 0)<span class="badge badge-pill badge-danger">{{ $financeBadges['treasury'] }}</span>@endif</span></a></li>
                         <li><a href="{{ route('finance.remittances.index') }}" class="{{ $active('finance.remittances.*') }}"><span class="icon material-icons">remove</span><span class="text">Remises boutiques @if(($financeBadges['remittances'] ?? 0) > 0)<span class="badge badge-pill badge-danger">{{ $financeBadges['remittances'] }}</span>@endif</span></a></li>
                         <li><a href="{{ route('finance.expenses.index') }}" class="{{ $active('finance.expenses.*') }}"><span class="icon material-icons">remove</span><span class="text">Demandes de dépenses @if(($financeBadges['expenses'] ?? 0) > 0)<span class="badge badge-pill badge-danger">{{ $financeBadges['expenses'] }}</span>@endif</span></a></li>
+                        @if($showTontines)<li><a href="{{ route('finance.tontines.index') }}" class="{{ $active('finance.tontines.*') }}"><span class="icon material-icons">remove</span><span class="text">Tontines</span></a></li>@endif
                         @if(Auth::user()->isAdmin())<li><a href="{{ route('finance.suppliers.index') }}" class="{{ $active('finance.suppliers.*') }}"><span class="icon material-icons">remove</span><span class="text">Factures fournisseurs @if(($financeBadges['suppliers'] ?? 0) > 0)<span class="badge badge-pill badge-danger">{{ $financeBadges['suppliers'] }}</span>@endif</span></a></li>@endif
                     </ul>
                 </li>
@@ -676,6 +695,7 @@
                         <li><a href="{{ route('finance.dashboard') }}" class="{{ $active('finance.dashboard') }}"><span class="icon material-icons">remove</span><span class="text">Trésorerie @if(($financeBadges['treasury'] ?? 0) > 0)<span class="badge badge-pill badge-danger">{{ $financeBadges['treasury'] }}</span>@endif</span></a></li>
                         <li><a href="{{ route('finance.remittances.index') }}" class="{{ $active('finance.remittances.*') }}"><span class="icon material-icons">remove</span><span class="text">Remises boutiques @if(($financeBadges['remittances'] ?? 0) > 0)<span class="badge badge-pill badge-danger">{{ $financeBadges['remittances'] }}</span>@endif</span></a></li>
                         <li><a href="{{ route('finance.expenses.index') }}" class="{{ $active('finance.expenses.*') }}"><span class="icon material-icons">remove</span><span class="text">Dépenses à contrôler @if(($financeBadges['expenses'] ?? 0) > 0)<span class="badge badge-pill badge-danger">{{ $financeBadges['expenses'] }}</span>@endif</span></a></li>
+                        @if($showTontines)<li><a href="{{ route('finance.tontines.index') }}" class="{{ $active('finance.tontines.*') }}"><span class="icon material-icons">remove</span><span class="text">Tontines</span></a></li>@endif
                         @if(Auth::user()->isAdmin())<li><a href="{{ route('finance.suppliers.index') }}" class="{{ $active('finance.suppliers.*') }}"><span class="icon material-icons">remove</span><span class="text">Dettes fournisseurs @if(($financeBadges['suppliers'] ?? 0) > 0)<span class="badge badge-pill badge-danger">{{ $financeBadges['suppliers'] }}</span>@endif</span></a></li>@endif
                         <li><a href="{{ route('finance.management.index') }}" class="{{ $active('finance.management.*') }}"><span class="icon material-icons">remove</span><span class="text">Suivi financier avancé</span></a></li>
                         <li><a href="{{ route('finance.reports.index') }}" class="{{ $active('finance.reports.*') }}"><span class="icon material-icons">remove</span><span class="text">Rapports et exports</span></a></li>

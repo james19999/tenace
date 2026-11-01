@@ -55,6 +55,7 @@ use App\Http\Controllers\Finance\FinanceController;
 use App\Http\Controllers\Finance\FinanceSupplierInvoiceController;
 use App\Http\Controllers\Finance\FinanceReportController;
 use App\Http\Controllers\Finance\FinanceAuditController;
+use App\Http\Controllers\Finance\FinanceTontineController;
 use App\Http\Controllers\Brouillons\BrouillonController;
 use App\Http\Controllers\TypeExpensive\TypeExpensiveController;
 
@@ -151,6 +152,15 @@ Route::middleware(['auth'])->group(function () {
         Route::post('/remises/{remittance}/signature-collecteur', [FinanceController::class, 'signRemittance'])->middleware('role:ADMINUSER,MNG,COMPTABLE,SCR,VDS,CSA,LVS,CALLCENTER,RCM,GRO')->name('remittances.sign');
         Route::post('/remises/{remittance}/reception', [FinanceController::class, 'confirmRemittance'])->middleware('role:ADMINUSER')->name('remittances.receive');
         Route::post('/remises/{remittance}/resoudre-ecart', [FinanceController::class, 'resolveRemittance'])->middleware('role:ADMINUSER')->name('remittances.resolve');
+
+        Route::get('/tontines', [FinanceTontineController::class, 'index'])->middleware('role:ADMINUSER,MNG,SCR,VDS,CSA,LVS,CALLCENTER,COMPTABLE,RCM,GRO')->name('tontines.index');
+        Route::get('/tontines/personnes-a-charger', [FinanceTontineController::class, 'searchAssignees'])->middleware('role:ADMINUSER')->name('tontines.assignees.search');
+        Route::get('/tontines/nouvelle', [FinanceTontineController::class, 'create'])->middleware('role:ADMINUSER')->name('tontines.create');
+        Route::post('/tontines', [FinanceTontineController::class, 'store'])->middleware('role:ADMINUSER')->name('tontines.store');
+        Route::get('/tontines/mouvements/{movement}/piece', [FinanceTontineController::class, 'attachment'])->middleware('role:ADMINUSER,MNG,SCR,VDS,CSA,LVS,CALLCENTER,COMPTABLE,RCM,GRO')->name('tontines.attachments.download');
+        Route::get('/tontines/{tontine}', [FinanceTontineController::class, 'show'])->middleware('role:ADMINUSER,MNG,SCR,VDS,CSA,LVS,CALLCENTER,COMPTABLE,RCM,GRO')->name('tontines.show');
+        Route::post('/tontines/{tontine}/cotisations', [FinanceTontineController::class, 'storeContribution'])->middleware('role:ADMINUSER,MNG,SCR,VDS,CSA,LVS,CALLCENTER,COMPTABLE,RCM,GRO')->name('tontines.contributions.store');
+        Route::post('/tontines/{tontine}/recuperations', [FinanceTontineController::class, 'storeRecovery'])->middleware('role:ADMINUSER')->name('tontines.recoveries.store');
 
         Route::get('/depenses', [FinanceController::class, 'expenses'])->middleware('role:ADMINUSER,MNG,COMPTABLE,SCR,VDS,CSA,LVS,CALLCENTER,RCM,GRO')->name('expenses.index');
         Route::get('/depenses/nouvelle', [FinanceController::class, 'createExpense'])->middleware('role:ADMINUSER,MNG,COMPTABLE,SCR,VDS,CSA,LVS,CALLCENTER,RCM,GRO')->name('expenses.create');
