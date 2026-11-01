@@ -47,6 +47,14 @@ class LoginController extends Controller
     {
         $homeUrl = $user instanceof User ? $user->homeUrl() : RouteServiceProvider::HOME;
 
+        // Le responsable commercial doit toujours arriver sur l’espace grossiste,
+        // même si la session garde une ancienne URL /Admin comme destination.
+        if ($user instanceof User && $user->isWholesaleSalesRole()) {
+            $request->session()->forget('url.intended');
+
+            return redirect()->route('product');
+        }
+
         $intended = $request->session()->get('url.intended');
         if ($intended) {
             $intendedPath = parse_url($intended, PHP_URL_PATH) ?? '';
@@ -58,7 +66,7 @@ class LoginController extends Controller
             }
 
             // Pour ces rôles ayant des espaces dédiés, toujours privilégier leur espace
-            if (in_array($user->user_type, [User::ROLE_PARTNER, User::ROLE_CALL_CENTER, User::ROLE_ACCOUNTANT, User::ROLE_SALES, User::ROLE_CASHIER], true)) {
+            if (in_array($user->user_type, [User::ROLE_PARTNER, User::ROLE_CALL_CENTER, User::ROLE_ACCOUNTANT, User::ROLE_SALES, User::ROLE_CASHIER, User::ROLE_COMMERCIAL_MANAGER, User::ROLE_WHOLESALER], true)) {
                 $request->session()->forget('url.intended');
             }
         }

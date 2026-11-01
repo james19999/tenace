@@ -15,6 +15,7 @@ use App\Services\FinanceCashLedgerService;
 use App\Services\FinanceCashClosureService;
 use App\Services\FinanceCashRemittanceService;
 use App\Services\FinanceExpenseWorkflowService;
+use App\Services\StockModuleSettingsService;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\JsonResponse;
@@ -36,6 +37,9 @@ class FinanceController extends Controller
         $locationIds = StockLocation::query()->where('type', 'shop')
             ->when(! $canSeeAll, fn ($query) => $query->where('responsible_user_id', $user->id))
             ->pluck('id');
+        if ($user->user_type === User::ROLE_COMMERCIAL_MANAGER && $this->wholesaleLocationId()) {
+            $locationIds->push($this->wholesaleLocationId());
+        }
 
         $remittances = FinanceCashRemittance::query()->when(! $canSeeAll, function ($query) use ($user, $locationIds): void {
             $query->where(function ($scope) use ($user, $locationIds): void {
@@ -91,7 +95,7 @@ class FinanceController extends Controller
             'previous_month' => $previousMonthStart->translatedFormat('F Y'),
             'current_month_net' => $currentBalance - $previousBalance,
             'previous_month_net' => (int) array_sum($dailyCashChanges->filter(fn ($row, $date) => $date >= $previousMonthStart->toDateString() && $date <= $previousMonthEnd->toDateString())->pluck('net_change')->all()),
-            'custody_label' => $canSeeCentral ? 'Caisse générale' : 'Espèces de ta boutique',
+            'custody_label' => $canSeeCentral ? 'Caisse générale' : ($user->user_type === User::ROLE_COMMERCIAL_MANAGER ? 'Espèces du grossiste' : 'Espèces de ta boutique'),
         ];
         $monthlyCashTotals = function ($start, $end) use ($cashFlowQuery, $trackedCustody): array {
             $totals = (clone $cashFlowQuery)->whereBetween('occurred_at', [$start, $end])
@@ -107,11 +111,15 @@ class FinanceController extends Controller
             'in' => [$previousCashTotals['in'], $currentCashTotals['in']],
             'out' => [$previousCashTotals['out'], $currentCashTotals['out']],
         ];
-        $supplierInvoices = FinanceSupplierInvoice::query()->where('status', 'approved')
-            ->whereIn('payment_status', ['unpaid', 'partial']);
-        $supplierPayables = (clone $supplierInvoices)->sum(\Illuminate\Support\Facades\DB::raw('amount - paid_amount'));
-        $overdueSupplierInvoices = (clone $supplierInvoices)->whereNotNull('due_date')
-            ->whereDate('due_date', '<', today())->count();
+        $supplierPayables = 0;
+        $overdueSupplierInvoices = 0;
+        if ($user->isAdmin()) {
+            $supplierInvoices = FinanceSupplierInvoice::query()->where('status', 'approved')
+                ->whereIn('payment_status', ['unpaid', 'partial']);
+            $supplierPayables = (clone $supplierInvoices)->sum(\Illuminate\Support\Facades\DB::raw('amount - paid_amount'));
+            $overdueSupplierInvoices = (clone $supplierInvoices)->whereNotNull('due_date')
+                ->whereDate('due_date', '<', today())->count();
+        }
 
         return view('finance.dashboard', [
             'generalCash' => $canSeeCentral ? $this->ledger->balance('general_cash') : null,
@@ -192,26 +200,35 @@ class FinanceController extends Controller
     {
         $user = $request->user();
         $canSeeAll = $user->isAdmin() || $user->isAccountant();
-        $locationIds = StockLocation::query()->where('type', 'shop')->where('responsible_user_id', $user->id)->pluck('id');
+        $locationIds = $this->remittanceLocationIds($user);
         $rows = FinanceCashRemittance::query()->with(['location', 'shopManager', 'collector', 'receiver'])
             ->when(! $canSeeAll, fn ($query) => $query->where(fn ($scope) => $scope->whereIn('stock_location_id', $locationIds)->orWhere('collector_id', $user->id)))
             ->latest('created_at')->paginate(15)->withQueryString();
 
-        return view('finance.remittances.index', ['remittances' => $rows, 'canSeeAll' => $canSeeAll]);
+        return view('finance.remittances.index', [
+            'remittances' => $rows,
+            'canSeeAll' => $canSeeAll,
+            'canCreateRemittance' => $user->isManager() || $user->isWholesaleSalesRole(),
+            'isWholesaleManager' => $user->isWholesaleSalesRole(),
+        ]);
     }
 
     public function createRemittance(Request $request): View
     {
         $user = $request->user();
+        $isWholesaleManager = $user->isWholesaleSalesRole();
+        $allowedLocationIds = $isWholesaleManager
+            ? collect(array_filter([$this->wholesaleLocationId()]))
+            : StockLocation::query()->where('type', 'shop')->where('responsible_user_id', $user->id)->pluck('id');
         $locations = StockLocation::query()->where('type', 'shop')->where('is_active', true)
-            ->when(! $user->isAdmin(), fn ($query) => $query->where('responsible_user_id', $user->id))
+            ->whereIn('id', $allowedLocationIds)
             ->orderBy('name')->get(['id', 'name', 'responsible_user_id']);
-        abort_if($locations->isEmpty(), 403, 'Aucune boutique ne t’est affectée.');
+        abort_if($locations->isEmpty(), 403, $isWholesaleManager ? 'La boutique grossiste n’est pas configurée.' : 'Aucune boutique ne t’est affectée.');
 
         $collectors = User::query()->where('active', true)->where('id', '<>', $user->id)
             ->whereNotIn('user_type', [User::ROLE_PARTNER])->orderBy('name')->get(['id', 'name', 'user_type']);
 
-        return view('finance.remittances.create', compact('locations', 'collectors'));
+        return view('finance.remittances.create', compact('locations', 'collectors', 'isWholesaleManager'));
     }
 
     public function expectedRemittanceAmount(Request $request): JsonResponse
@@ -228,10 +245,13 @@ class FinanceController extends Controller
             ]);
         }
         $user = $request->user();
-        $location = StockLocation::query()->whereKey($data['stock_location_id'])
-            ->where('type', 'shop')->where('is_active', true)
-            ->when(! $user->isAdmin(), fn ($query) => $query->where('responsible_user_id', $user->id))
-            ->firstOrFail();
+        $locationQuery = StockLocation::query()->whereKey($data['stock_location_id'])->where('type', 'shop')->where('is_active', true);
+        if ($user->isWholesaleSalesRole()) {
+            $locationQuery->whereKey($this->wholesaleLocationId() ?? 0);
+        } elseif (! $user->isAdmin()) {
+            $locationQuery->where('responsible_user_id', $user->id);
+        }
+        $location = $locationQuery->firstOrFail();
 
         return response()->json([
             'expected_amount' => max(0, $this->ledger->expectedShopCash(
@@ -263,7 +283,7 @@ class FinanceController extends Controller
         }
         $remittance = $service->prepare($data, $request->user());
 
-        return redirect()->route('finance.remittances.show', $remittance)->with('success', 'Bon créé et signé par le responsable de boutique. Il attend la signature de la personne chargée de la collecte.');
+        return redirect()->route('finance.remittances.show', $remittance)->with('success', 'Bon créé et signé. Il attend la confirmation de la personne chargée de la collecte.');
     }
 
     public function showRemittance(Request $request, FinanceCashRemittance $remittance): View
@@ -271,8 +291,9 @@ class FinanceController extends Controller
         $this->authorizeRemittance($request->user(), $remittance);
         $remittance->load(['location', 'shopManager', 'collector', 'receiver', 'movements.creator']);
         $cashOperations = $this->remittanceOperations($remittance);
+        $isWholesaleRemittance = (int) $remittance->stock_location_id === (int) ($this->wholesaleLocationId() ?? 0);
 
-        return view('finance.remittances.show', compact('remittance', 'cashOperations'));
+        return view('finance.remittances.show', compact('remittance', 'cashOperations', 'isWholesaleRemittance'));
     }
 
     public function signRemittance(Request $request, FinanceCashRemittance $remittance, FinanceCashRemittanceService $service): RedirectResponse
@@ -319,8 +340,9 @@ class FinanceController extends Controller
         $this->authorizeRemittance($request->user(), $remittance);
         $remittance->load(['location', 'shopManager', 'collector', 'receiver']);
         $cashOperations = $this->remittanceOperations($remittance);
+        $isWholesaleRemittance = (int) $remittance->stock_location_id === (int) ($this->wholesaleLocationId() ?? 0);
 
-        return view('finance.remittances.print', compact('remittance', 'cashOperations'));
+        return view('finance.remittances.print', compact('remittance', 'cashOperations', 'isWholesaleRemittance'));
     }
 
     public function expenses(Request $request): View
@@ -328,6 +350,9 @@ class FinanceController extends Controller
         $user = $request->user();
         $canSeeAll = $user->isAdmin() || $user->isAccountant();
         $locationIds = StockLocation::query()->where('type', 'shop')->where('responsible_user_id', $user->id)->pluck('id');
+        if ($user->isWholesaleSalesRole() && $this->wholesaleLocationId()) {
+            $locationIds->push($this->wholesaleLocationId());
+        }
         $rows = FinanceExpenseRequest::query()->with(['location', 'requester', 'financeReviewer', 'director'])
             ->when(! $canSeeAll, fn ($query) => $query->where(fn ($scope) => $scope->where('requested_by', $user->id)->orWhereIn('stock_location_id', $locationIds)))
             ->when($request->filled('status'), fn ($query) => $query->where('status', (string) $request->string('status')))
@@ -340,15 +365,18 @@ class FinanceController extends Controller
     public function createExpense(Request $request): View
     {
         $user = $request->user();
+        $isWholesaleManager = $user->isWholesaleSalesRole();
         $locations = StockLocation::query()->where('type', 'shop')->where('is_active', true)
-            ->when(! $user->isAdmin(), fn ($query) => $query->where('responsible_user_id', $user->id))
+            ->when($isWholesaleManager, fn ($query) => $query->whereKey($this->wholesaleLocationId() ?? 0))
+            ->when(! $isWholesaleManager && ! $user->isAdmin(), fn ($query) => $query->where('responsible_user_id', $user->id))
             ->orderBy('name')->get(['id', 'name']);
-        abort_if($user->isManager() && $locations->isEmpty(), 403, 'Aucune boutique ne t’est affectée pour demander une dépense.');
+        abort_if(($user->isManager() || $isWholesaleManager) && $locations->isEmpty(), 403, 'Aucun point de vente ne t’est affecté pour demander une dépense.');
 
         return view('finance.expenses.create', [
             'categories' => TypeExpensive::query()->orderBy('name')->get(),
             'locations' => $locations,
-            'isShopManager' => $user->isManager(),
+            'isShopManager' => $user->isManager() || $isWholesaleManager,
+            'isWholesaleManager' => $isWholesaleManager,
         ]);
     }
 
@@ -366,6 +394,11 @@ class FinanceController extends Controller
             'justification' => ['nullable', 'file', 'mimes:pdf,jpg,jpeg,png', 'max:10240'],
             'justification_exception' => ['nullable', 'string', 'max:2000', 'required_without:justification'],
         ]);
+        if ($request->user()->isWholesaleSalesRole()) {
+            $wholesaleLocationId = $this->wholesaleLocationId();
+            abort_unless($wholesaleLocationId && StockLocation::query()->whereKey($wholesaleLocationId)->where('type', 'shop')->where('is_active', true)->exists(), 403, 'La boutique grossiste n’est pas configurée.');
+            $data['stock_location_id'] = $wholesaleLocationId;
+        }
         $data['justification_path'] = $request->file('justification')?->store('finance/expenses', 'local');
         $data['justification_note'] = $data['justification_exception'] ?? null;
         $expense = $service->submit($data, $request->user());
@@ -426,11 +459,14 @@ class FinanceController extends Controller
         $user = $request->user();
         $isExpenseLocationManager = $payment->expense->stock_location_id
             && (int) StockLocation::query()->whereKey($payment->expense->stock_location_id)->value('responsible_user_id') === (int) $user->id;
+        $isWholesaleExpense = $user->isWholesaleSalesRole()
+            && (int) $payment->expense->stock_location_id === (int) ($this->wholesaleLocationId() ?? 0);
         abort_unless((int) $payment->paid_by === (int) $user->id
             || $user->isAdmin()
             || $user->isAccountant()
             || (int) $payment->expense->requested_by === (int) $user->id
-            || $isExpenseLocationManager, 403);
+            || $isExpenseLocationManager
+            || $isWholesaleExpense, 403);
 
         return view('finance.expenses.payment-voucher', compact('payment'));
     }
@@ -461,13 +497,40 @@ class FinanceController extends Controller
         if ($user->isAdmin() || $user->isAccountant()) {
             return;
         }
+        if ($user->isWholesaleSalesRole()
+            && (int) $remittance->stock_location_id === (int) ($this->wholesaleLocationId() ?? 0)) {
+            return;
+        }
         abort_unless((int) $remittance->collector_id === (int) $user->id
             || (int) $remittance->shop_manager_id === (int) $user->id, 403);
+    }
+
+    private function wholesaleLocationId(): ?int
+    {
+        $locationId = app(StockModuleSettingsService::class)->rules()['wholesale_sales_location_id'] ?? null;
+
+        return $locationId ? (int) $locationId : null;
+    }
+
+    private function remittanceLocationIds(User $user)
+    {
+        if ($user->isAdmin() || $user->isAccountant()) {
+            return StockLocation::query()->where('type', 'shop')->pluck('id');
+        }
+        if ($user->isWholesaleSalesRole()) {
+            return collect(array_filter([$this->wholesaleLocationId()]));
+        }
+
+        return StockLocation::query()->where('type', 'shop')->where('responsible_user_id', $user->id)->pluck('id');
     }
 
     private function authorizeExpense(User $user, FinanceExpenseRequest $expense): void
     {
         if ($user->isAdmin() || $user->isAccountant() || (int) $expense->requested_by === (int) $user->id) {
+            return;
+        }
+        if ($user->isWholesaleSalesRole()
+            && (int) $expense->stock_location_id === (int) ($this->wholesaleLocationId() ?? 0)) {
             return;
         }
         abort_unless($expense->stock_location_id && (int) StockLocation::query()->whereKey($expense->stock_location_id)->value('responsible_user_id') === (int) $user->id, 403);

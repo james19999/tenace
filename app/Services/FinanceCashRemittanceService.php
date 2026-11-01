@@ -23,7 +23,10 @@ class FinanceCashRemittanceService
     {
         return DB::transaction(function () use ($data, $manager): FinanceCashRemittance {
             $location = StockLocation::query()->whereKey($data['stock_location_id'])->where('type', 'shop')->where('is_active', true)->firstOrFail();
-            if ((int) $location->responsible_user_id !== (int) $manager->id) {
+            if ($manager->isWholesaleSalesRole()) {
+                $wholesaleLocationId = app(StockModuleSettingsService::class)->rules()['wholesale_sales_location_id'] ?? null;
+                abort_unless((int) $wholesaleLocationId === (int) $location->id, 403);
+            } elseif ((int) $location->responsible_user_id !== (int) $manager->id) {
                 abort(403);
             }
 
@@ -32,7 +35,7 @@ class FinanceCashRemittanceService
                 throw ValidationException::withMessages(['collector_id' => 'Choisis un compte utilisateur TENACOS actif pour garder une signature nominative et traçable.']);
             }
             if ($collector->id === $manager->id) {
-                throw ValidationException::withMessages(['collector_id' => 'Le responsable de boutique et la personne qui récupère les fonds doivent confirmer avec leurs comptes respectifs.']);
+                throw ValidationException::withMessages(['collector_id' => 'Le responsable de la caisse et la personne qui récupère les fonds doivent confirmer avec leurs comptes respectifs.']);
             }
 
             $expected = max(0, $this->ledger->expectedShopCash($location->id, $data['period_start'], $data['period_end']));
@@ -114,7 +117,7 @@ class FinanceCashRemittanceService
                 'amount' => $locked->handed_over_amount, 'stock_location_id' => $locked->stock_location_id,
                 'remittance_id' => $locked->id, 'source_type' => 'cash_remittance', 'source_id' => $locked->id,
                 'source_key' => 'remittance:'.$locked->id.':handover', 'source_reference' => $locked->reference,
-                'occurred_at' => now(), 'description' => 'Remise de fonds récupérée auprès de la boutique.',
+                'occurred_at' => now(), 'description' => 'Remise de fonds récupérée auprès de la caisse d’origine.',
                 'created_by' => $collector->id,
             ]);
             $this->audit->record($locked, 'collector_signed_handover', null, ['collector_id' => $collector->id, 'amount' => $locked->handed_over_amount]);
@@ -144,7 +147,7 @@ class FinanceCashRemittanceService
             }
             $transitBalance = $this->ledger->balance('transit', $locked->stock_location_id, $locked->id);
             if ($receivedAmount > $transitBalance) {
-                throw ValidationException::withMessages(['received_amount' => 'Le montant reçu ne peut pas dépasser le montant remis par la boutique.']);
+                throw ValidationException::withMessages(['received_amount' => 'Le montant reçu ne peut pas dépasser le montant confié au collecteur.']);
             }
             if ($receivedAmount > 0) {
                 $this->ledger->record([

@@ -15,6 +15,11 @@ use Illuminate\View\View;
 
 class FinanceSupplierInvoiceController extends Controller
 {
+    public function __construct()
+    {
+        $this->middleware('role:ADMINUSER');
+    }
+
     public function index(Request $request): View
     {
         $user = $request->user();

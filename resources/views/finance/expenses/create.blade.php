@@ -5,7 +5,7 @@
     <section class="finance-panel"><form method="POST" enctype="multipart/form-data" action="{{ route('finance.expenses.store') }}">@csrf<div class="finance-form-grid">
         <label>Catégorie<select class="form-control" name="category_id"><option value="">Choisir ou saisir une catégorie</option>@foreach($categories as $category)<option value="{{ $category->id }}" @selected(old('category_id')==$category->id)>{{ $category->name }}</option>@endforeach</select></label>
         <label>Nouvelle catégorie, si nécessaire<input class="form-control" name="category_name" value="{{ old('category_name') }}" maxlength="120"><small>Elle sera enregistrée et proposée pour les prochaines demandes.</small></label>
-        <label>{{ $isShopManager ? 'Ta boutique concernée' : 'Boutique concernée' }}<select class="form-control" name="stock_location_id" {{ $isShopManager ? 'required' : '' }}>
+        <label>{{ $isWholesaleManager ? 'Espace grossiste concerné' : ($isShopManager ? 'Ta boutique concernée' : 'Boutique concernée') }}<select class="form-control" name="stock_location_id" {{ $isShopManager ? 'required' : '' }}>
             @if($isShopManager)
                 @if($locations->count() !== 1)<option value="" disabled @selected(!old('stock_location_id'))>Choisir ta boutique</option>@endif
                 @foreach($locations as $location)<option value="{{ $location->id }}" @selected(old('stock_location_id', $locations->count() === 1 ? $locations->first()->id : '')==$location->id)>{{ $location->name }}</option>@endforeach
@@ -13,7 +13,7 @@
                 <option value="">Caisse générale / dépense centrale</option>
                 @foreach($locations as $location)<option value="{{ $location->id }}" @selected(old('stock_location_id')==$location->id)>{{ $location->name }}</option>@endforeach
             @endif
-        </select>@if($isShopManager)<small>Cette demande sera imputée à la caisse de ta boutique.</small>@endif</label>
+        </select>@if($isWholesaleManager)<small>Cette demande sera imputée à la caisse grossiste et transmise pour validation.</small>@elseif($isShopManager)<small>Cette demande sera imputée à la caisse de ta boutique.</small>@endif</label>
         <label>Montant demandé (F CFA)<input class="form-control" type="number" name="amount" min="1" step="1" value="{{ old('amount') }}" required><small>Au-delà de 50 000 F, contrôle financier puis décision obligatoire du DG.</small></label>
         <label>Bénéficiaire<input class="form-control" name="beneficiary" value="{{ old('beneficiary') }}" maxlength="160" required></label>
         <label>Date de paiement souhaitée<input class="form-control" type="date" name="requested_payment_date" value="{{ old('requested_payment_date') }}"></label>

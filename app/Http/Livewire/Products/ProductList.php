@@ -45,7 +45,7 @@ class ProductList extends Component
 
     public function AddToCart($id): void
     {
-        if (Auth::user()?->user_type === \App\Models\User::ROLE_COMMERCIAL_MANAGER) {
+        if (Auth::user()?->isWholesaleSalesRole()) {
             $this->addWholesaleQuantity((int) $id);
             return;
         }
@@ -72,7 +72,7 @@ class ProductList extends Component
                 return;
             }
         }
-        if (Auth::user()?->user_type === \App\Models\User::ROLE_COMMERCIAL_MANAGER) {
+        if (Auth::user()?->isWholesaleSalesRole()) {
             $wholesaleLocationId = app(StockModuleSettingsService::class)->rules()['wholesale_sales_location_id'] ?? null;
             $available = $this->shopQuantity((int) $product->id, $wholesaleLocationId ? (int) $wholesaleLocationId : null);
             if ($available <= 0) {
@@ -179,7 +179,7 @@ class ProductList extends Component
     {
         $user = Auth::user();
         $isPartner = $user?->user_type === \App\Models\User::ROLE_PARTNER;
-        $isCommercialManager = $user?->user_type === \App\Models\User::ROLE_COMMERCIAL_MANAGER;
+        $isCommercialManager = $user?->isWholesaleSalesRole() ?? false;
         $isShopManager = $user?->isManager() ?? false;
         $usesRetailShopStock = in_array($user?->user_type, [
             \App\Models\User::ROLE_MANAGER,

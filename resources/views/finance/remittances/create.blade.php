@@ -5,8 +5,8 @@
     <header class="finance-page-heading">
         <div>
             <a href="{{ route('finance.remittances.index') }}">← Remises</a>
-            <h1>Préparer un bon de collecte</h1>
-            <p>Le responsable de la boutique signe avec son compte. Le collecteur confirmera ensuite la prise en charge.</p>
+            <h1>Préparer une remise {{ $isWholesaleManager ? 'du grossiste' : 'de la boutique' }}</h1>
+            <p>Le responsable signe avec son compte. Le collecteur confirmera ensuite la prise en charge.</p>
         </div>
     </header>
 
@@ -18,7 +18,7 @@
         <form method="POST" action="{{ route('finance.remittances.store') }}" id="remittance-form">
             @csrf
             <div class="finance-form-grid">
-                <label>Boutique
+                <label>{{ $isWholesaleManager ? 'Espace grossiste' : 'Boutique' }}
                     <select class="form-control" name="stock_location_id" id="remittance-location" required>
                         @foreach($locations as $location)
                             <option value="{{ $location->id }}" @selected(old('stock_location_id', $locations->first()->id) == $location->id)>{{ $location->name }}</option>
@@ -73,7 +73,7 @@
                     <textarea class="form-control" name="notes" rows="2">{{ old('notes') }}</textarea>
                 </label>
             </div>
-            <div class="finance-signature-note"><span class="material-icons">draw</span><span>En créant le bon, tu confirmes le comptage comme responsable de boutique. L’autre personne le signera après avoir pris les fonds. Un bon imprimable sera disponible.</span></div>
+            <div class="finance-signature-note"><span class="material-icons">draw</span><span>En créant le bon, tu confirmes le comptage comme responsable {{ $isWholesaleManager ? 'du grossiste' : 'de boutique' }}. L’autre personne le signera après avoir pris les fonds. Un bon imprimable sera disponible.</span></div>
             <button class="btn btn-primary" type="submit">Créer et signer le bon</button>
         </form>
     </section>
@@ -131,7 +131,7 @@
             expectedOutput.textContent = 'Calcul en cours…';
             renderDifference();
             if (!locationInput.value || !startInput.value || !endInput.value) {
-                expectedOutput.textContent = 'Sélectionne la boutique et la période.';
+                expectedOutput.textContent = 'Sélectionne l’origine des fonds et la période.';
                 return;
             }
             if (!isValidPeriod()) {

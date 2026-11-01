@@ -54,7 +54,7 @@ class CheckController extends Controller
     public function brouillons () {
         $auth = Auth::user();
 
-        if (in_array($auth->user_type, ['ADMINUSER', 'MNG', 'SCR', 'VDS', 'CSA', User::ROLE_CALL_CENTER, User::ROLE_COMMERCIAL_MANAGER], true)) {
+        if (in_array($auth->user_type, ['ADMINUSER', 'MNG', 'SCR', 'VDS', 'CSA', User::ROLE_CALL_CENTER, User::ROLE_COMMERCIAL_MANAGER, User::ROLE_WHOLESALER], true)) {
             return 1;
         }
 
@@ -68,7 +68,7 @@ class CheckController extends Controller
             return redirect()->route('productcart')->with('error', 'Ajoute au moins un produit avant de valider la commande.');
          }
 
-         if (Auth::user()?->user_type === User::ROLE_COMMERCIAL_MANAGER) {
+         if (Auth::user()?->isWholesaleSalesRole()) {
              $wholesaleLocationId = app(StockModuleSettingsService::class)->rules()['wholesale_sales_location_id'] ?? null;
              $wholesaleLocation = $wholesaleLocationId
                  ? StockLocation::query()->whereKey($wholesaleLocationId)->where('type', 'shop')->where('is_active', true)->first()
@@ -109,12 +109,12 @@ class CheckController extends Controller
                  return $product && $product->quantityPriceTiers->contains(fn ($tier) => $quantity >= (int) $tier->min_quantity);
              });
          $promotion = QuantityPromotionSetting::current();
-         if (Auth::user()?->user_type === User::ROLE_COMMERCIAL_MANAGER && ! $isWholesaleOrder) {
+         if (Auth::user()?->isWholesaleSalesRole() && ! $isWholesaleOrder) {
              return redirect()->route('productcart')->withErrors([
                  'is_wholesale' => 'Cette fonction est réservée aux commandes grossistes. Augmente la quantité jusqu’à atteindre un palier grossiste.',
              ])->withInput();
          }
-         if (Auth::user()?->user_type === User::ROLE_COMMERCIAL_MANAGER) {
+         if (Auth::user()?->isWholesaleSalesRole()) {
              foreach ($cartItems->groupBy(fn ($item) => (int) $item->id) as $productId => $items) {
                  $product = Product::query()->with('quantityPriceTiers')->find($productId);
                  $quantity = (int) $items->sum('qty');
@@ -310,7 +310,7 @@ class CheckController extends Controller
                           $orderItem->save();
                       }
 
-                        if (in_array(Auth::user()->user_type, ['ADMINUSER', 'MNG', 'SCR', 'VDS', 'CSA', User::ROLE_CALL_CENTER, User::ROLE_COMMERCIAL_MANAGER], true)) {
+                        if (in_array(Auth::user()->user_type, ['ADMINUSER', 'MNG', 'SCR', 'VDS', 'CSA', User::ROLE_CALL_CENTER, User::ROLE_COMMERCIAL_MANAGER, User::ROLE_WHOLESALER], true)) {
                               if ($request->type=="PU") {
                                  foreach ($users as $key => $user) {
                                      try {
@@ -395,7 +395,7 @@ class CheckController extends Controller
 
 
 
-                        if (in_array(Auth::user()->user_type, ['ADMINUSER', 'MNG', 'SCR', 'VDS', 'CSA', User::ROLE_CALL_CENTER, User::ROLE_COMMERCIAL_MANAGER], true)) {
+                        if (in_array(Auth::user()->user_type, ['ADMINUSER', 'MNG', 'SCR', 'VDS', 'CSA', User::ROLE_CALL_CENTER, User::ROLE_COMMERCIAL_MANAGER, User::ROLE_WHOLESALER], true)) {
                               if ($request->type=="PU") {
                                 # code...
 

@@ -46,7 +46,8 @@ class OrderController extends Controller
         if (Auth::user()?->user_type === User::ROLE_PARTNER) {
             return app(PartnerOrderController::class)->index($request);
         }
-        $wholesaleOnly = Auth::user()?->user_type === User::ROLE_COMMERCIAL_MANAGER;
+        $wholesaleOnly = Auth::user()?->isWholesaleSalesRole() ?? false;
+        $ownWholesaleOnly = Auth::user()?->user_type === User::ROLE_WHOLESALER;
 
         $filter = $request->get('filter', 'today');
         if (! in_array($filter, ['today', 'week', 'month', 'year', 'all'], true)) {
@@ -77,6 +78,7 @@ class OrderController extends Controller
             ->where('brouillon', 1)
             ->when($search !== '', $applySearch)
             ->when($wholesaleOnly, fn ($query) => $query->where('is_wholesale', true))
+            ->when($ownWholesaleOnly, fn ($query) => $query->where('created_user', Auth::id()))
             ->orderByDesc('assigned_at')
             ->orderByDesc('updated_at');
 
@@ -102,7 +104,8 @@ class OrderController extends Controller
 
         $historyOrdersQuery = Order::with(['costumer', 'user'])->where('brouillon', 1)
             ->when($search !== '', $applySearch)
-            ->when($wholesaleOnly, fn ($query) => $query->where('is_wholesale', true));
+            ->when($wholesaleOnly, fn ($query) => $query->where('is_wholesale', true))
+            ->when($ownWholesaleOnly, fn ($query) => $query->where('created_user', Auth::id()));
         switch ($filter) {
             case 'today':
                 $historyOrdersQuery->where('created_at', '>=', $today)->where('created_at', '<', $tomorrow);
@@ -374,7 +377,11 @@ class OrderController extends Controller
 
     private function authorizeWholesalerOrder(Order $order): void
     {
-        if (Auth::user()?->user_type === User::ROLE_COMMERCIAL_MANAGER && ! $order->is_wholesale) {
+        $user = Auth::user();
+        if ($user?->user_type === User::ROLE_WHOLESALER) {
+            abort_unless((int) $order->created_user === (int) $user->id && (bool) $order->is_wholesale, 404);
+        }
+        if ($user?->isWholesaleSalesRole() && ! $order->is_wholesale) {
             abort(404);
         }
     }

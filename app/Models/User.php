@@ -67,6 +67,7 @@ class User extends Authenticatable
     const ROLE_CASHIER     = 'CSA';
     const ROLE_ACCOUNTANT  = 'COMPTABLE';
     const ROLE_COMMERCIAL_MANAGER = 'RCM';
+    const ROLE_WHOLESALER = 'GRO';
 
     // -------------------------------------------------------
     // Helpers de rôle
@@ -106,6 +107,11 @@ class User extends Authenticatable
         return $this->user_type === self::ROLE_ACCOUNTANT;
     }
 
+    public function isWholesaleSalesRole(): bool
+    {
+        return in_array($this->user_type, [self::ROLE_COMMERCIAL_MANAGER, self::ROLE_WHOLESALER], true);
+    }
+
     public function hasRole(string|array $roles): bool
     {
         return in_array($this->user_type, (array) $roles, true);
@@ -120,6 +126,7 @@ class User extends Authenticatable
             self::ROLE_LIVREUR     => $this->country_code ? route('courier.public-orders.index') : route('Admin'),
             self::ROLE_SALES       => route('product'),
             self::ROLE_COMMERCIAL_MANAGER => route('product'),
+            self::ROLE_WHOLESALER  => route('product'),
             self::ROLE_CASHIER     => route('order-liste-order'),
             default                => route('Admin'),
         };

@@ -16,9 +16,16 @@ class FinanceSidebarBadgeService
         $isAdmin = $user->isAdmin();
         $isAccountant = $user->isAccountant();
         $isManager = $user->isManager();
+        $isWholesaleManager = $user->isWholesaleSalesRole();
         $isCashier = $user->hasRole(User::ROLE_CASHIER);
         $shopIds = StockLocation::query()->where('type', 'shop')
             ->where('responsible_user_id', $user->id)->select('id');
+        if ($isWholesaleManager) {
+            $wholesaleLocationId = app(StockModuleSettingsService::class)->rules()['wholesale_sales_location_id'] ?? null;
+            if ($wholesaleLocationId) {
+                $shopIds->union(StockLocation::query()->whereKey($wholesaleLocationId)->select('id'));
+            }
+        }
 
         $remittances = FinanceCashRemittance::query();
         if ($isAdmin) {
@@ -26,9 +33,13 @@ class FinanceSidebarBadgeService
                 $query->whereIn('status', ['in_transit', 'discrepancy_open'])
                     ->orWhere(fn ($assigned) => $assigned->where('collector_id', $user->id)->where('status', 'awaiting_collector'));
             });
-        } elseif ($isManager) {
-            $remittances->where('shop_manager_id', $user->id)
-                ->whereIn('status', ['awaiting_collector', 'in_transit', 'discrepancy_open']);
+        } elseif ($isManager || $isWholesaleManager) {
+            $remittances->where(function ($query) use ($user): void {
+                $query->where(fn ($created) => $created->where('shop_manager_id', $user->id)
+                    ->whereIn('status', ['awaiting_collector', 'in_transit', 'discrepancy_open']))
+                    ->orWhere(fn ($assigned) => $assigned->where('collector_id', $user->id)
+                        ->where('status', 'awaiting_collector'));
+            });
         } else {
             $remittances->where('collector_id', $user->id)->where('status', 'awaiting_collector');
         }
@@ -57,13 +68,11 @@ class FinanceSidebarBadgeService
         }
 
         $invoices = FinanceSupplierInvoice::query();
-        if ($isAdmin || $isAccountant) {
+        if ($isAdmin) {
             $invoices->where(function ($query) use ($user): void {
                 $query->where(fn ($review) => $review->where('status', 'awaiting_review')->where('created_by', '<>', $user->id))
                     ->orWhere(fn ($payment) => $payment->where('status', 'approved')->whereIn('payment_status', ['unpaid', 'partial']));
             });
-        } elseif ($isCashier) {
-            $invoices->where('status', 'approved')->whereIn('payment_status', ['unpaid', 'partial']);
         } else {
             $invoices->whereRaw('1 = 0');
         }

@@ -30,6 +30,13 @@ class RoleMiddleware
         if (! in_array($user->user_type, $roles, true)) {
             $destination = $this->homeForUser($user);
 
+            // Un rôle opérationnel ne doit pas rester bloqué sur /Admin après
+            // avoir suivi un ancien lien : renvoie le grossiste à ses produits.
+            if ($user->isWholesaleSalesRole()
+                && (parse_url($request->url(), PHP_URL_PATH) ?? '') === '/Admin') {
+                return redirect()->route('product')->with('error', 'Cette page est réservée à certains rôles. Voici ton espace grossiste.');
+            }
+
             // Empêche toute boucle de redirection infinie vers la même route
             $destinationPath = parse_url($destination, PHP_URL_PATH) ?? $destination;
             $currentPath = parse_url($request->url(), PHP_URL_PATH) ?? $request->url();
