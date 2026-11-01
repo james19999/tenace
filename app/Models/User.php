@@ -126,7 +126,7 @@ class User extends Authenticatable
             self::ROLE_LIVREUR     => $this->country_code ? route('courier.public-orders.index') : route('Admin'),
             self::ROLE_SALES       => route('product'),
             self::ROLE_COMMERCIAL_MANAGER => route('product'),
-            self::ROLE_WHOLESALER  => route('product'),
+            self::ROLE_WHOLESALER  => route('wholesaler.dashboard'),
             self::ROLE_CASHIER     => route('order-liste-order'),
             default                => route('Admin'),
         };

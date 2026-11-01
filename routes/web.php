@@ -107,6 +107,9 @@ Route::post('/store/pathner',[DashboarController::class,'store_pathner'])->name(
 
 Route::middleware(['auth'])->group(function () {
 
+    Route::get('/grossiste/dashboard', [\App\Http\Controllers\WholesaleDashboardController::class, 'index'])
+        ->middleware('role:GRO')->name('wholesaler.dashboard');
+
     Route::middleware(['role:MNG,SCR,VDS,CSA,LVS,CALLCENTER,COMPTABLE,RCM,GRO'])->group(function () {
         Route::get('/mon-espace', [\App\Http\Controllers\EmployeePayrollController::class, 'selfService'])->name('employees.self-service');
         Route::get('/mon-espace/materiel', [\App\Http\Controllers\EmployeePayrollController::class, 'selfServicePurchases'])->name('employees.self-service.purchases.index');

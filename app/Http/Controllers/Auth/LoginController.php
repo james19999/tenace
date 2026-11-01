@@ -47,12 +47,12 @@ class LoginController extends Controller
     {
         $homeUrl = $user instanceof User ? $user->homeUrl() : RouteServiceProvider::HOME;
 
-        // Le responsable commercial doit toujours arriver sur l’espace grossiste,
+        // Les comptes de vente grossiste doivent toujours retrouver leur espace,
         // même si la session garde une ancienne URL /Admin comme destination.
         if ($user instanceof User && $user->isWholesaleSalesRole()) {
             $request->session()->forget('url.intended');
 
-            return redirect()->route('product');
+            return redirect()->to($homeUrl);
         }
 
         $intended = $request->session()->get('url.intended');

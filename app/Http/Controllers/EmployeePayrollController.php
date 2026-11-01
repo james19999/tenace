@@ -9,9 +9,11 @@ use App\Models\FinanceAuditEvent;
 use App\Models\FinanceExpenseRequest;
 use App\Models\FinanceEquipmentPurchaseSetting;
 use App\Models\FinanceStaffAdvance;
+use App\Models\StockLocation;
 use App\Models\User;
 use App\Services\FinanceCashLedgerService;
 use App\Services\FinanceExpenseWorkflowService;
+use App\Services\StockModuleSettingsService;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -36,6 +38,13 @@ class EmployeePayrollController extends Controller
     {
         $employee = $request->user();
         abort_unless($this->isEmployeeRole($employee), 403);
+        $employeeShopLocation = $employee->primaryStockLocation;
+        if ($employee->user_type === User::ROLE_WHOLESALER) {
+            $wholesaleLocationId = app(StockModuleSettingsService::class)->rules()['wholesale_sales_location_id'] ?? null;
+            if ($wholesaleLocationId) {
+                $employeeShopLocation = StockLocation::query()->find($wholesaleLocationId) ?? $employeeShopLocation;
+            }
+        }
         $profile = EmployeeProfile::query()->firstOrCreate(['user_id' => $employee->id]);
         $employee->setRelation('employeeProfile', $profile);
 
@@ -64,7 +73,7 @@ class EmployeePayrollController extends Controller
         $canManagePurchases = $canCreatePurchases || $purchaseRequests->isNotEmpty();
         abort_unless($activePage !== 'purchases' || $canManagePurchases, 404);
 
-        return view('employees.self-service', compact('employee', 'profile', 'periods', 'advanceRequests', 'personalLoans', 'purchaseRequests', 'purchaseSetting', 'availableForAdvance', 'activePage', 'canManagePurchases', 'canCreatePurchases'));
+        return view('employees.self-service', compact('employee', 'employeeShopLocation', 'profile', 'periods', 'advanceRequests', 'personalLoans', 'purchaseRequests', 'purchaseSetting', 'availableForAdvance', 'activePage', 'canManagePurchases', 'canCreatePurchases'));
     }
 
     public function requestOwnAdvance(Request $request, FinanceExpenseWorkflowService $workflow): RedirectResponse

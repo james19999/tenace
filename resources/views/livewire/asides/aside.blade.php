@@ -368,6 +368,12 @@
                 </li>
             @elseif (Auth::user()->user_type === \App\Models\User::ROLE_WHOLESALER)
                 <li>
+                    <a href="{{ route('wholesaler.dashboard') }}" class="{{ $active('wholesaler.dashboard') }}">
+                        <span class="icon material-icons">dashboard</span>
+                        <span class="text">Tableau de bord</span>
+                    </a>
+                </li>
+                <li>
                     <a href="{{ route('product') }}" class="{{ $active('product') }}">
                         <span class="icon material-icons">store</span>
                         <span class="text">Produits</span>
