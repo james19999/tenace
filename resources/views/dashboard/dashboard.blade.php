@@ -220,6 +220,25 @@
                 </a>
             </div>
 
+            <a href="{{ route('finance.expenses.index') }}" class="col-12 col-sm-6 col-md-6 col-lg-3 dashboard-kpi-revenue dashboard-kpi-link">
+                <div class="card shadow"><div class="card-body"><div class="row align-items-center">
+                    <div class="col"><h5 class="text-uppercase text-muted mb-2 card-title">Dépenses payées cette année</h5><span class="h1 font-weight-bold mb-0">{{ number_format((float) $expensesPaidThisYear, 0, ',', ' ') }} F</span></div>
+                    <div class="col-auto"><span class="material-icons dashboard-kpi-icon dashboard-kpi-icon-expense" aria-hidden="true">payments</span></div>
+                </div></div></div>
+            </a>
+            <a href="{{ route('finance.expenses.index') }}" class="col-12 col-sm-6 col-md-6 col-lg-3 dashboard-kpi-orders dashboard-kpi-link">
+                <div class="card shadow"><div class="card-body"><div class="row align-items-center">
+                    <div class="col"><h5 class="text-uppercase text-muted mb-2 card-title">Dépenses à valider</h5><span class="h1 font-weight-bold mb-0">{{ number_format((int) $expensesAwaitingDecision, 0, ',', ' ') }}</span></div>
+                    <div class="col-auto"><span class="material-icons dashboard-kpi-icon dashboard-kpi-icon-pending" aria-hidden="true">pending_actions</span></div>
+                </div></div></div>
+            </a>
+            <a href="{{ route('finance.suppliers.index') }}" class="col-12 col-sm-6 col-md-6 col-lg-3 dashboard-kpi-revenue dashboard-kpi-link">
+                <div class="card shadow"><div class="card-body"><div class="row align-items-center">
+                    <div class="col"><h5 class="text-uppercase text-muted mb-2 card-title">Factures fournisseurs à payer</h5><span class="h1 font-weight-bold mb-0">{{ number_format((float) $supplierInvoicesDue, 0, ',', ' ') }} F</span></div>
+                    <div class="col-auto"><span class="material-icons dashboard-kpi-icon dashboard-kpi-icon-supplier" aria-hidden="true">receipt_long</span></div>
+                </div></div></div>
+            </a>
+
             <div class="w-100 dashboard-kpi-analytics-break"></div>
 
             <div class="col-12 col-sm-12 col-md-12 col-lg-6 dashboard-kpi-analytics">
@@ -609,6 +628,10 @@
         .dashboard-content>.col-12>.card .card-body,.dashboard-content>.col-12>a>.card .card-body{padding:14px 15px}
         .dashboard-content .card-title{font-size:10px;letter-spacing:.04em;line-height:1.35}.dashboard-content .h1{font-size:clamp(19px,1.8vw,24px)!important;letter-spacing:-.45px}
         .dashboard-content>.col-12>a{display:block;height:100%;text-decoration:none}
+        .dashboard-content>.dashboard-kpi-link{display:block;height:100%;color:inherit;text-decoration:none}
+        .dashboard-kpi-icon{display:grid;place-items:center;width:42px;height:42px;border-radius:11px;font-size:23px}
+        .dashboard-kpi-icon-expense{background:#fae9e7;color:#a33e39}.dashboard-kpi-icon-pending{background:#fff3dc;color:#a66a10}.dashboard-kpi-icon-supplier{background:#e8effa;color:#4169a1}
+        html[data-app-theme="dark"] .dashboard-kpi-icon-expense{background:#3a2727;color:#ff9b93}html[data-app-theme="dark"] .dashboard-kpi-icon-pending{background:#393124;color:#f1bd68}html[data-app-theme="dark"] .dashboard-kpi-icon-supplier{background:#252f3c;color:#91b3e8}
         @media(max-width:767.98px){.dashboard-page{padding-top:0}.dashboard-welcome{align-items:stretch;flex-direction:column;margin:5px 0 15px;padding:18px;border-radius:13px;gap:15px}.dashboard-welcome:after{right:-110px;bottom:-150px}.dashboard-welcome h1{font-size:25px}.dashboard-welcome-copy p{font-size:12px;line-height:1.5}.dashboard-datetime{min-width:0;width:100%;padding:10px 12px}.dashboard-date-icon{width:38px;height:38px;flex-basis:38px}.dashboard-date-copy strong{font-size:21px}.dashboard-content>.col-12>.card .card-body,.dashboard-content>.col-12>a>.card .card-body{padding:12px}.dashboard-content .card-title{font-size:10px}.dashboard-content .h1{font-size:19px!important}}
 
         /* Flat, square dashboard styling. */

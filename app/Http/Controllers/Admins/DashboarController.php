@@ -10,6 +10,8 @@ use App\Models\AppThemeSetting;
 use App\Traits\MyTrait;
 use App\Models\Expensive;
 use App\Models\FinanceCashMovement;
+use App\Models\FinanceExpenseRequest;
+use App\Models\FinanceSupplierInvoice;
 use App\Models\Orders\Order;
 use App\Support\DashboardChart;
 use Illuminate\Http\Request;
@@ -109,6 +111,21 @@ class DashboarController extends Controller
             $expensesLast12Months = array_sum($expenseChartData);
             $chart2 = new DashboardChart($expenseChartOptions, $expenseChartData);
 
+            $yearStart = now()->startOfYear();
+            $nextYearStart = $yearStart->copy()->addYear();
+            $expensesPaidThisYear = FinanceCashMovement::query()
+                ->where('movement_type', 'expense_payment')
+                ->where('occurred_at', '>=', $yearStart)
+                ->where('occurred_at', '<', $nextYearStart)
+                ->sum('amount');
+            $expensesAwaitingDecision = FinanceExpenseRequest::query()
+                ->whereIn('status', ['awaiting_finance', 'awaiting_director'])
+                ->count();
+            $supplierInvoicesDue = FinanceSupplierInvoice::query()
+                ->where('status', 'approved')
+                ->whereIn('payment_status', ['unpaid', 'partial'])
+                ->sum(DB::raw('amount - paid_amount'));
+
             $charts = [
                 'chart_title' => 'Rapport périodique',
                 'chart_type' => 'line',
@@ -184,6 +201,9 @@ class DashboarController extends Controller
             $chart3 = null;
             $chart4 = null;
             $expensesLast12Months = 0;
+            $expensesPaidThisYear = 0;
+            $expensesAwaitingDecision = 0;
+            $supplierInvoicesDue = 0;
             $totalWholesaleOrdersThisWeek = 0;
             $totalCommandes = 0;
             $totalWholesaleCommandes = 0;
@@ -253,6 +273,7 @@ class DashboarController extends Controller
             'assignedTodayOrders', 'overdueOrders', 'Ordered',
             'Orderdelivered', 'Ordercanceled', 'Orderall', 'OrderdeAmount',
             'expensesLast12Months',
+            'expensesPaidThisYear', 'expensesAwaitingDecision', 'supplierInvoicesDue',
             'totalWholesaleCommandes', 'totalWholesaleOrdersThisWeek', 'wholesaleDeliveredTodayAmount'
         ));
      }
