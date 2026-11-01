@@ -582,7 +582,10 @@ class DashboarController extends Controller
             return back()->with('role_error', 'Vous ne pouvez pas modifier votre propre rôle.');
         }
 
-        $user->update(['user_type' => $request->user_type]);
+        $user->update([
+            'user_type' => $request->user_type,
+            ...($request->user_type === User::ROLE_IT ? ['primary_stock_location_id' => null] : []),
+        ]);
 
         return back()->with('role_success', "Le rôle de {$user->name} a été mis à jour avec succès.");
     }

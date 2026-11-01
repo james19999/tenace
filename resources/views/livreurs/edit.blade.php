@@ -81,7 +81,7 @@
                          </select>
                         </div>
 
-                        <div class="form-group">
+                        <div class="form-group" id="shop-location-group">
                             <label for="primary_stock_location_id">Boutique de rattachement</label>
                             <select class="form-control" id="primary_stock_location_id" name="primary_stock_location_id">
                                 @foreach($shopLocations as $location)
@@ -128,6 +128,7 @@
                         <a  href="{{ route('useradminlist') }}" class="btn btn-danger">Annuler</a>
                         <button type="submit" class="btn btn-primary">Enregistrer</button>
                     </form>
+
                 </div>
             </div>
             <div class="card-footer" style="background-color: var(--app-primary, #7e1615)" >
@@ -147,10 +148,12 @@
         const country = document.getElementById('country_code');
         const documentGroup = document.getElementById('identity-card-group');
         const emergencyGroup = document.getElementById('emergency-contact-group');
+        const shopLocationGroup = document.getElementById('shop-location-group');
         const emergencyName = document.getElementById('emergency_contact_name');
         const emergencyPhone = document.getElementById('emergency_contact_phone');
         const updateFields = () => {
             const countryApplicable = ['LVS', 'PT'].includes(role.value);
+            shopLocationGroup.hidden = role.value === 'INFO';
             countryGroup.hidden = !countryApplicable;
             country.required = false;
             documentGroup.hidden = role.value !== 'LVS';

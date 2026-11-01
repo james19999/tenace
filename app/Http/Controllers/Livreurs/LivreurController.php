@@ -86,7 +86,9 @@ class LivreurController extends Controller
                 'adresse' => $data['adresse'],
                 'phone' => $data['phone'],
                 'user_type' => $data['user_type'],
-                'primary_stock_location_id' => $data['primary_stock_location_id'] ?? $this->defaultGeneralShopLocationId(),
+                'primary_stock_location_id' => $data['user_type'] === User::ROLE_IT
+                    ? null
+                    : ($data['primary_stock_location_id'] ?? $this->defaultGeneralShopLocationId()),
                 'country_code' => in_array($data['user_type'], ['LVS', 'PT'], true) ? ($data['country_code'] ?? null) : null,
                 'emergency_contact_name' => $data['user_type'] === 'LVS' ? ($data['emergency_contact_name'] ?? null) : null,
                 'emergency_contact_phone' => $data['user_type'] === 'LVS' ? ($data['emergency_contact_phone'] ?? null) : null,
@@ -179,7 +181,9 @@ class LivreurController extends Controller
            'adresse' => $data['adresse'],
            'phone' => $data['phone'],
            'user_type' => $data['user_type'],
-           'primary_stock_location_id' => $data['primary_stock_location_id'] ?? $this->defaultGeneralShopLocationId(),
+           'primary_stock_location_id' => $data['user_type'] === User::ROLE_IT
+               ? null
+               : ($data['primary_stock_location_id'] ?? $this->defaultGeneralShopLocationId()),
            'country_code' => in_array($data['user_type'], ['LVS', 'PT'], true) ? ($data['country_code'] ?? null) : null,
            'emergency_contact_name' => $data['user_type'] === 'LVS' ? ($data['emergency_contact_name'] ?? null) : null,
            'emergency_contact_phone' => $data['user_type'] === 'LVS' ? ($data['emergency_contact_phone'] ?? null) : null,

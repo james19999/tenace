@@ -80,7 +80,7 @@
 
                         </div>
 
-                        <div class="form-group">
+                        <div class="form-group" id="shop-location-group">
                             <label for="primary_stock_location_id">Boutique de rattachement</label>
                             <select class="form-control" id="primary_stock_location_id" name="primary_stock_location_id">
                                 @foreach($shopLocations as $location)
@@ -145,12 +145,14 @@
         const documentGroup = document.getElementById('identity-card-group');
         const documentInput = document.getElementById('identity_card_photo');
         const emergencyGroup = document.getElementById('emergency-contact-group');
+        const shopLocationGroup = document.getElementById('shop-location-group');
         const emergencyName = document.getElementById('emergency_contact_name');
         const emergencyPhone = document.getElementById('emergency_contact_phone');
         const updateFields = () => {
             memberDetails.disabled = !role.value;
             const countryApplicable = ['LVS', 'PT'].includes(role.value);
             const courier = role.value === 'LVS';
+            shopLocationGroup.hidden = role.value === 'INFO';
             countryGroup.hidden = !countryApplicable;
             country.required = false;
             documentGroup.hidden = !courier;
