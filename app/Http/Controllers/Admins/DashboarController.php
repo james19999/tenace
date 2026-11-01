@@ -9,6 +9,7 @@ use App\Models\Setting;
 use App\Models\AppThemeSetting;
 use App\Traits\MyTrait;
 use App\Models\Expensive;
+use App\Models\FinanceCashMovement;
 use App\Models\Orders\Order;
 use App\Support\DashboardChart;
 use Illuminate\Http\Request;
@@ -99,26 +100,14 @@ class DashboarController extends Controller
                 false
             ));
 
-            $settings1 = [
-                'chart_title'           => 'Clients',
-                'chart_type'            => 'pie',
-                'report_type'           => 'group_by_date',
-                'model'                 => 'App\Models\Costumer',
-                'group_by_field'        => 'created_at',
-                'group_by_period'       => 'day',
-                'aggregate_function'    => 'count',
-                'filter_field'          => 'created_at',
-                'filter_days'           => '30',
-                // 'where_raw' => "usertype='user' ",
+            $expenseChartOptions = [
+                'chart_title' => 'Dépenses payées · 12 derniers mois',
+                'chart_type' => 'bar',
+                'chart_color' => '190, 75, 70',
             ];
-
-            $chart2 = new DashboardChart($settings1, $this->dashboardChartData(
-                \App\Models\Costumer::class,
-                'day',
-                'count',
-                null,
-                30
-            ));
+            $expenseChartData = $this->monthlyExpenseChartData();
+            $expensesLast12Months = array_sum($expenseChartData);
+            $chart2 = new DashboardChart($expenseChartOptions, $expenseChartData);
 
             $charts = [
                 'chart_title' => 'Rapport périodique',
@@ -194,6 +183,7 @@ class DashboarController extends Controller
             $chart2 = null;
             $chart3 = null;
             $chart4 = null;
+            $expensesLast12Months = 0;
             $totalWholesaleOrdersThisWeek = 0;
             $totalCommandes = 0;
             $totalWholesaleCommandes = 0;
@@ -262,6 +252,7 @@ class DashboarController extends Controller
             'chart2', 'chart3', 'chart4', 'createdTodayOrders', 'deliveryTodayOrders',
             'assignedTodayOrders', 'overdueOrders', 'Ordered',
             'Orderdelivered', 'Ordercanceled', 'Orderall', 'OrderdeAmount',
+            'expensesLast12Months',
             'totalWholesaleCommandes', 'totalWholesaleOrdersThisWeek', 'wholesaleDeliveredTodayAmount'
         ));
      }
@@ -321,7 +312,27 @@ class DashboarController extends Controller
             ->all();
     }
 
-     public function edit($id){
+     private function monthlyExpenseChartData(): array
+    {
+        $firstMonth = now()->startOfMonth()->subMonths(11);
+        $lastMonth = now()->startOfMonth()->addMonth();
+        $amounts = FinanceCashMovement::query()
+            ->where('movement_type', 'expense_payment')
+            ->where('occurred_at', '>=', $firstMonth)
+            ->where('occurred_at', '<', $lastMonth)
+            ->selectRaw("DATE_FORMAT(occurred_at, '%Y-%m') AS chart_month, COALESCE(SUM(amount), 0) AS total_amount")
+            ->groupBy('chart_month')
+            ->pluck('total_amount', 'chart_month');
+
+        $chartData = [];
+        for ($month = $firstMonth->copy(); $month < $lastMonth; $month->addMonth()) {
+            $chartData[$month->format('m/Y')] = (int) $amounts->get($month->format('Y-m'), 0);
+        }
+
+        return $chartData;
+    }
+
+    public function edit($id){
          $product=Product::findOrfail($id);
          return view('dashboard.edit',compact('product'));
      }

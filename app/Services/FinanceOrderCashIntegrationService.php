@@ -44,6 +44,9 @@ class FinanceOrderCashIntegrationService
                     ->where('responsible_user_id', $managerId)->value('id');
             }
             if (! $locationId) {
+                $locationId = app(ShopSalesLocationResolver::class)->forOrder($order, false)?->id;
+            }
+            if (! $locationId) {
                 $rules = app(StockModuleSettingsService::class)->rules();
                 $locationId = $rules['default_sales_location_id'] ?? null;
             }

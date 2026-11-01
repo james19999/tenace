@@ -222,7 +222,7 @@
 
             <div class="w-100 dashboard-kpi-analytics-break"></div>
 
-            <div class="col-12 col-sm-12 col-md-12 col-lg-8 dashboard-kpi-analytics">
+            <div class="col-12 col-sm-12 col-md-12 col-lg-6 dashboard-kpi-analytics">
                 <div class="card shadow">
                     <div class="card-body">
 
@@ -235,13 +235,17 @@
                     </div>
                 </div>
             </div>
-            <div class="col-12 col-sm-12 col-md-12 col-lg-4 dashboard-kpi-analytics">
+            <div class="col-12 col-sm-12 col-md-12 col-lg-6 dashboard-kpi-analytics">
                 <div class="card shadow">
                     <div class="card-body">
-                        <h3 class="card-title mb-4">{{ $chart2->options['chart_title'] }}</h3>
-
-
-                        {!! $chart2->renderHtml() !!}
+                        <div class="dashboard-expense-heading">
+                            <div><h3 class="card-title">Dépenses payées par mois</h3><p>Sur les 12 derniers mois · règlements enregistrés dans la caisse</p></div>
+                            <span class="dashboard-expense-badge">F CFA</span>
+                        </div>
+                        <div class="dashboard-expense-total"><small>Total payé sur 12 mois</small><strong>{{ number_format((float) $expensesLast12Months, 0, ',', ' ') }} F</strong></div>
+                        <div class="dashboard-expense-chart" role="img" aria-label="Dépenses réellement payées par mois en F CFA, sur les douze derniers mois">
+                            {!! $chart2->renderHtml() !!}
+                        </div>
 
                     </div>
                 </div>
@@ -496,7 +500,8 @@
                     var palettes = {
                         rapport_mensuels: { color: dark ? '#69bd70' : '#177e15', fill: 'rgba(23,126,21,.58)' },
                         rapport_periodique: { color: dark ? '#ff8585' : '#a83232', fill: 'rgba(168,50,50,.14)' },
-                        rapport_annuel: { color: dark ? '#74b9e8' : '#286b91', fill: 'rgba(40,107,145,.58)' }
+                        rapport_annuel: { color: dark ? '#74b9e8' : '#286b91', fill: 'rgba(40,107,145,.58)' },
+                        depenses: { color: dark ? '#ff8d87' : '#be4b46', fill: dark ? 'rgba(255,141,135,.72)' : 'rgba(190,75,70,.72)' }
                     };
                     var pieColors = dark
                         ? ['#69bd70','#5ca9e6','#f4bd50','#ff8585','#b58ae8','#55c5c3','#f08bb4','#a6c85a']
@@ -512,9 +517,12 @@
                         var datasets = chart.config.data && chart.config.data.datasets || [];
                         var label = String((datasets[0] && datasets[0].label) || '').toLowerCase()
                             .normalize('NFD').replace(/[\u0300-\u036f]/g, '');
-                        var palette = label.indexOf('periodique') !== -1
+                        var isExpenseChart = label.indexOf('depense') !== -1;
+                        var palette = isExpenseChart
+                            ? palettes.depenses
+                            : (label.indexOf('periodique') !== -1
                             ? palettes.rapport_periodique
-                            : (label.indexOf('annuel') !== -1 ? palettes.rapport_annuel : palettes.rapport_mensuels);
+                            : (label.indexOf('annuel') !== -1 ? palettes.rapport_annuel : palettes.rapport_mensuels));
                         datasets.forEach(function (dataset) {
                             if (type === 'pie' || type === 'doughnut' || type === 'polarArea') {
                                 dataset.backgroundColor = (chart.config.data.labels || []).map(function (_, index) { return pieColors[index % pieColors.length]; });
@@ -536,11 +544,13 @@
                                 dataset.backgroundColor = palette.fill;
                                 dataset.borderColor = palette.color;
                                 dataset.hoverBackgroundColor = palette.color;
-                                dataset.borderWidth = 2;
+                                dataset.borderWidth = isExpenseChart ? 1 : 2;
+                                dataset.borderRadius = isExpenseChart ? 5 : 0;
                             }
                         });
                         chart.options.responsive = true;
                         chart.options.legend = chart.options.legend || {};
+                        if (isExpenseChart) chart.options.legend.display = false;
                         chart.options.legend.labels = chart.options.legend.labels || {};
                         chart.options.legend.labels.fontColor = text;
                         chart.options.legend.labels.padding = 16;
@@ -548,11 +558,23 @@
                         chart.options.tooltips.backgroundColor = dark ? '#303742' : '#252b35';
                         chart.options.tooltips.titleFontColor = '#ffffff';
                         chart.options.tooltips.bodyFontColor = '#ffffff';
+                        if (isExpenseChart) {
+                            chart.options.tooltips.callbacks = chart.options.tooltips.callbacks || {};
+                            chart.options.tooltips.callbacks.label = function (tooltipItem) {
+                                var amount = Number(tooltipItem.yLabel || 0);
+                                return 'Dépenses payées : ' + new Intl.NumberFormat('fr-FR').format(amount) + ' F CFA';
+                            };
+                        }
                         var scales = chart.options.scales || {};
                         ['xAxes', 'yAxes'].forEach(function (axisName) {
                             (scales[axisName] || []).forEach(function (axis) {
                                 axis.ticks = axis.ticks || {};
                                 axis.ticks.fontColor = text;
+                                if (isExpenseChart && axisName === 'yAxes') {
+                                    axis.ticks.callback = function (value) {
+                                        return new Intl.NumberFormat('fr-FR', { notation: 'compact', maximumFractionDigits: 1 }).format(value) + ' F';
+                                    };
+                                }
                                 axis.gridLines = axis.gridLines || {};
                                 axis.gridLines.color = grid;
                                 axis.gridLines.zeroLineColor = dark ? '#657080' : '#ccd4dd';
@@ -605,9 +627,11 @@
         .dashboard-content .btn-circle{display:grid;width:46px;height:46px;place-items:center;padding:8px;border-radius:0;background:#f7eeee}
         .dashboard-content .btn-circle img{width:28px!important;height:28px!important;object-fit:contain}
         .dashboard-content>.col-12>a{color:inherit}
+        .dashboard-expense-heading{display:flex;align-items:flex-start;justify-content:space-between;gap:12px;margin-bottom:12px}.dashboard-expense-heading .card-title{margin:0!important;color:var(--dash-ink)!important;font-size:15px!important;font-weight:850!important;letter-spacing:0!important}.dashboard-expense-heading p{margin:4px 0 0;color:var(--dash-muted);font-size:11px;line-height:1.45}.dashboard-expense-badge{flex:none;padding:5px 8px;border:1px solid #ecd8d6;background:#fbf1f0;color:#a33e39;font-size:10px;font-weight:850;letter-spacing:.04em}.dashboard-expense-total{display:flex;align-items:baseline;justify-content:space-between;gap:10px;margin:0 0 8px;padding:9px 11px;border-left:3px solid #be4b46;background:#fbf4f3}.dashboard-expense-total small{color:#777d89;font-size:10px;font-weight:750}.dashboard-expense-total strong{color:#9e3833;font-size:17px;font-variant-numeric:tabular-nums}.dashboard-expense-chart{position:relative;min-height:250px}.dashboard-expense-chart canvas{display:block;width:100%!important;max-height:270px}
         .dashboard-order-tabs .nav-link{border-radius:0!important}
         .dashboard-order-tabs .badge,.dashboard-orders-table .badge,.dashboard-orders-table .btn,.dashboard-content .pagination .page-link{border-radius:0!important}
         .dashboard-orders-table{border-collapse:collapse}
+        @media(max-width:767.98px){.dashboard-expense-heading .card-title{font-size:14px!important}.dashboard-expense-total strong{font-size:15px}.dashboard-expense-chart{min-height:220px}}
         .dashboard-orders-table th,.dashboard-orders-table td{padding:12px 13px;vertical-align:middle}
         html[data-app-theme="dark"] .dashboard-welcome { background:#1e232b !important; border-color:#373f4b !important; }
         html[data-app-theme="dark"] .dashboard-welcome h1,

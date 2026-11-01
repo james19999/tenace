@@ -4,13 +4,14 @@
         $isPartner = $isPartner ?? false;
         $isWholesaleSalesRole = Auth::user()?->user_type === \App\Models\User::ROLE_COMMERCIAL_MANAGER;
         $isShopManager = $isShopManager ?? false;
+        $usesRetailShopStock = $usesRetailShopStock ?? $isShopManager;
     @endphp
 
     <div class="catalog-header">
         <div>
             <span class="catalog-eyebrow">GESTION DU CATALOGUE</span>
             <h1>Produits</h1>
-            <p>{{ $isPartner ? 'Consulte les produits proposés et leurs prix dans ' . ($countryNames[$partnerCountryCode] ?? 'ton pays') . '.' : ($isWholesaleSalesRole ? 'Produits disponibles dans la boutique grossiste.' : ($isShopManager ? 'Produits en stock dans ta boutique : '.$shopManagerLocationLabel.'.' : 'Retrouve rapidement un produit, vérifie son stock et ajoute-le à une commande.')) }}</p>
+            <p>{{ $isPartner ? 'Consulte les produits proposés et leurs prix dans ' . ($countryNames[$partnerCountryCode] ?? 'ton pays') . '.' : ($isWholesaleSalesRole ? 'Produits disponibles dans la boutique grossiste.' : ($usesRetailShopStock ? 'Produits disponibles dans ta boutique : '.$shopManagerLocationLabel.'.' : 'Retrouve rapidement un produit, vérifie son stock et ajoute-le à une commande.')) }}</p>
         </div>
         @if ($isAdmin)
             <div class="catalog-header-actions">
@@ -35,15 +36,15 @@
     @if (!$isPartner && !$isWholesaleSalesRole && !$isShopManager)<section class="catalog-metrics" aria-label="Résumé du stock">
         <article class="catalog-metric">
             <span class="catalog-metric-icon"><span class="material-icons">inventory_2</span></span>
-            <div><small>Produits référencés</small><strong>{{ number_format((int) $inventory->total_products, 0, ',', ' ') }}</strong></div>
+            <div><small>{{ $usesRetailShopStock ? 'Produits suivis dans ta boutique' : 'Produits référencés' }}</small><strong>{{ number_format((int) $inventory->total_products, 0, ',', ' ') }}</strong></div>
         </article>
         <article class="catalog-metric catalog-metric-good">
             <span class="catalog-metric-icon"><span class="material-icons">task_alt</span></span>
-            <div><small>Stock disponible</small><strong>{{ number_format((int) $inventory->available_count, 0, ',', ' ') }}</strong></div>
+            <div><small>{{ $usesRetailShopStock ? 'Disponibles dans ta boutique' : 'Stock disponible' }}</small><strong>{{ number_format((int) $inventory->available_count, 0, ',', ' ') }}</strong></div>
         </article>
         <article class="catalog-metric catalog-metric-warning">
             <span class="catalog-metric-icon"><span class="material-icons">warning_amber</span></span>
-            <div><small>À réapprovisionner</small><strong>{{ number_format((int) $inventory->low_stock_count + (int) $inventory->out_of_stock_count, 0, ',', ' ') }}</strong></div>
+            <div><small>{{ $usesRetailShopStock ? 'À réapprovisionner dans ta boutique' : 'À réapprovisionner' }}</small><strong>{{ number_format((int) $inventory->low_stock_count + (int) $inventory->out_of_stock_count, 0, ',', ' ') }}</strong></div>
         </article>
         @if ($isAdmin)
             <article class="catalog-metric catalog-metric-finance">
@@ -73,7 +74,7 @@
                     <option value="all">Tous les stocks</option>
                     <option value="available">Disponibles</option>
                     <option value="low">Stock faible</option>
-                    @unless ($isShopManager)<option value="out">En rupture</option>@endunless
+                    @unless ($usesRetailShopStock)<option value="out">En rupture</option>@endunless
                 </select>@endunless
             </div>
         </div>
@@ -86,8 +87,9 @@
                         $wholesaleStock = (int) ($product->wholesale_shop_quantity ?? 0);
                         $combinedStock = $stock + $wholesaleStock;
                         $partnerStock = $partnerStockSummary[$product->id] ?? ['reserve' => 0, 'couriers' => 0, 'available' => 0];
-                        $isOut = ! $isPartner && $stock <= 0 && $wholesaleStock <= 0;
-                        $isLow = ! $isPartner && ! $isOut && $product->qts_seuil !== null && $combinedStock <= (int) $product->qts_seuil;
+                        $relevantStock = $usesRetailShopStock ? $stock : ($isWholesaleSalesRole ? $wholesaleStock : $combinedStock);
+                        $isOut = ! $isPartner && $relevantStock <= 0;
+                        $isLow = ! $isPartner && ! $isOut && $product->qts_seuil !== null && $relevantStock <= (int) $product->qts_seuil;
                     @endphp
                     <article class="product-card">
                         <div class="product-card-top">
@@ -102,7 +104,7 @@
                                     <span class="stock-badge {{ $partnerStock['available'] > 0 ? 'stock-available' : 'stock-out' }}"><span></span>{{ $partnerStock['available'] > 0 ? 'Disponible' : 'Rupture de stock' }} · {{ $countryNames[$partnerCountryCode] ?? $partnerCountryCode }}</span>
                                 @elseif ($isWholesaleSalesRole)
                                     <span class="stock-badge stock-available"><span></span>Boutique grossiste · {{ $wholesaleStock }}</span>
-                                @elseif ($isShopManager)
+                                @elseif ($usesRetailShopStock)
                                     <span class="stock-badge stock-available"><span></span>{{ $shopManagerLocationLabel }} · {{ $stock }}</span>
                                 @elseif ($isOut)
                                     <span class="stock-badge stock-out"><span></span>Rupture</span>
@@ -131,7 +133,7 @@
                                     </span>
                                 @elseif ($isWholesaleSalesRole)
                                     <span class="product-stock-number">{{ $wholesaleStock }} <small>grossiste</small></span>
-                                @elseif ($isShopManager)
+                                @elseif ($usesRetailShopStock)
                                     <span class="product-stock-number">{{ $stock }} <small>dans ta boutique</small></span>
                                 @else<span class="product-stock-number {{ $isOut ? 'text-danger' : ($isLow ? 'text-warning' : '') }}">
                                     {{ $stock }} <small>principale</small>
@@ -235,7 +237,7 @@
             <div class="catalog-empty">
                 <span class="material-icons">search_off</span>
                 <h3>Aucun produit trouvé</h3>
-                <p>{{ $isPartner ? 'Aucun produit n’est actuellement proposé dans ton pays.' : ($isShopManager ? ($shopManagerLocationLabel === 'aucune boutique assignée' ? 'Aucune boutique ne t’est assignée. Contacte l’administration.' : 'Aucun produit n’a de stock disponible dans ta boutique pour le moment.') : 'Essaie un autre nom ou modifie le filtre de stock.') }}</p>
+                <p>{{ $isPartner ? 'Aucun produit n’est actuellement proposé dans ton pays.' : ($usesRetailShopStock ? ($shopManagerLocationLabel === 'aucune boutique assignée' ? 'Aucune boutique ne t’est assignée. Contacte l’administration.' : 'Aucun produit n’a de stock disponible dans ta boutique pour le moment.') : 'Essaie un autre nom ou modifie le filtre de stock.') }}</p>
                 @if ($search || $stockFilter !== 'all')
                     <button class="btn catalog-reset-button" wire:click="resetFilters">Effacer les filtres</button>
                 @endif

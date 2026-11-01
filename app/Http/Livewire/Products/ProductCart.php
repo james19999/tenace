@@ -12,6 +12,7 @@ use App\Models\QuantityPromotionSetting;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
 use App\Services\StockModuleSettingsService;
+use App\Services\ShopSalesLocationResolver;
 use Gloudemans\Shoppingcart\Facades\Cart;
 
 class ProductCart extends Component
@@ -221,12 +222,10 @@ class ProductCart extends Component
 
             return $reserve + $withCouriers;
         }
-        $rules = app(StockModuleSettingsService::class)->rules();
         $isCommercialManager = auth()->user()?->user_type === \App\Models\User::ROLE_COMMERCIAL_MANAGER;
         $useWholesaleStock = $isCommercialManager || ($wholesale ?? $this->isWholesaleOrder);
-        $locationId = $useWholesaleStock
-            ? ($rules['wholesale_sales_location_id'] ?? null)
-            : ($rules['default_sales_location_id'] ?? null);
+        $locationId = app(ShopSalesLocationResolver::class)
+            ->forUser(auth()->user(), $useWholesaleStock)?->id;
         if (! $locationId) {
             return $useWholesaleStock ? 0 : (int) $product->qt_initial;
         }

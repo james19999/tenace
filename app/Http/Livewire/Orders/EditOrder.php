@@ -6,7 +6,7 @@ use App\Models\Product;
 use Livewire\Component;
 use App\Models\Orders\Order;
 use App\Models\Orders\OrderItem;
-use App\Services\StockModuleSettingsService;
+use App\Services\ShopSalesLocationResolver;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
 
@@ -426,11 +426,7 @@ class EditOrder extends Component
 
     private function salesLocationIdForOrder(): ?int
     {
-        $rules = app(StockModuleSettingsService::class)->rules();
-        $locationId = $this->order->is_wholesale
-            ? ($rules['wholesale_sales_location_id'] ?? null)
-            : ($rules['default_sales_location_id'] ?? null);
-        return $locationId ? (int) $locationId : null;
+        return app(ShopSalesLocationResolver::class)->forOrder($this->order)?->id;
     }
 
     private function availableQuantityForOrder(Product $product): float

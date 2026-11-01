@@ -54,6 +54,9 @@ class StockDeliveryService
                         ->where('type', 'shop')->where('is_active', true)->first();
                 }
             }
+            if (! $location) {
+                $location = app(ShopSalesLocationResolver::class)->forOrder($lockedOrder);
+            }
             if (! $lockedOrder->is_wholesale && ! $location && ! empty($rules['default_sales_location_id'])) {
                 $location = StockLocation::query()->whereKey($rules['default_sales_location_id'])
                     ->where('is_active', true)->whereNotIn('type', ['transit', 'blocked'])->first();

@@ -12,6 +12,7 @@ use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Gloudemans\Shoppingcart\Facades\Cart;
 use App\Services\StockModuleSettingsService;
+use App\Services\ShopSalesLocationResolver;
 use App\Support\WestAfricaShippingCatalog;
 
 class ProductList extends Component
@@ -50,13 +51,16 @@ class ProductList extends Component
         }
         $product = Product::findOrFail($id);
         $price = $product->price;
-        if (Auth::user()?->isManager()) {
-            $shopIds = Auth::user()->responsibleStockLocations()
-                ->where('type', 'shop')->where('is_active', true)->pluck('id');
-            $available = (int) DB::table('stock_movement_lines as sml')
-                ->join('stock_movements as sm', 'sm.id', '=', 'sml.movement_id')
-                ->where('sm.status', 'posted')->whereIn('sml.location_id', $shopIds)
-                ->where('sml.product_id', $product->id)->sum('sml.quantity_delta');
+        $isRetailShopSeller = in_array(Auth::user()?->user_type, [
+            \App\Models\User::ROLE_MANAGER,
+            \App\Models\User::ROLE_SECRETARY,
+            \App\Models\User::ROLE_SALES,
+            \App\Models\User::ROLE_CASHIER,
+            \App\Models\User::ROLE_CALL_CENTER,
+        ], true);
+        if ($isRetailShopSeller) {
+            $location = app(ShopSalesLocationResolver::class)->forUser(Auth::user(), false);
+            $available = $location ? $this->shopQuantity((int) $product->id, (int) $location->id) : 0;
             $cart = Cart::instance('cart');
             $items = $cart->content()->filter(fn ($item) => (int) $item->id === (int) $product->id);
             $alreadyInCart = (int) $items->sum('qty');
@@ -177,20 +181,32 @@ class ProductList extends Component
         $isPartner = $user?->user_type === \App\Models\User::ROLE_PARTNER;
         $isCommercialManager = $user?->user_type === \App\Models\User::ROLE_COMMERCIAL_MANAGER;
         $isShopManager = $user?->isManager() ?? false;
+        $usesRetailShopStock = in_array($user?->user_type, [
+            \App\Models\User::ROLE_MANAGER,
+            \App\Models\User::ROLE_SECRETARY,
+            \App\Models\User::ROLE_SALES,
+            \App\Models\User::ROLE_CASHIER,
+            \App\Models\User::ROLE_CALL_CENTER,
+        ], true);
         $partnerCountryCode = $isPartner ? strtoupper((string) $user->country_code) : null;
         $stockRules = app(StockModuleSettingsService::class)->rules();
         $salesLocationId = $stockRules['default_sales_location_id'] ?? null;
         $wholesaleLocationId = $stockRules['wholesale_sales_location_id'] ?? null;
-        $managerShops = $isShopManager
-            ? $user->responsibleStockLocations()->where('type', 'shop')->where('is_active', true)->get(['id', 'name'])
-            : collect();
-        $managerShopIds = $managerShops->pluck('id');
+        $sellerShop = app(ShopSalesLocationResolver::class)->forUser($user, false);
+        $stockQuantityExpression = $usesRetailShopStock
+            ? 'COALESCE(shop_stock.quantity, 0)'
+            : ($isCommercialManager ? 'COALESCE(wholesale_shop_stock.quantity, 0)' : '(COALESCE(shop_stock.quantity, 0) + COALESCE(wholesale_shop_stock.quantity, 0))');
+        $inventoryQuantityExpression = $stockQuantityExpression;
+        $trackedRetailStockCondition = $usesRetailShopStock ? 'shop_stock.product_id IS NOT NULL AND ' : '';
+        $totalProductsExpression = $usesRetailShopStock
+            ? 'COUNT(DISTINCT CASE WHEN shop_stock.product_id IS NOT NULL THEN products.id END)'
+            : 'COUNT(*)';
         $shopStock = DB::table('stock_movement_lines as sml')
             ->join('stock_movements as sm', 'sm.id', '=', 'sml.movement_id')
             ->join('stock_locations as sl', 'sl.id', '=', 'sml.location_id')
             ->where('sm.status', 'posted')
             ->where('sl.type', 'shop')
-            ->when($isShopManager, fn ($query) => $query->whereIn('sl.id', $managerShopIds), fn ($query) => $query->when($salesLocationId, fn ($scope) => $scope->where('sl.id', $salesLocationId)))
+            ->when($sellerShop, fn ($query) => $query->where('sl.id', $sellerShop->id), fn ($query) => $query->when($salesLocationId, fn ($scope) => $scope->where('sl.id', $salesLocationId)))
             ->select('sml.product_id')
             ->selectRaw('SUM(sml.quantity_delta) as quantity')
             ->groupBy('sml.product_id');
@@ -202,10 +218,10 @@ class ProductList extends Component
         $inventoryQuery = Product::query()
             ->leftJoinSub(clone $shopStock, 'shop_stock', 'shop_stock.product_id', '=', 'products.id')
             ->leftJoinSub(clone $wholesaleShopStock, 'wholesale_shop_stock', 'wholesale_shop_stock.product_id', '=', 'products.id')
-            ->selectRaw('COUNT(*) as total_products')
-            ->selectRaw('SUM(CASE WHEN (COALESCE(shop_stock.quantity, 0) + COALESCE(wholesale_shop_stock.quantity, 0)) <= 0 THEN 1 ELSE 0 END) as out_of_stock_count')
-            ->selectRaw('SUM(CASE WHEN (COALESCE(shop_stock.quantity, 0) + COALESCE(wholesale_shop_stock.quantity, 0)) > 0 AND qts_seuil IS NOT NULL AND (COALESCE(shop_stock.quantity, 0) + COALESCE(wholesale_shop_stock.quantity, 0)) <= qts_seuil THEN 1 ELSE 0 END) as low_stock_count')
-            ->selectRaw('SUM(CASE WHEN (COALESCE(shop_stock.quantity, 0) + COALESCE(wholesale_shop_stock.quantity, 0)) > 0 AND (qts_seuil IS NULL OR (COALESCE(shop_stock.quantity, 0) + COALESCE(wholesale_shop_stock.quantity, 0)) > qts_seuil) THEN 1 ELSE 0 END) as available_count')
+            ->selectRaw($totalProductsExpression.' as total_products')
+            ->selectRaw('SUM(CASE WHEN '.$trackedRetailStockCondition.$inventoryQuantityExpression.' <= 0 THEN 1 ELSE 0 END) as out_of_stock_count')
+            ->selectRaw('SUM(CASE WHEN '.$trackedRetailStockCondition.$inventoryQuantityExpression.' > 0 AND qts_seuil IS NOT NULL AND '.$inventoryQuantityExpression.' <= qts_seuil THEN 1 ELSE 0 END) as low_stock_count')
+            ->selectRaw('SUM(CASE WHEN '.$trackedRetailStockCondition.$inventoryQuantityExpression.' > 0 AND (qts_seuil IS NULL OR '.$inventoryQuantityExpression.' > qts_seuil) THEN 1 ELSE 0 END) as available_count')
             ->selectRaw('COALESCE(SUM(shop_stock.quantity), 0) as shop_stock_total')
             ->selectRaw('COALESCE(SUM(wholesale_shop_stock.quantity), 0) as wholesale_shop_stock_total');
 
@@ -228,7 +244,7 @@ class ProductList extends Component
             ->selectRaw('COALESCE(wholesale_shop_stock.quantity, 0) as wholesale_shop_quantity')
             ->when($isPartner, fn ($query) => $query->whereHas('countryPrices', fn ($prices) => $prices
                 ->where('country_code', $partnerCountryCode)->where('is_available', true)))
-            ->when($isShopManager, fn ($query) => $query->whereRaw('COALESCE(shop_stock.quantity, 0) > 0'))
+            ->when($usesRetailShopStock, fn ($query) => $query->whereRaw('COALESCE(shop_stock.quantity, 0) > 0'))
             ->when($isCommercialManager, fn ($query) => $query->whereRaw('COALESCE(wholesale_shop_stock.quantity, 0) > 0'))
             ->when(trim($this->search) !== '', function ($query) {
                 $term = '%'.trim($this->search).'%';
@@ -237,12 +253,12 @@ class ProductList extends Component
                         ->orWhere('description', 'like', $term);
                 });
             })
-            ->when($this->stockFilter === 'out', fn ($query) => $query->whereRaw('(COALESCE(shop_stock.quantity, 0) + COALESCE(wholesale_shop_stock.quantity, 0)) <= 0'))
-            ->when($this->stockFilter === 'low', fn ($query) => $query->whereRaw('(COALESCE(shop_stock.quantity, 0) + COALESCE(wholesale_shop_stock.quantity, 0)) > 0')
-                ->whereNotNull('products.qts_seuil')->whereRaw('(COALESCE(shop_stock.quantity, 0) + COALESCE(wholesale_shop_stock.quantity, 0)) <= products.qts_seuil'))
-            ->when($this->stockFilter === 'available', fn ($query) => $query->whereRaw('(COALESCE(shop_stock.quantity, 0) + COALESCE(wholesale_shop_stock.quantity, 0)) > 0')
-                ->where(function ($stock) {
-                    $stock->whereNull('products.qts_seuil')->orWhereRaw('(COALESCE(shop_stock.quantity, 0) + COALESCE(wholesale_shop_stock.quantity, 0)) > products.qts_seuil');
+            ->when($this->stockFilter === 'out', fn ($query) => $query->whereRaw($stockQuantityExpression.' <= 0'))
+            ->when($this->stockFilter === 'low', fn ($query) => $query->whereRaw($stockQuantityExpression.' > 0')
+                ->whereNotNull('products.qts_seuil')->whereRaw($stockQuantityExpression.' <= products.qts_seuil'))
+            ->when($this->stockFilter === 'available', fn ($query) => $query->whereRaw($stockQuantityExpression.' > 0')
+                ->where(function ($stock) use ($stockQuantityExpression) {
+                    $stock->whereNull('products.qts_seuil')->orWhereRaw($stockQuantityExpression.' > products.qts_seuil');
                 }));
 
         $Products = $productsQuery->orderBy('name')->paginate(12);
@@ -316,7 +332,8 @@ class ProductList extends Component
             'countryNames' => collect(WestAfricaShippingCatalog::countries())->map(fn ($country) => $country['label']),
             'isPartner' => $isPartner,
             'isShopManager' => $isShopManager,
-            'shopManagerLocationLabel' => $managerShops->pluck('name')->join(', ') ?: 'aucune boutique assignée',
+            'usesRetailShopStock' => $usesRetailShopStock,
+            'shopManagerLocationLabel' => $sellerShop?->name ?? 'aucune boutique assignée',
             'isCommercialManager' => $isCommercialManager,
             'wholesaleCartQuantities' => $wholesaleCartQuantities,
             'partnerCountryCode' => $partnerCountryCode,
