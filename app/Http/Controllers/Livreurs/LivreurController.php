@@ -69,7 +69,7 @@ class LivreurController extends Controller
                  'password' => ['required', 'string', 'min:8', 'confirmed'],
                  'adresse' => ['required', 'string'],
                  'phone' => ['required', 'string', 'max:32', 'unique:users,phone'],
-                 'user_type' => ['required', 'in:LVS,VDS,CSA,MNG,SCR,CALLCENTER,ADMINUSER,COMPTABLE,RCM'],
+                 'user_type' => ['required', 'in:LVS,VDS,CSA,MNG,SCR,CALLCENTER,ADMINUSER,COMPTABLE,RCM,INFO'],
                  'primary_stock_location_id' => ['nullable', 'integer', Rule::exists('stock_locations', 'id')->where(fn ($query) => $query->where('type', 'shop')->where('is_active', true))],
                  'country_code' => ['nullable', Rule::in(array_keys(WestAfricaShippingCatalog::countries()))],
                  'emergency_contact_name' => ['nullable', 'string', 'max:160'],
@@ -162,7 +162,7 @@ class LivreurController extends Controller
             'email' => ['required', 'string', 'email', 'max:255', Rule::unique('users', 'email')->ignore($id)],
             'adresse' => ['required', 'string'],
             'phone' => ['required', 'string', 'max:32', Rule::unique('users', 'phone')->ignore($id)],
-            'user_type' => ['required', 'in:LVS,PT,VDS,CSA,MNG,SCR,CALLCENTER,ADMINUSER,COMPTABLE,RCM'],
+            'user_type' => ['required', 'in:LVS,PT,VDS,CSA,MNG,SCR,CALLCENTER,ADMINUSER,COMPTABLE,RCM,INFO'],
             'primary_stock_location_id' => ['nullable', 'integer', Rule::exists('stock_locations', 'id')->where(fn ($query) => $query->where('type', 'shop')->where('is_active', true))],
             'country_code' => ['nullable', Rule::in(array_keys(WestAfricaShippingCatalog::countries()))],
             'emergency_contact_name' => ['nullable', 'string', 'max:160'],
@@ -213,7 +213,7 @@ class LivreurController extends Controller
 
     public function user_admin_list(Request $request){
         $userType = $request->query('user_type', 'LVS');
-        $allowedTypes = ['LVS', 'PT', 'VDS', 'CSA', 'MNG', 'SCR', 'CALLCENTER', 'ADMINUSER', 'COMPTABLE', 'RCM'];
+        $allowedTypes = ['LVS', 'PT', 'VDS', 'CSA', 'MNG', 'SCR', 'CALLCENTER', 'ADMINUSER', 'COMPTABLE', 'RCM', User::ROLE_IT];
         if (! in_array($userType, $allowedTypes, true)) {
             $userType = 'LVS';
         }

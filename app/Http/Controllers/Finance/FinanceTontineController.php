@@ -28,14 +28,14 @@ class FinanceTontineController extends Controller
     private const ASSIGNABLE_ROLES = [
         User::ROLE_MANAGER, User::ROLE_SECRETARY, User::ROLE_SALES, User::ROLE_CASHIER,
         User::ROLE_LIVREUR, User::ROLE_CALL_CENTER, User::ROLE_ACCOUNTANT,
-        User::ROLE_COMMERCIAL_MANAGER, User::ROLE_WHOLESALER,
+        User::ROLE_COMMERCIAL_MANAGER, User::ROLE_WHOLESALER, User::ROLE_IT,
     ];
     private const ROLE_LABELS = [
         User::ROLE_MANAGER => 'Manager', User::ROLE_SECRETARY => 'Secrétaire',
         User::ROLE_SALES => 'Vendeur', User::ROLE_CASHIER => 'Caissier',
         User::ROLE_LIVREUR => 'Livreur', User::ROLE_CALL_CENTER => 'SAV',
         User::ROLE_ACCOUNTANT => 'Comptable', User::ROLE_COMMERCIAL_MANAGER => 'Responsable commercial',
-        User::ROLE_WHOLESALER => 'Grossiste',
+        User::ROLE_WHOLESALER => 'Grossiste', User::ROLE_IT => 'Informaticien / ingénieur informatique',
     ];
 
     public function index(Request $request): View

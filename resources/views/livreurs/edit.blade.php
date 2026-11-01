@@ -76,6 +76,7 @@
                              <option value="CALLCENTER" {{ $users->user_type == 'CALLCENTER' ? 'selected' : '' }}>SAV</option>
                              <option value="COMPTABLE" {{ $users->user_type == 'COMPTABLE' ? 'selected' : '' }}>Comptable</option>
                              <option value="RCM" {{ $users->user_type == 'RCM' ? 'selected' : '' }}>Responsable commercial</option>
+                             <option value="INFO" {{ $users->user_type == 'INFO' ? 'selected' : '' }}>Informaticien / ingénieur informatique</option>
                              <option value="ADMINUSER" {{ $users->user_type == 'ADMINUSER' ? 'selected' : '' }}>Administrateur</option>
                          </select>
                         </div>

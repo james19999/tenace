@@ -111,7 +111,7 @@ Route::middleware(['auth'])->group(function () {
     Route::get('/grossiste/dashboard', [\App\Http\Controllers\WholesaleDashboardController::class, 'index'])
         ->middleware('role:GRO')->name('wholesaler.dashboard');
 
-    Route::middleware(['role:MNG,SCR,VDS,CSA,LVS,CALLCENTER,COMPTABLE,RCM,GRO'])->group(function () {
+    Route::middleware(['role:MNG,SCR,VDS,CSA,LVS,CALLCENTER,COMPTABLE,RCM,GRO,INFO'])->group(function () {
         Route::get('/mon-espace', [\App\Http\Controllers\EmployeePayrollController::class, 'selfService'])->name('employees.self-service');
         Route::get('/mon-espace/materiel', [\App\Http\Controllers\EmployeePayrollController::class, 'selfServicePurchases'])->name('employees.self-service.purchases.index');
         Route::post('/mon-espace/avances', [\App\Http\Controllers\EmployeePayrollController::class, 'requestOwnAdvance'])->name('employees.self-service.advances.store');
@@ -153,15 +153,15 @@ Route::middleware(['auth'])->group(function () {
         Route::post('/remises/{remittance}/reception', [FinanceController::class, 'confirmRemittance'])->middleware('role:ADMINUSER')->name('remittances.receive');
         Route::post('/remises/{remittance}/resoudre-ecart', [FinanceController::class, 'resolveRemittance'])->middleware('role:ADMINUSER')->name('remittances.resolve');
 
-        Route::get('/tontines', [FinanceTontineController::class, 'index'])->middleware('role:ADMINUSER,MNG,SCR,VDS,CSA,LVS,CALLCENTER,COMPTABLE,RCM,GRO')->name('tontines.index');
+        Route::get('/tontines', [FinanceTontineController::class, 'index'])->middleware('role:ADMINUSER,MNG,SCR,VDS,CSA,LVS,CALLCENTER,COMPTABLE,RCM,GRO,INFO')->name('tontines.index');
         Route::get('/tontines/personnes-a-charger', [FinanceTontineController::class, 'searchAssignees'])->middleware('role:ADMINUSER')->name('tontines.assignees.search');
         Route::get('/tontines/nouvelle', [FinanceTontineController::class, 'create'])->middleware('role:ADMINUSER')->name('tontines.create');
         Route::post('/tontines', [FinanceTontineController::class, 'store'])->middleware('role:ADMINUSER')->name('tontines.store');
         Route::get('/tontines/{tontine}/modifier', [FinanceTontineController::class, 'edit'])->middleware('role:ADMINUSER')->name('tontines.edit');
         Route::put('/tontines/{tontine}', [FinanceTontineController::class, 'update'])->middleware('role:ADMINUSER')->name('tontines.update');
-        Route::get('/tontines/mouvements/{movement}/piece', [FinanceTontineController::class, 'attachment'])->middleware('role:ADMINUSER,MNG,SCR,VDS,CSA,LVS,CALLCENTER,COMPTABLE,RCM,GRO')->name('tontines.attachments.download');
-        Route::get('/tontines/{tontine}', [FinanceTontineController::class, 'show'])->middleware('role:ADMINUSER,MNG,SCR,VDS,CSA,LVS,CALLCENTER,COMPTABLE,RCM,GRO')->name('tontines.show');
-        Route::post('/tontines/{tontine}/cotisations', [FinanceTontineController::class, 'storeContribution'])->middleware('role:ADMINUSER,MNG,SCR,VDS,CSA,LVS,CALLCENTER,COMPTABLE,RCM,GRO')->name('tontines.contributions.store');
+        Route::get('/tontines/mouvements/{movement}/piece', [FinanceTontineController::class, 'attachment'])->middleware('role:ADMINUSER,MNG,SCR,VDS,CSA,LVS,CALLCENTER,COMPTABLE,RCM,GRO,INFO')->name('tontines.attachments.download');
+        Route::get('/tontines/{tontine}', [FinanceTontineController::class, 'show'])->middleware('role:ADMINUSER,MNG,SCR,VDS,CSA,LVS,CALLCENTER,COMPTABLE,RCM,GRO,INFO')->name('tontines.show');
+        Route::post('/tontines/{tontine}/cotisations', [FinanceTontineController::class, 'storeContribution'])->middleware('role:ADMINUSER,MNG,SCR,VDS,CSA,LVS,CALLCENTER,COMPTABLE,RCM,GRO,INFO')->name('tontines.contributions.store');
         Route::post('/tontines/{tontine}/recuperations', [FinanceTontineController::class, 'storeRecovery'])->middleware('role:ADMINUSER')->name('tontines.recoveries.store');
 
         Route::get('/depenses', [FinanceController::class, 'expenses'])->middleware('role:ADMINUSER,MNG,COMPTABLE,SCR,VDS,CSA,LVS,CALLCENTER,RCM,GRO')->name('expenses.index');

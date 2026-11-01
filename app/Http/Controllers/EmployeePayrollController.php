@@ -315,7 +315,7 @@ class EmployeePayrollController extends Controller
         return in_array($user->user_type, [
             User::ROLE_CALL_CENTER, User::ROLE_SALES, User::ROLE_MANAGER, User::ROLE_SECRETARY,
             User::ROLE_LIVREUR, User::ROLE_CASHIER, User::ROLE_ACCOUNTANT, User::ROLE_COMMERCIAL_MANAGER,
-            User::ROLE_WHOLESALER,
+            User::ROLE_WHOLESALER, User::ROLE_IT,
         ], true);
     }
 }

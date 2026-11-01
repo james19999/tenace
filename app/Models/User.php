@@ -68,6 +68,7 @@ class User extends Authenticatable
     const ROLE_ACCOUNTANT  = 'COMPTABLE';
     const ROLE_COMMERCIAL_MANAGER = 'RCM';
     const ROLE_WHOLESALER = 'GRO';
+    const ROLE_IT = 'INFO';
 
     // -------------------------------------------------------
     // Helpers de rôle
@@ -128,6 +129,7 @@ class User extends Authenticatable
             self::ROLE_COMMERCIAL_MANAGER => route('product'),
             self::ROLE_WHOLESALER  => route('wholesaler.dashboard'),
             self::ROLE_CASHIER     => route('order-liste-order'),
+            self::ROLE_IT          => route('employees.self-service'),
             default                => route('Admin'),
         };
     }

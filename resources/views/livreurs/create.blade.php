@@ -19,8 +19,28 @@
                 <form method="POST" action="{{ route('livreurs.store') }}" enctype="multipart/form-data">
                     @csrf
                         <div class="form-group">
-                            <label for="name">Nom:</label>
-                            <input type="text" class="form-control" id="name" name="name" placeholder="Nom" value="{{ old('name') }}" required>
+                            <label for="user_type">Type de membre:</label>
+                            <select name="user_type" id="user_type" class="form-control" required>
+                                <option value="" @selected(!old('user_type'))>Choisir un type avant de continuer</option>
+                                <option value="LVS" @selected(old('user_type') === 'LVS')>Livreur</option>
+                                <option value="VDS" @selected(old('user_type') === 'VDS')>Vendeur</option>
+                                <option value="CSA" @selected(old('user_type') === 'CSA')>Caissier</option>
+                                <option value="MNG" @selected(old('user_type') === 'MNG')>Manager</option>
+                                <option value="SCR" @selected(old('user_type') === 'SCR')>Secrétaire</option>
+                                <option value="CALLCENTER" @selected(old('user_type') === 'CALLCENTER')>SAV</option>
+                                <option value="COMPTABLE" @selected(old('user_type') === 'COMPTABLE')>Comptable</option>
+                                <option value="RCM" @selected(old('user_type') === 'RCM')>Responsable commercial</option>
+                                <option value="INFO" @selected(old('user_type') === 'INFO')>Informaticien / ingénieur informatique</option>
+                                <option value="ADMINUSER" @selected(old('user_type') === 'ADMINUSER')>Administrateur</option>
+                            </select>
+                            @error('user_type') <span class="text-danger">{{ $message }}</span>@enderror
+                            <small class="form-text text-muted">Choisis d’abord le rôle du membre pour ouvrir les champs de son compte.</small>
+                        </div>
+                        <fieldset id="member-details" @disabled(!old('user_type'))>
+                        <legend class="sr-only">Informations du membre</legend>
+                        <div class="form-group">
+                            <label for="name">Nom et prénom:</label>
+                            <input type="text" class="form-control" id="name" name="name" placeholder="Nom et prénom" value="{{ old('name') }}" required>
                             @error('name') <span class="text-danger">{{ $message }}</span>@enderror
                         </div>
                         <div class="form-group">
@@ -61,23 +81,6 @@
                         </div>
 
                         <div class="form-group">
-                        <label for="password-confirm">Type:</label>
-
-                        <select name="user_type" id="user_type" class="form-control" required>
-                             <option value="LVS" @selected(old('user_type', 'LVS') === 'LVS')>Livreur</option>
-                             <option value="VDS" @selected(old('user_type') === 'VDS')>Vendeur</option>
-                             <option value="CSA" @selected(old('user_type') === 'CSA')>Caissier</option>
-                             <option value="MNG" @selected(old('user_type') === 'MNG')>Manager</option>
-                             <option value="SCR" @selected(old('user_type') === 'SCR')>Secrétaire</option>
-                             <option value="CALLCENTER" @selected(old('user_type') === 'CALLCENTER')>SAV</option>
-                             <option value="COMPTABLE" @selected(old('user_type') === 'COMPTABLE')>Comptable</option>
-                             <option value="RCM" @selected(old('user_type') === 'RCM')>Responsable commercial</option>
-                             <option value="ADMINUSER" @selected(old('user_type') === 'ADMINUSER')>Administrateur</option>
-                         </select>
-                        @error('user_type') <span class="text-danger">{{ $message }}</span>@enderror
-                        </div>
-
-                        <div class="form-group">
                             <label for="primary_stock_location_id">Boutique de rattachement</label>
                             <select class="form-control" id="primary_stock_location_id" name="primary_stock_location_id">
                                 @foreach($shopLocations as $location)
@@ -114,6 +117,7 @@
 
                         <a  href="{{ route('useradminlist') }}" class="btn btn-danger">Annuler</a>
                         <button type="submit" class="btn btn-primary">Enregistrer</button>
+                        </fieldset>
                     </form>
                 </div>
             </div>
@@ -127,9 +131,15 @@
 
 </div>
 
+<style>
+    #member-details { min-width: 0; margin: 0; padding: 0; border: 0; }
+    #member-details:disabled { opacity: .55; }
+</style>
+
 <script>
     document.addEventListener('DOMContentLoaded', function () {
         const role = document.getElementById('user_type');
+        const memberDetails = document.getElementById('member-details');
         const countryGroup = document.getElementById('country-code-group');
         const country = document.getElementById('country_code');
         const documentGroup = document.getElementById('identity-card-group');
@@ -138,6 +148,7 @@
         const emergencyName = document.getElementById('emergency_contact_name');
         const emergencyPhone = document.getElementById('emergency_contact_phone');
         const updateFields = () => {
+            memberDetails.disabled = !role.value;
             const countryApplicable = ['LVS', 'PT'].includes(role.value);
             const courier = role.value === 'LVS';
             countryGroup.hidden = !countryApplicable;

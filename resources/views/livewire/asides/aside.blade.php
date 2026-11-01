@@ -1,15 +1,15 @@
 @php
     $active = fn (...$routes) => request()->routeIs(...$routes) ? 'active' : '';
-    $employeeFinanceRoles = ['MNG', 'SCR', 'VDS', 'CSA', 'LVS', 'CALLCENTER', 'COMPTABLE', 'RCM', 'GRO'];
+    $employeeFinanceRoles = ['MNG', 'SCR', 'VDS', 'CSA', 'LVS', 'CALLCENTER', 'COMPTABLE', 'RCM', 'GRO', 'INFO'];
     $showEquipmentPurchases = false;
-    $tontineRoles = ['ADMINUSER', 'MNG', 'COMPTABLE', 'SCR', 'VDS', 'CSA', 'LVS', 'CALLCENTER', 'RCM', 'GRO'];
+    $tontineRoles = ['ADMINUSER', 'MNG', 'COMPTABLE', 'SCR', 'VDS', 'CSA', 'LVS', 'CALLCENTER', 'RCM', 'GRO', 'INFO'];
     $showTontines = Auth::check() && in_array(Auth::user()->user_type, $tontineRoles, true);
     $hasTontineAccountingMenu = Auth::check() && in_array(Auth::user()->user_type, ['ADMINUSER', 'MNG', 'COMPTABLE', 'SCR', 'VDS', 'CSA', 'CALLCENTER', 'RCM'], true);
     $dashboard = match (Auth::user()->user_type) {
         'PT' => ['route' => 'partner.dashboard', 'label' => 'Tableau de bord'],
         \App\Models\User::ROLE_WHOLESALER => ['route' => 'wholesaler.dashboard', 'label' => 'Tableau de bord'],
         'ADMINUSER', 'MNG', 'SCR' => ['route' => 'Admin', 'label' => 'Dashboard'],
-        'VDS', 'CSA', 'CALLCENTER', 'COMPTABLE', 'RCM' => null,
+        'VDS', 'CSA', 'CALLCENTER', 'COMPTABLE', 'RCM', \App\Models\User::ROLE_IT => null,
         default => ['route' => 'Admin', 'label' => 'Dashboard'],
     };
     if (Auth::check() && in_array(Auth::user()->user_type, $employeeFinanceRoles, true)) {
@@ -49,7 +49,7 @@
                 </li>
             @endif
 
-            @if(in_array(Auth::user()->user_type, ['MNG', 'SCR', 'VDS', 'CSA', 'LVS', 'CALLCENTER', 'COMPTABLE', 'RCM', 'GRO'], true))
+            @if(in_array(Auth::user()->user_type, ['MNG', 'SCR', 'VDS', 'CSA', 'LVS', 'CALLCENTER', 'COMPTABLE', 'RCM', 'GRO', 'INFO'], true))
                 <li><a href="{{ route('employees.self-service') }}" class="{{ $active('employees.self-service') }}"><span class="icon material-icons">badge</span><span class="text">Mon espace personnel</span></a></li>
                 @if($showEquipmentPurchases)
                     <li><a href="{{ route('employees.self-service.purchases.index') }}" class="{{ $active('employees.self-service.purchases.*') }}"><span class="icon material-icons">shopping_bag</span><span class="text">Achats de matériel</span></a></li>
@@ -795,6 +795,8 @@
                         <span class="text">Dossiers</span>
                     </a>
                 </li>
+            @elseif (Auth::user()->user_type === \App\Models\User::ROLE_IT)
+                {{-- Le personnel informatique dispose de son espace personnel, affiché en tête du menu. --}}
             @else
                 @if (in_array(Auth::user()->user_type, ['MNG', 'SCR'], true))
                     <li>
