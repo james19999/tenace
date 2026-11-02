@@ -48,20 +48,22 @@
     </section>
 
     <section class="ess-card ess-record-card"><div class="ess-card-head"><span class="ess-section-icon material-icons" aria-hidden="true">account_balance</span><div><span class="ess-section-kicker">REMBOURSEMENTS</span><h2>Mes prêts</h2><p>Montant reçu, remboursements et solde restant.</p></div></div>
-        @forelse($personalLoans as $loan)<article class="ess-loan"><div><strong>{{ $loan->reference }}</strong><span>{{ $loan->reason ?: 'Prêt au personnel' }} · accordé le {{ $loan->granted_on?->format('d/m/Y') }}</span>@foreach($loan->repayments as $repayment)<small>Remboursement du {{ $repayment->received_at->format('d/m/Y') }} : {{ number_format($repayment->amount,0,',',' ') }} F CFA</small>@endforeach</div><div class="ess-loan-balance"><small>Montant reçu</small><strong>{{ number_format($loan->amount,0,',',' ') }} F</strong><small>Remboursé : {{ number_format($loan->repaid_amount,0,',',' ') }} F · reste dû</small><strong>{{ number_format(max(0,$loan->amount-$loan->repaid_amount),0,',',' ') }} F</strong></div></article>
+        @forelse($personalLoans as $loan)<article class="ess-loan"><div><strong>{{ $loan->reference }}</strong><span>{{ $loan->reason ?: 'Prêt au personnel' }} · accordé le {{ $loan->granted_on?->format('d/m/Y') }}</span>@if($loan->repayment_method === 'salary_percent')<small>Retenue automatique : {{ number_format((float)$loan->repayment_value,2,',',' ') }} % du salaire chaque mois.</small>@elseif($loan->repayment_method === 'fixed_amount')<small>Retenue automatique : {{ number_format((int)$loan->repayment_value,0,',',' ') }} F CFA par mois.</small>@endif @foreach($loan->repayments as $repayment)<small>{{ $repayment->employee_payroll_payment_id ? 'Retenue sur salaire' : 'Remboursement reçu' }} du {{ $repayment->received_at->format('d/m/Y') }} : {{ number_format($repayment->amount,0,',',' ') }} F CFA</small>@endforeach</div><div class="ess-loan-balance"><small>Montant reçu</small><strong>{{ number_format($loan->amount,0,',',' ') }} F</strong><small>Remboursé : {{ number_format($loan->repaid_amount,0,',',' ') }} F · reste dû</small><strong>{{ number_format(max(0,$loan->amount-$loan->repaid_amount),0,',',' ') }} F</strong></div></article>
         @empty<p class="ess-empty">Aucun prêt à rembourser n’est enregistré dans ton dossier.</p>@endforelse
     </section>
     </div>
 
     <section class="ess-card ess-salary-card"><div class="ess-card-head"><span class="ess-section-icon material-icons" aria-hidden="true">calendar_month</span><div><span class="ess-section-kicker">HISTORIQUE</span><h2>Suivi des salaires</h2><p>Salaires versés, avances prises et montant restant pour chaque mois.</p></div></div>
-        <div class="table-responsive"><table class="table ess-table"><thead><tr><th>Mois</th><th>Salaire convenu</th><th>Avances payées</th><th>Salaire versé</th><th>Reste à verser</th></tr></thead><tbody>
+        <div class="table-responsive"><table class="table ess-table"><thead><tr><th>Mois</th><th>Salaire convenu</th><th>Avances payées</th><th>Retenue prêts</th><th>Net remis</th><th>Reste à régler</th></tr></thead><tbody>
             @forelse($periods as $period)
                 @php
                     $salaryPaid = (int) $period->payments->where('kind', 'salary')->sum('amount');
+                    $loanDeducted = (int) $period->payments->where('kind', 'salary')->sum('loan_deduction_amount');
+                    $salaryNetPaid = (int) $period->payments->where('kind', 'salary')->sum(fn ($payment) => $payment->net_amount ?? $payment->amount);
                     $advancePaid = (int) $period->staffAdvances->sum('amount') + (int) $period->payments->where('kind', 'advance')->sum('amount');
                 @endphp
-                <tr><td>{{ $period->period_start->translatedFormat('F Y') }}</td><td>{{ number_format($period->salary_amount,0,',',' ') }} F</td><td>{{ number_format($advancePaid,0,',',' ') }} F</td><td>{{ number_format($salaryPaid,0,',',' ') }} F</td><td><strong>{{ number_format(max(0,$period->salary_amount-$salaryPaid-$advancePaid),0,',',' ') }} F</strong></td></tr>
-            @empty<tr><td colspan="5" class="ess-empty">Le suivi des salaires sera affiché dès qu’un mois aura été enregistré.</td></tr>@endforelse
+                <tr><td>{{ $period->period_start->translatedFormat('F Y') }}</td><td>{{ number_format($period->salary_amount,0,',',' ') }} F</td><td>{{ number_format($advancePaid,0,',',' ') }} F</td><td>{{ number_format($loanDeducted,0,',',' ') }} F</td><td>{{ number_format($salaryNetPaid,0,',',' ') }} F</td><td><strong>{{ number_format(max(0,$period->salary_amount-$salaryPaid-$advancePaid),0,',',' ') }} F</strong></td></tr>
+            @empty<tr><td colspan="6" class="ess-empty">Le suivi des salaires sera affiché dès qu’un mois aura été enregistré.</td></tr>@endforelse
         </tbody></table></div>
     </section>
 

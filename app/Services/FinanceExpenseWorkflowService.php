@@ -65,6 +65,8 @@ class FinanceExpenseWorkflowService
                 'staff_user_id' => $data['staff_user_id'] ?? null,
                 'staff_advance_type' => $data['staff_advance_type'] ?? null,
                 'staff_payroll_period_id' => $data['staff_payroll_period_id'] ?? null,
+                'staff_repayment_method' => $data['staff_repayment_method'] ?? null,
+                'staff_repayment_value' => $data['staff_repayment_value'] ?? null,
                 'commission_user_id' => $data['commission_user_id'] ?? null,
                 'commission_period_start' => $data['commission_period_start'] ?? null,
                 'commission_period_end' => $data['commission_period_end'] ?? null,
@@ -204,6 +206,9 @@ class FinanceExpenseWorkflowService
         if ($amount <= 0 || (int) $expense->paid_amount + $amount > (int) $expense->amount) {
             throw ValidationException::withMessages(['amount' => 'Le paiement dépasse le reste autorisé de la dépense.']);
         }
+        if ($expense->staff_advance_type === 'loan' && $amount !== (int) $expense->amount - (int) $expense->paid_amount) {
+            throw ValidationException::withMessages(['amount' => 'Un prêt doit être remis en une seule fois pour conserver un seul plan de remboursement mensuel.']);
+        }
         if ($custody === 'shop') {
             abort_unless($locationId && (int) $expense->stock_location_id === $locationId, 422, 'La boutique de paiement doit être celle de la demande.');
             if (! $payer->isAdmin() && (int) StockLocation::query()->whereKey($locationId)->value('responsible_user_id') !== (int) $payer->id) {
@@ -220,6 +225,9 @@ class FinanceExpenseWorkflowService
             abort_unless(in_array($locked->status, ['authorized_to_pay', 'partially_paid'], true), 409);
             if ((int) $locked->paid_amount + $amount > (int) $locked->amount) {
                 throw ValidationException::withMessages(['amount' => 'Le paiement dépasse le reste autorisé de la dépense.']);
+            }
+            if ($locked->staff_advance_type === 'loan' && $amount !== (int) $locked->amount - (int) $locked->paid_amount) {
+                throw ValidationException::withMessages(['amount' => 'Un prêt doit être remis en une seule fois pour conserver un seul plan de remboursement mensuel.']);
             }
 
             $payrollPeriod = null;
@@ -249,13 +257,16 @@ class FinanceExpenseWorkflowService
                 'payment_reference' => $reference, 'proof_path' => $proofPath,
                 'paid_by' => $payer->id, 'paid_at' => now(),
             ]);
+            $isStaffLoan = $locked->staff_user_id && $locked->staff_advance_type === 'loan';
             $this->ledger->record([
-                'movement_type' => 'expense_payment', 'from_custody' => $custody, 'to_custody' => 'external',
+                'movement_type' => $isStaffLoan ? 'staff_loan_disbursed' : 'expense_payment', 'from_custody' => $custody, 'to_custody' => 'external',
                 'amount' => $amount, 'stock_location_id' => $custody === 'shop' ? $locationId : null,
-                'source_type' => 'expense_payment', 'source_id' => $payment->id,
-                'source_key' => 'expense-payment:'.$payment->id,
+                'source_type' => $isStaffLoan ? 'staff_loan_disbursement' : 'expense_payment', 'source_id' => $payment->id,
+                'source_key' => ($isStaffLoan ? 'staff-loan-disbursement:' : 'expense-payment:').$payment->id,
                 'source_reference' => $locked->reference, 'occurred_at' => now(),
-                'description' => 'Paiement de la dépense '.$locked->reference.' au bénéficiaire '.$locked->beneficiary.'.',
+                'description' => $isStaffLoan
+                    ? 'Prêt accordé à '.$locked->beneficiary.' · '.$locked->reference.'.'
+                    : 'Paiement de la dépense '.$locked->reference.' au bénéficiaire '.$locked->beneficiary.'.',
                 'created_by' => $payer->id,
             ]);
 
@@ -270,6 +281,8 @@ class FinanceExpenseWorkflowService
                     'reference' => 'TMP-'.Str::uuid(), 'user_id' => $locked->staff_user_id,
                     'finance_expense_payment_id' => $payment->id, 'amount' => $amount,
                     'advance_type' => $locked->staff_advance_type ?: 'loan',
+                    'repayment_method' => $locked->staff_repayment_method,
+                    'repayment_value' => $locked->staff_repayment_value,
                     'payroll_period_id' => $payrollPeriod?->id,
                     'granted_on' => $payment->paid_at->toDateString(), 'reason' => $locked->description,
                     'created_by' => $payer->id,

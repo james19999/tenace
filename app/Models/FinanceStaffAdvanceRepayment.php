@@ -7,7 +7,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 class FinanceStaffAdvanceRepayment extends Model
 {
-    protected $fillable = ['advance_id', 'amount', 'received_at', 'received_by'];
+    protected $fillable = ['advance_id', 'employee_payroll_payment_id', 'amount', 'received_at', 'received_by'];
     protected $casts = ['amount' => 'integer', 'received_at' => 'datetime'];
 
     public function advance(): BelongsTo { return $this->belongsTo(FinanceStaffAdvance::class, 'advance_id'); }

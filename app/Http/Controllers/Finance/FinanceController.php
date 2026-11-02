@@ -46,7 +46,9 @@ class FinanceController extends Controller
                 $scope->whereIn('stock_location_id', $locationIds)->orWhere('collector_id', $user->id);
             });
         });
-        $expenses = FinanceExpenseRequest::query()->when(! $canSeeAll, function ($query) use ($user, $locationIds): void {
+        $expenses = FinanceExpenseRequest::query()->where(function ($query): void {
+            $query->whereNull('staff_advance_type')->orWhere('staff_advance_type', '<>', 'loan');
+        })->when(! $canSeeAll, function ($query) use ($user, $locationIds): void {
             $query->where(function ($scope) use ($user, $locationIds): void {
                 $scope->where('requested_by', $user->id)->orWhereIn('stock_location_id', $locationIds);
             });
@@ -353,7 +355,9 @@ class FinanceController extends Controller
         if ($user->isWholesaleSalesRole() && $this->wholesaleLocationId()) {
             $locationIds->push($this->wholesaleLocationId());
         }
-        $rows = FinanceExpenseRequest::query()->with(['location', 'requester', 'financeReviewer', 'director'])
+        $rows = FinanceExpenseRequest::query()->where(function ($query): void {
+                $query->whereNull('staff_advance_type')->orWhere('staff_advance_type', '<>', 'loan');
+            })->with(['location', 'requester', 'financeReviewer', 'director'])
             ->when(! $canSeeAll, fn ($query) => $query->where(fn ($scope) => $scope->where('requested_by', $user->id)->orWhereIn('stock_location_id', $locationIds)))
             ->when($request->filled('status'), fn ($query) => $query->where('status', (string) $request->string('status')))
             ->when($request->filled('search'), fn ($query) => $query->where(fn ($scope) => $scope->where('reference', 'like', '%'.$request->string('search').'%')->orWhere('beneficiary', 'like', '%'.$request->string('search').'%')->orWhere('description', 'like', '%'.$request->string('search').'%')))

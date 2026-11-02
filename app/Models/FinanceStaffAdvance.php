@@ -9,10 +9,10 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 class FinanceStaffAdvance extends Model
 {
     protected $fillable = [
-        'reference', 'user_id', 'finance_expense_payment_id', 'employee_payroll_payment_id', 'amount', 'advance_type', 'payroll_period_id',
+        'reference', 'user_id', 'finance_expense_payment_id', 'employee_payroll_payment_id', 'amount', 'advance_type', 'repayment_method', 'repayment_value', 'payroll_period_id',
         'repaid_amount', 'granted_on', 'reason', 'created_by',
     ];
-    protected $casts = ['amount' => 'integer', 'repaid_amount' => 'integer', 'granted_on' => 'date'];
+    protected $casts = ['amount' => 'integer', 'repaid_amount' => 'integer', 'granted_on' => 'date', 'repayment_value' => 'decimal:2'];
 
     public function employee(): BelongsTo { return $this->belongsTo(User::class, 'user_id'); }
     public function payrollPeriod(): BelongsTo { return $this->belongsTo(EmployeePayrollPeriod::class, 'payroll_period_id'); }

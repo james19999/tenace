@@ -36,6 +36,31 @@ class FinanceCashWorkflowTest extends TestCase
         $migration->up();
         $migration = require database_path('migrations/2026_10_31_000002_add_finance_management_links_to_expenses.php');
         $migration->up();
+        // This focused workflow test builds only a subset of the application's
+        // schema, so keep the staff advance columns aligned with current code.
+        Schema::table('finance_expense_requests', function (Blueprint $table): void {
+            $table->string('staff_advance_type', 24)->nullable();
+            $table->unsignedBigInteger('staff_payroll_period_id')->nullable();
+            $table->string('staff_repayment_method', 24)->nullable();
+            $table->decimal('staff_repayment_value', 12, 2)->nullable();
+        });
+        Schema::table('finance_staff_advances', function (Blueprint $table): void {
+            $table->string('advance_type', 24)->default('loan');
+            $table->unsignedBigInteger('payroll_period_id')->nullable();
+            $table->string('repayment_method', 24)->nullable();
+            $table->decimal('repayment_value', 12, 2)->nullable();
+        });
+        Schema::create('employee_payroll_periods', function (Blueprint $table): void {
+            $table->id();
+            $table->unsignedBigInteger('user_id');
+            $table->date('period_start');
+            $table->unsignedBigInteger('salary_amount')->default(0);
+            $table->timestamps();
+        });
+        $migration = require database_path('migrations/2026_11_01_000002_create_finance_equipment_purchase_requests.php');
+        $migration->up();
+        $migration = require database_path('migrations/2026_11_01_000003_create_finance_equipment_purchase_settings_table.php');
+        $migration->up();
     }
 
     protected function tearDown(): void

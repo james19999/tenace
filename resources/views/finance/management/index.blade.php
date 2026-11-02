@@ -33,41 +33,237 @@
             <div class="table-responsive"><table class="table fm-table"><thead><tr><th>Catégorie</th><th>Boutique</th><th>Période</th><th>Budget</th><th>Payé</th><th>Disponible</th></tr></thead><tbody>@forelse($budgets as $budget)<tr><td><strong>{{ $budget->category_name }}</strong>@if($budget->note)<small>{{ $budget->note }}</small>@endif</td><td>{{ $budget->location?->name ?? 'Central / toutes' }}</td><td>{{ $budget->period_start->format('d/m/Y') }} – {{ $budget->period_end->format('d/m/Y') }}</td><td>{{ number_format($budget->amount,0,',',' ') }} F</td><td>{{ number_format($budget->actual_amount,0,',',' ') }} F</td><td><strong class="{{ $budget->actual_amount > $budget->amount ? 'fm-over' : '' }}">{{ number_format($budget->amount-$budget->actual_amount,0,',',' ') }} F</strong></td></tr>@empty<tr><td colspan="6" class="fm-empty">Aucun budget défini pour la période en cours.</td></tr>@endforelse</tbody></table></div>
             <div class="fm-pagination">{{ $budgets->onEachSide(1)->links() }}</div>
         </section>
-        <section class="fm-card"><div class="fm-section-head"><div><h2>Estimation de l’argent disponible dans les 13 prochaines semaines</h2><p>Estimation basée sur les entrées récentes, les factures fournisseurs à payer et les dépenses déjà autorisées. Ce n’est pas une promesse : les paiements clients futurs ne sont pas comptés.</p></div></div>
-            <div class="table-responsive"><table class="table fm-table"><thead><tr><th>Semaine</th><th>Entrées estimées</th><th>Factures fournisseurs dues</th><th>Dépenses autorisées prévues</th><th>Solde projeté</th></tr></thead><tbody>@foreach($forecast['weeks'] as $week)<tr><td>{{ $week['start']->format('d/m') }} – {{ $week['end']->format('d/m/Y') }}</td><td>+{{ number_format($week['inflow'],0,',',' ') }} F</td><td>{{ number_format($week['supplier_due'],0,',',' ') }} F</td><td>{{ number_format($week['expense_due'],0,',',' ') }} F</td><td><strong class="{{ $week['projected_balance'] < 0 ? 'fm-over' : '' }}">{{ number_format($week['projected_balance'],0,',',' ') }} F</strong></td></tr>@endforeach</tbody></table></div>
+        <section class="fm-card"><div class="fm-section-head"><div><h2>Estimation de l’argent disponible dans les 13 prochaines semaines</h2><p>Le solde projeté tient compte des dépenses, des prêts à remettre et des factures fournisseurs. Les prêts pèsent sur la trésorerie, mais ne sont pas comptés comme dépenses.</p></div></div>
+            <div class="table-responsive"><table class="table fm-table"><thead><tr><th>Semaine</th><th>Entrées estimées</th><th>Factures fournisseurs dues</th><th>Dépenses prévues</th><th>Prêts à remettre</th><th>Solde projeté</th></tr></thead><tbody>@foreach($forecast['weeks'] as $week)<tr><td>{{ $week['start']->format('d/m') }} – {{ $week['end']->format('d/m/Y') }}</td><td>+{{ number_format($week['inflow'],0,',',' ') }} F</td><td>{{ number_format($week['supplier_due'],0,',',' ') }} F</td><td>{{ number_format($week['expense_due'],0,',',' ') }} F</td><td>{{ number_format($week['loan_due'],0,',',' ') }} F</td><td><strong class="{{ $week['projected_balance'] < 0 ? 'fm-over' : '' }}">{{ number_format($week['projected_balance'],0,',',' ') }} F</strong></td></tr>@endforeach</tbody></table></div>
             <p class="fm-footnote">Cette projection sert au pilotage. Elle ne remplace pas un plan de trésorerie validé et ne constitue pas une écriture comptable.</p>
         </section>
     @elseif($tab==='team')
-        <section class="fm-card fm-scope-note"><strong>Avances du personnel</strong><p>Les demandes des employés sont décidées par le DG. Enregistre le paiement uniquement au moment où l’argent est remis pour mettre à jour la caisse et le dossier de la personne.</p></section>
+        <nav class="fm-team-tabs" aria-label="Suivi des avances et prêts">
+            @if(auth()->user()->isAdmin())
+                <a class="{{ $teamView==='requests'?'is-active':'' }}" href="{{ route('finance.management.index',['tab'=>'team','team_view'=>'requests']) }}">Demandes à examiner <b>{{ $pendingEmployeeAdvances->total() }}</b></a>
+                <a class="{{ $teamView==='disburse'?'is-active':'' }}" href="{{ route('finance.management.index',['tab'=>'team','team_view'=>'disburse']) }}">À remettre <b>{{ $loansToDisburse->total() }}</b></a>
+            @endif
+            <a class="{{ $teamView==='loans'?'is-active':'' }}" href="{{ route('finance.management.index',['tab'=>'team','team_view'=>'loans']) }}">Dossiers avances et prêts</a>
+            <a class="{{ $teamView==='create'?'is-active':'' }}" href="{{ route('finance.management.index',['tab'=>'team','team_view'=>'create']) }}">{{ auth()->user()->isAdmin() ? 'Enregistrer une avance' : 'Demander une avance' }}</a>
+        </nav>
+        @if($teamView==='requests' || $teamView==='disburse')
+            <section class="fm-card fm-scope-note"><strong>Demandes et remise des fonds</strong><p>Un prêt est suivi séparément des dépenses. Après validation, enregistre sa remise réelle dans le dossier pour commencer son suivi.</p></section>
+        @endif
         @if(auth()->user()->isAdmin())
-        <section class="fm-card"><div class="fm-section-head"><div><h2>Demandes d’avance envoyées par les employés</h2><p>Valide ou refuse les demandes personnelles ici. Après acceptation, enregistre le paiement dans le circuit habituel pour débiter la caisse.</p></div></div>
-            <div class="table-responsive"><table class="table fm-table"><thead><tr><th>Employé</th><th>Montant</th><th>Motif</th><th>Date demandée</th><th>Décision</th></tr></thead><tbody>
-                @forelse($pendingEmployeeAdvances as $request)<tr><td><strong>{{ $request->staffMember?->name ?? $request->requester?->name }}</strong></td><td>{{ number_format($request->amount,0,',',' ') }} F</td><td>{{ $request->justification_note }}</td><td>{{ $request->submitted_at?->format('d/m/Y') }}</td><td><div class="fm-decision-actions"><form method="POST" action="{{ route('finance.management.employee-advances.decide',$request) }}">@csrf<input type="hidden" name="decision" value="approved"><button class="btn btn-sm btn-primary">Accepter</button></form><form method="POST" action="{{ route('finance.management.employee-advances.decide',$request) }}">@csrf<input type="hidden" name="decision" value="rejected"><input class="form-control" name="comment" placeholder="Motif du refus" aria-label="Motif du refus" required><button class="btn btn-sm btn-outline-primary">Refuser</button></form></div></td></tr>
-                @empty<tr><td colspan="5" class="fm-empty">Aucune demande d’avance en attente.</td></tr>@endforelse
-            </tbody></table></div><div class="fm-pagination">{{ $pendingEmployeeAdvances->onEachSide(1)->links() }}</div>
+        @if($teamView==='requests')
+        <section class="fm-card">
+            <div class="fm-section-head"><div><h2>Demandes à examiner</h2><p>Vérifie le montant et le motif. Pour un prêt, définis aussi la retenue mensuelle.</p></div><span class="fm-count">{{ $pendingEmployeeAdvances->total() }} en attente</span></div>
+            <div class="fm-advance-list">
+                @forelse($pendingEmployeeAdvances as $request)
+                    <article class="fm-advance-card">
+                        <div class="fm-advance-heading"><div><span class="fm-advance-kind">{{ $request->staff_advance_type === 'loan' ? 'Prêt à rembourser' : 'Avance sur salaire' }}</span><h3>{{ $request->staffMember?->name ?? $request->requester?->name }}</h3></div><strong class="fm-advance-amount">{{ number_format($request->amount,0,',',' ') }} F</strong></div>
+                        <div class="fm-advance-meta"><span>Demandée le {{ $request->submitted_at?->format('d/m/Y') ?? '—' }}</span>@if($request->justification_note)<p>{{ $request->justification_note }}</p>@endif</div>
+                        <div class="fm-advance-actions">
+                            <form class="fm-loan-approval" method="POST" action="{{ route('finance.management.employee-advances.decide',$request) }}">@csrf<input type="hidden" name="decision" value="approved">
+                                @if($request->staff_advance_type === 'loan')
+                                    <label>Retenue mensuelle<select class="form-control js-loan-method" name="repayment_method" required><option value="fixed_amount" @selected($request->staff_repayment_method === 'fixed_amount')>Montant fixe · F CFA</option><option value="salary_percent" @selected($request->staff_repayment_method === 'salary_percent')>Pourcentage du salaire</option></select></label>
+                                    <label><span class="js-loan-value-label">Somme fixe à retenir par mois (F CFA)</span><input class="form-control js-loan-value" type="number" name="repayment_value" min="1" max="1000000000" step="1" value="{{ old('repayment_value', $request->staff_repayment_value) }}" placeholder="Ex. 10000" required><small class="js-loan-value-help">Cette somme sera retenue automatiquement sur le salaire chaque mois.</small></label>
+                                @endif
+                                <button class="btn btn-primary">Accepter la demande</button>
+                            </form>
+                            <form class="fm-reject-form" method="POST" action="{{ route('finance.management.employee-advances.decide',$request) }}">@csrf<input type="hidden" name="decision" value="rejected"><label>Motif du refus<input class="form-control" name="comment" placeholder="Ex. montant à préciser" aria-label="Motif du refus" required></label><button class="btn btn-outline-primary">Refuser</button></form>
+                        </div>
+                    </article>
+                @empty
+                    <div class="fm-team-empty"><span class="material-icons">task_alt</span><strong>Aucune demande à examiner</strong><p>Les nouvelles demandes des employés apparaîtront ici.</p></div>
+                @endforelse
+            </div>
+            <div class="fm-pagination">{{ $pendingEmployeeAdvances->onEachSide(1)->links() }}</div>
         </section>
         @endif
-        <section class="fm-kpis"><article><span>Prêts du personnel restant à rembourser</span><strong>{{ number_format($advanceOutstanding,0,',',' ') }} F</strong></article></section>
-        <section class="fm-card"><div class="fm-section-head"><div><h2>{{ auth()->user()->isAdmin() ? 'Enregistrer une avance à un employé' : 'Demander une avance à un employé' }}</h2><p>Choisis si l’avance sera déduite d’un mois de salaire ou remboursée séparément. @if(auth()->user()->isAdmin())Le DG l’autorise directement ici ; son paiement devra ensuite être enregistré pour mettre à jour la caisse.@elseLe Comptable transmet la demande au circuit de validation.@endif</p></div></div>
+        @endif
+        @if($teamView==='disburse' && auth()->user()->isAdmin())
+        <section class="fm-card">
+            <div class="fm-section-head"><div><h2>Prêts autorisés à remettre</h2><p>Le prêt ne commence qu’après enregistrement de la remise effective de l’argent.</p></div><span class="fm-count">{{ $loansToDisburse->total() }} à remettre</span></div>
+            <div class="fm-advance-list">
+                @forelse($loansToDisburse as $loanRequest)
+                    <article class="fm-advance-card fm-disbursement-card"><div class="fm-advance-heading"><div><span class="fm-advance-kind">{{ $loanRequest->reference }}</span><h3>{{ $loanRequest->staffMember?->name ?? $loanRequest->beneficiary }}</h3></div><strong class="fm-advance-amount">{{ number_format(max(0,$loanRequest->amount-$loanRequest->paid_amount),0,',',' ') }} F</strong></div><div class="fm-advance-meta"><span>À remettre</span><span>Retenue : {{ $loanRequest->staff_repayment_method === 'salary_percent' ? number_format((float)$loanRequest->staff_repayment_value,2,',',' ').' % du salaire' : ($loanRequest->staff_repayment_value ? number_format((int)$loanRequest->staff_repayment_value,0,',',' ').' F / mois' : 'À définir') }}</span></div><a class="btn btn-outline-primary" href="{{ route('finance.expenses.show',$loanRequest) }}">Ouvrir le dossier et enregistrer la remise</a></article>
+                @empty
+                    <div class="fm-team-empty"><span class="material-icons">payments</span><strong>Aucun prêt à remettre</strong><p>Les prêts acceptés apparaîtront ici jusqu’à l’enregistrement de leur paiement.</p></div>
+                @endforelse
+            </div>
+            <div class="fm-pagination">{{ $loansToDisburse->onEachSide(1)->links() }}</div>
+        </section>
+        @endif
+        @if($teamView==='create')
+        <section class="fm-card"><div class="fm-section-head"><div><h2>{{ auth()->user()->isAdmin() ? 'Enregistrer une avance à un employé' : 'Demander une avance à un employé' }}</h2><p>Un prêt est remboursé chaque mois par un montant fixe ou un pourcentage du salaire. @if(auth()->user()->isAdmin())Le DG l’autorise directement ici ; enregistre le décaissement lors de la remise.@elseLa demande est transmise au DG pour décision.@endif</p></div></div>
             <form class="fm-form-grid" method="POST" action="{{ route('finance.management.advances.store') }}">@csrf
                 <label>Employé<select class="form-control" name="user_id" required><option value="">Choisir une personne</option>@foreach($employees as $employee)<option value="{{ $employee->id }}">{{ $employee->name }}</option>@endforeach</select></label>
                 <label>Type d’avance<select class="form-control" name="advance_type" id="staff-advance-type" required><option value="loan">Prêt à rembourser séparément</option><option value="salary_advance">Avance à déduire d’un salaire</option></select></label>
-                <label id="staff-advance-period-field" hidden>Mois de paie concerné<select class="form-control" name="payroll_period_id"><option value="">Choisir le mois</option>@foreach($salaryPeriods as $period)<option value="{{ $period->id }}">{{ $period->employee?->name }} · {{ $period->period_start->translatedFormat('F Y') }}</option>@endforeach</select></label>
-                <label>Montant (F CFA)<input class="form-control" type="number" name="amount" min="1" required></label><label>Date prévue<input class="form-control" type="date" name="granted_on" value="{{ today()->toDateString() }}" required></label><label>Motif<textarea class="form-control" name="reason" rows="2" required maxlength="2000"></textarea></label><div class="fm-form-action"><button class="btn btn-primary">{{ auth()->user()->isAdmin() ? 'Autoriser l’avance' : 'Soumettre à validation' }}</button></div>
+                <label>Montant de l’avance (F CFA)<input class="form-control" type="number" name="amount" min="1" required></label>
+                <label id="staff-loan-plan-field">Remboursement mensuel<select class="form-control" name="repayment_method" id="staff-repayment-method"><option value="fixed_amount">Montant fixe · F CFA</option><option value="salary_percent">Pourcentage du salaire</option></select></label>
+                <label id="staff-loan-value-field"><span id="staff-loan-value-label">Somme fixe à retenir par mois (F CFA)</span><input class="form-control" type="number" name="repayment_value" min="1" max="1000000000" step="1" placeholder="Ex. 10000" required><small id="staff-loan-value-help">Cette somme sera retenue automatiquement sur le salaire chaque mois jusqu’au remboursement complet.</small></label>
+                <label id="staff-advance-period-field" hidden><span>Mois de salaire à réduire</span><select class="form-control" name="payroll_period_id" id="staff-advance-period"><option value="">Choisir d’abord un employé</option>@foreach($salaryPeriods as $period)<option value="{{ $period->id }}" data-user-id="{{ $period->user_id }}">{{ $period->period_start->translatedFormat('F Y') }}</option>@endforeach</select><small id="staff-advance-period-help">L’avance sera déduite du salaire de la personne pour ce mois.</small></label>
+                <label>Date prévue<input class="form-control" type="date" name="granted_on" value="{{ today()->toDateString() }}" required></label><label>Motif<textarea class="form-control" name="reason" rows="2" required maxlength="2000"></textarea></label><div class="fm-form-action"><button class="btn btn-primary">{{ auth()->user()->isAdmin() ? 'Autoriser l’avance' : 'Soumettre à validation' }}</button></div>
             </form>
             <script>
                 (function () {
                     var type = document.getElementById('staff-advance-type');
                     var field = document.getElementById('staff-advance-period-field');
-                    if (!type || !field) return;
-                    var period = field.querySelector('select');
-                    var update = function () { field.hidden = type.value !== 'salary_advance'; if (period) period.required = !field.hidden; };
+                    var employee = document.querySelector('select[name="user_id"]');
+                    var loanPlan = document.getElementById('staff-loan-plan-field');
+                    var loanValue = document.getElementById('staff-loan-value-field');
+                    if (!type || !field || !employee || !loanPlan || !loanValue) return;
+                    var period = document.getElementById('staff-advance-period');
+                    var periodHelp = document.getElementById('staff-advance-period-help');
+                    var method = document.getElementById('staff-repayment-method');
+                    var value = loanValue.querySelector('input');
+                    var help = document.getElementById('staff-loan-value-help');
+                    var valueLabel = document.getElementById('staff-loan-value-label');
+                    var update = function () {
+                        field.hidden = type.value !== 'salary_advance';
+                        loanPlan.hidden = type.value !== 'loan';
+                        loanValue.hidden = type.value !== 'loan';
+                        if (period) period.required = !field.hidden;
+                        if (value) value.required = type.value === 'loan';
+                        if (method && value) {
+                            var percent = method.value === 'salary_percent';
+                            value.max = percent ? '100' : '1000000000';
+                            value.step = percent ? '0.01' : '1';
+                            value.min = percent ? '0.01' : '1';
+                            value.placeholder = percent ? 'Ex. 10' : 'Ex. 10000';
+                            if (valueLabel) valueLabel.textContent = percent ? 'Pourcentage du salaire à retenir chaque mois (%)' : 'Somme fixe à retenir par mois (F CFA)';
+                            if (help) help.textContent = percent ? 'Ce pourcentage du salaire sera retenu automatiquement chaque mois jusqu’au remboursement complet.' : 'Cette somme sera retenue automatiquement sur le salaire chaque mois jusqu’au remboursement complet.';
+                        }
+                    };
+                    var updatePeriods = function () {
+                        if (!period) return;
+                        var employeeId = employee.value;
+                        var available = 0;
+                        Array.from(period.options).slice(1).forEach(function (option) {
+                            var matches = employeeId !== '' && option.dataset.userId === employeeId;
+                            option.hidden = !matches;
+                            option.disabled = !matches;
+                            if (matches) available++;
+                        });
+                        var selected = period.selectedOptions[0];
+                        if (selected && selected.dataset.userId && selected.dataset.userId !== employeeId) period.value = '';
+                        period.options[0].textContent = !employeeId ? 'Choisir d’abord un employé' : (available ? 'Choisir le mois de salaire' : 'Aucun mois de salaire disponible');
+                        period.disabled = !employeeId || available === 0;
+                        if (periodHelp) periodHelp.textContent = available
+                            ? 'L’avance sera déduite du salaire de la personne sélectionnée pour ce mois.'
+                            : 'Aucun mois de paie n’est encore ouvert pour cette personne. Demande à l’administration de préparer sa paie.';
+                    };
                     type.addEventListener('change', update);
+                    employee.addEventListener('change', updatePeriods);
+                    if (method) method.addEventListener('change', update);
+                    updatePeriods();
                     update();
                 })();
             </script>
-            <div class="table-responsive"><table class="table fm-table"><thead><tr><th>Référence</th><th>Employé</th><th>Type / mois</th><th>Date</th><th>Montant</th><th>Remboursé</th><th>Solde ou suivi</th><th>Action</th></tr></thead><tbody>@forelse($advances as $advance)<tr><td><strong>{{ $advance->reference }}</strong><small>{{ $advance->reason }}</small>@foreach($advance->repayments as $repayment)<small>Remboursement {{ $repayment->received_at->format('d/m/Y') }} · {{ number_format($repayment->amount,0,',',' ') }} F</small>@endforeach</td><td>{{ $advance->employee?->name }}</td><td>{{ $advance->advance_type === 'salary_advance' ? 'Avance sur salaire · '.($advance->payrollPeriod?->period_start->translatedFormat('F Y') ?? 'mois non défini') : 'Prêt au personnel' }}</td><td>{{ $advance->granted_on->format('d/m/Y') }}</td><td>{{ number_format($advance->amount,0,',',' ') }} F</td><td>{{ $advance->advance_type === 'loan' ? number_format($advance->repaid_amount,0,',',' ').' F' : 'Déduite de la paie' }}</td><td>{{ $advance->advance_type === 'loan' ? number_format($advance->amount-$advance->repaid_amount,0,',',' ').' F' : 'Suivie dans le dossier' }}</td><td>@if($advance->advance_type === 'loan' && $advance->repaid_amount < $advance->amount)<form class="fm-inline-form" method="POST" action="{{ route('finance.management.advances.repay',$advance) }}">@csrf<input class="form-control" type="number" name="amount" min="1" max="{{ $advance->amount-$advance->repaid_amount }}" placeholder="Montant" required><input type="hidden" name="received_at" value="{{ now()->format('Y-m-d\TH:i') }}"><button class="btn btn-sm btn-outline-primary">Confirmer</button></form>@elseif($advance->advance_type === 'loan')<span class="fm-tag">Soldé</span>@else<span class="fm-tag">Intégrée à la paie</span>@endif</td></tr>@empty<tr><td colspan="8" class="fm-empty">Aucune avance enregistrée.</td></tr>@endforelse</tbody></table></div>{{ $advances->links() }}
         </section>
+        @endif
+        @if($teamView==='loans')
+        <section class="fm-card">
+            <div class="fm-section-head"><div><h2>Employés avec une avance ou un prêt</h2><p>Recherche un nom pour afficher son dossier et consulter les montants ainsi que les remboursements éventuels.</p></div></div>
+            <form class="fm-loan-search-form" method="GET" action="{{ route('finance.management.index') }}" autocomplete="off">
+                <input type="hidden" name="tab" value="team"><input type="hidden" name="team_view" value="loans">
+                <label class="fm-loan-search-label" for="fm-loan-search">Rechercher un employé</label>
+                <input id="fm-loan-search" name="advance_search" value="{{ $advanceSearch }}" class="form-control fm-loan-search" type="search" placeholder="Commence à taper un nom…" autocomplete="off">
+            </form>
+            <div class="fm-employee-loan-list" id="fm-employee-loan-list">
+                @forelse($advances->getCollection()->groupBy('user_id') as $employeeAdvances)
+                    @php
+                        $loanEmployee = $employeeAdvances->first()->employee;
+                        $employeeLoanBalance = $employeeAdvances->where('advance_type', 'loan')->sum(fn ($item) => max(0, (int) $item->amount - (int) $item->repaid_amount));
+                        $employeeSearchName = mb_strtolower($loanEmployee?->name ?? 'Employé');
+                    @endphp
+                    <details class="fm-employee-loan" data-employee-name="{{ $employeeSearchName }}">
+                        <summary><span><strong>{{ $loanEmployee?->name ?? 'Employé' }}</strong><small>{{ $employeeAdvances->count() }} dossier{{ $employeeAdvances->count() > 1 ? 's' : '' }}</small></span>@if($employeeLoanBalance > 0)<b>{{ number_format($employeeLoanBalance,0,',',' ') }} F à rembourser</b>@else<b>Avance sur salaire</b>@endif</summary>
+                        <div class="fm-employee-loan-dossiers">
+                            @foreach($employeeAdvances as $advance)
+                                @php
+                                    $remaining = max(0, (int) $advance->amount - (int) $advance->repaid_amount);
+                                    $isLoan = $advance->advance_type === 'loan';
+                                    $planLabel = $advance->repayment_method === 'salary_percent'
+                                        ? number_format((float) $advance->repayment_value, 2, ',', ' ').' % du salaire'
+                                        : ($advance->repayment_value ? number_format((int) $advance->repayment_value, 0, ',', ' ').' F / mois' : 'À définir');
+                                @endphp
+                                <article class="fm-advance-card fm-recorded-advance">
+                                    <div class="fm-advance-heading"><div><span class="fm-advance-kind">{{ $advance->reference }} · {{ $advance->granted_on->format('d/m/Y') }}</span><h3>{{ $isLoan ? 'Prêt' : 'Avance sur salaire' }} · {{ number_format($advance->amount,0,',',' ') }} F</h3></div><span class="fm-tag {{ $isLoan ? ($remaining > 0 ? 'fm-tag-open' : 'fm-tag-closed') : 'fm-tag-closed' }}">{{ $isLoan ? ($remaining > 0 ? 'Remboursement en cours' : 'Soldé') : 'À déduire de la paie' }}</span></div>
+                                    @if($isLoan)<div class="fm-advance-facts"><div><span>Déjà remboursé</span><strong>{{ number_format($advance->repaid_amount,0,',',' ') }} F</strong></div><div><span>Reste à rembourser</span><strong>{{ number_format($remaining,0,',',' ') }} F</strong></div><div><span>Retenue mensuelle</span><strong>{{ $planLabel }}</strong></div></div>@else<div class="fm-advance-facts"><div><span>Mois de paie concerné</span><strong>{{ $advance->payrollPeriod?->period_start->translatedFormat('F Y') ?? 'Non défini' }}</strong></div><div><span>Suivi</span><strong>Déduite du salaire du mois indiqué</strong></div></div>@endif
+                                    @if($advance->reason)<p class="fm-advance-reason">{{ $advance->reason }}</p>@endif
+                                    @if($advance->repayments->isNotEmpty())<details class="fm-repayment-history"><summary>Historique des remboursements ({{ $advance->repayments->count() }})</summary><ul>@foreach($advance->repayments as $repayment)<li><span>{{ $repayment->employee_payroll_payment_id ? 'Retenue sur salaire' : 'Remboursement reçu' }} · {{ $repayment->received_at->format('d/m/Y') }}</span><strong>{{ number_format($repayment->amount,0,',',' ') }} F</strong></li>@endforeach</ul></details>@endif
+                                    @if($isLoan && $remaining > 0 && auth()->user()->isAdmin())
+                                        <div class="fm-advance-admin-actions">
+                                            @if(!$advance->repayment_method)<form class="fm-loan-plan-form" method="POST" action="{{ route('finance.management.advances.plan.update',$advance) }}">@csrf @method('PUT')<strong>Définir la retenue mensuelle</strong><div><select class="form-control js-loan-method" name="repayment_method"><option value="fixed_amount">Montant fixe</option><option value="salary_percent">Pourcentage du salaire</option></select><input class="form-control js-loan-value" type="number" name="repayment_value" min="1" max="1000000000" step="1" placeholder="Montant / %" required><button class="btn btn-outline-primary">Enregistrer</button></div></form>@endif
+                                            <details class="fm-early-repayment">
+                                                <summary>Enregistrer un remboursement anticipé</summary>
+                                                <p>Facultatif : utilise cette option seulement si l’employé verse une somme avant la fin du prêt. Les retenues mensuelles sur salaire sont déjà enregistrées automatiquement.</p>
+                                                <form class="fm-inline-form" method="POST" action="{{ route('finance.management.advances.repay',$advance) }}">@csrf<label>Montant réellement reçu (F CFA)<input class="form-control" type="number" name="amount" min="1" max="{{ $remaining }}" placeholder="Montant versé" required></label><input type="hidden" name="received_at" value="{{ now()->format('Y-m-d\TH:i') }}"><button class="btn btn-outline-primary">Enregistrer le versement</button></form>
+                                            </details>
+                                        </div>
+                                    @endif
+                                </article>
+                            @endforeach
+                        </div>
+                    </details>
+                @empty
+                    <div class="fm-team-empty"><span class="material-icons">account_balance_wallet</span><strong>{{ $advanceSearch ? 'Aucun employé ne correspond à cette recherche' : 'Aucun employé n’a de prêt enregistré' }}</strong><p>{{ $advanceSearch ? 'Essaie avec un autre nom.' : 'Les dossiers apparaîtront après la remise effective d’un prêt.' }}</p></div>
+                @endforelse
+            </div>
+            <p class="fm-loan-no-results" id="fm-loan-no-results" hidden>Aucun employé ne correspond à cette recherche.</p>
+            <div class="fm-pagination">{{ $advances->onEachSide(1)->links() }}</div>
+            <script>
+                (function () {
+                    var input = document.getElementById('fm-loan-search');
+                    var list = document.getElementById('fm-employee-loan-list');
+                    var empty = document.getElementById('fm-loan-no-results');
+                    if (!input || !list) return;
+                    var timer;
+                    var applyFilter = function () {
+                        var normalize = function (value) {
+                            return value.toLocaleLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+                        };
+                        var query = normalize(input.value.trim());
+                        var visible = 0;
+                        list.querySelectorAll('.fm-employee-loan').forEach(function (item) {
+                            var matches = !query || normalize(item.dataset.employeeName).includes(query);
+                            item.hidden = !matches;
+                            if (matches) {
+                                visible++;
+                                item.open = Boolean(query);
+                            }
+                        });
+                        if (empty) empty.hidden = visible > 0;
+                    };
+                    input.addEventListener('input', function () {
+                        applyFilter();
+                        window.clearTimeout(timer);
+                        var query = input.value.trim();
+                        if (query.length === 0 || query.length >= 2) {
+                            timer = window.setTimeout(function () { input.form.requestSubmit(); }, 350);
+                        }
+                    });
+                    applyFilter();
+                })();
+            </script>
+        </section>
+        @endif
+        <script>
+            document.querySelectorAll('.js-loan-method').forEach(function (select) {
+                var value = select.closest('form')?.querySelector('.js-loan-value');
+                if (!value) return;
+                var update = function () {
+                    var percent = select.value === 'salary_percent';
+                    value.min = percent ? '0.01' : '1';
+                    value.max = percent ? '100' : '1000000000';
+                    value.step = percent ? '0.01' : '1';
+                    value.placeholder = percent ? 'Ex. 10' : 'Ex. 10000';
+                    var label = select.closest('form').querySelector('.js-loan-value-label');
+                    var help = select.closest('form').querySelector('.js-loan-value-help');
+                    if (label) label.textContent = percent ? 'Pourcentage du salaire à retenir chaque mois (%)' : 'Somme fixe à retenir par mois (F CFA)';
+                    if (help) help.textContent = percent ? 'Ce pourcentage du salaire sera retenu automatiquement chaque mois jusqu’au remboursement complet.' : 'Cette somme sera retenue automatiquement sur le salaire chaque mois jusqu’au remboursement complet.';
+                };
+                select.addEventListener('change', update);
+                update();
+            });
+        </script>
     @else
         @if(auth()->user()->isAdmin())
         <section class="fm-card"><div class="fm-section-head"><div><h2>Désigner le responsable des achats de matériel</h2><p>Cette désignation se fait une fois. Ensuite, cette personne crée elle-même chaque demande depuis son onglet « Achats de matériel » ; tu interviens pour valider le montant, remettre l’argent et contrôler les reçus.</p></div></div>
@@ -80,7 +276,7 @@
         @endif
         <section class="fm-card fm-purchases-card"><div class="fm-section-head"><div><h2>Suivi des demandes d’achat</h2><p>Chaque demande est créée par le responsable désigné. Tu peux suivre les fonds remis, contrôler les reçus et confirmer le retour du reliquat.</p></div><span class="fm-purchase-total">{{ $purchaseRequests->total() }} dossier{{ $purchaseRequests->total() === 1 ? '' : 's' }}</span></div>
             <div class="fm-purchase-list">
-                @forelse($purchaseRequests as $purchase)
+                @forelse($purchaseRequests as $purchaseRequestItem)
                     @php
                         $purchaseStates = [
                             'assigned' => ['À compléter par le responsable', 'À préparer', 'pending'],
@@ -89,25 +285,25 @@
                             'submitted_for_review' => ['Reçus transmis · contrôle requis', 'À contrôler', 'review'],
                             'closed' => ['Achat contrôlé et clôturé', 'Clôturé', 'done'],
                         ];
-                        $purchaseState = $purchaseStates[$purchase->status] ?? ['Demande à suivre', 'En cours', 'pending'];
+                        $purchaseState = $purchaseStates[$purchaseRequestItem->status] ?? ['Demande à suivre', 'En cours', 'pending'];
                     @endphp
                     <article class="fm-purchase-item">
-                        <div class="fm-purchase-top"><div><span class="fm-purchase-ref">{{ $purchase->reference }}</span><h3>{{ $purchase->title }}</h3><p>Responsable : <strong>{{ $purchase->assignee?->name ?? 'Non renseigné' }}</strong>@if($purchase->submitted_at) · demande du {{ $purchase->submitted_at->format('d/m/Y à H:i') }}@endif</p></div><span class="fm-purchase-state state-{{ $purchaseState[2] }}">{{ $purchaseState[1] }}<small>{{ $purchaseState[0] }}</small></span></div>
+                        <div class="fm-purchase-top"><div><span class="fm-purchase-ref">{{ $purchaseRequestItem->reference }}</span><h3>{{ $purchaseRequestItem->title }}</h3><p>Responsable : <strong>{{ $purchaseRequestItem->assignee?->name ?? 'Non renseigné' }}</strong>@if($purchaseRequestItem->submitted_at) · demande du {{ $purchaseRequestItem->submitted_at->format('d/m/Y à H:i') }}@endif</p></div><span class="fm-purchase-state state-{{ $purchaseState[2] }}">{{ $purchaseState[1] }}<small>{{ $purchaseState[0] }}</small></span></div>
                         <div class="fm-purchase-facts">
-                            <div class="fm-purchase-fact fm-purchase-need"><span>Articles demandés</span><p>{{ $purchase->needed_items ?: 'La liste des articles reste à compléter.' }}</p></div>
-                            <div class="fm-purchase-fact"><span>Montant demandé</span><strong>{{ $purchase->requested_amount ? number_format($purchase->requested_amount,0,',',' ').' F' : '—' }}</strong></div>
-                            <div class="fm-purchase-fact"><span>Argent remis</span><strong>{{ number_format($purchase->cash_issued,0,',',' ') }} F</strong></div>
-                            @if($purchase->spent_amount !== null)<div class="fm-purchase-fact"><span>Dépensé</span><strong>{{ number_format($purchase->spent_amount,0,',',' ') }} F</strong></div><div class="fm-purchase-fact"><span>Reliquat déclaré</span><strong>{{ number_format($purchase->returned_amount,0,',',' ') }} F</strong></div>@endif
+                            <div class="fm-purchase-fact fm-purchase-need"><span>Articles demandés</span><p>{{ $purchaseRequestItem->needed_items ?: 'La liste des articles reste à compléter.' }}</p></div>
+                            <div class="fm-purchase-fact"><span>Montant demandé</span><strong>{{ $purchaseRequestItem->requested_amount ? number_format($purchaseRequestItem->requested_amount,0,',',' ').' F' : '—' }}</strong></div>
+                            <div class="fm-purchase-fact"><span>Argent remis</span><strong>{{ number_format($purchaseRequestItem->cash_issued,0,',',' ') }} F</strong></div>
+                            @if($purchaseRequestItem->spent_amount !== null)<div class="fm-purchase-fact"><span>Dépensé</span><strong>{{ number_format($purchaseRequestItem->spent_amount,0,',',' ') }} F</strong></div><div class="fm-purchase-fact"><span>Reliquat déclaré</span><strong>{{ number_format($purchaseRequestItem->returned_amount,0,',',' ') }} F</strong></div>@endif
                         </div>
-                        @if($purchase->assignment_notes)<div class="fm-purchase-message"><strong>Consignes</strong><p>{{ $purchase->assignment_notes }}</p></div>@endif
-                        @if($purchase->report_note)<div class="fm-purchase-message"><strong>Compte rendu du responsable</strong><p>{{ $purchase->report_note }}</p></div>@endif
-                        @if($purchase->review_note)<div class="fm-purchase-message"><strong>Dernier retour du DG</strong><p>{{ $purchase->review_note }}</p></div>@endif
-                        @if($purchase->receipt_paths)<div class="fm-purchase-receipts"><strong>Reçus transmis</strong>@foreach($purchase->receipt_paths as $i=>$path)<a href="{{ route('finance.management.purchases.receipt',[$purchase,$i]) }}" target="_blank" rel="noopener"><span class="material-icons">description</span> Reçu {{ $loop->iteration }}</a>@endforeach</div>@endif
-                        @if($purchase->status==='awaiting_director' && auth()->user()->isAdmin())
-                            <form class="fm-purchase-action fm-purchase-approve" method="POST" action="{{ route('finance.management.purchases.issue',$purchase) }}">@csrf<div><strong>Valider et remettre les fonds</strong><small>La caisse générale sera débitée du montant saisi.</small></div><label>Montant remis (F CFA)<input class="form-control" type="number" name="approved_amount" min="1" max="{{ $purchase->requested_amount }}" value="{{ $purchase->requested_amount }}" required></label><button class="btn btn-primary">Confirmer la remise</button></form>
+                        @if($purchaseRequestItem->assignment_notes)<div class="fm-purchase-message"><strong>Consignes</strong><p>{{ $purchaseRequestItem->assignment_notes }}</p></div>@endif
+                        @if($purchaseRequestItem->report_note)<div class="fm-purchase-message"><strong>Compte rendu du responsable</strong><p>{{ $purchaseRequestItem->report_note }}</p></div>@endif
+                        @if($purchaseRequestItem->review_note)<div class="fm-purchase-message"><strong>Dernier retour du DG</strong><p>{{ $purchaseRequestItem->review_note }}</p></div>@endif
+                        @if($purchaseRequestItem->receipt_paths)<div class="fm-purchase-receipts"><strong>Reçus transmis</strong>@foreach($purchaseRequestItem->receipt_paths as $i=>$path)<a href="{{ route('finance.management.purchases.receipt',[$purchaseRequestItem,$i]) }}" target="_blank" rel="noopener"><span class="material-icons">description</span> Reçu {{ $loop->iteration }}</a>@endforeach</div>@endif
+                        @if($purchaseRequestItem->status==='awaiting_director' && auth()->user()->isAdmin())
+                            <form class="fm-purchase-action fm-purchase-approve" method="POST" action="{{ route('finance.management.purchases.issue',$purchaseRequestItem) }}">@csrf<div><strong>Valider et remettre les fonds</strong><small>La caisse générale sera débitée du montant saisi.</small></div><label>Montant remis (F CFA)<input class="form-control" type="number" name="approved_amount" min="1" max="{{ $purchaseRequestItem->requested_amount }}" value="{{ $purchaseRequestItem->requested_amount }}" required></label><button class="btn btn-primary">Confirmer la remise</button></form>
                         @endif
-                        @if($purchase->status==='submitted_for_review' && auth()->user()->isAdmin())
-                            <div class="fm-purchase-action fm-purchase-review"><div class="fm-purchase-review-heading"><strong>Contrôle final</strong><small>En clôturant, tu confirmes avoir reçu le reliquat indiqué, s’il y en a un.</small></div><form method="POST" action="{{ route('finance.management.purchases.review',$purchase) }}">@csrf<input type="hidden" name="decision" value="accepted"><button class="btn btn-primary"><span class="material-icons">task_alt</span> Confirmer et clôturer</button></form><form class="fm-purchase-correction" method="POST" action="{{ route('finance.management.purchases.review',$purchase) }}">@csrf<input type="hidden" name="decision" value="correction"><input class="form-control" name="review_note" placeholder="Précision à demander au responsable" aria-label="Précision à demander au responsable" required><button class="btn btn-outline-primary">Demander un complément</button></form></div>
+                        @if($purchaseRequestItem->status==='submitted_for_review' && auth()->user()->isAdmin())
+                            <div class="fm-purchase-action fm-purchase-review"><div class="fm-purchase-review-heading"><strong>Contrôle final</strong><small>En clôturant, tu confirmes avoir reçu le reliquat indiqué, s’il y en a un.</small></div><form method="POST" action="{{ route('finance.management.purchases.review',$purchaseRequestItem) }}">@csrf<input type="hidden" name="decision" value="accepted"><button class="btn btn-primary"><span class="material-icons">task_alt</span> Confirmer et clôturer</button></form><form class="fm-purchase-correction" method="POST" action="{{ route('finance.management.purchases.review',$purchaseRequestItem) }}">@csrf<input type="hidden" name="decision" value="correction"><input class="form-control" name="review_note" placeholder="Précision à demander au responsable" aria-label="Précision à demander au responsable" required><button class="btn btn-outline-primary">Demander un complément</button></form></div>
                         @endif
                     </article>
                 @empty
@@ -129,5 +325,91 @@
 html[data-app-theme="dark"] .fm-purchase-state.state-action,html[data-app-theme="dark"] .fm-purchase-state.state-review{background:#49391b;color:#f3d28b}html[data-app-theme="dark"] .fm-purchase-state.state-progress{background:#20364a;color:#acd4f1}html[data-app-theme="dark"] .fm-purchase-state.state-done{background:#203d30;color:#a6dfbf}
 @media(max-width:1000px){.fm-purchase-facts{grid-template-columns:repeat(2,minmax(0,1fr))}.fm-purchase-need{grid-column:1/-1}.fm-purchase-review{grid-template-columns:1fr 1fr}.fm-purchase-review-heading{grid-column:1/-1}.fm-purchase-review .fm-purchase-correction{grid-column:1/-1}}
 @media(max-width:600px){.fm-purchases-card{padding:12px}.fm-purchases-card .fm-section-head{align-items:flex-start;flex-direction:column}.fm-purchase-item{padding:12px}.fm-purchase-top{flex-direction:column}.fm-purchase-state{align-self:flex-start}.fm-purchase-facts{grid-template-columns:1fr 1fr}.fm-purchase-action,.fm-purchase-review{grid-template-columns:1fr}.fm-purchase-action>*,.fm-purchase-review-heading,.fm-purchase-review .fm-purchase-correction{grid-column:1}.fm-purchase-action>.btn,.fm-purchase-review form>.btn{width:100%}.fm-purchase-review form{align-items:stretch;flex-direction:column}.fm-purchase-review .fm-purchase-correction .form-control{width:100%}}
+</style>
+<style>
+.fm-loan-approval{display:grid!important;grid-template-columns:repeat(2,minmax(0,1fr));align-items:end}
+.fm-loan-approval small,.fm-loan-approval button{grid-column:1/-1}
+.fm-loan-approval label{min-width:0;font-size:11px}
+.fm-loan-plan-form{display:grid;gap:5px;min-width:160px;margin-top:7px}
+.fm-loan-plan-form .form-control{min-width:0;width:100%;font-size:11px}
+.fm-team-summary{display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));gap:10px;margin:0 0 14px}
+.fm-team-summary article{min-width:0;padding:15px 17px;background:var(--app-surface);border:1px solid var(--app-border);border-radius:var(--app-radius)}
+.fm-team-summary span,.fm-team-summary strong{display:block}
+.fm-team-summary span{color:var(--app-muted);font-size:12px;font-weight:700}
+.fm-team-summary strong{margin-top:6px;color:var(--app-text);font-size:clamp(19px,2.2vw,26px);font-weight:850;overflow-wrap:anywhere}
+.fm-count{flex:none;padding:7px 10px;border-radius:999px;background:var(--app-primary-soft);color:var(--app-primary);font-size:12px;font-weight:800}
+.fm-advance-list{display:grid;gap:12px}
+.fm-advance-card{min-width:0;padding:15px;border:1px solid var(--app-border);border-radius:11px;background:var(--app-surface)}
+.fm-advance-heading{display:flex;justify-content:space-between;align-items:flex-start;gap:12px}
+.fm-advance-heading h3{margin:3px 0 0;color:var(--app-text);font-size:16px;font-weight:800;overflow-wrap:anywhere}
+.fm-advance-kind{color:var(--app-muted);font-size:11px;font-weight:800;letter-spacing:.025em}
+.fm-advance-amount{flex:none;color:var(--app-primary);font-size:18px;font-weight:850;text-align:right;overflow-wrap:anywhere}
+.fm-advance-meta{display:flex;justify-content:space-between;align-items:flex-start;gap:12px;margin-top:10px;color:var(--app-muted);font-size:12px}
+.fm-advance-meta p{max-width:68%;margin:0;color:var(--app-text);white-space:pre-line;overflow-wrap:anywhere}
+.fm-advance-actions{display:grid;grid-template-columns:minmax(0,1.2fr) minmax(220px,.8fr);gap:12px;margin-top:14px;padding-top:13px;border-top:1px solid var(--app-border)}
+.fm-loan-approval{display:grid!important;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;align-items:end}
+.fm-loan-approval label,.fm-reject-form label,.fm-inline-form label{display:block;min-width:0;margin:0;color:var(--app-text);font-size:11px;font-weight:750}
+.fm-loan-approval .form-control,.fm-reject-form .form-control,.fm-inline-form .form-control{margin-top:4px;min-width:0;width:100%}
+.fm-loan-approval small{grid-column:1/-1;color:var(--app-muted);font-size:11px}
+.fm-loan-approval button{grid-column:1/-1;justify-self:start}
+.fm-reject-form{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:8px;align-items:end}
+.fm-reject-form .btn{min-height:38px}
+.fm-team-empty{display:grid;justify-items:center;gap:5px;padding:26px 14px;text-align:center;color:var(--app-muted)}
+.fm-team-empty .material-icons{color:var(--app-primary);font-size:27px}
+.fm-team-empty strong{color:var(--app-text);font-size:14px}
+.fm-team-empty p{margin:0;font-size:12px}
+.fm-disbursement-card>.btn{margin-top:13px}
+.fm-advance-facts{display:grid;grid-template-columns:repeat(auto-fit,minmax(145px,1fr));gap:8px;margin-top:13px}
+.fm-advance-facts>div{min-width:0;padding:9px 10px;border-radius:8px;background:color-mix(in srgb,var(--app-text) 4%,var(--app-surface))}
+.fm-advance-facts span,.fm-advance-facts strong{display:block;overflow-wrap:anywhere}
+.fm-advance-facts span{color:var(--app-muted);font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:.025em}
+.fm-advance-facts strong{margin-top:4px;color:var(--app-text);font-size:13px}
+.fm-advance-reason{margin:10px 0 0;color:var(--app-muted);font-size:12px;white-space:pre-line;overflow-wrap:anywhere}
+.fm-tag-open{background:#fff3df;color:#8d5200}.fm-tag-closed{background:#e9f7ef;color:#187344}
+.fm-repayment-history{margin-top:10px;border-top:1px solid var(--app-border);padding-top:9px}
+.fm-repayment-history summary{color:var(--app-primary);font-size:12px;font-weight:750;cursor:pointer}
+.fm-repayment-history ul{display:grid;gap:5px;margin:9px 0 0;padding:0;list-style:none}
+.fm-repayment-history li{display:flex;justify-content:space-between;gap:10px;color:var(--app-muted);font-size:12px}
+.fm-repayment-history li strong{flex:none;color:var(--app-text)}
+.fm-advance-admin-actions{display:grid;grid-template-columns:minmax(0,1fr) minmax(240px,.8fr);gap:12px;align-items:end;margin-top:12px;padding-top:12px;border-top:1px solid var(--app-border)}
+.fm-advance-admin-actions .fm-inline-form{min-width:0;align-items:end}
+.fm-advance-admin-actions .fm-loan-plan-form{min-width:0;margin:0}
+.fm-advance-admin-actions .fm-loan-plan-form>strong{color:var(--app-text);font-size:11px}
+.fm-advance-admin-actions .fm-loan-plan-form>div{display:grid;grid-template-columns:minmax(0,1fr) minmax(100px,.8fr) auto;gap:6px}
+@media(max-width:760px){.fm-advance-actions,.fm-advance-admin-actions{grid-template-columns:1fr}.fm-reject-form{grid-template-columns:minmax(0,1fr) auto}}
+@media(max-width:560px){.fm-team-summary{grid-template-columns:1fr 1fr}.fm-team-summary article{padding:12px}.fm-team-summary article:first-child{grid-column:1/-1}.fm-advance-card{padding:12px}.fm-advance-heading{align-items:flex-start}.fm-advance-amount{max-width:45%;font-size:16px}.fm-advance-meta{display:block}.fm-advance-meta p{max-width:none;margin-top:6px}.fm-loan-approval{grid-template-columns:1fr}.fm-loan-approval small,.fm-loan-approval button{grid-column:1}.fm-loan-approval button,.fm-reject-form .btn,.fm-disbursement-card>.btn{width:100%}.fm-reject-form{grid-template-columns:1fr}.fm-advance-facts{grid-template-columns:repeat(2,minmax(0,1fr))}.fm-advance-admin-actions .fm-loan-plan-form>div{grid-template-columns:1fr}.fm-advance-admin-actions .fm-inline-form{display:grid;grid-template-columns:minmax(0,1fr) auto}.fm-advance-admin-actions .fm-inline-form label{grid-column:1/-1}.fm-advance-admin-actions .fm-inline-form button{grid-column:1/-1}}
+.fm-team-tabs{display:flex;flex-wrap:wrap;gap:8px;margin:0 0 14px;padding:6px;background:var(--app-surface);border:1px solid var(--app-border);border-radius:var(--app-radius)}
+.fm-team-tabs a{display:flex;align-items:center;gap:8px;padding:10px 13px;border-radius:8px;color:var(--app-text);font-size:13px;font-weight:750;text-decoration:none}
+.fm-team-tabs a.is-active{background:var(--app-primary);color:var(--app-primary-contrast)}
+.fm-team-tabs a.is-active,.fm-team-tabs a.is-active:visited,.fm-team-tabs a.is-active:hover{color:#fff!important}
+.fm-team-tabs b{display:inline-grid;place-items:center;min-width:21px;height:21px;padding:0 5px;border-radius:999px;background:color-mix(in srgb,var(--app-primary) 12%,var(--app-surface));color:var(--app-primary);font-size:11px}
+.fm-team-tabs a.is-active b{background:color-mix(in srgb,var(--app-primary-contrast) 18%,transparent);color:var(--app-primary-contrast)}
+.fm-loan-search-label{display:block;margin:0 0 5px;color:var(--app-text);font-size:12px;font-weight:750}
+.fm-loan-search{max-width:460px;margin-bottom:13px}
+.fm-employee-loan-list{display:grid;gap:8px}
+.fm-employee-loan{border:1px solid var(--app-border);border-radius:10px;background:var(--app-surface);overflow:hidden}
+.fm-employee-loan[hidden]{display:none}
+.fm-employee-loan>summary{display:flex;justify-content:space-between;align-items:center;gap:12px;padding:13px 15px;cursor:pointer;list-style:none}
+.fm-employee-loan>summary::-webkit-details-marker{display:none}
+.fm-employee-loan>summary:after{content:'+';flex:none;color:var(--app-primary);font-size:20px;font-weight:700}
+.fm-employee-loan[open]>summary:after{content:'−'}
+.fm-employee-loan>summary span{display:grid;gap:2px;min-width:0}
+.fm-employee-loan>summary strong{color:var(--app-text);font-size:14px;overflow-wrap:anywhere}
+.fm-employee-loan>summary small{color:var(--app-muted);font-size:11px}
+.fm-employee-loan>summary>b{margin-left:auto;color:var(--app-primary);font-size:13px;text-align:right;white-space:nowrap}
+.fm-employee-loan-dossiers{display:grid;gap:8px;padding:0 9px 9px;border-top:1px solid var(--app-border)}
+.fm-employee-loan-dossiers>.fm-advance-card{margin-top:9px}
+.fm-recorded-advance{padding:16px 18px}
+.fm-recorded-advance .fm-advance-heading{align-items:center}
+.fm-recorded-advance .fm-advance-facts{grid-template-columns:repeat(3,minmax(0,1fr));margin-top:12px}
+.fm-recorded-advance .fm-advance-reason{margin-top:12px;padding:9px 11px;border-left:3px solid var(--app-border);background:color-mix(in srgb,var(--app-text) 3%,var(--app-surface));border-radius:0 7px 7px 0}
+.fm-early-repayment{grid-column:1/-1;min-width:0;padding:11px 13px;border:1px solid var(--app-border);border-radius:9px;background:color-mix(in srgb,var(--app-text) 2%,var(--app-surface))}
+.fm-early-repayment summary{color:var(--app-primary);font-size:12px;font-weight:800;cursor:pointer}
+.fm-early-repayment p{max-width:760px;margin:7px 0 10px;color:var(--app-muted);font-size:12px;line-height:1.5}
+.fm-early-repayment .fm-inline-form{display:grid;grid-template-columns:minmax(180px,280px) auto;align-items:end;gap:8px;min-width:0}
+.fm-early-repayment .fm-inline-form .btn{min-height:40px}
+.fm-loan-no-results{margin:10px 0 0;padding:12px;border-radius:8px;background:var(--app-primary-soft);color:var(--app-muted);font-size:13px}
+@media(max-width:760px){.fm-recorded-advance .fm-advance-facts{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media(max-width:560px){.fm-team-tabs{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:4px}.fm-team-tabs a{justify-content:center;padding:9px 6px;text-align:center;font-size:11px}.fm-employee-loan>summary{padding:12px}.fm-employee-loan>summary>b{font-size:11px}.fm-recorded-advance{padding:12px}.fm-recorded-advance .fm-advance-heading{align-items:flex-start;flex-direction:column}.fm-recorded-advance .fm-advance-facts{grid-template-columns:1fr 1fr}.fm-early-repayment{padding:10px}.fm-early-repayment .fm-inline-form{grid-template-columns:1fr}.fm-early-repayment .fm-inline-form .btn{width:100%}}
 </style>
 @endsection

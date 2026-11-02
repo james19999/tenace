@@ -51,6 +51,7 @@ class EmployeePayrollController extends Controller
         $periods = EmployeePayrollPeriod::query()->where('user_id', $employee->id)
             ->with(['payments.payer', 'staffAdvances.creator', 'staffAdvances.financeExpensePayment.expense'])
             ->orderByDesc('period_start')->limit(12)->get();
+        $periods->each(fn (EmployeePayrollPeriod $period) => $period->setAttribute('loan_deduction_due', $this->monthlyLoanDeductionDue($employee, $period)));
         $advanceRequests = FinanceExpenseRequest::query()->with(['approvals.decider', 'payments.payer'])
             ->where('staff_user_id', $employee->id)->whereNotNull('staff_advance_type')
             ->latest('submitted_at')->limit(30)->get();
@@ -149,6 +150,7 @@ class EmployeePayrollController extends Controller
             ->orderByDesc('period_start')
             ->paginate(12)
             ->withQueryString();
+        $periods->getCollection()->each(fn (EmployeePayrollPeriod $period) => $period->setAttribute('loan_deduction_due', $this->monthlyLoanDeductionDue($employee, $period)));
         $pendingAdvanceAmounts = FinanceExpenseRequest::query()
             ->whereIn('staff_payroll_period_id', $periods->getCollection()->pluck('id'))
             ->whereIn('status', ['awaiting_finance', 'awaiting_director', 'authorized_to_pay', 'partially_paid'])
@@ -248,32 +250,104 @@ class EmployeePayrollController extends Controller
             }
 
             $paidAt = \Illuminate\Support\Carbon::parse($data['paid_at'])->startOfDay();
+            $grossSalaryAmount = (int) $data['amount'];
+            $remainingForDeduction = $grossSalaryAmount;
+            $deductions = [];
+            $monthlyLoans = FinanceStaffAdvance::query()
+                ->where('user_id', $employee->id)
+                ->where('advance_type', 'loan')
+                ->whereIn('repayment_method', ['fixed_amount', 'salary_percent'])
+                ->whereColumn('repaid_amount', '<', 'amount')
+                ->orderBy('granted_on')
+                ->orderBy('id')
+                ->lockForUpdate()
+                ->get();
+            $monthStart = $locked->period_start->copy()->startOfMonth();
+            $monthEnd = $monthStart->copy()->addMonth();
+            foreach ($monthlyLoans as $loan) {
+                if ($monthStart->lt($loan->granted_on->copy()->startOfMonth()) || $paidAt->lt($loan->granted_on->startOfDay())) {
+                    continue;
+                }
+                $scheduled = $loan->repayment_method === 'salary_percent'
+                    ? max(1, (int) round($locked->salary_amount * ((float) $loan->repayment_value / 100)))
+                    : (int) $loan->repayment_value;
+                $alreadyRepaidThisMonth = (int) $loan->repayments()
+                    ->where('received_at', '>=', $monthStart)
+                    ->where('received_at', '<', $monthEnd)
+                    ->where('received_at', '<=', $paidAt->copy()->endOfDay())
+                    ->sum('amount');
+                $monthlyDue = max(0, $scheduled - $alreadyRepaidThisMonth);
+                $outstanding = max(0, (int) $loan->amount - (int) $loan->repaid_amount);
+                $deduction = min($monthlyDue, $outstanding, $remainingForDeduction);
+                if ($deduction > 0) {
+                    $deductions[] = ['advance' => $loan, 'amount' => $deduction];
+                    $remainingForDeduction -= $deduction;
+                }
+                if ($remainingForDeduction <= 0) {
+                    break;
+                }
+            }
+            $deductionTotal = $grossSalaryAmount - $remainingForDeduction;
+            $netSalaryAmount = $grossSalaryAmount - $deductionTotal;
             $payment = EmployeePayrollPayment::query()->create([
                 'reference' => 'TMP-'.Str::uuid(),
                 'submission_key' => $data['submission_key'],
                 'period_id' => $locked->id,
                 'kind' => $data['kind'],
-                'amount' => $data['amount'],
+                'amount' => $grossSalaryAmount,
+                'net_amount' => $netSalaryAmount,
+                'loan_deduction_amount' => $deductionTotal,
                 'payment_reference' => $data['payment_reference'] ?? null,
                 'paid_at' => $paidAt,
                 'paid_by' => $request->user()->id,
             ]);
             $payment->update(['reference' => sprintf('PAI-%s-%06d', now()->format('Y'), $payment->id)]);
 
-            $movement = $ledger->record([
-                'movement_type' => 'salary_payment',
-                'from_custody' => 'general_cash',
-                'to_custody' => 'external',
-                'amount' => $payment->amount,
-                'source_type' => 'employee_payroll_payment',
-                'source_id' => $payment->id,
-                'source_key' => 'employee-payroll-payment:'.$payment->id,
-                'source_reference' => Str::limit($payment->reference.' · '.$employee->name.' · '.$locked->period_start->format('m/Y'), 120, ''),
-                'occurred_at' => $paidAt,
-                'description' => 'Versement de salaire remis à '.$employee->name.' pour '.$locked->period_start->translatedFormat('F Y').'.',
-                'created_by' => $request->user()->id,
-            ]);
-            $payment->update(['finance_cash_movement_id' => $movement->id]);
+            if ($netSalaryAmount > 0) {
+                $movement = $ledger->record([
+                    'movement_type' => 'salary_payment',
+                    'from_custody' => 'general_cash',
+                    'to_custody' => 'external',
+                    'amount' => $netSalaryAmount,
+                    'source_type' => 'employee_payroll_payment',
+                    'source_id' => $payment->id,
+                    'source_key' => 'employee-payroll-payment:'.$payment->id,
+                    'source_reference' => Str::limit($payment->reference.' · '.$employee->name.' · '.$locked->period_start->format('m/Y'), 120, ''),
+                    'occurred_at' => $paidAt,
+                    'description' => 'Salaire net remis à '.$employee->name.' pour '.$locked->period_start->translatedFormat('F Y').'.',
+                    'created_by' => $request->user()->id,
+                ]);
+                $payment->update(['finance_cash_movement_id' => $movement->id]);
+            }
+
+            foreach ($deductions as $deduction) {
+                /** @var FinanceStaffAdvance $loan */
+                $loan = $deduction['advance'];
+                $repayment = $loan->repayments()->create([
+                    'employee_payroll_payment_id' => $payment->id,
+                    'amount' => $deduction['amount'],
+                    'received_at' => $paidAt,
+                    'received_by' => $request->user()->id,
+                ]);
+                $loan->repaid_amount = (int) $loan->repaid_amount + $deduction['amount'];
+                $loan->save();
+                FinanceAuditEvent::query()->create([
+                    'subject_type' => 'FinanceStaffAdvance',
+                    'subject_id' => $loan->id,
+                    'action' => 'staff_loan_salary_deduction',
+                    'after_values' => [
+                        'repayment_reference' => $payment->reference,
+                        'employee' => $employee->name,
+                        'period' => $locked->period_start->format('Y-m'),
+                        'deducted_amount' => $deduction['amount'],
+                        'repaid_amount' => $loan->repaid_amount,
+                        'outstanding_amount' => max(0, (int) $loan->amount - (int) $loan->repaid_amount),
+                    ],
+                    'reason' => 'Retenue mensuelle automatique sur salaire.',
+                    'user_id' => $request->user()->id,
+                    'created_at' => now(),
+                ]);
+            }
 
             FinanceAuditEvent::query()->create([
                 'subject_type' => 'EmployeePayrollPayment',
@@ -285,6 +359,8 @@ class EmployeePayrollController extends Controller
                     'period' => $locked->period_start->format('Y-m'),
                     'kind' => $payment->kind,
                     'amount' => $payment->amount,
+                    'net_amount' => $payment->net_amount,
+                    'loan_deduction_amount' => $payment->loan_deduction_amount,
                     'remaining_after_payment' => $remaining - $payment->amount,
                 ],
                 'reason' => $payment->payment_reference,
@@ -293,7 +369,7 @@ class EmployeePayrollController extends Controller
             ]);
         });
 
-        return redirect()->route('employees.payroll.index', $employee->employeeProfile->tracking_id)->with('success', 'Le versement a été enregistré, la caisse générale a été débitée et le bon est disponible.');
+        return redirect()->route('employees.payroll.index', $employee->employeeProfile->tracking_id)->with('success', 'Le salaire a été enregistré. Les retenues de prêt ont été déduites automatiquement et seul le montant net a été retiré de la caisse.');
     }
 
     public function voucher(Request $request, EmployeePayrollPayment $payment): View
@@ -317,5 +393,28 @@ class EmployeePayrollController extends Controller
             User::ROLE_LIVREUR, User::ROLE_CASHIER, User::ROLE_ACCOUNTANT, User::ROLE_COMMERCIAL_MANAGER,
             User::ROLE_WHOLESALER, User::ROLE_IT,
         ], true);
+    }
+
+    private function monthlyLoanDeductionDue(User $employee, EmployeePayrollPeriod $period): int
+    {
+        $monthStart = $period->period_start->copy()->startOfMonth();
+        $monthEnd = $monthStart->copy()->addMonth();
+        $total = 0;
+        $loans = FinanceStaffAdvance::query()->where('user_id', $employee->id)
+            ->where('advance_type', 'loan')->whereIn('repayment_method', ['fixed_amount', 'salary_percent'])
+            ->whereColumn('repaid_amount', '<', 'amount')->orderBy('granted_on')->orderBy('id')->get();
+        foreach ($loans as $loan) {
+            if ($monthStart->lt($loan->granted_on->copy()->startOfMonth())) {
+                continue;
+            }
+            $planned = $loan->repayment_method === 'salary_percent'
+                ? max(1, (int) round($period->salary_amount * ((float) $loan->repayment_value / 100)))
+                : (int) $loan->repayment_value;
+            $paidThisMonth = (int) $loan->repayments()->where('received_at', '>=', $monthStart)
+                ->where('received_at', '<', $monthEnd)->sum('amount');
+            $total += min(max(0, $planned - $paidThisMonth), max(0, (int) $loan->amount - (int) $loan->repaid_amount));
+        }
+
+        return min($total, (int) $period->salary_amount);
     }
 }

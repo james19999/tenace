@@ -8,10 +8,10 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 class EmployeePayrollPayment extends Model
 {
     protected $fillable = [
-        'reference', 'submission_key', 'period_id', 'kind', 'amount', 'payment_reference', 'paid_at', 'paid_by', 'finance_cash_movement_id',
+        'reference', 'submission_key', 'period_id', 'kind', 'amount', 'net_amount', 'loan_deduction_amount', 'payment_reference', 'paid_at', 'paid_by', 'finance_cash_movement_id',
     ];
 
-    protected $casts = ['amount' => 'integer', 'paid_at' => 'datetime'];
+    protected $casts = ['amount' => 'integer', 'net_amount' => 'integer', 'loan_deduction_amount' => 'integer', 'paid_at' => 'datetime'];
 
     public function period(): BelongsTo { return $this->belongsTo(EmployeePayrollPeriod::class, 'period_id'); }
     public function payer(): BelongsTo { return $this->belongsTo(User::class, 'paid_by'); }

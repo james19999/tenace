@@ -213,6 +213,7 @@ class FinanceReportController extends Controller
             'remittances' => FinanceCashRemittance::query()->with(['location', 'shopManager', 'collector', 'receiver'])
                 ->whereBetween('created_at', [$filters['from_at'], $filters['to_at']]),
             'expenses' => FinanceExpenseRequest::query()->with(['location', 'requester'])
+                ->where(function ($scope): void { $scope->whereNull('staff_advance_type')->orWhere('staff_advance_type', '<>', 'loan'); })
                 ->whereBetween('created_at', [$filters['from_at'], $filters['to_at']]),
             'suppliers' => FinanceSupplierInvoice::query()->with(['receipt.location'])
                 ->whereBetween('invoice_date', [$filters['from'], $filters['to']]),

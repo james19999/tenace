@@ -28,15 +28,17 @@
 
     @if($user->isAdmin() && in_array($expense->status,['awaiting_director','awaiting_finance'],true))<section class="finance-panel"><h2>Décision du DG</h2>@if($expense->amount>50000 && !$expense->finance_reviewed_at)<p class="text-warning">Le contrôle financier est requis avant ta décision.</p>@else<form method="POST" action="{{ route('finance.expenses.director-decision',$expense) }}">@csrf<label>Commentaire<textarea class="form-control" name="comment" rows="2" maxlength="2000"></textarea></label><div class="finance-form-actions"><button name="decision" value="approved" class="btn btn-success">Autoriser la dépense</button><button name="decision" value="rejected" class="btn btn-danger">Refuser avec motif obligatoire</button></div></form>@endif</section>@endif
 
+    @if($expense->staff_advance_type === 'loan')<section class="finance-panel"><h2>Ce dossier est un prêt, pas une dépense</h2><p>Le décaissement sort de la caisse et crée une somme à récupérer. Une retenue mensuelle sera appliquée au salaire selon le plan accepté. Le prêt doit être remis en une seule fois.</p></section>@endif
+
     @if(in_array($expense->status,['authorized_to_pay','partially_paid'],true) && ($canPayGeneral || $canPayShop))
         <section class="finance-panel">
-            <h2>Enregistrer le paiement réellement effectué</h2>
-                    <p>La dépense a été autorisée. Utilise ce formulaire au moment où l’argent est effectivement remis au bénéficiaire. Si tu n’as pas encore payé, ne le valide pas. Un paiement partiel est possible ; il reste <strong>{{ number_format(max(0, $expense->amount - $expense->paid_amount), 0, ',', ' ') }} F CFA</strong> à payer. Après validation, le système crée un bon de décaissement imprimable dans l’historique ci-dessus.</p>
+            <h2>{{ $expense->staff_advance_type === 'loan' ? 'Enregistrer la remise du prêt' : 'Enregistrer le paiement réellement effectué' }}</h2>
+                    <p>{{ $expense->staff_advance_type === 'loan' ? 'Enregistre le montant total au moment où il est remis à l’employé. Le dossier crée alors son solde de prêt et son plan de retenue.' : 'La dépense a été autorisée. Utilise ce formulaire au moment où l’argent est effectivement remis au bénéficiaire. Si tu n’as pas encore payé, ne le valide pas. Un paiement partiel est possible ; il reste '.number_format(max(0, $expense->amount - $expense->paid_amount), 0, ',', ' ').' F CFA à payer.' }} Après validation, le système crée un bon de décaissement imprimable dans l’historique ci-dessus.</p>
             <form method="POST" enctype="multipart/form-data" action="{{ route('finance.expenses.pay',$expense) }}">@csrf
                 <div class="finance-form-grid">
-                    <label>Montant remis maintenant (F CFA)
-                        <input class="form-control" type="number" name="amount" min="1" max="{{ $expense->amount-$expense->paid_amount }}" required>
-                        <small>Saisis uniquement la somme remise lors de ce paiement.</small>
+                    <label>{{ $expense->staff_advance_type === 'loan' ? 'Montant total remis (F CFA)' : 'Montant remis maintenant (F CFA)' }}
+                        <input class="form-control" type="number" name="amount" min="1" max="{{ $expense->amount-$expense->paid_amount }}" value="{{ $expense->staff_advance_type === 'loan' ? $expense->amount-$expense->paid_amount : '' }}" required>
+                        <small>{{ $expense->staff_advance_type === 'loan' ? 'Le prêt doit être versé en une seule fois.' : 'Saisis uniquement la somme remise lors de ce paiement.' }}</small>
                     </label>
                     <label>Caisse d’où sort l’argent
                         <select class="form-control" name="custody_account" required>
