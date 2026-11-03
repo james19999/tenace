@@ -161,6 +161,8 @@ Route::middleware(['auth'])->group(function () {
         Route::post('/tontines', [FinanceTontineController::class, 'store'])->middleware('role:ADMINUSER')->name('tontines.store');
         Route::get('/tontines/{tontine}/modifier', [FinanceTontineController::class, 'edit'])->middleware('role:ADMINUSER')->name('tontines.edit');
         Route::put('/tontines/{tontine}', [FinanceTontineController::class, 'update'])->middleware('role:ADMINUSER')->name('tontines.update');
+        Route::get('/tontines/demandes/{contributionRequest}/remise', [FinanceTontineController::class, 'showContributionRequestRemittance'])->middleware('role:ADMINUSER,MNG,SCR,VDS,CSA,LVS,CALLCENTER,COMPTABLE,RCM,GRO')->name('tontines.contribution-requests.remittance');
+        Route::post('/tontines/demandes/{contributionRequest}/remettre', [FinanceTontineController::class, 'payContributionRequest'])->middleware('role:ADMINUSER,MNG,SCR,VDS,CSA,LVS,CALLCENTER,COMPTABLE,RCM,GRO')->name('tontines.contribution-requests.pay');
         Route::get('/tontines/mouvements/{movement}/piece', [FinanceTontineController::class, 'attachment'])->middleware('role:ADMINUSER,MNG,SCR,VDS,CSA,LVS,CALLCENTER,COMPTABLE,RCM,GRO,INFO')->name('tontines.attachments.download');
         Route::get('/tontines/{tontine}', [FinanceTontineController::class, 'show'])->middleware('role:ADMINUSER,MNG,SCR,VDS,CSA,LVS,CALLCENTER,COMPTABLE,RCM,GRO,INFO')->name('tontines.show');
         Route::post('/tontines/{tontine}/cotisations', [FinanceTontineController::class, 'storeContribution'])->middleware('role:ADMINUSER,MNG,SCR,VDS,CSA,LVS,CALLCENTER,COMPTABLE,RCM,GRO,INFO')->name('tontines.contributions.store');

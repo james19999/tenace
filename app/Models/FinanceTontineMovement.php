@@ -4,6 +4,7 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasOne;
 
 class FinanceTontineMovement extends Model
 {
@@ -31,5 +32,10 @@ class FinanceTontineMovement extends Model
     public function creator(): BelongsTo
     {
         return $this->belongsTo(User::class, 'created_by');
+    }
+
+    public function contributionRequest(): HasOne
+    {
+        return $this->hasOne(FinanceTontineContributionRequest::class, 'tontine_movement_id');
     }
 }

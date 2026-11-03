@@ -1,6 +1,10 @@
 @php
     $settings = App\Models\Setting::all();
     $headerCartCount = (int) \Gloudemans\Shoppingcart\Facades\Cart::instance('cart')->count();
+    $showGlobalNotifications = Auth::check() && Auth::user()->hasRole(array_merge(
+        \App\Models\User::GENERAL_CASHIER_ELIGIBLE_ROLES,
+        [\App\Models\User::ROLE_ADMIN, \App\Models\User::ROLE_IT],
+    ));
 @endphp
 <header>
     <div>
@@ -42,7 +46,7 @@
 
             {{--  @livewire('delivery-alert')  --}}
 
-            @if (Auth::user()->hasRole(['ADMINUSER', 'MNG', 'SCR', 'CALLCENTER']))
+            @if ($showGlobalNotifications)
                 @livewire('customer-service-notifications')
             @endif
 

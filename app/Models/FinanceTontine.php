@@ -36,6 +36,11 @@ class FinanceTontine extends Model
         return $this->hasMany(FinanceTontineMovement::class, 'tontine_id')->orderBy('occurred_at')->orderBy('id');
     }
 
+    public function contributionRequests(): HasMany
+    {
+        return $this->hasMany(FinanceTontineContributionRequest::class, 'tontine_id')->orderByDesc('requested_at');
+    }
+
     public function creator(): BelongsTo
     {
         return $this->belongsTo(User::class, 'created_by');

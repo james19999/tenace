@@ -26,15 +26,36 @@
             <article><span>Dépenses autorisées à remettre</span><strong>{{ $cashierPayableExpenseCount }}</strong><small>{{ number_format($cashierPayableExpenseAmount,0,',',' ') }} F restants</small></article>
             <article><span>Achats de matériel à remettre</span><strong>{{ $cashierPurchaseCount }}</strong><small>{{ number_format($cashierPurchaseAmount,0,',',' ') }} F autorisés</small></article>
         </section>
-        <section class="finance-panel cashier-pay-queue">
-            <div class="cashier-purchases-head"><div><h2>Demandes autorisées à remettre</h2><p>Les dépenses et avances n’apparaissent ici qu’après autorisation. Confirme la remise depuis le dossier.</p></div><strong>{{ $cashierPayableExpenseCount }} à traiter</strong></div>
-            <div class="table-responsive"><table class="table finance-table"><thead><tr><th>Demandeur / référence</th><th>Bénéficiaire / motif</th><th>Montant restant</th><th>Statut</th><th></th></tr></thead><tbody>
-                @forelse($cashierPayableExpenses as $payableExpense)
-                    <tr><td><strong>{{ $payableExpense->requester?->name ?? '—' }}</strong><small class="d-block">{{ $payableExpense->reference }} · {{ $payableExpense->created_at?->format('d/m/Y') }}</small></td><td>{{ $payableExpense->beneficiary }}<small class="d-block">{{ $payableExpense->staff_advance_type === 'loan' ? 'Prêt au personnel' : ($payableExpense->staff_advance_type === 'salary_advance' ? 'Avance sur salaire' : $payableExpense->category_name) }} · {{ \Illuminate\Support\Str::limit($payableExpense->description, 72) }}</small></td><td><strong>{{ number_format(max(0,(int)$payableExpense->amount-(int)$payableExpense->paid_amount),0,',',' ') }} F</strong></td><td><span class="badge badge-warning">{{ \App\Support\FinanceDisplayLabels::status($payableExpense->status) }}</span></td><td><a class="btn btn-sm btn-primary" href="{{ route('finance.expenses.show',$payableExpense) }}">Ouvrir la remise</a></td></tr>
-                @empty<tr><td colspan="5" class="text-center text-muted py-4">Aucune dépense autorisée n’attend de remise.</td></tr>@endforelse
-            </tbody></table></div>
-            @if($cashierPayableExpenses->hasPages()){{ $cashierPayableExpenses->links() }}@endif
-        </section>
+        @php($cashierQueueTab = request()->query('cashier_tab') === 'tontines' ? 'tontines' : 'expenses')
+        <nav class="cashier-queue-tabs" aria-label="Files de remise">
+            <a class="{{ $cashierQueueTab === 'expenses' ? 'is-active' : '' }}" href="{{ request()->fullUrlWithQuery(['cashier_tab' => 'expenses']) }}" @if($cashierQueueTab === 'expenses') aria-current="page" @endif>
+                Dépenses et avances <span>{{ $cashierPayableExpenseCount }}</span>
+            </a>
+            <a class="{{ $cashierQueueTab === 'tontines' ? 'is-active' : '' }}" href="{{ request()->fullUrlWithQuery(['cashier_tab' => 'tontines']) }}" @if($cashierQueueTab === 'tontines') aria-current="page" @endif>
+                Cotisations de tontine <span>{{ $cashierTontineRequests->total() }}</span>
+            </a>
+        </nav>
+        @if($cashierQueueTab === 'expenses')
+            <section class="finance-panel cashier-pay-queue">
+                <div class="cashier-purchases-head"><div><h2>Demandes autorisées à remettre</h2><p>Les dépenses et avances apparaissent ici après autorisation. Confirme la remise réelle depuis le dossier.</p></div><strong>{{ $cashierPayableExpenseCount }} à traiter</strong></div>
+                <div class="table-responsive"><table class="table finance-table"><thead><tr><th>Demandeur / référence</th><th>Bénéficiaire / motif</th><th>Montant restant</th><th>Statut</th><th></th></tr></thead><tbody>
+                    @forelse($cashierPayableExpenses as $payableExpense)
+                        <tr><td><strong>{{ $payableExpense->requester?->name ?? '—' }}</strong><small class="d-block">{{ $payableExpense->reference }} · {{ $payableExpense->created_at?->format('d/m/Y') }}</small></td><td>{{ $payableExpense->beneficiary }}<small class="d-block">{{ $payableExpense->staff_advance_type === 'loan' ? 'Prêt au personnel' : ($payableExpense->staff_advance_type === 'salary_advance' ? 'Avance sur salaire' : $payableExpense->category_name) }} · {{ \Illuminate\Support\Str::limit($payableExpense->description, 72) }}</small></td><td><strong>{{ number_format(max(0,(int)$payableExpense->amount-(int)$payableExpense->paid_amount),0,',',' ') }} F</strong></td><td><span class="badge badge-warning">{{ \App\Support\FinanceDisplayLabels::status($payableExpense->status) }}</span></td><td><a class="btn btn-sm btn-primary" href="{{ route('finance.expenses.show',$payableExpense) }}">Ouvrir la remise</a></td></tr>
+                    @empty<tr><td colspan="5" class="text-center text-muted py-4">Aucune dépense autorisée n’attend de remise.</td></tr>@endforelse
+                </tbody></table></div>
+                @if($cashierPayableExpenses->hasPages()){{ $cashierPayableExpenses->links() }}@endif
+            </section>
+        @else
+            <section class="finance-panel cashier-tontine-queue">
+                <div class="cashier-purchases-head"><div><h2>Cotisations de tontine à remettre</h2><p>Les demandes arrivent directement ici. Confirme la remise réelle depuis la caisse générale.</p></div><strong>{{ $cashierTontineRequests->total() }} à remettre</strong></div>
+                <div class="table-responsive"><table class="table finance-table"><thead><tr><th>Tontine / référence</th><th>Demandeur</th><th>Montant demandé</th><th>Date de demande</th><th>Note</th><th>Action</th></tr></thead><tbody>
+                    @forelse($cashierTontineRequests as $tontineRequest)
+                        <tr><td><strong>{{ $tontineRequest->tontine?->name ?? 'Tontine supprimée' }}</strong><small class="d-block">{{ $tontineRequest->reference }}</small></td><td>{{ $tontineRequest->requester?->name ?? '—' }}</td><td><strong>{{ number_format($tontineRequest->amount, 0, ',', ' ') }} F</strong></td><td>{{ $tontineRequest->requested_at?->format('d/m/Y à H:i') ?? '—' }}</td><td>{{ $tontineRequest->note ?: 'Aucune note' }}</td><td><a class="btn btn-sm btn-primary" href="{{ route('finance.tontines.contribution-requests.remittance', $tontineRequest) }}">Ouvrir la remise</a></td></tr>
+                    @empty<tr><td colspan="6" class="text-center text-muted py-4">Aucune cotisation de tontine n’attend une remise.</td></tr>@endforelse
+                </tbody></table></div>
+                @if($cashierTontineRequests->hasPages()){{ $cashierTontineRequests->links() }}@endif
+            </section>
+        @endif
     @endif
     @if($isAssignedCashier)
         <section class="finance-panel direct-dg-expense">
@@ -118,12 +139,23 @@
 .cashier-pay-queue{margin-bottom:16px}.cashier-pay-queue .cashier-purchases-head{align-items:center}
 .cashier-pay-queue .table-responsive{border-radius:8px}
 .cashier-pay-queue .btn-primary{background:var(--app-primary,#811515);border-color:var(--app-primary,#811515);font-weight:750;white-space:nowrap}
+.cashier-queue-tabs{display:flex;gap:8px;margin:0 0 12px;padding:5px;background:#f1f3f5;border:1px solid #e1e5eb;border-radius:9px}
+.cashier-queue-tabs a{display:flex;align-items:center;justify-content:center;gap:9px;min-height:43px;padding:8px 14px;border:1px solid transparent;border-radius:6px;color:#647083;font-size:13px;font-weight:750;text-decoration:none}
+.cashier-queue-tabs a.is-active{background:#fff;border-color:#e1e5eb;color:var(--app-primary,#811515);box-shadow:0 2px 6px rgba(25,38,55,.06)}
+.cashier-queue-tabs a span{display:inline-grid;place-items:center;min-width:23px;height:22px;padding:0 6px;border-radius:12px;background:#fff0d3;color:#91600a;font-size:11px;font-weight:850}
+.cashier-tontine-queue{margin-bottom:16px}.cashier-tontine-queue .cashier-purchases-head{align-items:center}
+.cashier-tontine-queue .finance-table{min-width:980px}
+.cashier-tontine-queue .finance-table td:first-child strong,.cashier-tontine-queue .finance-table td:first-child small{display:block}
+.cashier-tontine-queue .finance-table td:first-child small{margin-top:4px}
+.cashier-tontine-queue .finance-table td form{margin:0;min-width:145px}
+.cashier-tontine-queue .finance-table .btn{white-space:nowrap}
 .cashier-notice{align-items:flex-start;border:1px solid #cfe6d3;border-radius:8px;line-height:1.5}
 .cashier-notice .material-icons{flex:none;margin-top:1px}
 .cashier-notice strong{display:inline}
 @media(max-width:980px){.finance-page-heading{grid-template-columns:minmax(0,1fr)}.expense-head-actions{justify-content:flex-start;min-width:0}.cashier-assignment{grid-template-columns:minmax(0,1fr)}.cashier-assignment form{grid-template-columns:minmax(0,1fr) auto}}
 @media(max-width:760px){.finance-page{padding:14px 12px 30px}.finance-page-heading{gap:14px}.expense-head-actions{display:grid;grid-template-columns:1fr 1fr;width:100%}.finance-page .expense-head-actions .btn{width:100%;min-width:0;padding-inline:10px}.cashier-assignment{padding:16px}.cashier-assignment form{grid-template-columns:1fr}.finance-page .cashier-assignment .btn{width:100%;white-space:normal}}
 @media(max-width:760px){.cashier-workspace{grid-template-columns:1fr 1fr;gap:8px}.cashier-workspace-balance{grid-column:1/-1}.cashier-workspace>article{padding:13px}.cashier-workspace>article>strong{font-size:21px}.expense-list-heading{align-items:flex-start}.cashier-pay-queue .cashier-purchases-head{align-items:flex-start}}
+@media(max-width:560px){.cashier-queue-tabs{display:grid;grid-template-columns:1fr}.cashier-queue-tabs a{justify-content:space-between}.cashier-tontine-queue .cashier-purchases-head{align-items:flex-start}}
 @media(max-width:420px){.expense-head-actions{grid-template-columns:1fr}.cashier-workspace{grid-template-columns:1fr}.cashier-workspace-balance{grid-column:auto}.expense-list-heading{flex-direction:column}.cashier-notice{padding:12px}}
 .receipt-confirm-modal{--rc-ink:var(--app-text,#202938);--rc-muted:var(--app-muted,#748093);--rc-line:var(--app-border,#e3e8ef);position:fixed;z-index:12000;inset:0;display:none;align-items:center;justify-content:center;padding:18px}.receipt-confirm-modal.is-open{display:flex}.receipt-confirm-backdrop{position:absolute;inset:0;background:rgba(15,23,42,.62);backdrop-filter:blur(3px)}.receipt-confirm-panel{position:relative;width:min(100%,440px);padding:28px;background:var(--app-surface,#fff);border:1px solid var(--rc-line);border-radius:12px;box-shadow:0 24px 80px rgba(0,0,0,.25);text-align:center}.receipt-confirm-icon{display:grid;place-items:center;width:50px;height:50px;margin:0 auto 14px;border-radius:50%;background:#e8f5eb;color:#24733a;font-size:26px}.receipt-confirm-panel h2{margin:0;color:var(--rc-ink);font-size:20px;font-weight:800}.receipt-confirm-panel p{margin:8px 0 22px;color:var(--rc-muted);font-size:13px;line-height:1.55}.receipt-confirm-actions{display:flex;justify-content:center;gap:9px;flex-wrap:wrap}.receipt-confirm-actions button{min-height:42px;padding:9px 15px;border:1px solid var(--rc-line);border-radius:5px;font-size:12px;font-weight:750;cursor:pointer}.receipt-confirm-cancel{background:transparent;color:var(--rc-ink)}.receipt-confirm-submit{background:var(--app-primary,#811515);border-color:var(--app-primary,#811515)!important;color:#fff}.receipt-confirm-actions button:focus-visible{outline:3px solid rgba(129,21,21,.24);outline-offset:2px}html[data-app-theme="dark"] .receipt-confirm-panel{background:var(--app-surface)}
 </style>

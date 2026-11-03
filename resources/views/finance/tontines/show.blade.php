@@ -1,13 +1,13 @@
 @extends('layouts.admin')
 @section('content')
 <main class="tontine-detail-page">
-    <header class="tontine-detail-heading"><div><a href="{{ route('finance.tontines.index') }}">← Tontines</a><span class="tontine-reference">{{ $tontine->reference }} · {{ $tontine->status === 'recovered' ? 'Récupérée' : 'En cours' }}</span><h1>{{ $tontine->name }}</h1><p>{{ $canManage ? 'Les cotisations sont enregistrées au moment où elles sont réellement versées.' : 'Enregistre le montant réellement versé et la date du paiement.' }}</p>@if($canManage)<a class="btn btn-sm btn-outline-primary" href="{{ route('finance.tontines.edit', $tontine) }}">Modifier la tontine</a>@endif</div></header>
+    <header class="tontine-detail-heading"><div><a href="{{ route('finance.tontines.index') }}">← Tontines</a><span class="tontine-reference">{{ $tontine->reference }} · {{ $tontine->status === 'recovered' ? 'Récupérée' : 'En cours' }}</span><h1>{{ $tontine->name }}</h1><p>{{ $isGeneralCashier ? 'Enregistre la cotisation lorsque tu remets réellement les fonds depuis la caisse générale.' : 'Indique le montant à cotiser : la demande part directement au caissier général, sans validation.' }}</p>@if($canManage)<a class="btn btn-sm btn-outline-primary" href="{{ route('finance.tontines.edit', $tontine) }}">Modifier la tontine</a>@endif</div></header>
     @if(session('success'))<div class="alert alert-success">{{ session('success') }}</div>@endif
     @if($errors->any())<div class="alert alert-danger"><ul class="mb-0">@foreach($errors->all() as $error)<li>{{ $error }}</li>@endforeach</ul></div>@endif
     @if($canManage)<section class="tontine-detail-stats"><article><span>Total cotisé</span><strong>{{ number_format($contributed, 0, ',', ' ') }} F</strong></article><article><span>Total récupéré</span><strong>{{ number_format($recovered, 0, ',', ' ') }} F</strong></article><article><span>Disponible à récupérer</span><strong>{{ number_format($recoveryRemaining, 0, ',', ' ') }} F</strong></article><article><span>Cotisation cette semaine</span><strong>{{ $tontine->status !== 'active' ? 'Terminée' : ($contributionThisWeek ? 'Enregistrée' : 'À enregistrer') }}</strong></article></section>@endif
 
     <section class="tontine-detail-grid {{ $canManage ? '' : 'tontine-assignee-info' }}">
-        <article class="tontine-detail-card"><span class="material-icons">account_balance_wallet</span><div><strong>Caisse utilisée</strong><p>{{ $tontine->cash_custody === 'shop' ? 'Espèces · '.$tontine->location?->name : 'Caisse générale' }}</p></div></article>
+        <article class="tontine-detail-card"><span class="material-icons">account_balance_wallet</span><div><strong>Caisse utilisée</strong><p>Caisse générale TENACOS</p></div></article>
         @if($canManage)
             <article class="tontine-detail-card"><span class="material-icons">groups</span><div><strong>Personnes chargées</strong><p>{{ $tontine->assignees->pluck('name')->join(', ') }}</p></div></article>
             <article class="tontine-detail-card"><span class="material-icons">event</span><div><strong>Première cotisation</strong><p>{{ $tontine->first_contribution_on?->format('d/m/Y') ?? 'En attente du premier paiement' }}</p></div></article>
@@ -20,9 +20,36 @@
 
     <section class="tontine-actions-grid">
         @if($canContribute)
-            <article class="tontine-action-card"><span class="tontine-action-kicker">COTISATION HEBDOMADAIRE</span><h2>Enregistrer une cotisation</h2><p>Enregistre le montant le jour où il est versé. La caisse {{ $tontine->cash_custody === 'shop' ? '« '.$tontine->location?->name.' »' : 'générale' }} sera créditée.</p><form method="POST" enctype="multipart/form-data" action="{{ route('finance.tontines.contributions.store', $tontine) }}">@csrf<input type="hidden" name="submission_key" value="{{ $contributionSubmissionKey }}"><label>Montant versé (F CFA)<input class="form-control" type="number" name="amount" min="1" max="1000000000" value="{{ old('amount') }}" required></label><label>Date du versement<input class="form-control" type="date" name="occurred_at" value="{{ today()->format('Y-m-d') }}" min="{{ today()->startOfWeek()->format('Y-m-d') }}" max="{{ today()->format('Y-m-d') }}" required><small>La date du jour est proposée automatiquement.</small></label><label>Reçu ou preuve (facultatif)<input class="form-control-file" type="file" name="proof" accept=".pdf,.jpg,.jpeg,.png"><small>PDF ou image · 10 Mo maximum</small></label><label>Note (facultatif)<textarea class="form-control" name="note" rows="2" maxlength="2000"></textarea></label><button class="btn btn-primary" type="submit">Enregistrer le paiement</button></form></article>
-        @elseif($tontine->status === 'active')
-            <article class="tontine-action-card tontine-info-card"><h2>Cotisation de cette semaine déjà enregistrée</h2><p>Tu pourras enregistrer la prochaine cotisation la semaine prochaine.</p></article>
+            <article class="tontine-action-card">
+                <span class="tontine-action-kicker">COTISATION HEBDOMADAIRE</span>
+                <h2>{{ $isGeneralCashier ? 'Enregistrer la cotisation remise' : 'Demander une cotisation' }}</h2>
+                <p>
+                    @if($isGeneralCashier)
+                        Enregistre le montant lorsque tu remets les fonds. La sortie sera prise sur la caisse générale.
+                    @else
+                        Indique le montant à verser. La demande sera envoyée directement au caissier général, sans validation intermédiaire.
+                    @endif
+                </p>
+                <form method="POST" enctype="multipart/form-data" action="{{ route('finance.tontines.contributions.store', $tontine) }}">
+                    @csrf
+                    @if($isGeneralCashier)
+                        <input type="hidden" name="submission_key" value="{{ $contributionSubmissionKey }}">
+                    @endif
+                    <label>Montant à cotiser (F CFA)<input class="form-control" type="number" name="amount" min="1" max="1000000000" value="{{ old('amount') }}" required></label>
+                    @if($isGeneralCashier)
+                        <label>Date du paiement<input class="form-control" type="date" name="occurred_at" value="{{ today()->format('Y-m-d') }}" min="{{ today()->startOfWeek()->format('Y-m-d') }}" max="{{ today()->format('Y-m-d') }}" required><small>La date du jour est proposée automatiquement.</small></label>
+                        <label>Preuve (facultatif)<input class="form-control-file" type="file" name="proof" accept=".pdf,.jpg,.jpeg,.png"><small>PDF ou image · 10 Mo maximum</small></label>
+                    @endif
+                    <label>Note (facultatif)<textarea class="form-control" name="note" rows="2" maxlength="2000"></textarea></label>
+                    <button class="btn btn-primary" type="submit">{{ $isGeneralCashier ? 'Enregistrer le paiement' : 'Envoyer au caissier général' }}</button>
+                </form>
+            </article>
+        @elseif($pendingContributionRequest)
+            <article class="tontine-action-card tontine-info-card"><h2>Demande envoyée au caissier</h2><p>{{ number_format($pendingContributionRequest->amount, 0, ',', ' ') }} F · {{ $pendingContributionRequest->reference }}. Le paiement sera enregistré dès que le caissier général remettra les fonds.</p></article>
+        @elseif($hasPendingContributionRequest)
+            <article class="tontine-action-card tontine-info-card"><h2>Une demande attend le caissier</h2><p>Une cotisation a déjà été demandée pour cette semaine. Le caissier général doit la remettre avant une nouvelle demande.</p></article>
+        @elseif($contributionThisWeek)
+            <article class="tontine-action-card tontine-info-card"><h2>Cotisation de cette semaine enregistrée</h2><p>La prochaine cotisation pourra être demandée la semaine prochaine.</p></article>
         @endif
 
         @if($canManage && $recoveryRemaining > 0)

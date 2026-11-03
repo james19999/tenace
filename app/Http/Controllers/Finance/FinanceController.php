@@ -9,6 +9,7 @@ use App\Models\FinanceCashRemittance;
 use App\Models\FinanceExpenseRequest;
 use App\Models\FinanceEquipmentPurchaseRequest;
 use App\Models\FinanceGeneralCashSetting;
+use App\Models\FinanceTontineContributionRequest;
 use App\Models\FinanceSupplierInvoice;
 use App\Models\StockLocation;
 use App\Models\TypeExpensive;
@@ -403,6 +404,11 @@ class FinanceController extends Controller
         $cashierPayableExpenseAmount = $isAssignedCashier
             ? (int) FinanceExpenseRequest::query()->whereIn('status', ['authorized_to_pay', 'partially_paid'])->where('requested_by', '<>', $user->id)->sum(DB::raw('amount - paid_amount'))
             : 0;
+        $cashierTontineRequests = $isAssignedCashier
+            ? FinanceTontineContributionRequest::query()->with(['tontine', 'requester'])
+                ->where('status', 'awaiting_payment')->orderBy('requested_at')
+                ->paginate(10, ['*'], 'cashier_tontine_page')->withQueryString()
+            : null;
         $cashierPurchaseCount = $cashierPurchaseRequests?->total() ?? 0;
         $cashierPurchaseAmount = $isAssignedCashier
             ? (int) FinanceEquipmentPurchaseRequest::query()->where('status', 'authorized_to_pay')->sum('approved_amount')
@@ -422,6 +428,7 @@ class FinanceController extends Controller
             'cashierPayableExpenses' => $cashierPayableExpenses,
             'cashierPayableExpenseCount' => $cashierPayableExpenseCount,
             'cashierPayableExpenseAmount' => $cashierPayableExpenseAmount,
+            'cashierTontineRequests' => $cashierTontineRequests,
             'cashierPurchaseCount' => $cashierPurchaseCount,
             'cashierPurchaseAmount' => $cashierPurchaseAmount,
             'cashierGeneralBalance' => $isAssignedCashier ? $this->ledger->balance('general_cash') : null,
