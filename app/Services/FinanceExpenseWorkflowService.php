@@ -44,7 +44,7 @@ class FinanceExpenseWorkflowService
 
         $accountantRequestNeedsDirector = $requester->isAccountant() && empty($data['staff_advance_type']);
 
-        return DB::transaction(function () use ($data, $requester, $directlyAuthorizedByDirector, $accountantRequestNeedsDirector): FinanceExpenseRequest {
+        return DB::transaction(function () use ($data, $requester, $directlyAuthorizedByDirector, $notifyCashier, $accountantRequestNeedsDirector): FinanceExpenseRequest {
             $category = ! empty($data['category_id'])
                 ? TypeExpensive::query()->findOrFail($data['category_id'])
                 : (! empty($data['staff_advance_type']) || ! empty($data['commission_user_id'])
