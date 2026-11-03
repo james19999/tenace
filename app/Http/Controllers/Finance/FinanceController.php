@@ -378,7 +378,7 @@ class FinanceController extends Controller
                 if ($isAssignedCashier) {
                     $query->orWhere(fn ($loans) => $loans->where('staff_advance_type', 'loan')->whereIn('status', ['authorized_to_pay', 'partially_paid', 'paid']));
                 }
-            })->with(['location', 'requester', 'financeReviewer', 'director'])
+            })->with(['location', 'requester', 'financeReviewer', 'director', 'receiptReceiver'])
             ->when(! $canSeeAll && ! $isAssignedCashier, fn ($query) => $query->where(fn ($scope) => $scope->where('requested_by', $user->id)->orWhereIn('stock_location_id', $locationIds)))
             ->when($isAssignedCashier && ! $canSeeAll, fn ($query) => $query->where(fn ($scope) => $scope->where('requested_by', $user->id)->orWhereIn('status', ['authorized_to_pay', 'partially_paid', 'paid'])))
             ->when($request->filled('status'), fn ($query) => $query->where('status', (string) $request->string('status')))
@@ -568,17 +568,18 @@ class FinanceController extends Controller
     public function showExpense(Request $request, FinanceExpenseRequest $expense): View
     {
         $this->authorizeExpense($request->user(), $expense);
-        $expense->load(['location', 'category', 'requester', 'financeReviewer', 'director', 'approvals.decider', 'payments.payer']);
+        $expense->load(['location', 'category', 'requester', 'financeReviewer', 'director', 'receiptReceiver', 'approvals.decider', 'payments.payer']);
         $cashierId = FinanceGeneralCashSetting::query()->whereKey(1)->value('cashier_user_id');
         $isAssignedCashier = $cashierId && (int) $cashierId === (int) $request->user()->id;
         $canPayExpense = $cashierId
             && $isAssignedCashier
             && (int) $expense->requested_by !== (int) $request->user()->id;
-        $canSubmitReceipt = (int) $expense->requested_by === (int) $request->user()->id
-            || $request->user()->isAdmin()
-            || $isAssignedCashier;
+        $canSubmitReceipt = (int) $expense->requested_by === (int) $request->user()->id;
+        $canConfirmReceipt = ($request->user()->isAdmin() || $isAssignedCashier)
+            && (int) $expense->requested_by !== (int) $request->user()->id
+            && ! $expense->receipt_received_at;
 
-        return view('finance.expenses.show', compact('expense', 'canPayExpense', 'canSubmitReceipt', 'isAssignedCashier'));
+        return view('finance.expenses.show', compact('expense', 'canPayExpense', 'canSubmitReceipt', 'canConfirmReceipt', 'isAssignedCashier'));
     }
 
     public function financeDecision(Request $request, FinanceExpenseRequest $expense, FinanceExpenseWorkflowService $service): RedirectResponse
@@ -616,9 +617,7 @@ class FinanceController extends Controller
 
     public function submitExpenseReceipts(Request $request, FinanceExpenseRequest $expense, \App\Services\FinanceAuditService $audit): RedirectResponse
     {
-        $cashierId = FinanceGeneralCashSetting::query()->whereKey(1)->value('cashier_user_id');
-        $isAssignedCashier = $cashierId && (int) $cashierId === (int) $request->user()->id;
-        abort_unless((int) $expense->requested_by === (int) $request->user()->id || $request->user()->isAdmin() || $isAssignedCashier, 403);
+        abort_unless((int) $expense->requested_by === (int) $request->user()->id, 403);
         abort_unless((int) $expense->paid_amount > 0, 409, 'Les reçus pourront être transmis après la remise des fonds.');
         $data = $request->validate([
             'receipts' => ['required', 'array', 'min:1', 'max:8'],
@@ -635,10 +634,41 @@ class FinanceController extends Controller
             'receipts_submitted_at' => $expense->receipts_submitted_at?->toDateTimeString(),
         ]);
 
-        $directors = User::query()->where('active', true)->where('user_type', User::ROLE_ADMIN)->get();
-        \Illuminate\Support\Facades\Notification::send($directors, new \App\Notifications\FinanceExpenseReportNotification($expense, 'Les reçus d’achat ont été transmis par '.$request->user()->name.'.'));
+        $recipients = User::query()->where('active', true)->where('user_type', User::ROLE_ADMIN)->get();
+        $cashier = FinanceGeneralCashSetting::query()->with('cashier')->whereKey(1)->first()?->cashier;
+        if ($cashier?->active) {
+            $recipients->push($cashier);
+        }
+        \Illuminate\Support\Facades\Notification::send($recipients->unique('id'), new \App\Notifications\FinanceExpenseReportNotification($expense, 'Les reçus d’achat ont été transmis par '.$request->user()->name.'. Le caissier général doit confirmer leur réception.'));
 
         return back()->with('success', 'Reçus transmis à la Direction.');
+    }
+
+    public function confirmExpenseReceipt(Request $request, FinanceExpenseRequest $expense, \App\Services\FinanceAuditService $audit): RedirectResponse
+    {
+        $cashierId = FinanceGeneralCashSetting::query()->whereKey(1)->value('cashier_user_id');
+        $isAssignedCashier = $cashierId && (int) $cashierId === (int) $request->user()->id;
+        abort_unless($request->user()->isAdmin() || $isAssignedCashier, 403);
+        abort_unless((int) $expense->requested_by !== (int) $request->user()->id, 403, 'Tu ne peux pas confirmer la réception de ton propre reçu.');
+        abort_unless((int) $expense->paid_amount > 0, 409, 'Le reçu ne peut être confirmé qu’après la remise des fonds.');
+        abort_unless(! $expense->receipt_received_at, 409, 'La réception de ce reçu est déjà confirmée.');
+
+        $before = $expense->only(['receipt_received_at', 'receipt_received_by']);
+        $expense->receipt_received_at = now();
+        $expense->receipt_received_by = $request->user()->id;
+        $expense->save();
+        $audit->record($expense, 'expense_receipt_received', $before, [
+            'receipt_received_at' => $expense->receipt_received_at?->toDateTimeString(),
+            'receipt_received_by' => $request->user()->id,
+        ]);
+        $expense->requester?->notify(new \App\Notifications\FinanceWorkflowNotification(
+            'Réception du reçu confirmée',
+            'La réception du reçu pour la demande '.$expense->reference.' a été confirmée par '.$request->user()->name.'.',
+            route('finance.expenses.show', $expense->id),
+            'task_alt',
+        ));
+
+        return back()->with('success', 'Réception du reçu confirmée.');
     }
 
     public function printExpensePayment(Request $request, int $payment): View

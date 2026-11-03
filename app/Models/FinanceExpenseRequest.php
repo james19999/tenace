@@ -15,7 +15,7 @@ class FinanceExpenseRequest extends Model
         'finance_comment', 'director_decided_by', 'director_decided_at', 'director_comment', 'payment_status',
         'paid_amount', 'paid_at', 'paid_by', 'cancellation_reason',
         'staff_user_id', 'staff_advance_type', 'staff_payroll_period_id', 'staff_repayment_method', 'staff_repayment_value', 'commission_user_id', 'commission_period_start', 'commission_period_end',
-        'receipt_paths', 'receipts_submitted_at',
+        'receipt_paths', 'receipts_submitted_at', 'receipt_received_at', 'receipt_received_by',
     ];
 
     protected $casts = [
@@ -29,6 +29,7 @@ class FinanceExpenseRequest extends Model
         'staff_repayment_value' => 'decimal:2',
         'receipt_paths' => 'array',
         'receipts_submitted_at' => 'datetime',
+        'receipt_received_at' => 'datetime',
     ];
 
     public function location(): BelongsTo
@@ -44,6 +45,11 @@ class FinanceExpenseRequest extends Model
     public function requester(): BelongsTo
     {
         return $this->belongsTo(User::class, 'requested_by');
+    }
+
+    public function receiptReceiver(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'receipt_received_by');
     }
 
     public function financeReviewer(): BelongsTo

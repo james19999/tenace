@@ -174,6 +174,7 @@ Route::middleware(['auth'])->group(function () {
         Route::post('/depenses/responsable-caisse', [FinanceController::class, 'updateGeneralCashier'])->middleware('role:ADMINUSER')->name('expenses.cashier.update');
         Route::post('/depenses/remise-directe-dg', [FinanceController::class, 'recordDirectDirectorExpense'])->middleware('role:ADMINUSER,MNG,COMPTABLE,SCR,VDS,CSA,LVS,CALLCENTER,RCM,GRO')->name('expenses.director-direct-payout');
         Route::post('/depenses/{expense}/recus', [FinanceController::class, 'submitExpenseReceipts'])->middleware('role:ADMINUSER,MNG,COMPTABLE,SCR,VDS,CSA,LVS,CALLCENTER,RCM,GRO')->name('expenses.receipts.store');
+        Route::post('/depenses/{expense}/confirmer-reception-recu', [FinanceController::class, 'confirmExpenseReceipt'])->middleware('role:ADMINUSER,MNG,COMPTABLE,SCR,VDS,CSA,LVS,CALLCENTER,RCM,GRO')->name('expenses.receipts.confirm');
         Route::get('/depenses/{expense}', [FinanceController::class, 'showExpense'])->middleware('role:ADMINUSER,MNG,COMPTABLE,SCR,VDS,CSA,LVS,CALLCENTER,RCM,GRO')->name('expenses.show');
         Route::post('/depenses/{expense}/controle-financier', [FinanceController::class, 'financeDecision'])->middleware('role:COMPTABLE')->name('expenses.finance-decision');
         Route::post('/depenses/{expense}/decision-dg', [FinanceController::class, 'directorDecision'])->middleware('role:ADMINUSER')->name('expenses.director-decision');
