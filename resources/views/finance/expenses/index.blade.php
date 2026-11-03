@@ -59,7 +59,7 @@
     @endif
     @if($isAssignedCashier)
         <section class="finance-panel direct-dg-expense">
-            <div class="direct-dg-heading"><span class="material-icons">request_quote</span><div><h2>Dépense directe demandée par le DG</h2><p>Quand le DG te demande directement des fonds, saisis le motif et le montant au moment de la remise. Cette sortie est enregistrée immédiatement dans la caisse générale, sans passer par les validations habituelles.</p></div></div>
+            <div class="direct-dg-heading"><span class="material-icons">request_quote</span><div><h2>Demande de dépense directe du DG</h2><p>Enregistre le montant et le motif demandés par le DG. Aucun argent ne sort de la caisse avant que le DG ait vérifié et validé la demande.</p></div></div>
             @if($directExpenseDirectors->isEmpty())<div class="alert alert-warning mb-0">Aucun compte DG actif n’est disponible pour attribuer cette dépense.</div>
             @elseif($directExpenseCategories->isEmpty())<div class="alert alert-warning mb-0">Crée d’abord une catégorie de dépense pour pouvoir enregistrer cette sortie.</div>
             @else
@@ -67,12 +67,11 @@
                     <div class="direct-dg-form-grid">
                         <label>DG demandeur<select class="form-control" name="director_user_id" required><option value="">Choisir le DG</option>@foreach($directExpenseDirectors as $director)<option value="{{ $director->id }}" @selected(old('director_user_id')==$director->id)>{{ $director->name }}</option>@endforeach</select></label>
                         <label>Catégorie<select class="form-control" name="category_id" required><option value="">Choisir une catégorie</option>@foreach($directExpenseCategories as $category)<option value="{{ $category->id }}" @selected(old('category_id')==$category->id)>{{ $category->name }}</option>@endforeach</select></label>
-                        <label>Montant remis (F CFA)<input class="form-control" type="number" name="amount" min="1" value="{{ old('amount') }}" required></label>
+                        <label>Montant demandé par le DG (F CFA)<input class="form-control" type="number" name="amount" min="1" value="{{ old('amount') }}" required></label>
                         <label>Bénéficiaire<input class="form-control" name="beneficiary" maxlength="160" value="{{ old('beneficiary') }}" placeholder="Personne ou fournisseur payé" required></label>
                         <label class="direct-dg-reason">Motif / détail de l’achat<textarea class="form-control" name="description" rows="3" maxlength="5000" placeholder="Indique pourquoi le DG demande cette dépense." required>{{ old('description') }}</textarea></label>
-                        <label>Référence du paiement (facultatif)<input class="form-control" name="payment_reference" maxlength="120" value="{{ old('payment_reference') }}" placeholder="Référence ou numéro de pièce"></label>
                     </div>
-                    <button class="btn btn-primary mt-3" type="submit">Enregistrer la remise au DG</button>
+                    <button class="btn btn-primary mt-3" type="submit">Transmettre au DG pour validation</button>
                 </form>
             @endif
         </section>

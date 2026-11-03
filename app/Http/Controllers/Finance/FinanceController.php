@@ -381,7 +381,10 @@ class FinanceController extends Controller
                 }
             })->with(['location', 'requester', 'financeReviewer', 'director', 'receiptReceiver'])
             ->when(! $canSeeAll && ! $isAssignedCashier, fn ($query) => $query->where(fn ($scope) => $scope->where('requested_by', $user->id)->orWhereIn('stock_location_id', $locationIds)))
-            ->when($isAssignedCashier && ! $canSeeAll, fn ($query) => $query->where(fn ($scope) => $scope->where('requested_by', $user->id)->orWhereIn('status', ['authorized_to_pay', 'partially_paid', 'paid'])))
+            ->when($isAssignedCashier && ! $canSeeAll, fn ($query) => $query->where(fn ($scope) => $scope
+                ->where('requested_by', $user->id)
+                ->orWhereIn('status', ['authorized_to_pay', 'partially_paid', 'paid'])
+                ->orWhere('approval_route', 'director_direct')))
             ->when($request->filled('status'), fn ($query) => $query->where('status', (string) $request->string('status')))
             ->when($request->filled('search'), fn ($query) => $query->where(fn ($scope) => $scope->where('reference', 'like', '%'.$request->string('search').'%')->orWhere('beneficiary', 'like', '%'.$request->string('search').'%')->orWhere('description', 'like', '%'.$request->string('search').'%')->orWhereHas('requester', fn ($requester) => $requester->where('name', 'like', '%'.$request->string('search').'%')->orWhere('phone', 'like', '%'.$request->string('search').'%'))))
             ->latest('created_at')->paginate(15)->withQueryString();
@@ -449,26 +452,19 @@ class FinanceController extends Controller
             'amount' => ['required', 'integer', 'min:1'],
             'beneficiary' => ['required', 'string', 'max:160'],
             'description' => ['required', 'string', 'max:5000'],
-            'payment_reference' => ['nullable', 'string', 'max:120'],
         ]);
         abort_if((int) $data['director_user_id'] === (int) $request->user()->id, 422, 'Le caissier ne peut pas se présenter comme le DG demandeur.');
 
         $director = User::query()->where('active', true)->where('user_type', User::ROLE_ADMIN)->findOrFail($data['director_user_id']);
-        $expense = DB::transaction(function () use ($data, $director, $request, $service): FinanceExpenseRequest {
-            $expense = $service->submit([
-                'category_id' => $data['category_id'],
-                'amount' => $data['amount'],
-                'beneficiary' => $data['beneficiary'],
-                'description' => $data['description'],
-                'justification_note' => 'Dépense demandée directement par le DG auprès du caissier général.',
-            ], $director, true, false);
+        $expense = $service->submit([
+            'category_id' => $data['category_id'],
+            'amount' => $data['amount'],
+            'beneficiary' => $data['beneficiary'],
+            'description' => $data['description'],
+            'justification_note' => 'Dépense demandée directement par le DG auprès du caissier général.',
+        ], $director, false, false, true);
 
-            $service->pay($expense, $request->user(), (int) $data['amount'], $data['payment_reference'] ?? null);
-
-            return $expense->fresh();
-        });
-
-        return redirect()->route('finance.expenses.show', $expense)->with('success', 'Dépense directe du DG enregistrée et remise depuis la caisse générale. Le DG pourra ajouter le reçu après l’achat.');
+        return redirect()->route('finance.expenses.index')->with('success', 'Demande de dépense directe transmise au DG. Aucun fonds ne sera décaissé avant sa validation.');
     }
 
     public function updateGeneralCashier(Request $request, \App\Services\FinanceAuditService $audit): RedirectResponse
@@ -762,6 +758,9 @@ class FinanceController extends Controller
         }
         $cashierId = FinanceGeneralCashSetting::query()->whereKey(1)->value('cashier_user_id');
         if ($cashierId && (int) $cashierId === (int) $user->id && in_array($expense->status, ['authorized_to_pay', 'partially_paid', 'paid'], true)) {
+            return;
+        }
+        if ($cashierId && (int) $cashierId === (int) $user->id && $expense->approval_route === 'director_direct') {
             return;
         }
         if ($user->isWholesaleSalesRole()

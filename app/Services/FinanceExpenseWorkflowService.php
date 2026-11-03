@@ -26,9 +26,10 @@ class FinanceExpenseWorkflowService
     ) {
     }
 
-    public function submit(array $data, User $requester, bool $directlyAuthorizedByDirector = false, bool $notifyCashier = true): FinanceExpenseRequest
+    public function submit(array $data, User $requester, bool $directlyAuthorizedByDirector = false, bool $notifyCashier = true, bool $requiresDirectorReview = false): FinanceExpenseRequest
     {
         abort_if($directlyAuthorizedByDirector && ! $requester->isAdmin(), 403);
+        abort_if($requiresDirectorReview && ! $requester->isAdmin(), 403);
         if ($requester->isManager() && empty($data['stock_location_id']) && empty($data['staff_user_id'])) {
             throw ValidationException::withMessages(['stock_location_id' => 'Une demande du responsable de boutique doit être imputée à sa boutique.']);
         }
@@ -44,12 +45,20 @@ class FinanceExpenseWorkflowService
 
         $accountantRequestNeedsDirector = $requester->isAccountant() && empty($data['staff_advance_type']);
 
-        return DB::transaction(function () use ($data, $requester, $directlyAuthorizedByDirector, $notifyCashier, $accountantRequestNeedsDirector): FinanceExpenseRequest {
+        return DB::transaction(function () use ($data, $requester, $directlyAuthorizedByDirector, $notifyCashier, $requiresDirectorReview, $accountantRequestNeedsDirector): FinanceExpenseRequest {
             $category = ! empty($data['category_id'])
                 ? TypeExpensive::query()->findOrFail($data['category_id'])
                 : (! empty($data['staff_advance_type']) || ! empty($data['commission_user_id'])
                     ? TypeExpensive::query()->firstOrCreate(['name' => trim((string) $data['category_name'])])
                     : throw ValidationException::withMessages(['category_id' => 'Choisis une catégorie de dépense existante.']));
+            $status = $directlyAuthorizedByDirector
+                ? 'authorized_to_pay'
+                : (($requiresDirectorReview || $accountantRequestNeedsDirector) ? 'awaiting_director' : 'awaiting_finance');
+            $approvalRoute = $directlyAuthorizedByDirector || $requiresDirectorReview
+                ? 'director_direct'
+                : ($accountantRequestNeedsDirector
+                    ? 'accountant_director'
+                    : ((int) $data['amount'] > self::DIRECTOR_APPROVAL_THRESHOLD ? 'finance_and_director' : 'finance'));
             $expense = FinanceExpenseRequest::query()->create([
                 'reference' => 'TMP-'.Str::uuid(),
                 'stock_location_id' => $data['stock_location_id'] ?? null,
@@ -60,12 +69,8 @@ class FinanceExpenseWorkflowService
                 'beneficiary' => $data['beneficiary'],
                 'budget_reference' => $data['budget_reference'] ?? null,
                 'requested_payment_date' => $data['requested_payment_date'] ?? null,
-                'status' => $directlyAuthorizedByDirector ? 'authorized_to_pay' : ($accountantRequestNeedsDirector ? 'awaiting_director' : 'awaiting_finance'),
-                'approval_route' => $directlyAuthorizedByDirector
-                    ? 'director_direct'
-                    : ($accountantRequestNeedsDirector
-                        ? 'accountant_director'
-                        : ((int) $data['amount'] > self::DIRECTOR_APPROVAL_THRESHOLD ? 'finance_and_director' : 'finance')),
+                'status' => $status,
+                'approval_route' => $approvalRoute,
                 'justification_path' => $data['justification_path'] ?? null,
                 'justification_note' => $data['justification_note'] ?? null,
                 'requested_by' => $requester->id,
@@ -96,9 +101,16 @@ class FinanceExpenseWorkflowService
                     $this->notifyGeneralCashier($expense);
                 }
             }
-            $this->audit->record($expense, $directlyAuthorizedByDirector ? 'director_authorized_at_creation' : 'submitted', null, $expense->fresh()->toArray());
+            $this->audit->record($expense, $directlyAuthorizedByDirector ? 'director_authorized_at_creation' : ($requiresDirectorReview ? 'director_direct_expense_submitted' : 'submitted'), null, $expense->fresh()->toArray());
 
-            if (! $directlyAuthorizedByDirector) {
+            if ($requiresDirectorReview) {
+                $requester->notify(new FinanceWorkflowNotification(
+                    'Dépense directe à vérifier',
+                    'Le caissier a enregistré la dépense '.$expense->reference.' à ta demande. Vérifie les détails et autorise-la avant tout décaissement.',
+                    route('finance.expenses.show', $expense->id),
+                    'request_quote',
+                ));
+            } elseif (! $directlyAuthorizedByDirector) {
                 $reviewers = (! empty($data['staff_advance_type']) || $accountantRequestNeedsDirector)
                     ? User::query()->where('user_type', User::ROLE_ADMIN)
                     : User::query()->where('user_type', User::ROLE_ACCOUNTANT);
@@ -184,19 +196,22 @@ class FinanceExpenseWorkflowService
         if ($decision === 'rejected' && ! trim((string) $comment)) {
             throw ValidationException::withMessages(['comment' => 'Indique le motif du refus pour informer le demandeur.']);
         }
-        abort_if((int) $expense->requested_by === (int) $director->id, 403, 'Tu ne peux pas approuver ta propre demande.');
-        $accountantRequestNeedsDirector = $expense->approval_route === 'accountant_director';
-        if (! $accountantRequestNeedsDirector && (int) $expense->amount <= self::DIRECTOR_APPROVAL_THRESHOLD) {
-            throw ValidationException::withMessages(['expense' => 'Les dépenses de 50 000 F ou moins suivent le circuit financier standard. Le DG est informé de la décision.']);
+        $directorOnlyRequest = in_array($expense->approval_route, ['accountant_director', 'director_direct'], true);
+        if ($expense->approval_route === 'director_direct') {
+            abort_unless((int) $expense->requested_by === (int) $director->id, 403, 'Seul le DG indiqué sur la demande peut la vérifier.');
         }
-        if ((! $accountantRequestNeedsDirector && ! $expense->finance_reviewed_at) || $expense->status !== 'awaiting_director') {
-            throw ValidationException::withMessages(['expense' => 'Le contrôle financier doit être enregistré avant la décision du DG pour ce montant.']);
+        abort_if((int) $expense->requested_by === (int) $director->id && $expense->approval_route !== 'director_direct', 403, 'Tu ne peux pas approuver ta propre demande.');
+        if ((! $directorOnlyRequest && ! $expense->finance_reviewed_at) || $expense->status !== 'awaiting_director') {
+            throw ValidationException::withMessages(['expense' => 'La demande doit être en attente de la décision du DG avant validation.']);
         }
-        abort_if($expense->status === 'rejected', 409);
 
         return DB::transaction(function () use ($expense, $director, $decision, $comment): FinanceExpenseRequest {
             $locked = FinanceExpenseRequest::query()->lockForUpdate()->findOrFail($expense->id);
-            $directorOnlyRequest = $locked->approval_route === 'accountant_director';
+            $directorOnlyRequest = in_array($locked->approval_route, ['accountant_director', 'director_direct'], true);
+            if ($locked->approval_route === 'director_direct') {
+                abort_unless((int) $locked->requested_by === (int) $director->id, 403, 'Seul le DG indiqué sur la demande peut la vérifier.');
+            }
+            abort_if((int) $locked->requested_by === (int) $director->id && $locked->approval_route !== 'director_direct', 403, 'Tu ne peux pas approuver ta propre demande.');
             abort_unless($locked->status === 'awaiting_director'
                 && ($directorOnlyRequest || ((int) $locked->amount > self::DIRECTOR_APPROVAL_THRESHOLD && $locked->finance_reviewed_at)), 409);
             $before = $locked->only(['status', 'director_decided_by', 'director_decided_at']);
@@ -205,8 +220,6 @@ class FinanceExpenseWorkflowService
             $locked->director_comment = $comment;
             if ($decision === 'rejected') {
                 $locked->status = 'rejected';
-            } elseif (! $directorOnlyRequest && ! $locked->finance_reviewed_at) {
-                throw ValidationException::withMessages(['expense' => 'Le contrôle financier manque pour cette dépense.']);
             } else {
                 $locked->status = 'authorized_to_pay';
             }
