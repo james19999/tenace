@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Finance;
 use App\Http\Controllers\Controller;
 use App\Models\FinanceEquipmentPurchaseRequest as PurchaseRequest;
 use App\Models\FinanceEquipmentPurchaseSetting;
+use App\Models\FinanceGeneralCashSetting;
 use App\Models\User;
 use App\Notifications\FinanceWorkflowNotification;
 use App\Services\FinanceAuditService;
@@ -69,31 +70,59 @@ class FinanceEquipmentPurchaseController extends Controller
         return back()->with('success', 'Ta liste de matériel et le montant demandé ont été transmis au DG.');
     }
 
-    public function issueFunds(Request $request, PurchaseRequest $purchase, FinanceCashLedgerService $ledger, FinanceAuditService $audit): RedirectResponse
+    public function authorizeFunds(Request $request, PurchaseRequest $purchase, FinanceAuditService $audit): RedirectResponse
     {
         abort_unless($request->user()->isAdmin(), 403);
         $data = $request->validate(['approved_amount' => ['required', 'integer', 'min:1']]);
-        DB::transaction(function () use ($purchase, $request, $data, $ledger, $audit): void {
+        DB::transaction(function () use ($purchase, $request, $data, $audit): void {
             $locked = PurchaseRequest::query()->lockForUpdate()->findOrFail($purchase->id);
             abort_unless($locked->status === 'awaiting_director', 409);
             if ((int) $data['approved_amount'] > (int) $locked->requested_amount) {
-                throw ValidationException::withMessages(['approved_amount' => 'Le montant remis ne peut pas dépasser le montant demandé.']);
+                throw ValidationException::withMessages(['approved_amount' => 'Le montant autorisé ne peut pas dépasser le montant demandé.']);
             }
-            $before = $locked->only(['status', 'approved_amount', 'cash_issued']);
+            $before = $locked->only(['status', 'approved_amount']);
+            $locked->fill([
+                'approved_amount' => $data['approved_amount'],
+                'approved_by' => $request->user()->id,
+                'approved_at' => now(),
+                'status' => 'authorized_to_pay',
+            ])->save();
+            $audit->record($locked, 'equipment_purchase_funds_authorized', $before, $locked->only(['status', 'approved_amount', 'approved_by', 'approved_at']));
+
+            $cashierId = FinanceGeneralCashSetting::query()->whereKey(1)->value('cashier_user_id');
+            $cashier = $cashierId
+                ? User::query()->where('active', true)->find($cashierId)
+                : null;
+            $cashier?->notify(new FinanceWorkflowNotification('Argent d’achat autorisé à remettre', 'Le DG a autorisé '.number_format((int) $locked->approved_amount, 0, ',', ' ').' F pour '.$locked->reference.'. Remets les fonds depuis la caisse générale.', route('finance.expenses.index'), 'payments'));
+            $locked->assignee?->notify(new FinanceWorkflowNotification('Achat de matériel autorisé', 'Le DG a validé le montant demandé. La remise des fonds sera effectuée par le responsable de la caisse générale.', route('employees.self-service.purchases.index'), 'shopping_bag'));
+        });
+
+        return back()->with('success', 'Montant autorisé par le DG. Le responsable de la caisse générale a été notifié pour la remise.');
+    }
+
+    public function issueFunds(Request $request, PurchaseRequest $purchase, FinanceCashLedgerService $ledger, FinanceAuditService $audit): RedirectResponse
+    {
+        $cashierId = FinanceGeneralCashSetting::query()->whereKey(1)->value('cashier_user_id');
+        abort_unless($cashierId && (int) $cashierId === (int) $request->user()->id, 403,
+            'Seul le responsable désigné de la caisse générale peut remettre ces fonds.');
+        DB::transaction(function () use ($purchase, $request, $ledger, $audit): void {
+            $locked = PurchaseRequest::query()->lockForUpdate()->findOrFail($purchase->id);
+            abort_unless($locked->status === 'authorized_to_pay' && (int) $locked->approved_amount > 0, 409);
+            abort_if((int) $locked->assigned_to === (int) $request->user()->id, 403, 'Le caissier ne peut pas remettre les fonds pour son propre achat.');
+            $before = $locked->only(['status', 'cash_issued', 'issued_by', 'issued_at']);
             $movement = $ledger->record([
                 'movement_type' => 'equipment_purchase_advance', 'from_custody' => 'general_cash', 'to_custody' => 'external',
-                'amount' => (int) $data['approved_amount'], 'source_type' => 'finance_equipment_purchase', 'source_id' => $locked->id,
+                'amount' => (int) $locked->approved_amount, 'source_type' => 'finance_equipment_purchase', 'source_id' => $locked->id,
                 'source_key' => 'equipment-purchase:'.$locked->id.':issue', 'source_reference' => $locked->reference,
                 'occurred_at' => now(), 'description' => 'Avance achat matériel confiée à '.$locked->assignee?->name,
                 'metadata' => ['assigned_to' => $locked->assigned_to, 'title' => $locked->title], 'created_by' => $request->user()->id,
             ]);
-            $locked->fill(['approved_amount' => $data['approved_amount'], 'approved_by' => $request->user()->id, 'approved_at' => now(),
-                'cash_issued' => $data['approved_amount'], 'issued_by' => $request->user()->id, 'issued_at' => now(),
+            $locked->fill(['cash_issued' => $locked->approved_amount, 'issued_by' => $request->user()->id, 'issued_at' => now(),
                 'cash_movement_id' => $movement->id, 'status' => 'funds_issued'])->save();
-            $audit->record($locked, 'equipment_purchase_funds_issued', $before, $locked->only(['status', 'approved_amount', 'cash_issued']));
-            $locked->assignee?->notify(new FinanceWorkflowNotification('Argent remis pour ton achat', 'Le DG a validé et remis '.number_format((int) $locked->cash_issued, 0, ',', ' ').' F. Effectue l’achat puis ajoute les reçus dans ton espace personnel.', route('employees.self-service.purchases.index'), 'payments'));
+            $audit->record($locked, 'equipment_purchase_funds_issued', $before, $locked->only(['status', 'cash_issued', 'issued_by', 'issued_at']));
+            $locked->assignee?->notify(new FinanceWorkflowNotification('Argent remis pour ton achat', 'Le responsable de la caisse générale t’a remis '.number_format((int) $locked->cash_issued, 0, ',', ' ').' F. Effectue l’achat puis ajoute les reçus dans ton espace personnel.', route('employees.self-service.purchases.index'), 'payments'));
         });
-        return back()->with('success', 'L’avance est validée et sa remise est enregistrée dans la caisse générale.');
+        return back()->with('success', 'Remise enregistrée par le responsable de la caisse générale.');
     }
 
     public function submitReport(Request $request, PurchaseRequest $purchase, FinanceCashLedgerService $ledger, FinanceAuditService $audit): RedirectResponse

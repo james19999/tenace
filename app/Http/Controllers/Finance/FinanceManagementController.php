@@ -37,10 +37,14 @@ use Illuminate\View\View;
 
 class FinanceManagementController extends Controller
 {
-    public function index(Request $request, FinanceCashLedgerService $ledger): View
+    public function index(Request $request, FinanceCashLedgerService $ledger): View|RedirectResponse
     {
         $this->authorizeFinance($request->user());
         $tab = in_array($request->query('tab'), ['receivables', 'planning', 'team', 'purchases'], true) ? $request->query('tab') : 'receivables';
+        if ($tab === 'team' && ! $request->user()->isAdmin()) {
+            return redirect()->route('finance.management.index', ['tab' => 'receivables'])
+                ->with('info', 'Le suivi nominatif des avances est réservé à l’administration.');
+        }
         $monthStart = now()->startOfMonth();
         $monthEnd = now()->endOfMonth();
 

@@ -15,6 +15,7 @@ class FinanceExpenseRequest extends Model
         'finance_comment', 'director_decided_by', 'director_decided_at', 'director_comment', 'payment_status',
         'paid_amount', 'paid_at', 'paid_by', 'cancellation_reason',
         'staff_user_id', 'staff_advance_type', 'staff_payroll_period_id', 'staff_repayment_method', 'staff_repayment_value', 'commission_user_id', 'commission_period_start', 'commission_period_end',
+        'receipt_paths', 'receipts_submitted_at',
     ];
 
     protected $casts = [
@@ -26,6 +27,8 @@ class FinanceExpenseRequest extends Model
         'director_decided_at' => 'datetime',
         'paid_at' => 'datetime',
         'staff_repayment_value' => 'decimal:2',
+        'receipt_paths' => 'array',
+        'receipts_submitted_at' => 'datetime',
     ];
 
     public function location(): BelongsTo

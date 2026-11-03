@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Finance;
 
 use App\Http\Controllers\Controller;
 use App\Models\FinanceSupplierInvoice;
+use App\Models\FinanceGeneralCashSetting;
 use App\Models\StockReceipt;
 use App\Models\User;
 use App\Services\FinanceSupplierInvoiceService;
@@ -15,16 +16,13 @@ use Illuminate\View\View;
 
 class FinanceSupplierInvoiceController extends Controller
 {
-    public function __construct()
-    {
-        $this->middleware('role:ADMINUSER');
-    }
-
     public function index(Request $request): View
     {
         $user = $request->user();
+        $isAssignedCashier = $this->isAssignedCashier($user);
+        abort_unless($user->isAdmin() || $isAssignedCashier, 403);
         $query = FinanceSupplierInvoice::query()->with(['creator', 'reviewer'])
-            ->when(! $user->isAdmin() && ! $user->isAccountant() && ! $user->hasRole(User::ROLE_CASHIER), fn ($query) => $query->where('created_by', $user->id))
+            ->when($isAssignedCashier, fn ($query) => $query->where('status', 'approved'))
             ->when($request->filled('status'), fn ($query) => $query->where('status', $request->string('status')))
             ->when($request->filled('search'), fn ($query) => $query->where(fn ($scope) => $scope
                 ->where('supplier_name', 'like', '%'.$request->string('search').'%')
@@ -32,7 +30,7 @@ class FinanceSupplierInvoiceController extends Controller
                 ->orWhere('supplier_invoice_number', 'like', '%'.$request->string('search').'%')))
             ->latest('invoice_date')->latest('id');
 
-        return view('finance.suppliers.index', ['invoices' => $query->paginate(15)->withQueryString()]);
+        return view('finance.suppliers.index', ['invoices' => $query->paginate(15)->withQueryString(), 'isAssignedCashier' => $isAssignedCashier]);
     }
 
     public function create(Request $request): View
@@ -86,8 +84,9 @@ class FinanceSupplierInvoiceController extends Controller
             ? (int) round($invoice->receipt->lines->sum(fn ($line) => (float) $line->quantity_received * (float) $line->unit_cost))
             : null;
         $receiptDifference = $receivedValue === null ? null : (int) $invoice->amount - $receivedValue;
+        $isAssignedCashier = $this->isAssignedCashier($request->user());
 
-        return view('finance.suppliers.show', compact('invoice', 'receivedValue', 'receiptDifference'));
+        return view('finance.suppliers.show', compact('invoice', 'receivedValue', 'receiptDifference', 'isAssignedCashier'));
     }
 
     public function review(Request $request, FinanceSupplierInvoice $invoice, FinanceSupplierInvoiceService $service): RedirectResponse
@@ -136,9 +135,14 @@ class FinanceSupplierInvoiceController extends Controller
 
     private function authorizeInvoice(User $user, FinanceSupplierInvoice $invoice): void
     {
-        if ($user->isAdmin() || $user->isAccountant() || $user->hasRole(User::ROLE_CASHIER)) {
-            return;
-        }
-        abort_unless((int) $invoice->created_by === (int) $user->id, 403);
+        abort_unless(
+            $user->isAdmin() || ($this->isAssignedCashier($user) && $invoice->status === 'approved'),
+            403,
+        );
+    }
+
+    private function isAssignedCashier(User $user): bool
+    {
+        return (int) FinanceGeneralCashSetting::query()->whereKey(1)->value('cashier_user_id') === (int) $user->id;
     }
 }

@@ -3,12 +3,13 @@
 <main class="container-fluid fm-page">
     <header class="fm-heading"><div><a href="{{ route('finance.dashboard') }}">← Comptabilité</a><h1>Autres suivis financiers</h1><p>Suivi des sommes à recevoir, des dépenses prévues, du personnel et des achats de matériel confiés.</p></div></header>
     @if(session('success'))<div class="alert alert-success">{{ session('success') }}</div>@endif
+    @if(session('info'))<div class="alert alert-info">{{ session('info') }}</div>@endif
     @if($errors->any())<div class="alert alert-danger"><ul class="mb-0">@foreach($errors->all() as $error)<li>{{ $error }}</li>@endforeach</ul></div>@endif
 
     <nav class="fm-tabs" aria-label="Rubriques financières">
         <a class="{{ $tab==='receivables'?'is-active':'' }}" href="{{ route('finance.management.index',['tab'=>'receivables']) }}"><span class="material-icons">receipt_long</span>À encaisser <b>{{ number_format($receivableTotal,0,',',' ') }} F</b></a>
         <a class="{{ $tab==='planning'?'is-active':'' }}" href="{{ route('finance.management.index',['tab'=>'planning']) }}"><span class="material-icons">monitoring</span>Dépenses et argent à prévoir</a>
-        <a class="{{ $tab==='team'?'is-active':'' }}" href="{{ route('finance.management.index',['tab'=>'team']) }}"><span class="material-icons">groups</span>Avances</a>
+        @if(auth()->user()->isAdmin())<a class="{{ $tab==='team'?'is-active':'' }}" href="{{ route('finance.management.index',['tab'=>'team']) }}"><span class="material-icons">groups</span>Avances</a>@endif
         <a class="{{ $tab==='purchases'?'is-active':'' }}" href="{{ route('finance.management.index',['tab'=>'purchases']) }}"><span class="material-icons">shopping_bag</span>Achats de matériel</a>
     </nav>
 
@@ -274,13 +275,14 @@
             </form>
         </section>
         @endif
-        <section class="fm-card fm-purchases-card"><div class="fm-section-head"><div><h2>Suivi des demandes d’achat</h2><p>Chaque demande est créée par le responsable désigné. Tu peux suivre les fonds remis, contrôler les reçus et confirmer le retour du reliquat.</p></div><span class="fm-purchase-total">{{ $purchaseRequests->total() }} dossier{{ $purchaseRequests->total() === 1 ? '' : 's' }}</span></div>
+        <section class="fm-card fm-purchases-card"><div class="fm-section-head"><div><h2>Suivi des demandes d’achat</h2><p>Le DG autorise le montant, puis le responsable de la caisse générale remet les fonds. Tu peux suivre les reçus et confirmer le retour du reliquat.</p></div><span class="fm-purchase-total">{{ $purchaseRequests->total() }} dossier{{ $purchaseRequests->total() === 1 ? '' : 's' }}</span></div>
             <div class="fm-purchase-list">
                 @forelse($purchaseRequests as $purchaseRequestItem)
                     @php
                         $purchaseStates = [
                             'assigned' => ['À compléter par le responsable', 'À préparer', 'pending'],
                             'awaiting_director' => ['Décision du DG requise', 'À valider', 'action'],
+                            'authorized_to_pay' => ['DG autorisé · remise par le caissier', 'À remettre', 'action'],
                             'funds_issued' => ['Fonds remis · achat en cours', 'En cours', 'progress'],
                             'submitted_for_review' => ['Reçus transmis · contrôle requis', 'À contrôler', 'review'],
                             'closed' => ['Achat contrôlé et clôturé', 'Clôturé', 'done'],
@@ -300,7 +302,7 @@
                         @if($purchaseRequestItem->review_note)<div class="fm-purchase-message"><strong>Dernier retour du DG</strong><p>{{ $purchaseRequestItem->review_note }}</p></div>@endif
                         @if($purchaseRequestItem->receipt_paths)<div class="fm-purchase-receipts"><strong>Reçus transmis</strong>@foreach($purchaseRequestItem->receipt_paths as $i=>$path)<a href="{{ route('finance.management.purchases.receipt',[$purchaseRequestItem,$i]) }}" target="_blank" rel="noopener"><span class="material-icons">description</span> Reçu {{ $loop->iteration }}</a>@endforeach</div>@endif
                         @if($purchaseRequestItem->status==='awaiting_director' && auth()->user()->isAdmin())
-                            <form class="fm-purchase-action fm-purchase-approve" method="POST" action="{{ route('finance.management.purchases.issue',$purchaseRequestItem) }}">@csrf<div><strong>Valider et remettre les fonds</strong><small>La caisse générale sera débitée du montant saisi.</small></div><label>Montant remis (F CFA)<input class="form-control" type="number" name="approved_amount" min="1" max="{{ $purchaseRequestItem->requested_amount }}" value="{{ $purchaseRequestItem->requested_amount }}" required></label><button class="btn btn-primary">Confirmer la remise</button></form>
+                            <form class="fm-purchase-action fm-purchase-approve" method="POST" action="{{ route('finance.management.purchases.authorize',$purchaseRequestItem) }}">@csrf<div><strong>Autoriser le montant demandé</strong><small>Le responsable unique de la caisse générale remettra ensuite les fonds.</small></div><label>Montant autorisé (F CFA)<input class="form-control" type="number" name="approved_amount" min="1" max="{{ $purchaseRequestItem->requested_amount }}" value="{{ $purchaseRequestItem->requested_amount }}" required></label><button class="btn btn-primary">Autoriser les fonds</button></form>
                         @endif
                         @if($purchaseRequestItem->status==='submitted_for_review' && auth()->user()->isAdmin())
                             <div class="fm-purchase-action fm-purchase-review"><div class="fm-purchase-review-heading"><strong>Contrôle final</strong><small>En clôturant, tu confirmes avoir reçu le reliquat indiqué, s’il y en a un.</small></div><form method="POST" action="{{ route('finance.management.purchases.review',$purchaseRequestItem) }}">@csrf<input type="hidden" name="decision" value="accepted"><button class="btn btn-primary"><span class="material-icons">task_alt</span> Confirmer et clôturer</button></form><form class="fm-purchase-correction" method="POST" action="{{ route('finance.management.purchases.review',$purchaseRequestItem) }}">@csrf<input type="hidden" name="decision" value="correction"><input class="form-control" name="review_note" placeholder="Précision à demander au responsable" aria-label="Précision à demander au responsable" required><button class="btn btn-outline-primary">Demander un complément</button></form></div>

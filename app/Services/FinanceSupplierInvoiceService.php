@@ -4,6 +4,7 @@ namespace App\Services;
 
 use App\Models\FinanceSupplierInvoice;
 use App\Models\FinanceSupplierPayment;
+use App\Models\FinanceGeneralCashSetting;
 use App\Models\StockReceipt;
 use App\Models\User;
 use App\Notifications\FinanceWorkflowNotification;
@@ -109,15 +110,18 @@ class FinanceSupplierInvoiceService
                 'receipt_long',
             ));
             if ($decision === 'approved') {
-                Notification::send(
-                    User::query()->whereIn('user_type', [User::ROLE_ADMIN, User::ROLE_ACCOUNTANT, User::ROLE_CASHIER])->where('active', true)->where('id', '<>', $reviewer->id)->get(),
-                    new FinanceWorkflowNotification(
+                $cashierId = FinanceGeneralCashSetting::query()->whereKey(1)->value('cashier_user_id');
+                $cashier = $cashierId
+                    ? User::query()->where('active', true)->find($cashierId)
+                    : null;
+                if ($cashier && (int) $cashier->id !== (int) $locked->created_by) {
+                    $cashier->notify(new FinanceWorkflowNotification(
                         'Facture fournisseur à régler',
                         'La facture '.$locked->invoice_number.' est validée et attend son règlement.',
                         route('finance.suppliers.show', $locked->id),
                         'payments',
-                    ),
-                );
+                    ));
+                }
             }
 
             return $locked->fresh();
@@ -126,7 +130,9 @@ class FinanceSupplierInvoiceService
 
     public function pay(FinanceSupplierInvoice $invoice, User $payer, int $amount, ?string $reference, string $proofPath): FinanceSupplierPayment
     {
-        abort_unless($payer->isAdmin() || $payer->isAccountant() || $payer->hasRole(User::ROLE_CASHIER), 403);
+        $cashierId = FinanceGeneralCashSetting::query()->whereKey(1)->value('cashier_user_id');
+        abort_unless($cashierId && (int) $cashierId === (int) $payer->id, 403,
+            'Seul le responsable désigné de la caisse générale peut régler cette facture.');
 
         return DB::transaction(function () use ($invoice, $payer, $amount, $reference, $proofPath): FinanceSupplierPayment {
             $locked = FinanceSupplierInvoice::query()->lockForUpdate()->findOrFail($invoice->id);

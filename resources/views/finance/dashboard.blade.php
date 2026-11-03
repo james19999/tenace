@@ -3,14 +3,14 @@
 @section('content')
 <div class="container-fluid finance-page">
     <header class="finance-hero">
-        <div><span class="finance-kicker">TENACOS · TRÉSORERIE</span><h1>Suivi financier</h1><p>Consulte le solde, son évolution et les opérations qui demandent une action.</p></div>
+        <div><span class="finance-kicker">TENACOS · {{ $canSeeCentral ? 'CAISSE GÉNÉRALE' : 'TRÉSORERIE BOUTIQUES' }}</span><h1>Suivi financier</h1><p>Consulte le solde auquel ton compte a accès, son évolution et les opérations qui demandent une action.</p></div>
     </header>
 
     @if (session('success'))<div class="alert alert-success">{{ session('success') }}</div>@endif
     @if ($errors->any())<div class="alert alert-danger"><strong>Vérifie les informations.</strong><ul class="mb-0">@foreach ($errors->all() as $error)<li>{{ $error }}</li>@endforeach</ul></div>@endif
 
     <div class="finance-stat-grid">
-        @if($canSeeCentral)<article class="finance-stat finance-stat-primary"><span>Caisse générale</span><strong>{{ number_format($generalCash, 0, ',', ' ') }} F</strong><small>Solde confirmé par les mouvements</small></article>@else<article class="finance-stat finance-stat-primary"><span>{{ auth()->user()->user_type === 'RCM' ? 'Espèces du grossiste' : 'Espèces de ta boutique' }}</span><strong>{{ number_format($shopCash, 0, ',', ' ') }} F</strong><small>Solde calculé à partir des mouvements</small></article>@endif
+        @if($canSeeCentral)<article class="finance-stat finance-stat-primary"><span>Caisse générale</span><strong>{{ number_format($generalCash, 0, ',', ' ') }} F</strong><small>Solde confirmé par les mouvements</small></article>@else<article class="finance-stat finance-stat-primary"><span>{{ auth()->user()->user_type === 'RCM' || auth()->user()->user_type === 'GRO' ? 'Espèces du grossiste' : ($canSeeAll ? 'Espèces des boutiques' : 'Espèces de ta boutique') }}</span><strong>{{ number_format($shopCash, 0, ',', ' ') }} F</strong><small>Solde calculé à partir des mouvements</small></article>@endif
         <article class="finance-stat"><span>Variation nette · {{ $cashTrend['current_month'] }}</span><strong class="{{ $cashTrend['current_month_net'] < 0 ? 'finance-negative' : 'finance-positive' }}">{{ $cashTrend['current_month_net'] > 0 ? '+' : '' }}{{ number_format($cashTrend['current_month_net'], 0, ',', ' ') }} F</strong><small>{{ $cashTrend['previous_month'] }} : {{ $cashTrend['previous_month_net'] > 0 ? '+' : '' }}{{ number_format($cashTrend['previous_month_net'], 0, ',', ' ') }} F</small></article>
         <article class="finance-stat"><span>Fonds en transit</span><strong>{{ number_format(max(0, $inTransit), 0, ',', ' ') }} F</strong><small>En attente de confirmation du DG</small></article>
         @if(auth()->user()->isAdmin())<article class="finance-stat"><span>Dettes fournisseurs</span><strong>{{ number_format($supplierPayables, 0, ',', ' ') }} F</strong><small>{{ $overdueSupplierInvoices }} facture(s) échue(s)</small></article>@endif
@@ -67,38 +67,39 @@
         </details>
     @endif
 
-    @if (auth()->user()->isAdmin() || auth()->user()->hasRole(\App\Models\User::ROLE_CASHIER))
+    @if (auth()->user()->isAdmin())
         <details class="finance-panel finance-details">
-            <summary><span><strong>Comptage de la caisse générale</strong><small>Transmettre un comptage à une autre personne pour validation</small></span><span class="material-icons">expand_more</span></summary>
+            <summary><span><strong>Comptage de la caisse générale</strong><small>Le DG enregistre et valide le comptage en une fois</small></span><span class="material-icons">expand_more</span></summary>
             <section class="finance-opening">
-            <div><h2>Comptage de la caisse générale</h2><p>Le solde théorique est calculé depuis les mouvements enregistrés. Une autre personne habilitée devra valider le comptage.</p></div>
+            <div><h2>Comptage de la caisse générale</h2><p>Le montant compté est validé dès son enregistrement. La caisse reste ouverte pour les opérations suivantes ; tout surplus est ajouté et tout manque est déduit.</p></div>
             <form method="POST" action="{{ route('finance.cash.closures.store') }}" class="finance-opening-form">@csrf
                 <label>Date du comptage<input class="form-control" type="date" name="closing_date" value="{{ now()->format('Y-m-d') }}" max="{{ now()->format('Y-m-d') }}" required></label>
                 <label>Montant compté (F CFA)<input class="form-control" type="number" min="0" step="1" name="counted_amount" required></label>
                 <label class="finance-opening-reason">Explication de l’écart (obligatoire si différent du solde théorique)<input class="form-control" name="count_note" maxlength="2000"></label>
-                <button class="btn btn-primary" type="submit">Transmettre le comptage</button>
+                <button class="btn btn-primary" type="submit">Valider le comptage</button>
             </form>
             </section>
         </details>
     @endif
 
-    @if($canSeeCentral || $cashClosures->isNotEmpty())
+    @if(auth()->user()->isAdmin())
     <details class="finance-panel finance-details">
         <summary><span><strong>Historique et validations de caisse</strong><small>{{ $cashClosures->count() }} clôture(s) récente(s)</small></span><span class="material-icons">expand_more</span></summary>
         <div class="table-responsive"><table class="table finance-table"><thead><tr><th>Date</th><th>Compté par</th><th>Théorique</th><th>Compté</th><th>Écart</th><th>Statut / contrôle</th></tr></thead><tbody>
             @forelse($cashClosures as $closure)
                 <tr><td>{{ $closure->closing_date->format('d/m/Y') }}</td><td>{{ $closure->counter?->name ?? '—' }}</td><td>{{ number_format($closure->theoretical_amount,0,',',' ') }} F</td><td>{{ number_format($closure->counted_amount,0,',',' ') }} F</td><td class="{{ $closure->variance_amount === 0 ? 'text-success' : 'text-danger' }}">{{ $closure->variance_amount > 0 ? '+' : '' }}{{ number_format($closure->variance_amount,0,',',' ') }} F</td><td>
-                    @if($closure->status === 'awaiting_review' && (auth()->user()->isAdmin() || auth()->user()->isAccountant()) && (int)$closure->counted_by !== (int)auth()->id())
-                        <form method="POST" action="{{ route('finance.cash.closures.review', $closure) }}" class="finance-review-form">@csrf<label class="sr-only" for="closure-note-{{ $closure->id }}">Commentaire de contrôle</label><input id="closure-note-{{ $closure->id }}" class="form-control" name="resolution_note" placeholder="Commentaire{{ $closure->variance_amount !== 0 ? ' obligatoire' : ' (facultatif)' }}" {{ $closure->variance_amount !== 0 ? 'required' : '' }}><input type="hidden" name="decision" value="approved"><button class="btn btn-sm btn-primary" type="submit">Valider</button></form>
+                    @if($closure->status === 'awaiting_review' && auth()->user()->isAdmin() && (int)$closure->counted_by !== (int)auth()->id())
+                        <form method="POST" action="{{ route('finance.cash.closures.review', $closure) }}" class="finance-review-form">@csrf<label class="sr-only" for="closure-note-{{ $closure->id }}">Commentaire de contrôle</label><input id="closure-note-{{ $closure->id }}" class="form-control" name="resolution_note" placeholder="Commentaire{{ $closure->variance_amount !== 0 ? ' obligatoire' : ' (facultatif)' }}" {{ $closure->variance_amount !== 0 ? 'required' : '' }}><input type="hidden" name="decision" value="approved"><button class="btn btn-sm btn-primary" type="submit">{{ $closure->variance_amount > 0 ? 'Valider et ajouter à la caisse' : ($closure->variance_amount < 0 ? 'Valider et déduire le manque' : 'Valider le comptage') }}</button></form>
                     @elseif($closure->status === 'closed' && auth()->user()->isAdmin())
-                        <form method="POST" action="{{ route('finance.cash.closures.review', $closure) }}" class="finance-review-form">@csrf<label class="sr-only" for="closure-reopen-{{ $closure->id }}">Motif de réouverture</label><input id="closure-reopen-{{ $closure->id }}" class="form-control" name="resolution_note" placeholder="Motif de réouverture" required><input type="hidden" name="decision" value="reopened"><button class="btn btn-sm btn-outline-danger" type="submit">Rouvrir</button></form>
-                    @else<span class="badge badge-light">{{ $closure->status === 'awaiting_review' ? 'À contrôler' : ($closure->status === 'closed' ? 'Clôturée' : 'Rouverte') }}</span><small class="d-block text-muted">{{ $closure->reviewer?->name ?? 'En attente de contrôle' }}</small>@endif
+                        <span class="badge badge-success">Comptage validé · caisse ouverte</span><small class="d-block text-muted">{{ $closure->reviewer?->name ?? 'Validé' }}</small><form method="POST" action="{{ route('finance.cash.closures.review', $closure) }}" class="finance-review-form">@csrf<label class="sr-only" for="closure-reopen-{{ $closure->id }}">Motif de correction du comptage</label><input id="closure-reopen-{{ $closure->id }}" class="form-control" name="resolution_note" placeholder="Motif si tu veux corriger le comptage" required><input type="hidden" name="decision" value="reopened"><button class="btn btn-sm btn-outline-danger" type="submit">Corriger le comptage</button></form>
+                    @else<span class="badge badge-light">{{ $closure->status === 'awaiting_review' ? 'À contrôler' : ($closure->status === 'closed' ? 'Comptage validé · caisse ouverte' : 'Rouverte pour correction') }}</span><small class="d-block text-muted">{{ $closure->reviewer?->name ?? 'En attente de contrôle' }}</small>@endif
                 </td></tr>
             @empty<tr><td colspan="6" class="text-center text-muted py-4">Aucune clôture enregistrée.</td></tr>@endforelse
         </tbody></table></div>
     </details>
     @endif
 
+    @if(auth()->user()->isAdmin())
     <details class="finance-panel finance-details">
         <summary><span><strong>Mouvements récents</strong><small>{{ $recentMovements->total() }} opération(s) · chaque ligne garde sa référence</small></span><span class="material-icons">expand_more</span></summary>
         <div class="table-responsive"><table class="table finance-table"><thead><tr><th>Date</th><th>Opération</th><th>Boutique</th><th>De</th><th>Vers</th><th class="text-right">Montant</th></tr></thead><tbody>
@@ -113,6 +114,7 @@
             </div>
         @endif
     </details>
+    @endif
 </div>
 
 <style>

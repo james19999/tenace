@@ -7,6 +7,8 @@ use App\Models\FinanceCashMovement;
 use App\Models\FinanceCashClosure;
 use App\Models\FinanceCashRemittance;
 use App\Models\FinanceExpenseRequest;
+use App\Models\FinanceEquipmentPurchaseRequest;
+use App\Models\FinanceGeneralCashSetting;
 use App\Models\FinanceSupplierInvoice;
 use App\Models\StockLocation;
 use App\Models\TypeExpensive;
@@ -20,6 +22,7 @@ use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\Rule;
 use Illuminate\View\View;
 
@@ -33,7 +36,8 @@ class FinanceController extends Controller
     {
         $user = request()->user();
         $canSeeAll = $user->isAdmin() || $user->isAccountant();
-        $canSeeCentral = $canSeeAll || $user->hasRole(User::ROLE_CASHIER);
+        $cashierId = FinanceGeneralCashSetting::query()->whereKey(1)->value('cashier_user_id');
+        $canSeeCentral = $user->isAdmin() || ($cashierId && (int) $cashierId === (int) $user->id);
         $locationIds = StockLocation::query()->where('type', 'shop')
             ->when(! $canSeeAll, fn ($query) => $query->where('responsible_user_id', $user->id))
             ->pluck('id');
@@ -46,19 +50,30 @@ class FinanceController extends Controller
                 $scope->whereIn('stock_location_id', $locationIds)->orWhere('collector_id', $user->id);
             });
         });
-        $expenses = FinanceExpenseRequest::query()->where(function ($query): void {
+        $expenses = FinanceExpenseRequest::query()->where(function ($query) use ($canSeeCentral): void {
             $query->whereNull('staff_advance_type')->orWhere('staff_advance_type', '<>', 'loan');
-        })->when(! $canSeeAll, function ($query) use ($user, $locationIds): void {
-            $query->where(function ($scope) use ($user, $locationIds): void {
+            if ($canSeeCentral) {
+                $query->orWhere(fn ($loans) => $loans->where('staff_advance_type', 'loan')->whereIn('status', ['authorized_to_pay', 'partially_paid', 'paid']));
+            }
+        })->when(! $canSeeAll, function ($query) use ($user, $locationIds, $canSeeCentral): void {
+            $query->where(function ($scope) use ($user, $locationIds, $canSeeCentral): void {
                 $scope->where('requested_by', $user->id)->orWhereIn('stock_location_id', $locationIds);
+                if ($canSeeCentral) {
+                    $scope->orWhereIn('status', ['authorized_to_pay', 'partially_paid']);
+                }
             });
         });
         $visibleRemittances = (clone $remittances)->whereIn('status', ['in_transit', 'discrepancy_open']);
         $movements = FinanceCashMovement::query()->with(['location', 'creator'])
-            ->when(! $canSeeAll, fn ($query) => $query->where(function ($scope) use ($locationIds, $user): void {
-                $scope->whereIn('stock_location_id', $locationIds)
-                    ->orWhereIn('remittance_id', FinanceCashRemittance::query()->select('id')->where('collector_id', $user->id));
-            }));
+            ->when(! $user->isAdmin(), function ($query) use ($canSeeAll, $locationIds, $user): void {
+                $query->where('from_custody', '<>', 'general_cash')->where('to_custody', '<>', 'general_cash');
+                if (! $canSeeAll) {
+                    $query->where(function ($scope) use ($locationIds, $user): void {
+                        $scope->whereIn('stock_location_id', $locationIds)
+                            ->orWhereIn('remittance_id', FinanceCashRemittance::query()->select('id')->where('collector_id', $user->id));
+                    });
+                }
+            });
         $currentMonthStart = now()->startOfMonth();
         $previousMonthStart = $currentMonthStart->copy()->subMonthNoOverflow();
         $today = now()->startOfDay();
@@ -97,7 +112,7 @@ class FinanceController extends Controller
             'previous_month' => $previousMonthStart->translatedFormat('F Y'),
             'current_month_net' => $currentBalance - $previousBalance,
             'previous_month_net' => (int) array_sum($dailyCashChanges->filter(fn ($row, $date) => $date >= $previousMonthStart->toDateString() && $date <= $previousMonthEnd->toDateString())->pluck('net_change')->all()),
-            'custody_label' => $canSeeCentral ? 'Caisse générale' : ($user->user_type === User::ROLE_COMMERCIAL_MANAGER ? 'Espèces du grossiste' : 'Espèces de ta boutique'),
+            'custody_label' => $canSeeCentral ? 'Caisse générale' : ($canSeeAll ? 'Espèces des boutiques' : ($user->user_type === User::ROLE_COMMERCIAL_MANAGER ? 'Espèces du grossiste' : 'Espèces de ta boutique')),
         ];
         $monthlyCashTotals = function ($start, $end) use ($cashFlowQuery, $trackedCustody): array {
             $totals = (clone $cashFlowQuery)->whereBetween('occurred_at', [$start, $end])
@@ -139,7 +154,7 @@ class FinanceController extends Controller
             'canSeeCentral' => $canSeeCentral,
             'hasOpeningBalance' => \Illuminate\Support\Facades\DB::table('finance_general_openings')->exists(),
             'cashClosures' => FinanceCashClosure::query()->with(['counter', 'reviewer'])
-                ->when(! $canSeeCentral, fn ($query) => $query->where('counted_by', $user->id))
+                ->when(! $user->isAdmin(), fn ($query) => $query->whereRaw('1 = 0'))
                 ->latest('closing_date')->limit(10)->get(),
             'shopOpeningsNeeded' => StockLocation::query()->where('type', 'shop')->where('is_active', true)
                 ->when(! $user->isAdmin(), fn ($query) => $query->where('responsible_user_id', $user->id))
@@ -159,7 +174,7 @@ class FinanceController extends Controller
         ]);
         $service->count($data['closing_date'], (int) $data['counted_amount'], $request->user(), $data['denominations'] ?? null, $data['count_note'] ?? null);
 
-        return back()->with('success', 'Comptage transmis pour contrôle par une autre personne autorisée.');
+        return back()->with('success', 'Comptage validé ; l’écart a été enregistré dans la caisse générale.');
     }
 
     public function reviewCashClosure(Request $request, FinanceCashClosure $closure, FinanceCashClosureService $service): RedirectResponse
@@ -351,19 +366,156 @@ class FinanceController extends Controller
     {
         $user = $request->user();
         $canSeeAll = $user->isAdmin() || $user->isAccountant();
+        $cashSetting = FinanceGeneralCashSetting::query()->with('cashier')->find(1);
+        $isAssignedCashier = $cashSetting
+            && (int) $cashSetting->cashier_user_id === (int) $user->id;
         $locationIds = StockLocation::query()->where('type', 'shop')->where('responsible_user_id', $user->id)->pluck('id');
         if ($user->isWholesaleSalesRole() && $this->wholesaleLocationId()) {
             $locationIds->push($this->wholesaleLocationId());
         }
-        $rows = FinanceExpenseRequest::query()->where(function ($query): void {
+        $rows = FinanceExpenseRequest::query()->where(function ($query) use ($isAssignedCashier): void {
                 $query->whereNull('staff_advance_type')->orWhere('staff_advance_type', '<>', 'loan');
+                if ($isAssignedCashier) {
+                    $query->orWhere(fn ($loans) => $loans->where('staff_advance_type', 'loan')->whereIn('status', ['authorized_to_pay', 'partially_paid', 'paid']));
+                }
             })->with(['location', 'requester', 'financeReviewer', 'director'])
-            ->when(! $canSeeAll, fn ($query) => $query->where(fn ($scope) => $scope->where('requested_by', $user->id)->orWhereIn('stock_location_id', $locationIds)))
+            ->when(! $canSeeAll && ! $isAssignedCashier, fn ($query) => $query->where(fn ($scope) => $scope->where('requested_by', $user->id)->orWhereIn('stock_location_id', $locationIds)))
+            ->when($isAssignedCashier && ! $canSeeAll, fn ($query) => $query->where(fn ($scope) => $scope->where('requested_by', $user->id)->orWhereIn('status', ['authorized_to_pay', 'partially_paid', 'paid'])))
             ->when($request->filled('status'), fn ($query) => $query->where('status', (string) $request->string('status')))
-            ->when($request->filled('search'), fn ($query) => $query->where(fn ($scope) => $scope->where('reference', 'like', '%'.$request->string('search').'%')->orWhere('beneficiary', 'like', '%'.$request->string('search').'%')->orWhere('description', 'like', '%'.$request->string('search').'%')))
+            ->when($request->filled('search'), fn ($query) => $query->where(fn ($scope) => $scope->where('reference', 'like', '%'.$request->string('search').'%')->orWhere('beneficiary', 'like', '%'.$request->string('search').'%')->orWhere('description', 'like', '%'.$request->string('search').'%')->orWhereHas('requester', fn ($requester) => $requester->where('name', 'like', '%'.$request->string('search').'%')->orWhere('phone', 'like', '%'.$request->string('search').'%'))))
             ->latest('created_at')->paginate(15)->withQueryString();
 
-        return view('finance.expenses.index', ['expenses' => $rows, 'canSeeAll' => $canSeeAll]);
+        $cashiers = $user->isAdmin()
+            ? User::query()->where('active', true)->whereIn('user_type', User::GENERAL_CASHIER_ELIGIBLE_ROLES)->orderBy('name')->get(['id', 'name', 'user_type'])
+            : collect();
+        $cashierPurchaseRequests = $isAssignedCashier
+            ? FinanceEquipmentPurchaseRequest::query()->with(['assignee', 'creator'])->where('status', 'authorized_to_pay')->latest()->paginate(10, ['*'], 'purchase_cash_page')->withQueryString()
+            : null;
+        $cashierPayableExpenses = $isAssignedCashier
+            ? FinanceExpenseRequest::query()->with(['location', 'requester'])
+                ->whereIn('status', ['authorized_to_pay', 'partially_paid'])
+                ->where('requested_by', '<>', $user->id)
+                ->latest('director_decided_at')->paginate(10, ['*'], 'cashier_expense_page')->withQueryString()
+            : null;
+        $cashierPayableExpenseCount = $isAssignedCashier
+            ? FinanceExpenseRequest::query()->whereIn('status', ['authorized_to_pay', 'partially_paid'])->where('requested_by', '<>', $user->id)->count()
+            : 0;
+        $cashierPayableExpenseAmount = $isAssignedCashier
+            ? (int) FinanceExpenseRequest::query()->whereIn('status', ['authorized_to_pay', 'partially_paid'])->where('requested_by', '<>', $user->id)->sum(DB::raw('amount - paid_amount'))
+            : 0;
+        $cashierPurchaseCount = $cashierPurchaseRequests?->total() ?? 0;
+        $cashierPurchaseAmount = $isAssignedCashier
+            ? (int) FinanceEquipmentPurchaseRequest::query()->where('status', 'authorized_to_pay')->sum('approved_amount')
+            : 0;
+        $directExpenseCategories = $isAssignedCashier ? TypeExpensive::query()->orderBy('name')->get(['id', 'name']) : collect();
+        $directExpenseDirectors = $isAssignedCashier
+            ? User::query()->where('active', true)->where('user_type', User::ROLE_ADMIN)->orderBy('name')->get(['id', 'name'])
+            : collect();
+
+        return view('finance.expenses.index', [
+            'expenses' => $rows,
+            'canSeeAll' => $canSeeAll,
+            'cashSetting' => $cashSetting,
+            'cashiers' => $cashiers,
+            'isAssignedCashier' => $isAssignedCashier,
+            'cashierPurchaseRequests' => $cashierPurchaseRequests,
+            'cashierPayableExpenses' => $cashierPayableExpenses,
+            'cashierPayableExpenseCount' => $cashierPayableExpenseCount,
+            'cashierPayableExpenseAmount' => $cashierPayableExpenseAmount,
+            'cashierPurchaseCount' => $cashierPurchaseCount,
+            'cashierPurchaseAmount' => $cashierPurchaseAmount,
+            'cashierGeneralBalance' => $isAssignedCashier ? $this->ledger->balance('general_cash') : null,
+            'directExpenseCategories' => $directExpenseCategories,
+            'directExpenseDirectors' => $directExpenseDirectors,
+        ]);
+    }
+
+    public function recordDirectDirectorExpense(Request $request, FinanceExpenseWorkflowService $service): RedirectResponse
+    {
+        $cashierId = FinanceGeneralCashSetting::query()->whereKey(1)->value('cashier_user_id');
+        abort_unless($cashierId && (int) $cashierId === (int) $request->user()->id, 403,
+            'Seul le responsable désigné de la caisse générale peut enregistrer cette remise.');
+
+        $data = $request->validate([
+            'director_user_id' => ['required', 'integer', Rule::exists('users', 'id')->where(fn ($query) => $query->where('active', true)->where('user_type', User::ROLE_ADMIN))],
+            'category_id' => ['required', 'integer', 'exists:type_expensives,id'],
+            'amount' => ['required', 'integer', 'min:1'],
+            'beneficiary' => ['required', 'string', 'max:160'],
+            'description' => ['required', 'string', 'max:5000'],
+            'payment_reference' => ['nullable', 'string', 'max:120'],
+        ]);
+        abort_if((int) $data['director_user_id'] === (int) $request->user()->id, 422, 'Le caissier ne peut pas se présenter comme le DG demandeur.');
+
+        $director = User::query()->where('active', true)->where('user_type', User::ROLE_ADMIN)->findOrFail($data['director_user_id']);
+        $expense = DB::transaction(function () use ($data, $director, $request, $service): FinanceExpenseRequest {
+            $expense = $service->submit([
+                'category_id' => $data['category_id'],
+                'amount' => $data['amount'],
+                'beneficiary' => $data['beneficiary'],
+                'description' => $data['description'],
+                'justification_note' => 'Dépense demandée directement par le DG auprès du caissier général.',
+            ], $director, true, false);
+
+            $service->pay($expense, $request->user(), (int) $data['amount'], $data['payment_reference'] ?? null);
+
+            return $expense->fresh();
+        });
+
+        return redirect()->route('finance.expenses.show', $expense)->with('success', 'Dépense directe du DG enregistrée et remise depuis la caisse générale. Le DG pourra ajouter le reçu après l’achat.');
+    }
+
+    public function updateGeneralCashier(Request $request, \App\Services\FinanceAuditService $audit): RedirectResponse
+    {
+        abort_unless($request->user()->isAdmin(), 403);
+        $data = $request->validate([
+            'cashier_user_id' => ['required', 'integer', Rule::exists('users', 'id')->where(fn ($query) => $query->where('active', true)->whereIn('user_type', User::GENERAL_CASHIER_ELIGIBLE_ROLES))],
+        ]);
+
+        $setting = DB::transaction(function () use ($request, $data, $audit): FinanceGeneralCashSetting {
+            $setting = FinanceGeneralCashSetting::query()->lockForUpdate()->find(1);
+            $before = $setting?->only(['cashier_user_id']);
+            $setting = FinanceGeneralCashSetting::query()->updateOrCreate(
+                ['id' => 1],
+                ['cashier_user_id' => $data['cashier_user_id'], 'updated_by' => $request->user()->id],
+            );
+            $audit->record($setting, 'general_cashier_assigned', $before, $setting->only(['cashier_user_id']));
+
+            return $setting;
+        });
+
+        $pendingCount = FinanceExpenseRequest::query()->whereIn('status', ['authorized_to_pay', 'partially_paid'])->count();
+        if ($pendingCount > 0) {
+            $setting->cashier?->notify(new \App\Notifications\FinanceWorkflowNotification(
+                'Demandes de dépense à remettre',
+                $pendingCount.' demande(s) autorisée(s) sont en attente de remise depuis la caisse générale.',
+                route('finance.expenses.index'),
+                'payments',
+            ));
+        }
+
+        return back()->with('success', 'Responsable unique de la caisse générale défini : '.$setting->cashier?->name.'.');
+    }
+
+    public function expenseCategories(Request $request): View
+    {
+        $search = trim((string) $request->query('search', ''));
+        $categories = TypeExpensive::query()
+            ->when($search !== '', fn ($query) => $query->where('name', 'like', '%'.$search.'%'))
+            ->orderBy('name')->paginate(20)->withQueryString();
+
+        return view('finance.expenses.categories', compact('categories', 'search'));
+    }
+
+    public function storeExpenseCategory(Request $request): RedirectResponse
+    {
+        abort_unless($request->user()->isAdmin() || $request->user()->isManager(), 403);
+        $data = $request->validate(['name' => ['required', 'string', 'max:120']]);
+        $name = trim($data['name']);
+        $category = TypeExpensive::query()->firstOrCreate(['name' => $name]);
+
+        return redirect()->route('finance.expenses.categories.index')->with('success', $category->wasRecentlyCreated
+            ? 'Catégorie créée. Elle est maintenant disponible dans les demandes.'
+            : 'Cette catégorie existe déjà.');
     }
 
     public function createExpense(Request $request): View
@@ -377,7 +529,7 @@ class FinanceController extends Controller
         abort_if(($user->isManager() || $isWholesaleManager) && $locations->isEmpty(), 403, 'Aucun point de vente ne t’est affecté pour demander une dépense.');
 
         return view('finance.expenses.create', [
-            'categories' => TypeExpensive::query()->orderBy('name')->get(),
+            'categories' => TypeExpensive::query()->orderBy('name')->get(['id', 'name']),
             'locations' => $locations,
             'isShopManager' => $user->isManager() || $isWholesaleManager,
             'isWholesaleManager' => $isWholesaleManager,
@@ -388,8 +540,7 @@ class FinanceController extends Controller
     {
         $data = $request->validate([
             'stock_location_id' => [$request->user()->isManager() ? 'required' : 'nullable', 'integer', 'exists:stock_locations,id'],
-            'category_id' => ['nullable', 'integer', 'exists:type_expensives,id', 'required_without:category_name'],
-            'category_name' => ['nullable', 'string', 'max:120', 'required_without:category_id'],
+            'category_id' => ['required', 'integer', 'exists:type_expensives,id'],
             'description' => ['required', 'string', 'max:5000'],
             'amount' => ['required', 'integer', 'min:1'],
             'beneficiary' => ['required', 'string', 'max:160'],
@@ -407,15 +558,27 @@ class FinanceController extends Controller
         $data['justification_note'] = $data['justification_exception'] ?? null;
         $expense = $service->submit($data, $request->user());
 
-        return redirect()->route('finance.expenses.show', $expense)->with('success', 'Demande transmise au responsable financier. Aucun paiement ne peut être fait avant son autorisation.');
+        $message = $request->user()->isAccountant()
+            ? 'Demande transmise au DG pour décision. Si elle est autorisée, le caissier général enregistré pourra remettre les fonds.'
+            : 'Demande transmise au responsable financier. Aucun paiement ne peut être fait avant son autorisation.';
+
+        return redirect()->route('finance.expenses.show', $expense)->with('success', $message);
     }
 
     public function showExpense(Request $request, FinanceExpenseRequest $expense): View
     {
         $this->authorizeExpense($request->user(), $expense);
         $expense->load(['location', 'category', 'requester', 'financeReviewer', 'director', 'approvals.decider', 'payments.payer']);
+        $cashierId = FinanceGeneralCashSetting::query()->whereKey(1)->value('cashier_user_id');
+        $isAssignedCashier = $cashierId && (int) $cashierId === (int) $request->user()->id;
+        $canPayExpense = $cashierId
+            && $isAssignedCashier
+            && (int) $expense->requested_by !== (int) $request->user()->id;
+        $canSubmitReceipt = (int) $expense->requested_by === (int) $request->user()->id
+            || $request->user()->isAdmin()
+            || $isAssignedCashier;
 
-        return view('finance.expenses.show', compact('expense'));
+        return view('finance.expenses.show', compact('expense', 'canPayExpense', 'canSubmitReceipt', 'isAssignedCashier'));
     }
 
     public function financeDecision(Request $request, FinanceExpenseRequest $expense, FinanceExpenseWorkflowService $service): RedirectResponse
@@ -444,15 +607,38 @@ class FinanceController extends Controller
     {
         $data = $request->validate([
             'amount' => ['required', 'integer', 'min:1'],
-            'custody_account' => ['required', Rule::in(['general_cash', 'shop'])],
             'payment_reference' => ['nullable', 'string', 'max:120'],
-            'proof' => ['nullable', 'file', 'mimes:pdf,jpg,jpeg,png', 'max:10240'],
         ]);
-        $path = $request->file('proof')?->store('finance/expenses/payments', 'local');
-        $locationId = $data['custody_account'] === 'shop' ? $expense->stock_location_id : null;
-        $service->pay($expense, $request->user(), (int) $data['amount'], $data['custody_account'], $locationId, $data['payment_reference'] ?? null, $path);
+        $service->pay($expense, $request->user(), (int) $data['amount'], $data['payment_reference'] ?? null);
 
-        return back()->with('success', 'Décaissement enregistré. Le bon de paiement est disponible dans l’historique ci-dessous.');
+        return back()->with('success', 'Remise effectuée depuis la caisse générale. La personne qui a créé la demande doit maintenant transmettre les reçus d’achat.');
+    }
+
+    public function submitExpenseReceipts(Request $request, FinanceExpenseRequest $expense, \App\Services\FinanceAuditService $audit): RedirectResponse
+    {
+        $cashierId = FinanceGeneralCashSetting::query()->whereKey(1)->value('cashier_user_id');
+        $isAssignedCashier = $cashierId && (int) $cashierId === (int) $request->user()->id;
+        abort_unless((int) $expense->requested_by === (int) $request->user()->id || $request->user()->isAdmin() || $isAssignedCashier, 403);
+        abort_unless((int) $expense->paid_amount > 0, 409, 'Les reçus pourront être transmis après la remise des fonds.');
+        $data = $request->validate([
+            'receipts' => ['required', 'array', 'min:1', 'max:8'],
+            'receipts.*' => ['required', 'file', 'mimes:pdf,jpg,jpeg,png', 'max:10240'],
+        ]);
+
+        $newPaths = collect($data['receipts'])->map(fn ($file) => $file->store('finance/expenses/receipts', 'local'))->all();
+        $before = ['receipt_paths' => $expense->receipt_paths ?? []];
+        $expense->receipt_paths = array_values(array_merge($expense->receipt_paths ?? [], $newPaths));
+        $expense->receipts_submitted_at = now();
+        $expense->save();
+        $audit->record($expense, 'expense_receipts_submitted', $before, [
+            'receipt_paths' => $expense->receipt_paths,
+            'receipts_submitted_at' => $expense->receipts_submitted_at?->toDateTimeString(),
+        ]);
+
+        $directors = User::query()->where('active', true)->where('user_type', User::ROLE_ADMIN)->get();
+        \Illuminate\Support\Facades\Notification::send($directors, new \App\Notifications\FinanceExpenseReportNotification($expense, 'Les reçus d’achat ont été transmis par '.$request->user()->name.'.'));
+
+        return back()->with('success', 'Reçus transmis à la Direction.');
     }
 
     public function printExpensePayment(Request $request, int $payment): View
@@ -481,13 +667,17 @@ class FinanceController extends Controller
             $record = FinanceCashRemittance::query()->findOrFail($id);
             $this->authorizeRemittance($request->user(), $record);
             $path = $kind === 'signed-voucher' ? $record->signed_voucher_path : $record->bank_slip_path;
-        } elseif (in_array($kind, ['expense', 'payment'], true)) {
+        } elseif (in_array($kind, ['expense', 'payment', 'expense-receipt'], true)) {
             $record = $kind === 'expense'
                 ? FinanceExpenseRequest::query()->findOrFail($id)
-                : \App\Models\FinanceExpensePayment::query()->findOrFail($id);
-            $expense = $kind === 'expense' ? $record : $record->expense;
+                : ($kind === 'payment' ? \App\Models\FinanceExpensePayment::query()->findOrFail($id) : FinanceExpenseRequest::query()->findOrFail($id));
+            $expense = $kind === 'payment' ? $record->expense : $record;
             $this->authorizeExpense($request->user(), $expense);
-            $path = $kind === 'expense' ? $record->justification_path : $record->proof_path;
+            $path = match ($kind) {
+                'expense' => $record->justification_path,
+                'payment' => $record->proof_path,
+                'expense-receipt' => $record->receipt_paths[(int) $request->query('file', -1)] ?? null,
+            };
         } else {
             abort(404);
         }
@@ -531,6 +721,10 @@ class FinanceController extends Controller
     private function authorizeExpense(User $user, FinanceExpenseRequest $expense): void
     {
         if ($user->isAdmin() || $user->isAccountant() || (int) $expense->requested_by === (int) $user->id) {
+            return;
+        }
+        $cashierId = FinanceGeneralCashSetting::query()->whereKey(1)->value('cashier_user_id');
+        if ($cashierId && (int) $cashierId === (int) $user->id && in_array($expense->status, ['authorized_to_pay', 'partially_paid', 'paid'], true)) {
             return;
         }
         if ($user->isWholesaleSalesRole()

@@ -33,11 +33,23 @@ class FinanceCashLedgerService
             }
 
             if (in_array('general_cash', [$from, $to], true)) {
-                $movementDate = \Illuminate\Support\Carbon::parse($attributes['occurred_at'])->toDateString();
-                $closedDate = FinanceCashClosure::query()->whereDate('closing_date', $movementDate)
-                    ->whereIn('status', ['awaiting_review', 'closed'])->exists();
-                if ($closedDate) {
-                    throw ValidationException::withMessages(['amount' => 'Cette date de caisse a été transmise ou clôturée. Demande au DG de rouvrir la clôture avant d’enregistrer une correction.']);
+                $movementAt = \Illuminate\Support\Carbon::parse($attributes['occurred_at']);
+                $movementDate = $movementAt->toDateString();
+                $awaitingReview = FinanceCashClosure::query()->whereDate('closing_date', $movementDate)
+                    ->where('status', 'awaiting_review')->exists();
+                $closedClosure = FinanceCashClosure::query()->whereDate('closing_date', $movementDate)
+                    ->where('status', 'closed')->orderByDesc('reviewed_at')->first();
+                $isApprovedClosureAdjustment = ($attributes['source_type'] ?? null) === 'finance_cash_closure'
+                    && ! empty($attributes['source_id'])
+                    && FinanceCashClosure::query()
+                        ->whereKey($attributes['source_id'])
+                        ->where('status', 'closed')
+                        ->where('reviewed_by', $attributes['created_by'] ?? auth()->id())
+                        ->exists();
+                $beforeValidatedCount = $closedClosure
+                    && ($closedClosure->reviewed_at === null || ! $movementAt->greaterThan($closedClosure->reviewed_at));
+                if (($awaitingReview || $beforeValidatedCount) && ! $isApprovedClosureAdjustment) {
+                    throw ValidationException::withMessages(['amount' => 'Ce mouvement est antérieur au dernier comptage validé ou à son contrôle. La caisse reste ouverte pour les nouvelles opérations après validation.']);
                 }
             }
 

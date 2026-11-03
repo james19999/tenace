@@ -11,6 +11,7 @@ use App\Models\Commission;
 use App\Models\OrderPayment;
 use App\Models\Orders\Order;
 use App\Models\StockLocation;
+use App\Models\TypeExpensive;
 use App\Models\User;
 use App\Services\FinanceCashLedgerService;
 use App\Services\FinanceCashRemittanceService;
@@ -19,6 +20,7 @@ use App\Http\Controllers\Finance\FinanceManagementController;
 use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
+use Symfony\Component\HttpKernel\Exception\HttpException;
 use Tests\TestCase;
 
 class FinanceCashWorkflowTest extends TestCase
@@ -43,6 +45,8 @@ class FinanceCashWorkflowTest extends TestCase
             $table->unsignedBigInteger('staff_payroll_period_id')->nullable();
             $table->string('staff_repayment_method', 24)->nullable();
             $table->decimal('staff_repayment_value', 12, 2)->nullable();
+            $table->json('receipt_paths')->nullable();
+            $table->timestamp('receipts_submitted_at')->nullable();
         });
         Schema::table('finance_staff_advances', function (Blueprint $table): void {
             $table->string('advance_type', 24)->default('loan');
@@ -61,6 +65,12 @@ class FinanceCashWorkflowTest extends TestCase
         $migration->up();
         $migration = require database_path('migrations/2026_11_01_000003_create_finance_equipment_purchase_settings_table.php');
         $migration->up();
+        Schema::create('finance_general_cash_settings', function (Blueprint $table): void {
+            $table->id();
+            $table->unsignedBigInteger('cashier_user_id')->nullable();
+            $table->unsignedBigInteger('updated_by')->nullable();
+            $table->timestamps();
+        });
     }
 
     protected function tearDown(): void
@@ -126,7 +136,9 @@ class FinanceCashWorkflowTest extends TestCase
         $requester = $this->user('Requester', User::ROLE_SECRETARY);
         $accountant = $this->user('Accountant', User::ROLE_ACCOUNTANT);
         $workflow = app(FinanceExpenseWorkflowService::class);
+        $category = TypeExpensive::query()->create(['name' => 'Transport']);
         $base = [
+            'category_id' => $category->id,
             'category_name' => 'Transport', 'description' => 'Frais de déplacement de test.',
             'beneficiary' => 'Prestataire test', 'justification_note' => 'Justificatif simulé pour recette.',
         ];
@@ -149,13 +161,15 @@ class FinanceCashWorkflowTest extends TestCase
         $employee = $this->user('Employee', User::ROLE_SALES);
         $accountant = $this->user('Finance reviewer', User::ROLE_ACCOUNTANT);
         $director = $this->user('Director', User::ROLE_ADMIN);
+        $cashier = $this->user('General cashier', User::ROLE_CASHIER);
+        DB::table('finance_general_cash_settings')->insert(['id' => 1, 'cashier_user_id' => $cashier->id, 'created_at' => now(), 'updated_at' => now()]);
         $ledger = app(FinanceCashLedgerService::class);
         $ledger->initializeGeneralCash(100000, now()->subDay()->toDateTimeString(), $director, 'Solde de caisse de recette.');
         $workflow = app(FinanceExpenseWorkflowService::class);
         $expense = $workflow->submit([
             'category_name' => 'Avance au personnel', 'description' => 'Avance de recette au personnel.',
             'beneficiary' => $employee->name, 'amount' => 50001, 'justification_note' => 'Demande de recette.',
-            'staff_user_id' => $employee->id,
+            'staff_user_id' => $employee->id, 'staff_advance_type' => 'loan',
         ], $requester);
 
         $workflow->financeDecision($expense, $accountant, 'approved', 'Contrôle effectué.');
@@ -163,7 +177,7 @@ class FinanceCashWorkflowTest extends TestCase
         $this->assertSame(0, FinanceStaffAdvance::query()->count());
 
         $workflow->directorDecision($expense->fresh(), $director, 'approved', 'Autorisé.');
-        $workflow->pay($expense->fresh(), $director, 50001, 'general_cash', null, 'TEST-AV-1', null);
+        $workflow->pay($expense->fresh(), $cashier, 50001, 'TEST-AV-1');
 
         $this->assertSame(1, FinanceStaffAdvance::query()->count());
         $this->assertSame(50001, FinanceStaffAdvance::query()->firstOrFail()->amount);
@@ -177,11 +191,45 @@ class FinanceCashWorkflowTest extends TestCase
             'commission_period_end' => today()->toDateString(),
         ], $requester);
         $workflow->financeDecision($commissionExpense, $accountant, 'approved', 'Montant vérifié.');
-        $workflow->pay($commissionExpense->fresh(), $director, 2000, 'general_cash', null, 'TEST-COM-1', null);
+        $workflow->pay($commissionExpense->fresh(), $cashier, 2000, 'TEST-COM-1');
 
         $this->assertSame(1, FinanceCommissionSettlement::query()->count());
         $this->assertSame(2000, FinanceCommissionSettlement::query()->firstOrFail()->amount);
         $this->assertSame(47999, $ledger->balance('general_cash'));
+    }
+
+    public function test_only_the_assigned_general_cashier_can_pay_an_expense(): void
+    {
+        $requester = $this->user('Requester', User::ROLE_SECRETARY);
+        $accountant = $this->user('Accountant', User::ROLE_ACCOUNTANT);
+        $director = $this->user('Director', User::ROLE_ADMIN);
+        $assignedCashier = $this->user('Assigned cashier', User::ROLE_CASHIER);
+        $otherCashier = $this->user('Other cashier', User::ROLE_CASHIER);
+        app(FinanceCashLedgerService::class)->initializeGeneralCash(50000, now()->subDay()->toDateTimeString(), $director, 'Solde de test.');
+        DB::table('finance_general_cash_settings')->insert([
+            'id' => 1, 'cashier_user_id' => $assignedCashier->id, 'updated_by' => $director->id,
+            'created_at' => now(), 'updated_at' => now(),
+        ]);
+        $category = TypeExpensive::query()->create(['name' => 'Fournitures']);
+        $workflow = app(FinanceExpenseWorkflowService::class);
+        $expense = $workflow->submit([
+            'category_id' => $category->id, 'category_name' => $category->name,
+            'description' => 'Achat de fournitures de test.', 'beneficiary' => 'Papeterie test',
+            'amount' => 12000, 'justification_note' => 'Reçu à joindre après achat.',
+        ], $requester);
+        $workflow->financeDecision($expense, $accountant, 'approved', 'Contrôle effectué.');
+
+        try {
+            $workflow->pay($expense->fresh(), $otherCashier, 12000, 'TEST-OTHER-CASHIER');
+            $this->fail('Un autre caissier ne doit pas pouvoir décaisser cette demande.');
+        } catch (HttpException $exception) {
+            $this->assertSame(403, $exception->getStatusCode());
+        }
+
+        $payment = $workflow->pay($expense->fresh(), $assignedCashier, 12000, 'TEST-GENERAL-CASHIER');
+        $this->assertSame('general_cash', $payment->custody_account);
+        $this->assertNull($payment->stock_location_id);
+        $this->assertSame($assignedCashier->id, $payment->paid_by);
     }
 
     public function test_management_cash_to_collect_excludes_delivered_and_canceled_orders(): void

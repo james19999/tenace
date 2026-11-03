@@ -70,6 +70,17 @@ class User extends Authenticatable
     const ROLE_WHOLESALER = 'GRO';
     const ROLE_IT = 'INFO';
 
+    const GENERAL_CASHIER_ELIGIBLE_ROLES = [
+        self::ROLE_MANAGER,
+        self::ROLE_SECRETARY,
+        self::ROLE_SALES,
+        self::ROLE_CASHIER,
+        self::ROLE_ACCOUNTANT,
+        self::ROLE_CALL_CENTER,
+        self::ROLE_COMMERCIAL_MANAGER,
+        self::ROLE_WHOLESALER,
+    ];
+
     // -------------------------------------------------------
     // Helpers de rôle
     // -------------------------------------------------------
