@@ -108,6 +108,10 @@ Route::post('/store/pathner',[DashboarController::class,'store_pathner'])->name(
 
 Route::middleware(['auth'])->group(function () {
 
+    Route::get('/mon-compte/parametres', [\App\Http\Controllers\AccountSettingsController::class, 'edit'])->name('account.settings');
+    Route::put('/mon-compte/parametres/coordonnees', [\App\Http\Controllers\AccountSettingsController::class, 'updateProfile'])->name('account.settings.profile.update');
+    Route::put('/mon-compte/parametres/mot-de-passe', [\App\Http\Controllers\AccountSettingsController::class, 'updatePassword'])->name('account.settings.password.update');
+
     Route::get('/grossiste/dashboard', [\App\Http\Controllers\WholesaleDashboardController::class, 'index'])
         ->middleware('role:GRO')->name('wholesaler.dashboard');
 

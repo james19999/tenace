@@ -841,8 +841,12 @@
                 </li>
             @endif
 
-
-
+            <li>
+                <a href="{{ route('account.settings') }}" class="{{ $active('account.settings*') }}">
+                    <span class="icon material-icons">manage_accounts</span>
+                    <span class="text">Paramètres du compte</span>
+                </a>
+            </li>
 
         </ul>
 
