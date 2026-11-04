@@ -5,7 +5,19 @@
     @if($errors->any())<div class="alert alert-danger"><ul class="mb-0">@foreach($errors->all() as $error)<li>{{ $error }}</li>@endforeach</ul></div>@endif
     @if(auth()->user()->isAdmin())
         <section class="cashier-assignment finance-panel">
-            <div><span class="material-icons">account_balance</span><div><h2>Responsable unique de la caisse générale</h2><p>@if($cashSetting?->cashier){{ $cashSetting->cashier->name }} remettra toutes les dépenses autorisées.@elseAucun responsable n’est encore désigné. Aucun décaissement de dépense ne sera possible avant ce choix.@endif</p></div></div>
+            <div>
+                <span class="material-icons">account_balance</span>
+                <div>
+                    <h2>Responsable unique de la caisse générale</h2>
+                    <p>
+                        @if($cashSetting?->cashier)
+                            {{ $cashSetting->cashier->name }} remettra toutes les dépenses autorisées.
+                        @else
+                            Aucun responsable n’est encore désigné. Aucun décaissement de dépense ne sera possible avant ce choix.
+                        @endif
+                    </p>
+                </div>
+            </div>
             @if($cashiers->isEmpty())
                 <div class="cashier-empty"><strong>Aucun employé disponible</strong><span>Active un compte ayant déjà accès au menu Comptabilité, puis reviens le sélectionner.</span></div>
             @else
