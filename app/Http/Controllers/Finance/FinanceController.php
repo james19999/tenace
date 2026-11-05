@@ -393,7 +393,16 @@ class FinanceController extends Controller
             ? User::query()->where('active', true)->whereIn('user_type', User::GENERAL_CASHIER_ELIGIBLE_ROLES)->orderBy('name')->get(['id', 'name', 'user_type'])
             : collect();
         $cashierPurchaseRequests = $isAssignedCashier
-            ? FinanceEquipmentPurchaseRequest::query()->with(['assignee', 'creator'])->where('status', 'authorized_to_pay')->latest()->paginate(10, ['*'], 'purchase_cash_page')->withQueryString()
+            ? FinanceEquipmentPurchaseRequest::query()->with(['assignee', 'creator', 'approver'])->where('status', 'authorized_to_pay')->latest()->paginate(10, ['*'], 'purchase_cash_page')->withQueryString()
+            : null;
+        $cashierPurchaseReceiptRequests = $isAssignedCashier
+            ? FinanceEquipmentPurchaseRequest::query()->with(['assignee', 'issuer', 'receiptReceiver', 'returnedReceiver'])
+                ->where('status', 'submitted_for_review')->whereNotNull('receipt_paths')
+                ->where(function ($pendingReceipts): void {
+                    $pendingReceipts->whereNull('receipt_received_at')
+                        ->orWhere(fn ($pendingReturn) => $pendingReturn->where('returned_amount', '>', 0)->whereNull('returned_received_at'));
+                })
+                ->latest('report_submitted_at')->paginate(10, ['*'], 'purchase_receipt_page')->withQueryString()
             : null;
         $cashierPayableExpenses = $isAssignedCashier
             ? FinanceExpenseRequest::query()->with(['location', 'requester'])
@@ -428,6 +437,7 @@ class FinanceController extends Controller
             'cashiers' => $cashiers,
             'isAssignedCashier' => $isAssignedCashier,
             'cashierPurchaseRequests' => $cashierPurchaseRequests,
+            'cashierPurchaseReceiptRequests' => $cashierPurchaseReceiptRequests,
             'cashierPayableExpenses' => $cashierPayableExpenses,
             'cashierPayableExpenseCount' => $cashierPayableExpenseCount,
             'cashierPayableExpenseAmount' => $cashierPayableExpenseAmount,

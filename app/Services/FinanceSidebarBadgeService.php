@@ -102,7 +102,14 @@ class FinanceSidebarBadgeService
         $counts = [
             'treasury' => $isAdmin ? $closures->count() : 0,
             'remittances' => $remittances->count(),
-            'expenses' => $expenses->count() + ($isCashier ? FinanceEquipmentPurchaseRequest::query()->where('status', 'authorized_to_pay')->count() : 0),
+            'expenses' => $expenses->count() + ($isCashier ? FinanceEquipmentPurchaseRequest::query()->where(function ($purchaseQueue): void {
+                $purchaseQueue->where('status', 'authorized_to_pay')
+                    ->orWhere(fn ($receiptQueue) => $receiptQueue->where('status', 'submitted_for_review')
+                        ->whereNotNull('receipt_paths')->where(function ($pendingReceipts): void {
+                            $pendingReceipts->whereNull('receipt_received_at')
+                                ->orWhere(fn ($pendingReturn) => $pendingReturn->where('returned_amount', '>', 0)->whereNull('returned_received_at'));
+                        }));
+            })->count() : 0),
             'suppliers' => $invoices->count(),
         ];
         $counts['total'] = array_sum($counts);

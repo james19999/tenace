@@ -105,27 +105,37 @@ class FinanceEquipmentPurchaseController extends Controller
         $cashierId = FinanceGeneralCashSetting::query()->whereKey(1)->value('cashier_user_id');
         abort_unless($cashierId && (int) $cashierId === (int) $request->user()->id, 403,
             'Seul le responsable désigné de la caisse générale peut remettre ces fonds.');
-        DB::transaction(function () use ($purchase, $request, $ledger, $audit): void {
+        $data = $request->validate([
+            'amount' => ['required', 'integer', 'min:1', 'max:'.$purchase->approved_amount],
+            'issued_at' => ['required', 'date', 'before_or_equal:now'],
+            'payment_reference' => ['nullable', 'string', 'max:120'],
+            'issue_note' => ['nullable', 'string', 'max:1000'],
+        ]);
+        DB::transaction(function () use ($purchase, $request, $data, $ledger, $audit): void {
             $locked = PurchaseRequest::query()->lockForUpdate()->findOrFail($purchase->id);
             abort_unless($locked->status === 'authorized_to_pay' && (int) $locked->approved_amount > 0, 409);
             abort_if((int) $locked->assigned_to === (int) $request->user()->id, 403, 'Le caissier ne peut pas remettre les fonds pour son propre achat.');
+            if ((int) $data['amount'] > (int) $locked->approved_amount) {
+                throw ValidationException::withMessages(['amount' => 'Le montant remis ne peut pas dépasser le montant autorisé par le DG.']);
+            }
+            $issuedAt = \Illuminate\Support\Carbon::parse($data['issued_at']);
             $before = $locked->only(['status', 'cash_issued', 'issued_by', 'issued_at']);
             $movement = $ledger->record([
                 'movement_type' => 'equipment_purchase_advance', 'from_custody' => 'general_cash', 'to_custody' => 'external',
-                'amount' => (int) $locked->approved_amount, 'source_type' => 'finance_equipment_purchase', 'source_id' => $locked->id,
+                'amount' => (int) $data['amount'], 'source_type' => 'finance_equipment_purchase', 'source_id' => $locked->id,
                 'source_key' => 'equipment-purchase:'.$locked->id.':issue', 'source_reference' => $locked->reference,
-                'occurred_at' => now(), 'description' => 'Avance achat matériel confiée à '.$locked->assignee?->name,
-                'metadata' => ['assigned_to' => $locked->assigned_to, 'title' => $locked->title], 'created_by' => $request->user()->id,
+                'occurred_at' => $issuedAt, 'description' => 'Avance achat matériel confiée à '.$locked->assignee?->name,
+                'metadata' => ['assigned_to' => $locked->assigned_to, 'title' => $locked->title, 'payment_reference' => $data['payment_reference'] ?? null, 'issue_note' => $data['issue_note'] ?? null], 'created_by' => $request->user()->id,
             ]);
-            $locked->fill(['cash_issued' => $locked->approved_amount, 'issued_by' => $request->user()->id, 'issued_at' => now(),
+            $locked->fill(['cash_issued' => (int) $data['amount'], 'issued_by' => $request->user()->id, 'issued_at' => $issuedAt,
                 'cash_movement_id' => $movement->id, 'status' => 'funds_issued'])->save();
-            $audit->record($locked, 'equipment_purchase_funds_issued', $before, $locked->only(['status', 'cash_issued', 'issued_by', 'issued_at']));
-            $locked->assignee?->notify(new FinanceWorkflowNotification('Argent remis pour ton achat', 'Le responsable de la caisse générale t’a remis '.number_format((int) $locked->cash_issued, 0, ',', ' ').' F. Effectue l’achat puis ajoute les reçus dans ton espace personnel.', route('employees.self-service.purchases.index'), 'payments'));
+            $audit->record($locked, 'equipment_purchase_funds_issued', $before, $locked->only(['status', 'cash_issued', 'issued_by', 'issued_at']), $data['issue_note'] ?? null);
+            $locked->assignee?->notify(new FinanceWorkflowNotification('Argent remis pour ton achat', 'Le responsable de la caisse générale t’a remis '.number_format((int) $locked->cash_issued, 0, ',', ' ').' F le '.$issuedAt->format('d/m/Y à H:i').'. Effectue l’achat puis ajoute les reçus dans ton espace personnel.', route('employees.self-service.purchases.index'), 'payments'));
         });
         return back()->with('success', 'Remise enregistrée par le responsable de la caisse générale.');
     }
 
-    public function submitReport(Request $request, PurchaseRequest $purchase, FinanceCashLedgerService $ledger, FinanceAuditService $audit): RedirectResponse
+    public function submitReport(Request $request, PurchaseRequest $purchase, FinanceAuditService $audit): RedirectResponse
     {
         abort_unless((int) $purchase->assigned_to === (int) $request->user()->id, 403);
         abort_unless($purchase->status === 'funds_issued', 409);
@@ -137,6 +147,9 @@ class FinanceEquipmentPurchaseController extends Controller
         if ((int) $data['spent_amount'] > (int) $purchase->cash_issued) {
             throw ValidationException::withMessages(['spent_amount' => 'Le montant dépensé dépasse l’avance remise.']);
         }
+        if ($purchase->returned_received_at && (int) $data['spent_amount'] !== (int) $purchase->spent_amount) {
+            throw ValidationException::withMessages(['spent_amount' => 'Le caissier a déjà confirmé le reliquat reçu. Le montant dépensé ne peut plus être modifié pour ce dossier.']);
+        }
         $returned = (int) $purchase->cash_issued - (int) $data['spent_amount'];
         $paths = array_map(fn ($file) => $file->store('finance/equipment-purchases/'.$purchase->id, 'local'), $request->file('receipt_photos'));
         DB::transaction(function () use ($purchase, $request, $data, $returned, $paths, $audit): void {
@@ -144,43 +157,137 @@ class FinanceEquipmentPurchaseController extends Controller
             abort_unless($locked->status === 'funds_issued' && (int) $locked->assigned_to === (int) $request->user()->id, 409);
             $before = $locked->only(['status', 'spent_amount', 'returned_amount']);
             $locked->fill(['spent_amount' => $data['spent_amount'], 'returned_amount' => $returned, 'report_note' => $data['report_note'] ?? null,
-                'receipt_paths' => array_merge($locked->receipt_paths ?? [], $paths), 'submitted_at' => now(), 'return_movement_id' => null,
-                'status' => 'submitted_for_review'])->save();
+                'receipt_paths' => array_merge($locked->receipt_paths ?? [], $paths), 'report_submitted_at' => now(),
+                'return_movement_id' => $locked->returned_received_at ? $locked->return_movement_id : null,
+                'receipt_received_at' => null, 'receipt_received_by' => null, 'status' => 'submitted_for_review'])->save();
             $audit->record($locked, 'equipment_purchase_report_submitted', $before, $locked->only(['status', 'spent_amount', 'returned_amount']));
-            Notification::send(User::query()->where('user_type', User::ROLE_ADMIN)->where('active', true)->get(), new FinanceWorkflowNotification('Reçus d’achat à contrôler', $locked->assignee?->name.' a transmis les reçus pour '.$locked->title.'.', route('finance.management.index', ['tab' => 'purchases']), 'receipt_long'));
+            Notification::send(User::query()->where('user_type', User::ROLE_ADMIN)->where('active', true)->get(), new FinanceWorkflowNotification('Reçus transmis · réception caissier requise', $locked->assignee?->name.' a transmis les reçus pour '.$locked->title.'. Le caissier général doit confirmer leur réception avant ton contrôle final.', route('finance.management.index', ['tab' => 'purchases']), 'receipt_long'));
+            $cashierId = FinanceGeneralCashSetting::query()->whereKey(1)->value('cashier_user_id');
+            User::query()->where('active', true)->find($cashierId)?->notify(new FinanceWorkflowNotification(
+                $returned > 0 ? 'Reçus et reliquat d’achat à réceptionner' : 'Reçu d’achat à confirmer',
+                $locked->assignee?->name.' a transmis les justificatifs de l’achat '.$locked->reference.($returned > 0 ? ' et déclare te remettre un reliquat de '.number_format($returned, 0, ',', ' ').' F. Confirme le reliquat seulement après l’avoir reçu physiquement.' : '. Confirme leur réception après avoir reçu les justificatifs.'),
+                route('finance.expenses.index', ['cashier_tab' => 'expenses']),
+                $returned > 0 ? 'payments' : 'receipt_long',
+            ));
         });
-        return back()->with('success', 'Ton compte rendu et les reçus ont été transmis au DG.');
+        return back()->with('success', 'Ton compte rendu et les reçus ont été transmis au caissier général. Le reliquat sera ajouté à la caisse uniquement après sa confirmation de réception.');
     }
 
-    public function review(Request $request, PurchaseRequest $purchase, FinanceCashLedgerService $ledger, FinanceAuditService $audit): RedirectResponse
+    public function confirmReturnedCash(Request $request, PurchaseRequest $purchase, FinanceCashLedgerService $ledger, FinanceAuditService $audit): RedirectResponse
+    {
+        $cashierId = FinanceGeneralCashSetting::query()->whereKey(1)->value('cashier_user_id');
+        abort_unless($cashierId && (int) $cashierId === (int) $request->user()->id, 403,
+            'Seul le responsable désigné de la caisse générale peut confirmer la réception du reliquat.');
+
+        DB::transaction(function () use ($purchase, $request, $ledger, $audit): void {
+            $locked = PurchaseRequest::query()->lockForUpdate()->findOrFail($purchase->id);
+            abort_unless($locked->status === 'submitted_for_review' && (int) $locked->returned_amount > 0, 409);
+            abort_unless((int) $locked->assigned_to !== (int) $request->user()->id, 403,
+                'Tu ne peux pas confirmer le reliquat de ton propre achat.');
+            abort_if($locked->returned_received_at, 409, 'La réception du reliquat est déjà confirmée.');
+
+            $before = $locked->only(['returned_received_at', 'returned_received_by', 'return_movement_id']);
+            $movement = $ledger->record([
+                'movement_type' => 'equipment_purchase_cash_return', 'from_custody' => 'external', 'to_custody' => 'general_cash',
+                'amount' => (int) $locked->returned_amount, 'source_type' => 'finance_equipment_purchase', 'source_id' => $locked->id,
+                'source_key' => 'equipment-purchase:'.$locked->id.':return', 'source_reference' => $locked->reference,
+                'occurred_at' => now(), 'description' => 'Reliquat effectivement reçu par le caissier pour l’achat '.$locked->reference,
+                'metadata' => ['assigned_to' => $locked->assigned_to, 'reported_spent_amount' => $locked->spent_amount],
+                'created_by' => $request->user()->id,
+            ]);
+            $locked->forceFill([
+                'returned_received_at' => now(), 'returned_received_by' => $request->user()->id,
+                'return_movement_id' => $movement->id,
+            ])->save();
+            $audit->record($locked, 'equipment_purchase_return_received', $before, $locked->only(['returned_received_at', 'returned_received_by', 'return_movement_id']));
+            $locked->assignee?->notify(new FinanceWorkflowNotification(
+                'Reliquat reçu par le caissier',
+                'Le caissier général a confirmé avoir reçu '.number_format((int) $locked->returned_amount, 0, ',', ' ').' F de reliquat pour '.$locked->reference.'.',
+                route('employees.self-service.purchases.index'),
+                'payments',
+            ));
+            Notification::send(User::query()->where('user_type', User::ROLE_ADMIN)->where('active', true)->get(), new FinanceWorkflowNotification(
+                'Reliquat versé dans la caisse générale',
+                'Le caissier a reçu et enregistré '.number_format((int) $locked->returned_amount, 0, ',', ' ').' F pour '.$locked->reference.'. Le dossier attend ton contrôle final.',
+                route('finance.management.index', ['tab' => 'purchases']),
+                'account_balance_wallet',
+            ));
+        });
+
+        return back()->with('success', 'Reliquat reçu et ajouté à la caisse générale.');
+    }
+
+    public function confirmReceipt(Request $request, PurchaseRequest $purchase, FinanceAuditService $audit): RedirectResponse
+    {
+        $cashierId = FinanceGeneralCashSetting::query()->whereKey(1)->value('cashier_user_id');
+        abort_unless($cashierId && (int) $cashierId === (int) $request->user()->id, 403,
+            'Seul le responsable désigné de la caisse générale peut confirmer la réception des reçus.');
+
+        DB::transaction(function () use ($purchase, $request, $audit): void {
+            $locked = PurchaseRequest::query()->lockForUpdate()->findOrFail($purchase->id);
+            abort_unless($locked->status === 'submitted_for_review' && ! empty($locked->receipt_paths), 409);
+            abort_unless((int) $locked->assigned_to !== (int) $request->user()->id, 403,
+                'Tu ne peux pas confirmer la réception du reçu de ton propre achat.');
+            abort_if($locked->receipt_received_at, 409, 'La réception des reçus est déjà confirmée.');
+
+            $before = $locked->only(['receipt_received_at', 'receipt_received_by']);
+            $locked->forceFill(['receipt_received_at' => now(), 'receipt_received_by' => $request->user()->id])->save();
+            $audit->record($locked, 'equipment_purchase_receipts_received', $before, [
+                'receipt_received_at' => $locked->receipt_received_at?->toDateTimeString(),
+                'receipt_received_by' => $request->user()->id,
+            ]);
+            $locked->assignee?->notify(new FinanceWorkflowNotification(
+                'Réception des reçus confirmée',
+                'Le caissier général a confirmé la réception des justificatifs pour '.$locked->reference.'. Le DG peut terminer son contrôle.',
+                route('employees.self-service.purchases.index'),
+                'task_alt',
+            ));
+            Notification::send(User::query()->where('user_type', User::ROLE_ADMIN)->where('active', true)->get(), new FinanceWorkflowNotification(
+                'Reçus reçus par le caissier',
+                'Le caissier général a confirmé la réception des justificatifs pour '.$locked->reference.'. Le dossier peut être contrôlé.',
+                route('finance.management.index', ['tab' => 'purchases']),
+                'receipt_long',
+            ));
+        });
+
+        return back()->with('success', 'Réception des reçus d’achat confirmée. Le DG peut maintenant contrôler le dossier.');
+    }
+
+    public function review(Request $request, PurchaseRequest $purchase, FinanceAuditService $audit): RedirectResponse
     {
         abort_unless($request->user()->isAdmin(), 403);
         $data = $request->validate(['decision' => ['required', Rule::in(['accepted', 'correction'])], 'review_note' => ['nullable', 'string', 'max:2000']]);
         abort_unless($purchase->status === 'submitted_for_review', 409);
-        DB::transaction(function () use ($purchase, $data, $request, $ledger, $audit): void {
+        abort_unless($purchase->receipt_received_at, 409, 'Le caissier général doit d’abord confirmer la réception des reçus.');
+        DB::transaction(function () use ($purchase, $data, $request, $audit): void {
             $locked = PurchaseRequest::query()->lockForUpdate()->findOrFail($purchase->id);
             abort_unless($locked->status === 'submitted_for_review', 409);
-            $before = $locked->only(['status', 'review_note', 'return_movement_id']);
-            $returnMovement = null;
-            if ($data['decision'] === 'accepted' && $locked->returned_amount > 0) {
-                $returnMovement = $ledger->record([
-                    'movement_type' => 'equipment_purchase_cash_return', 'from_custody' => 'external', 'to_custody' => 'general_cash',
-                    'amount' => (int) $locked->returned_amount, 'source_type' => 'finance_equipment_purchase', 'source_id' => $locked->id,
-                    'source_key' => 'equipment-purchase:'.$locked->id.':return', 'source_reference' => $locked->reference,
-                    'occurred_at' => now(), 'description' => 'Reliquat remis et confirmé par le DG pour l’achat '.$locked->reference,
-                    'metadata' => ['assigned_to' => $locked->assigned_to], 'created_by' => $request->user()->id,
-                ]);
+            abort_unless($locked->receipt_received_at, 409, 'Le caissier général doit d’abord confirmer la réception des reçus.');
+            if ($data['decision'] === 'accepted' && (int) $locked->returned_amount > 0) {
+                abort_unless($locked->returned_received_at, 409, 'Le caissier général doit confirmer la réception du reliquat avant la clôture.');
             }
+            $before = $locked->only(['status', 'review_note', 'return_movement_id']);
             $locked->fill(['status' => $data['decision'] === 'accepted' ? 'closed' : 'funds_issued', 'review_note' => $data['review_note'] ?? null,
-                'reviewed_by' => $request->user()->id, 'reviewed_at' => now(), 'return_movement_id' => $returnMovement?->id])->save();
+                'reviewed_by' => $request->user()->id, 'reviewed_at' => now()])->save();
             $audit->record($locked, $data['decision'] === 'accepted' ? 'equipment_purchase_closed' : 'equipment_purchase_correction_requested', $before, $locked->only(['status', 'review_note', 'return_movement_id']));
+            $locked->assignee?->notify(new FinanceWorkflowNotification(
+                $data['decision'] === 'accepted' ? 'Achat contrôlé et clôturé' : 'Complément demandé sur ton achat',
+                $data['decision'] === 'accepted'
+                    ? 'Le DG a terminé le contrôle du dossier '.$locked->reference.'.'
+                    : 'Le DG demande un complément pour le dossier '.$locked->reference.': '.trim((string) ($data['review_note'] ?? '')),
+                route('employees.self-service.purchases.index'),
+                $data['decision'] === 'accepted' ? 'task_alt' : 'info',
+            ));
         });
         return back()->with('success', $data['decision'] === 'accepted' ? 'L’achat est contrôlé et clôturé.' : 'Un complément a été demandé ; l’employé peut renvoyer ses reçus.');
     }
 
     public function receipt(Request $request, PurchaseRequest $purchase, int $index): BinaryFileResponse
     {
-        abort_unless($request->user()->isAdmin() || $request->user()->isAccountant() || (int) $request->user()->id === (int) $purchase->assigned_to, 403);
+        $cashierId = FinanceGeneralCashSetting::query()->whereKey(1)->value('cashier_user_id');
+        abort_unless($request->user()->isAdmin() || $request->user()->isAccountant()
+            || (int) $request->user()->id === (int) $purchase->assigned_to
+            || ($cashierId && (int) $request->user()->id === (int) $cashierId), 403);
         $path = $purchase->receipt_paths[$index] ?? abort(404);
         abort_unless(Storage::disk('local')->exists($path), 404);
         return response()->file(Storage::disk('local')->path($path));

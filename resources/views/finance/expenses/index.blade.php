@@ -89,7 +89,59 @@
         </section>
     @endif
     @if($isAssignedCashier && $cashierPurchaseRequests)
-        <section class="finance-panel cashier-purchases"><div class="cashier-purchases-head"><div><h2>Achats de matériel autorisés</h2><p>Le DG a fixé le montant. Remets exactement cette somme à la personne chargée, depuis la caisse générale.</p></div><strong>{{ $cashierPurchaseRequests->total() }} à remettre</strong></div><div class="table-responsive"><table class="table finance-table"><thead><tr><th>Référence / besoin</th><th>Chargé de l’achat</th><th>Montant autorisé</th><th>Action</th></tr></thead><tbody>@forelse($cashierPurchaseRequests as $purchase)<tr><td><strong>{{ $purchase->reference }}</strong><small>{{ $purchase->title }} · {{ \Illuminate\Support\Str::limit($purchase->needed_items, 90) }}</small></td><td>{{ $purchase->assignee?->name ?? '—' }}</td><td><strong>{{ number_format((int) $purchase->approved_amount,0,',',' ') }} F</strong></td><td><form method="POST" action="{{ route('finance.management.purchases.issue',$purchase) }}">@csrf<button class="btn btn-sm btn-primary" type="submit" @disabled((int) $purchase->assigned_to === (int) auth()->id())>Confirmer la remise</button>@if((int) $purchase->assigned_to === (int) auth()->id())<small>Tu ne peux pas remettre les fonds pour ton propre achat.</small>@endif</form></td></tr>@empty<tr><td colspan="4" class="text-center text-muted py-4">Aucun achat autorisé n’attend de remise.</td></tr>@endforelse</tbody></table></div>{{ $cashierPurchaseRequests->links() }}</section>
+        <section class="finance-panel cashier-purchases">
+            <div class="cashier-purchases-head"><div><h2>Achats de matériel autorisés</h2><p>Le DG a fixé un plafond. Saisis les détails et confirme la remise uniquement quand les fonds sont réellement remis à la personne chargée.</p></div><strong>{{ $cashierPurchaseRequests->total() }} à remettre</strong></div>
+            <div class="table-responsive"><table class="table finance-table cashier-purchase-table"><thead><tr><th>Référence / besoin</th><th>Chargé de l’achat</th><th>Montant autorisé</th><th>Remise</th></tr></thead><tbody>
+                @forelse($cashierPurchaseRequests as $purchase)
+                    <tr>
+                        <td><strong class="cashier-purchase-ref">{{ $purchase->reference }}</strong><span class="cashier-purchase-title">{{ $purchase->title }}</span><small class="cashier-purchase-items">{{ \Illuminate\Support\Str::limit($purchase->needed_items, 90) }}</small><small class="cashier-purchase-trace">Demandé par {{ $purchase->creator?->name ?? $purchase->assignee?->name ?? '—' }} · {{ $purchase->created_at?->format('d/m/Y à H:i') ?? '—' }}</small><small class="cashier-purchase-trace">Validé par {{ $purchase->approver?->name ?? 'le DG' }} · {{ $purchase->approved_at?->format('d/m/Y à H:i') ?? '—' }}</small></td>
+                        <td class="cashier-purchase-assignee">{{ $purchase->assignee?->name ?? '—' }}</td>
+                        <td><strong class="cashier-purchase-amount">{{ number_format((int) $purchase->approved_amount,0,',',' ') }} F</strong></td>
+                        <td>
+                            @if((int) $purchase->assigned_to === (int) auth()->id())
+                                <span class="text-muted">Tu ne peux pas remettre les fonds pour ton propre achat.</span>
+                            @else
+                                <details class="cashier-purchase-remit"><summary class="btn btn-sm btn-primary">Saisir la remise</summary>
+                                    <form method="POST" action="{{ route('finance.management.purchases.issue',$purchase) }}" data-cashier-confirm-form data-confirm-title="Confirmer cette remise ?" data-confirm-message="Confirme uniquement si tu remets {amount} F CFA à {{ $purchase->assignee?->name ?? 'la personne chargée' }} pour l’achat {{ $purchase->reference }}." data-confirm-button="Oui, confirmer la remise">@csrf
+                                        <label>Montant réellement remis (F CFA)<input class="form-control" type="number" name="amount" min="1" max="{{ $purchase->approved_amount }}" value="{{ $purchase->approved_amount }}" required><small>Maximum autorisé : {{ number_format((int) $purchase->approved_amount,0,',',' ') }} F.</small></label>
+                                        <label>Date et heure de remise<input class="form-control" type="datetime-local" name="issued_at" value="{{ now()->format('Y-m-d\\TH:i') }}" max="{{ now()->format('Y-m-d\\TH:i') }}" required></label>
+                                        <label>Référence du reçu ou du paiement (facultatif)<input class="form-control" name="payment_reference" maxlength="120" placeholder="N° de pièce ou référence"></label>
+                                        <label>Note (facultatif)<textarea class="form-control" name="issue_note" rows="2" maxlength="1000" placeholder="Précision sur la remise"></textarea></label>
+                                        <button class="btn btn-primary" type="submit">Vérifier et confirmer</button>
+                                    </form>
+                                </details>
+                            @endif
+                        </td>
+                    </tr>
+                @empty<tr><td colspan="4" class="text-center text-muted py-4">Aucun achat autorisé n’attend de remise.</td></tr>@endforelse
+            </tbody></table></div>{{ $cashierPurchaseRequests->links() }}
+        </section>
+        @if($cashierPurchaseReceiptRequests && $cashierPurchaseReceiptRequests->total())
+            <section class="finance-panel cashier-purchases">
+                <div class="cashier-purchases-head"><div><h2>Reçus et reliquats d’achat à réceptionner</h2><p>Ouvre les justificatifs. Confirme chaque réception uniquement quand les reçus ou l’argent t’ont été remis physiquement.</p></div><strong>{{ $cashierPurchaseReceiptRequests->total() }} à traiter</strong></div>
+                <div class="table-responsive"><table class="table finance-table"><thead><tr><th>Référence / achat</th><th>Personne chargée</th><th>Dépensé</th><th>Reliquat déclaré</th><th>Justificatifs</th><th>Réceptions à confirmer</th></tr></thead><tbody>
+                    @foreach($cashierPurchaseReceiptRequests as $purchase)
+                        <tr>
+                            <td><strong class="cashier-purchase-ref">{{ $purchase->reference }}</strong><span class="cashier-purchase-title">{{ $purchase->title }}</span><small class="cashier-purchase-trace">Compte rendu envoyé le {{ $purchase->report_submitted_at?->format('d/m/Y à H:i') ?? '—' }}</small></td>
+                            <td class="cashier-purchase-assignee">{{ $purchase->assignee?->name ?? '—' }}</td>
+                            <td><strong>{{ number_format((int) $purchase->spent_amount,0,',',' ') }} F</strong></td>
+                            <td><strong>{{ number_format((int) $purchase->returned_amount,0,',',' ') }} F</strong>@if($purchase->returned_received_at)<small class="cashier-purchase-trace">Reçu le {{ $purchase->returned_received_at->format('d/m/Y à H:i') }} par {{ $purchase->returnedReceiver?->name ?? '—' }}</small>@endif</td>
+                            <td>@foreach($purchase->receipt_paths ?? [] as $i=>$path)<a class="btn btn-sm btn-outline-primary" href="{{ route('finance.management.purchases.receipt',[$purchase,$i]) }}" target="_blank" rel="noopener">Reçu {{ $loop->iteration }}</a>@endforeach</td>
+                            <td class="cashier-purchase-confirm-actions">
+                                @if(!$purchase->receipt_received_at)
+                                    <form method="POST" action="{{ route('finance.management.purchases.receipts.confirm',$purchase) }}" data-cashier-confirm-form data-confirm-title="Confirmer la réception des reçus ?" data-confirm-message="Confirme uniquement si les justificatifs de {{ $purchase->assignee?->name ?? 'la personne chargée' }} pour {{ $purchase->reference }} t’ont bien été remis." data-confirm-button="Oui, confirmer les reçus">@csrf<button class="btn btn-sm btn-primary" type="submit">Confirmer les reçus</button></form>
+                                @else
+                                    <span class="receipt-state receipt-state-done">Reçus reçus le {{ $purchase->receipt_received_at->format('d/m/Y') }}</span>
+                                @endif
+                                @if((int) $purchase->returned_amount > 0 && !$purchase->returned_received_at)
+                                    <form method="POST" action="{{ route('finance.management.purchases.return.confirm',$purchase) }}" data-cashier-confirm-form data-confirm-title="Confirmer la réception du reliquat ?" data-confirm-message="Confirme uniquement si tu as réellement reçu {{ number_format((int) $purchase->returned_amount,0,',',' ') }} F CFA de {{ $purchase->assignee?->name ?? 'la personne chargée' }} pour {{ $purchase->reference }}." data-confirm-button="Oui, ajouter le reliquat à la caisse">@csrf<button class="btn btn-sm btn-outline-primary" type="submit">Confirmer le reliquat</button></form>
+                                @endif
+                            </td>
+                        </tr>
+                    @endforeach
+                </tbody></table></div>{{ $cashierPurchaseReceiptRequests->links() }}
+            </section>
+        @endif
     @endif
     <section class="finance-panel expense-history"><div class="expense-list-heading"><div><h2>{{ $isAssignedCashier ? 'Historique et suivi des demandes' : 'Toutes les demandes de dépense' }}</h2><p>{{ $isAssignedCashier ? 'Retrouve une demande, vérifie son statut et consulte les remises déjà enregistrées.' : 'Recherche une demande par référence, bénéficiaire ou motif.' }}</p></div><span>{{ $expenses->total() }} demande(s)</span></div><form method="GET" class="finance-filter"><input class="form-control" name="search" value="{{ request('search') }}" placeholder="Référence, bénéficiaire, motif"><select name="status" class="form-control"><option value="">Tous les statuts</option>@foreach(['awaiting_finance'=>'À contrôler','awaiting_director'=>'À valider par le DG','authorized_to_pay'=>'Autorisée à payer','partially_paid'=>'Partiellement payée','paid'=>'Payée','rejected'=>'Refusée'] as $key=>$label)<option value="{{ $key }}" @selected(request('status')===$key)>{{ $label }}</option>@endforeach</select><button class="btn btn-outline-primary">Filtrer</button></form>
     <div class="table-responsive"><table class="table finance-table"><thead><tr><th>Référence / demandeur</th><th>Bénéficiaire / motif</th><th>Lieu</th><th>Montant demandé</th><th>Statut</th><th>Reçus après achat</th><th></th></tr></thead><tbody>
@@ -169,6 +221,8 @@
 @media(max-width:560px){.cashier-queue-tabs{display:grid;grid-template-columns:1fr}.cashier-queue-tabs a{justify-content:space-between}.cashier-tontine-queue .cashier-purchases-head{align-items:flex-start}}
 @media(max-width:420px){.expense-head-actions{grid-template-columns:1fr}.cashier-workspace{grid-template-columns:1fr}.cashier-workspace-balance{grid-column:auto}.expense-list-heading{flex-direction:column}.cashier-notice{padding:12px}}
 .receipt-confirm-modal{--rc-ink:var(--app-text,#202938);--rc-muted:var(--app-muted,#748093);--rc-line:var(--app-border,#e3e8ef);position:fixed;z-index:12000;inset:0;display:none;align-items:center;justify-content:center;padding:18px}.receipt-confirm-modal.is-open{display:flex}.receipt-confirm-backdrop{position:absolute;inset:0;background:rgba(15,23,42,.62);backdrop-filter:blur(3px)}.receipt-confirm-panel{position:relative;width:min(100%,440px);padding:28px;background:var(--app-surface,#fff);border:1px solid var(--rc-line);border-radius:12px;box-shadow:0 24px 80px rgba(0,0,0,.25);text-align:center}.receipt-confirm-icon{display:grid;place-items:center;width:50px;height:50px;margin:0 auto 14px;border-radius:50%;background:#e8f5eb;color:#24733a;font-size:26px}.receipt-confirm-panel h2{margin:0;color:var(--rc-ink);font-size:20px;font-weight:800}.receipt-confirm-panel p{margin:8px 0 22px;color:var(--rc-muted);font-size:13px;line-height:1.55}.receipt-confirm-actions{display:flex;justify-content:center;gap:9px;flex-wrap:wrap}.receipt-confirm-actions button{min-height:42px;padding:9px 15px;border:1px solid var(--rc-line);border-radius:5px;font-size:12px;font-weight:750;cursor:pointer}.receipt-confirm-cancel{background:transparent;color:var(--rc-ink)}.receipt-confirm-submit{background:var(--app-primary,#811515);border-color:var(--app-primary,#811515)!important;color:#fff}.receipt-confirm-actions button:focus-visible{outline:3px solid rgba(129,21,21,.24);outline-offset:2px}html[data-app-theme="dark"] .receipt-confirm-panel{background:var(--app-surface)}
+.cashier-purchase-table{min-width:990px}.cashier-purchase-table td:first-child{min-width:330px}.cashier-purchase-ref,.cashier-purchase-title,.cashier-purchase-items,.cashier-purchase-trace{display:block}.cashier-purchase-ref{margin-bottom:5px}.cashier-purchase-title{color:var(--app-text,#273142);font-weight:700;line-height:1.4}.cashier-purchase-items{margin-top:4px;color:var(--app-muted,#778397);line-height:1.45}.cashier-purchase-trace{margin-top:6px;font-size:11px;line-height:1.4}.cashier-purchase-assignee{min-width:170px;white-space:normal;line-height:1.45}.cashier-purchase-amount{white-space:nowrap}.cashier-purchase-remit{min-width:250px}.cashier-purchase-remit summary{display:inline-flex;align-items:center;justify-content:center;list-style:none;cursor:pointer}.cashier-purchase-remit summary::-webkit-details-marker{display:none}.cashier-purchase-remit[open] summary{margin-bottom:10px}.cashier-purchase-remit form{display:grid;gap:10px;min-width:260px;padding:14px;background:#faf8f8;border:1px solid #eadede;border-radius:8px}.cashier-purchase-remit label{display:grid;gap:5px;margin:0;color:var(--app-text,#273142);font-size:11px;font-weight:750;line-height:1.4}.cashier-purchase-remit .form-control{min-width:0;min-height:39px}.cashier-purchase-remit textarea.form-control{min-height:60px}.cashier-purchase-remit label small{color:var(--app-muted,#778397);font-weight:500;line-height:1.4}.cashier-purchase-remit form>.btn{min-height:41px;white-space:normal}
+.cashier-purchase-confirm-actions{min-width:210px}.cashier-purchase-confirm-actions form{margin:0 0 8px!important;min-width:0!important}.cashier-purchase-confirm-actions form:last-child{margin-bottom:0!important}.cashier-purchase-confirm-actions .btn{width:100%;white-space:normal;line-height:1.35}.cashier-purchase-confirm-actions .receipt-state{white-space:normal;line-height:1.4}
 </style>
 <script>
 (() => {
@@ -180,10 +234,15 @@
         modal.setAttribute('aria-hidden', 'true');
         pendingForm = null;
     };
-    document.querySelectorAll('form[data-receipt-confirm-form]').forEach(form => form.addEventListener('submit', event => {
+    document.querySelectorAll('form[data-receipt-confirm-form], form[data-cashier-confirm-form]').forEach(form => form.addEventListener('submit', event => {
         event.preventDefault();
         pendingForm = form;
-        document.getElementById('receipt-confirm-message').textContent = `Confirme uniquement lorsque le reçu de ${form.dataset.requesterName} t’a bien été remis.`;
+        document.getElementById('receipt-confirm-title').textContent = form.dataset.confirmTitle || 'Confirmer la réception du reçu ?';
+        const amountField = form.elements.namedItem('amount');
+        const formattedAmount = amountField?.value ? new Intl.NumberFormat('fr-FR').format(Number(amountField.value)) : '';
+        const message = form.dataset.confirmMessage || `Confirme uniquement lorsque le reçu de ${form.dataset.requesterName || 'la personne demandeuse'} t’a bien été remis.`;
+        document.getElementById('receipt-confirm-message').textContent = message.replace('{amount}', formattedAmount);
+        document.getElementById('receipt-confirm-submit').textContent = form.dataset.confirmButton || 'Oui, confirmer la réception';
         modal.classList.add('is-open');
         modal.setAttribute('aria-hidden', 'false');
         modal.querySelector('.receipt-confirm-cancel').focus();

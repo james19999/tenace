@@ -83,7 +83,7 @@ class FinanceManagementController extends Controller
             $asset->estimated_book_value = max($asset->residual_amount, $asset->purchase_amount - (int) floor($depreciable * min($elapsedMonths, $asset->useful_life_months) / max(1, $asset->useful_life_months)));
             return $asset;
         });
-        $purchaseRequests = FinanceEquipmentPurchaseRequest::query()->with(['assignee', 'creator', 'approver', 'issuer', 'reviewer'])
+        $purchaseRequests = FinanceEquipmentPurchaseRequest::query()->with(['assignee', 'creator', 'approver', 'issuer', 'reviewer', 'receiptReceiver', 'returnedReceiver'])
             ->latest()->paginate(10, ['*'], 'purchase_page')->withQueryString();
         $purchaseSetting = FinanceEquipmentPurchaseSetting::query()->with('assignee')->find(1);
         return view('finance.management.index', [

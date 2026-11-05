@@ -66,7 +66,7 @@ class EmployeePayrollController extends Controller
             ->whereIn('status', ['awaiting_finance', 'awaiting_director', 'authorized_to_pay', 'partially_paid'])->sum(DB::raw('amount - paid_amount')) : 0;
         $availableForAdvance = max(0, $currentPeriodSalary - $currentPaid - $currentAdvanced - $currentPending);
         $purchaseRequests = class_exists(\App\Models\FinanceEquipmentPurchaseRequest::class)
-            ? \App\Models\FinanceEquipmentPurchaseRequest::query()->where('assigned_to', $employee->id)->latest()->limit(20)->get()
+            ? \App\Models\FinanceEquipmentPurchaseRequest::query()->with(['creator', 'approver', 'issuer', 'reviewer', 'receiptReceiver', 'returnedReceiver'])->where('assigned_to', $employee->id)->latest()->limit(20)->get()
             : collect();
         $purchaseSetting = FinanceEquipmentPurchaseSetting::query()->with('assignee')->find(1);
         $purchaseAssigneeId = $purchaseSetting?->assignee_user_id;

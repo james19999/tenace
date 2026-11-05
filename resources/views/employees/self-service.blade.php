@@ -131,10 +131,24 @@
                         'submitted_for_review' => ['Reçus envoyés · contrôle du DG', 'hourglass_top'],
                         'closed' => ['Achat clôturé', 'task_alt'],
                     ][$purchase->status] ?? ['En cours', 'info'];
+                    if ($purchase->status === 'submitted_for_review') {
+                        $purchaseStatus = $purchase->receipt_received_at
+                            ? (((int) $purchase->returned_amount > 0 && !$purchase->returned_received_at) ? ['Reçus reçus · attente du reliquat', 'payments'] : ['Reçus reçus · contrôle du DG', 'hourglass_top'])
+                            : ['Reçus envoyés · attente du caissier', 'schedule'];
+                    }
                 @endphp
                 <article class="ess-material-request">
                     <div class="ess-material-request-top"><div><span class="ess-material-reference">{{ $purchase->reference }}</span><h3>{{ $purchase->title }}</h3></div><span class="ess-material-status status-{{ $purchase->status }}"><span class="material-icons">{{ $purchaseStatus[1] }}</span>{{ $purchaseStatus[0] }}</span></div>
                     <div class="ess-material-amounts"><div><small>Montant demandé</small><strong>{{ number_format($purchase->requested_amount,0,',',' ') }} F</strong></div>@if($purchase->cash_issued)<div><small>Argent remis</small><strong>{{ number_format($purchase->cash_issued,0,',',' ') }} F</strong></div>@endif @if($purchase->spent_amount !== null)<div><small>Dépensé · reliquat</small><strong>{{ number_format($purchase->spent_amount,0,',',' ') }} F · {{ number_format($purchase->returned_amount,0,',',' ') }} F</strong></div>@endif</div>
+                    <div class="ess-purchase-trace" aria-label="Traçabilité de la demande">
+                        <span>Demande envoyée le {{ $purchase->submitted_at?->format('d/m/Y à H:i') ?? $purchase->created_at?->format('d/m/Y à H:i') ?? '—' }}</span>
+                        @if($purchase->approved_at)<span>DG {{ $purchase->approver?->name ?? '—' }} · accord le {{ $purchase->approved_at->format('d/m/Y à H:i') }} · {{ number_format((int) $purchase->approved_amount,0,',',' ') }} F autorisés</span>@endif
+                        @if($purchase->issued_at)<span>Fonds remis par {{ $purchase->issuer?->name ?? 'le caissier général' }} le {{ $purchase->issued_at->format('d/m/Y à H:i') }}</span>@endif
+                        @if($purchase->report_submitted_at)<span>Reçus envoyés le {{ $purchase->report_submitted_at->format('d/m/Y à H:i') }}</span>@endif
+                        @if($purchase->receipt_received_at)<span>Reçus reçus et confirmés par {{ $purchase->receiptReceiver?->name ?? 'le caissier général' }} le {{ $purchase->receipt_received_at->format('d/m/Y à H:i') }}</span>@endif
+                        @if((int) $purchase->returned_amount > 0 && $purchase->returned_received_at)<span>Reliquat de {{ number_format((int) $purchase->returned_amount,0,',',' ') }} F reçu par {{ $purchase->returnedReceiver?->name ?? 'le caissier général' }} le {{ $purchase->returned_received_at->format('d/m/Y à H:i') }}</span>@elseif((int) $purchase->returned_amount > 0)<span>Reliquat de {{ number_format((int) $purchase->returned_amount,0,',',' ') }} F déclaré · en attente de réception par le caissier général</span>@endif
+                        @if($purchase->reviewed_at)<span>Contrôle DG {{ $purchase->reviewer?->name ?? '' }} · {{ $purchase->reviewed_at->format('d/m/Y à H:i') }}</span>@endif
+                    </div>
                     @if($purchase->needed_items)<div class="ess-material-detail"><small>Articles prévus</small><p>{{ $purchase->needed_items }}</p></div>@endif
                     @if($purchase->assignment_notes)<div class="ess-material-note"><strong>Consignes</strong><p>{{ $purchase->assignment_notes }}</p></div>@endif
                     @if($purchase->review_note)<div class="ess-material-note"><strong>Message du DG</strong><p>{{ $purchase->review_note }}</p></div>@endif
@@ -154,7 +168,7 @@
                                 <label class="ess-receipt-option"><span class="material-icons">attach_file</span><strong>Choisir des fichiers</strong><small>Tu peux joindre plusieurs photos ou PDF.</small><input type="file" name="receipt_photos[]" accept="image/*,.pdf" multiple class="ess-receipt-files"></label>
                                 <small class="ess-receipt-selection" aria-live="polite">Ajoute au moins une photo ou un reçu.</small>
                             </div>
-                            <button class="btn btn-primary"><span class="material-icons">upload</span> Envoyer les reçus au DG</button>
+                            <button class="btn btn-primary"><span class="material-icons">upload</span> Envoyer les reçus au caissier général</button>
                         </form>
                     @endif
                     @if($purchase->receipt_paths)<div class="ess-material-receipts">@foreach($purchase->receipt_paths as $index=>$path)<a href="{{ route('employees.self-service.purchases.receipt',[$purchase,$index]) }}" target="_blank" rel="noopener"><span class="material-icons">description</span> Reçu {{ $loop->iteration }}</a>@endforeach</div>@endif
@@ -191,6 +205,7 @@ html[data-app-theme="dark"] .ess-material-status.status-funds_issued{background:
 @media(max-width:760px){.ess-material-steps{grid-template-columns:1fr}.ess-material-steps article{padding:12px}.ess-material-submit{align-items:stretch;flex-direction:column}.ess-material-submit .btn,.ess-material-action .btn{width:100%}.ess-material-report{grid-template-columns:1fr}.ess-material-report label:nth-of-type(2),.ess-material-report .ess-material-wide{grid-column:1}.ess-material-request-top{flex-direction:column}.ess-material-status{white-space:normal}}
 @media(max-width:560px){.ess-material-card{padding:14px}.ess-material-form,.ess-material-action{grid-template-columns:1fr}.ess-material-wide,.ess-material-action .btn,.ess-material-report label:nth-of-type(2),.ess-material-report .ess-material-wide{grid-column:1}.ess-material-amounts{display:grid;grid-template-columns:1fr 1fr}.ess-material-amounts>div{min-width:0}.ess-material-list-heading{align-items:flex-start;flex-direction:column}.ess-material-request{padding:15px 0}}
 </style>
+<style>.ess-purchase-trace{display:grid;gap:5px;margin:12px 0;padding:11px 13px;border:1px solid var(--app-border);border-radius:8px;background:color-mix(in srgb,var(--app-primary) 4%,var(--app-surface));color:var(--app-muted);font-size:11px;line-height:1.5}.ess-purchase-trace span{overflow-wrap:anywhere}</style>
 <script>
 document.querySelectorAll('.ess-material-report').forEach((form) => {
     const camera = form.querySelector('.ess-receipt-camera');
