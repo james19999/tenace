@@ -19,6 +19,8 @@
             <option value="CALLCENTER" @selected($userType === 'CALLCENTER')>SAV</option>
             <option value="RCM" @selected($userType === 'RCM')>Responsable commercial</option>
             <option value="INFO" @selected($userType === 'INFO')>Informaticien / ingénieur informatique</option>
+            <option value="INFOGRAPHISTE" @selected($userType === 'INFOGRAPHISTE')>Infographiste</option>
+            <option value="VIDEASTE" @selected($userType === 'VIDEASTE')>Vidéaste</option>
             <option value="ADMINUSER" @selected($userType === 'ADMINUSER')>Administrateur</option>
         </select>
         <noscript><button type="submit" class="btn btn-secondary">Afficher</button></noscript>
@@ -55,7 +57,7 @@
                          <td style="color: black ">{{  $user->phone }} </td>
                          <td style="color: black ">{{  $user->email ?? '@' }} </td>
                          <td style="color: black ">{{  $user->adresse ?? '-' }} </td>
-                         <td style="color: black ">{{ $user->user_type === 'INFO' ? 'Informaticien / ingénieur informatique' : ($user->user_type ?? '-') }} </td>
+                         <td style="color: black ">{{ ['INFO' => 'Informaticien / ingénieur informatique', 'INFOGRAPHISTE' => 'Infographiste', 'VIDEASTE' => 'Vidéaste'][$user->user_type] ?? ($user->user_type ?? '-') }} </td>
                          <td style="color: black " class=" pull-right">
 
                              <div class="btn-group btn-group-justified">

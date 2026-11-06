@@ -31,6 +31,8 @@
                                 <option value="COMPTABLE" @selected(old('user_type') === 'COMPTABLE')>Comptable</option>
                                 <option value="RCM" @selected(old('user_type') === 'RCM')>Responsable commercial</option>
                                 <option value="INFO" @selected(old('user_type') === 'INFO')>Informaticien / ingénieur informatique</option>
+                                <option value="INFOGRAPHISTE" @selected(old('user_type') === 'INFOGRAPHISTE')>Infographiste</option>
+                                <option value="VIDEASTE" @selected(old('user_type') === 'VIDEASTE')>Vidéaste</option>
                                 <option value="ADMINUSER" @selected(old('user_type') === 'ADMINUSER')>Administrateur</option>
                             </select>
                             @error('user_type') <span class="text-danger">{{ $message }}</span>@enderror

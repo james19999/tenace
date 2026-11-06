@@ -572,7 +572,7 @@ class DashboarController extends Controller
         }
 
         $request->validate([
-            'user_type' => ['required', 'in:ADMINUSER,CALLCENTER,VDS,MNG,SCR,LVS,PT,CSA,COMPTABLE,RCM,INFO,User'],
+            'user_type' => ['required', 'in:ADMINUSER,CALLCENTER,VDS,MNG,SCR,LVS,PT,CSA,COMPTABLE,RCM,INFO,INFOGRAPHISTE,VIDEASTE,User'],
         ]);
 
         $user = User::findOrFail($id);

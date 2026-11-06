@@ -69,6 +69,8 @@ class User extends Authenticatable
     const ROLE_COMMERCIAL_MANAGER = 'RCM';
     const ROLE_WHOLESALER = 'GRO';
     const ROLE_IT = 'INFO';
+    const ROLE_GRAPHIC_DESIGNER = 'INFOGRAPHISTE';
+    const ROLE_VIDEOGRAPHER = 'VIDEASTE';
 
     const GENERAL_CASHIER_ELIGIBLE_ROLES = [
         self::ROLE_MANAGER,
@@ -141,6 +143,7 @@ class User extends Authenticatable
             self::ROLE_WHOLESALER  => route('wholesaler.dashboard'),
             self::ROLE_CASHIER     => route('order-liste-order'),
             self::ROLE_IT          => route('employees.self-service'),
+            self::ROLE_GRAPHIC_DESIGNER, self::ROLE_VIDEOGRAPHER => route('employees.self-service'),
             default                => route('Admin'),
         };
     }

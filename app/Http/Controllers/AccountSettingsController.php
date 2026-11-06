@@ -26,6 +26,8 @@ class AccountSettingsController extends Controller
             'RCM' => 'Responsable commercial',
             'GRO' => 'Grossiste',
             'INFO' => 'Informaticien / ingénieur informatique',
+            'INFOGRAPHISTE' => 'Infographiste',
+            'VIDEASTE' => 'Vidéaste',
             'PT' => 'Partenaire',
             default => 'Utilisateur',
         };

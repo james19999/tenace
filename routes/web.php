@@ -115,7 +115,7 @@ Route::middleware(['auth'])->group(function () {
     Route::get('/grossiste/dashboard', [\App\Http\Controllers\WholesaleDashboardController::class, 'index'])
         ->middleware('role:GRO')->name('wholesaler.dashboard');
 
-    Route::middleware(['role:MNG,SCR,VDS,CSA,LVS,CALLCENTER,COMPTABLE,RCM,GRO,INFO'])->group(function () {
+    Route::middleware(['role:MNG,SCR,VDS,CSA,LVS,CALLCENTER,COMPTABLE,RCM,GRO,INFO,INFOGRAPHISTE,VIDEASTE'])->group(function () {
         Route::get('/mon-espace', [\App\Http\Controllers\EmployeePayrollController::class, 'selfService'])->name('employees.self-service');
         Route::get('/mon-espace/materiel', [\App\Http\Controllers\EmployeePayrollController::class, 'selfServicePurchases'])->name('employees.self-service.purchases.index');
         Route::post('/mon-espace/avances', [\App\Http\Controllers\EmployeePayrollController::class, 'requestOwnAdvance'])->name('employees.self-service.advances.store');

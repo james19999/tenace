@@ -381,6 +381,9 @@
                                             'CSA'         => ['label' => 'Caissier',       'class' => 'badge-dark'],
                                             'COMPTABLE'   => ['label' => 'Comptable',      'class' => 'badge-primary'],
                                             'RCM'         => ['label' => 'Responsable commercial', 'class' => 'badge-success'],
+                                            'INFO'        => ['label' => 'Informaticien / ingénieur informatique', 'class' => 'badge-dark'],
+                                            'INFOGRAPHISTE' => ['label' => 'Infographiste', 'class' => 'badge-info'],
+                                            'VIDEASTE'    => ['label' => 'Vidéaste', 'class' => 'badge-primary'],
                                             'User'        => ['label' => 'Utilisateur',    'class' => 'badge-light border'],
                                         ];
                                         $badge = $roleLabels[$u->user_type] ?? ['label' => $u->user_type, 'class' => 'badge-secondary'];

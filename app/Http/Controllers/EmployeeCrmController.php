@@ -24,6 +24,8 @@ class EmployeeCrmController extends Controller
         User::ROLE_ACCOUNTANT,
         User::ROLE_COMMERCIAL_MANAGER,
         User::ROLE_IT,
+        User::ROLE_GRAPHIC_DESIGNER,
+        User::ROLE_VIDEOGRAPHER,
     ];
 
     public function index(Request $request): View
@@ -155,6 +157,8 @@ class EmployeeCrmController extends Controller
             User::ROLE_ACCOUNTANT => 'Comptable',
             User::ROLE_COMMERCIAL_MANAGER => 'Responsable commercial',
             User::ROLE_IT => 'Informaticien / ingénieur informatique',
+            User::ROLE_GRAPHIC_DESIGNER => 'Infographiste',
+            User::ROLE_VIDEOGRAPHER => 'Vidéaste',
         ];
     }
 }

@@ -77,6 +77,8 @@
                              <option value="COMPTABLE" {{ $users->user_type == 'COMPTABLE' ? 'selected' : '' }}>Comptable</option>
                              <option value="RCM" {{ $users->user_type == 'RCM' ? 'selected' : '' }}>Responsable commercial</option>
                              <option value="INFO" {{ $users->user_type == 'INFO' ? 'selected' : '' }}>Informaticien / ingénieur informatique</option>
+                             <option value="INFOGRAPHISTE" {{ $users->user_type == 'INFOGRAPHISTE' ? 'selected' : '' }}>Infographiste</option>
+                             <option value="VIDEASTE" {{ $users->user_type == 'VIDEASTE' ? 'selected' : '' }}>Vidéaste</option>
                              <option value="ADMINUSER" {{ $users->user_type == 'ADMINUSER' ? 'selected' : '' }}>Administrateur</option>
                          </select>
                         </div>
