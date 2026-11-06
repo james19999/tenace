@@ -236,6 +236,7 @@ Route::middleware(['auth'])->group(function () {
         Route::put('/personnel/{employee}', [\App\Http\Controllers\EmployeeCrmController::class, 'update'])->where('employee', 'EMP-[A-Z0-9]{12}')->name('employees.update');
         Route::get('/personnel/{employee}/paie', [\App\Http\Controllers\EmployeePayrollController::class, 'index'])->where('employee', 'EMP-[A-Z0-9]{12}')->name('employees.payroll.index');
         Route::post('/personnel/{employee}/paie/periodes', [\App\Http\Controllers\EmployeePayrollController::class, 'createPeriod'])->where('employee', 'EMP-[A-Z0-9]{12}')->name('employees.payroll.periods.store');
+        Route::post('/personnel/{employee}/paie/periodes/{period}/disponible', [\App\Http\Controllers\EmployeePayrollController::class, 'makeSalaryAvailable'])->where('employee', 'EMP-[A-Z0-9]{12}')->name('employees.payroll.periods.available');
         Route::post('/personnel/{employee}/paie/periodes/{period}/versements', [\App\Http\Controllers\EmployeePayrollController::class, 'recordPayment'])->where('employee', 'EMP-[A-Z0-9]{12}')->name('employees.payroll.payments.store');
         Route::get('/personnel/paie/versements/{payment}/bon', [\App\Http\Controllers\EmployeePayrollController::class, 'voucher'])->name('employees.payroll.payments.voucher');
 

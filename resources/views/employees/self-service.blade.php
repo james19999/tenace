@@ -8,7 +8,7 @@
 
     @if($activePage==='payroll')
     <section class="ess-summary" aria-label="Résumé de ta situation">
-        <article class="ess-summary-salary"><span class="ess-summary-icon material-icons" aria-hidden="true">payments</span><div><span>Salaire mensuel convenu</span><strong>{{ $profile->monthly_salary ? number_format($profile->monthly_salary,0,',',' ').' F CFA' : 'À renseigner' }}</strong><small>@if($profile->salary_effective_from)Applicable depuis {{ $profile->salary_effective_from->format('m/Y') }}@else Demande à l’administration de renseigner ton salaire @endif</small></div></article>
+        <article class="ess-summary-salary"><span class="ess-summary-icon material-icons" aria-hidden="true">payments</span><div><span>Salaire mensuel convenu</span><strong>{{ $profile->monthly_salary ? number_format($profile->monthly_salary,0,',',' ').' F CFA' : 'À renseigner' }}</strong><small>@if($profile->salary_effective_from)Montant contractuel · applicable depuis {{ $profile->salary_effective_from->format('m/Y') }}. Le DG rend chaque mois visible quand les fonds sont prêts.@else Demande à l’administration de renseigner ton salaire @endif</small></div></article>
         <article class="ess-summary-available"><span class="ess-summary-icon material-icons" aria-hidden="true">account_balance_wallet</span><div><span>Avance disponible ce mois</span><strong>{{ number_format($availableForAdvance,0,',',' ') }} F CFA</strong><small>Après déduction du salaire payé et des avances déjà demandées ou versées.</small></div></article>
     </section>
 
@@ -60,10 +60,10 @@
                     $salaryPaid = (int) $period->payments->where('kind', 'salary')->sum('amount');
                     $loanDeducted = (int) $period->payments->where('kind', 'salary')->sum('loan_deduction_amount');
                     $salaryNetPaid = (int) $period->payments->where('kind', 'salary')->sum(fn ($payment) => $payment->net_amount ?? $payment->amount);
-                    $advancePaid = (int) $period->staffAdvances->sum('amount') + (int) $period->payments->where('kind', 'advance')->sum('amount');
+                    $advancePaid = (int) $period->staffAdvances->where('advance_type', 'salary_advance')->sum('amount') + (int) $period->payments->where('kind', 'advance')->sum('amount');
                 @endphp
                 <tr><td>{{ $period->period_start->translatedFormat('F Y') }}</td><td>{{ number_format($period->salary_amount,0,',',' ') }} F</td><td>{{ number_format($advancePaid,0,',',' ') }} F</td><td>{{ number_format($loanDeducted,0,',',' ') }} F</td><td>{{ number_format($salaryNetPaid,0,',',' ') }} F</td><td><strong>{{ number_format(max(0,$period->salary_amount-$salaryPaid-$advancePaid),0,',',' ') }} F</strong></td></tr>
-            @empty<tr><td colspan="6" class="ess-empty">Le suivi des salaires sera affiché dès qu’un mois aura été enregistré.</td></tr>@endforelse
+            @empty<tr><td colspan="6" class="ess-empty">Aucun salaire n’a encore été rendu disponible par le DG.</td></tr>@endforelse
         </tbody></table></div>
     </section>
 

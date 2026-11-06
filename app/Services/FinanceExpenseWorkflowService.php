@@ -327,7 +327,8 @@ class FinanceExpenseWorkflowService
                     'granted_on' => $payment->paid_at->toDateString(), 'reason' => $locked->description,
                     'created_by' => $payer->id,
                 ]);
-                $advance->update(['reference' => sprintf('AV-%s-%06d', now()->format('Y'), $advance->id)]);
+                $referencePrefix = $advance->advance_type === 'loan' ? 'PRET' : 'AV';
+                $advance->update(['reference' => sprintf('%s-%s-%06d', $referencePrefix, now()->format('Y'), $advance->id)]);
                 $this->audit->record($advance, 'staff_advance_disbursed', null, $advance->fresh()->toArray());
             }
             if ($locked->commission_user_id) {

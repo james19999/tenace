@@ -58,9 +58,9 @@
                 @forelse($pendingEmployeeAdvances as $request)
                     <article class="fm-advance-card">
                         <div class="fm-advance-heading"><div><span class="fm-advance-kind">{{ $request->staff_advance_type === 'loan' ? 'Prêt à rembourser' : 'Avance sur salaire' }}</span><h3>{{ $request->staffMember?->name ?? $request->requester?->name }}</h3></div><strong class="fm-advance-amount">{{ number_format($request->amount,0,',',' ') }} F</strong></div>
-                        <div class="fm-advance-meta"><span>Demandée le {{ $request->submitted_at?->format('d/m/Y') ?? '—' }}</span>@if($request->justification_note)<p>{{ $request->justification_note }}</p>@endif</div>
+                        <div class="fm-advance-meta"><span>Demandée le {{ $request->submitted_at?->format('d/m/Y') ?? '—' }}</span>@if($request->justification_note)<p><strong>Motif de la demande</strong>{{ $request->justification_note }}</p>@endif</div>
                         <div class="fm-advance-actions">
-                            <form class="fm-loan-approval" method="POST" action="{{ route('finance.management.employee-advances.decide',$request) }}">@csrf<input type="hidden" name="decision" value="approved">
+                            <form class="fm-loan-approval {{ $request->staff_advance_type === 'loan' ? 'is-loan' : 'is-salary-advance' }}" method="POST" action="{{ route('finance.management.employee-advances.decide',$request) }}">@csrf<input type="hidden" name="decision" value="approved">
                                 @if($request->staff_advance_type === 'loan')
                                     <label>Retenue mensuelle<select class="form-control js-loan-method" name="repayment_method" required><option value="fixed_amount" @selected($request->staff_repayment_method === 'fixed_amount')>Montant fixe · F CFA</option><option value="salary_percent" @selected($request->staff_repayment_method === 'salary_percent')>Pourcentage du salaire</option></select></label>
                                     <label><span class="js-loan-value-label">Somme fixe à retenir par mois (F CFA)</span><input class="form-control js-loan-value" type="number" name="repayment_value" min="1" max="1000000000" step="1" value="{{ old('repayment_value', $request->staff_repayment_value) }}" placeholder="Ex. 10000" required><small class="js-loan-value-help">Cette somme sera retenue automatiquement sur le salaire chaque mois.</small></label>
@@ -378,15 +378,17 @@ html[data-app-theme="dark"] .fm-purchase-state.state-action,html[data-app-theme=
 .fm-advance-heading h3{margin:3px 0 0;color:var(--app-text);font-size:16px;font-weight:800;overflow-wrap:anywhere}
 .fm-advance-kind{color:var(--app-muted);font-size:11px;font-weight:800;letter-spacing:.025em}
 .fm-advance-amount{flex:none;color:var(--app-primary);font-size:18px;font-weight:850;text-align:right;overflow-wrap:anywhere}
-.fm-advance-meta{display:flex;justify-content:space-between;align-items:flex-start;gap:12px;margin-top:10px;color:var(--app-muted);font-size:12px}
-.fm-advance-meta p{max-width:68%;margin:0;color:var(--app-text);white-space:pre-line;overflow-wrap:anywhere}
-.fm-advance-actions{display:grid;grid-template-columns:minmax(0,1.2fr) minmax(220px,.8fr);gap:12px;margin-top:14px;padding-top:13px;border-top:1px solid var(--app-border)}
-.fm-loan-approval{display:grid!important;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;align-items:end}
+.fm-advance-meta{display:grid;gap:8px;margin-top:12px;color:var(--app-muted);font-size:12px}
+.fm-advance-meta p{display:grid;gap:4px;margin:0;padding:10px 12px;border-radius:8px;background:color-mix(in srgb,var(--app-text) 4%,var(--app-surface));color:var(--app-text);white-space:pre-line;overflow-wrap:anywhere}
+.fm-advance-meta p strong{color:var(--app-muted);font-size:10px;text-transform:uppercase;letter-spacing:.035em}
+.fm-advance-actions{display:grid;grid-template-columns:minmax(0,1fr);gap:13px;margin-top:14px;padding-top:13px;border-top:1px solid var(--app-border)}
+.fm-loan-approval{display:grid!important;grid-template-columns:repeat(2,minmax(0,1fr)) auto;gap:10px;align-items:start}
 .fm-loan-approval label,.fm-reject-form label,.fm-inline-form label{display:block;min-width:0;margin:0;color:var(--app-text);font-size:11px;font-weight:750}
 .fm-loan-approval .form-control,.fm-reject-form .form-control,.fm-inline-form .form-control{margin-top:4px;min-width:0;width:100%}
-.fm-loan-approval small{grid-column:1/-1;color:var(--app-muted);font-size:11px}
-.fm-loan-approval button{grid-column:1/-1;justify-self:start}
-.fm-reject-form{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:8px;align-items:end}
+.fm-loan-approval small{display:block;margin-top:5px;color:var(--app-muted);font-size:11px;font-weight:500;line-height:1.4}
+.fm-loan-approval button{min-height:40px;align-self:end;justify-self:stretch;white-space:nowrap}
+.fm-loan-approval.is-salary-advance button{grid-column:1/-1;justify-self:start}
+.fm-reject-form{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:10px;align-items:end;max-width:680px;padding-top:12px;border-top:1px dashed var(--app-border)}
 .fm-reject-form .btn{min-height:38px}
 .fm-team-empty{display:grid;justify-items:center;gap:5px;padding:26px 14px;text-align:center;color:var(--app-muted)}
 .fm-team-empty .material-icons{color:var(--app-primary);font-size:27px}
@@ -410,8 +412,8 @@ html[data-app-theme="dark"] .fm-purchase-state.state-action,html[data-app-theme=
 .fm-advance-admin-actions .fm-loan-plan-form{min-width:0;margin:0}
 .fm-advance-admin-actions .fm-loan-plan-form>strong{color:var(--app-text);font-size:11px}
 .fm-advance-admin-actions .fm-loan-plan-form>div{display:grid;grid-template-columns:minmax(0,1fr) minmax(100px,.8fr) auto;gap:6px}
-@media(max-width:760px){.fm-advance-actions,.fm-advance-admin-actions{grid-template-columns:1fr}.fm-reject-form{grid-template-columns:minmax(0,1fr) auto}}
-@media(max-width:560px){.fm-team-summary{grid-template-columns:1fr 1fr}.fm-team-summary article{padding:12px}.fm-team-summary article:first-child{grid-column:1/-1}.fm-advance-card{padding:12px}.fm-advance-heading{align-items:flex-start}.fm-advance-amount{max-width:45%;font-size:16px}.fm-advance-meta{display:block}.fm-advance-meta p{max-width:none;margin-top:6px}.fm-loan-approval{grid-template-columns:1fr}.fm-loan-approval small,.fm-loan-approval button{grid-column:1}.fm-loan-approval button,.fm-reject-form .btn,.fm-disbursement-card>.btn{width:100%}.fm-reject-form{grid-template-columns:1fr}.fm-advance-facts{grid-template-columns:repeat(2,minmax(0,1fr))}.fm-advance-admin-actions .fm-loan-plan-form>div{grid-template-columns:1fr}.fm-advance-admin-actions .fm-inline-form{display:grid;grid-template-columns:minmax(0,1fr) auto}.fm-advance-admin-actions .fm-inline-form label{grid-column:1/-1}.fm-advance-admin-actions .fm-inline-form button{grid-column:1/-1}}
+@media(max-width:760px){.fm-advance-actions,.fm-advance-admin-actions{grid-template-columns:1fr}.fm-loan-approval{grid-template-columns:repeat(2,minmax(0,1fr))}.fm-loan-approval button{grid-column:1/-1}.fm-reject-form{grid-template-columns:minmax(0,1fr) auto}}
+@media(max-width:560px){.fm-team-summary{grid-template-columns:1fr 1fr}.fm-team-summary article{padding:12px}.fm-team-summary article:first-child{grid-column:1/-1}.fm-advance-card{padding:12px}.fm-advance-heading{align-items:flex-start}.fm-advance-amount{max-width:45%;font-size:16px}.fm-advance-meta p{max-width:none;margin-top:0}.fm-loan-approval{grid-template-columns:1fr}.fm-loan-approval button{grid-column:1}.fm-loan-approval button,.fm-reject-form .btn,.fm-disbursement-card>.btn{width:100%}.fm-reject-form{grid-template-columns:1fr}.fm-advance-facts{grid-template-columns:repeat(2,minmax(0,1fr))}.fm-advance-admin-actions .fm-loan-plan-form>div{grid-template-columns:1fr}.fm-advance-admin-actions .fm-inline-form{display:grid;grid-template-columns:minmax(0,1fr) auto}.fm-advance-admin-actions .fm-inline-form label{grid-column:1/-1}.fm-advance-admin-actions .fm-inline-form button{grid-column:1/-1}}
 .fm-team-tabs{display:flex;flex-wrap:wrap;gap:8px;margin:0 0 14px;padding:6px;background:var(--app-surface);border:1px solid var(--app-border);border-radius:var(--app-radius)}
 .fm-team-tabs a{display:flex;align-items:center;gap:8px;padding:10px 13px;border-radius:8px;color:var(--app-text);font-size:13px;font-weight:750;text-decoration:none}
 .fm-team-tabs a.is-active{background:var(--app-primary);color:var(--app-primary-contrast)}
