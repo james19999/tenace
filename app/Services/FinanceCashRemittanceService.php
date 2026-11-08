@@ -38,7 +38,7 @@ class FinanceCashRemittanceService
                 throw ValidationException::withMessages(['collector_id' => 'Le responsable de la caisse et la personne qui récupère les fonds doivent confirmer avec leurs comptes respectifs.']);
             }
 
-            $expected = max(0, $this->ledger->expectedShopCash($location->id, $data['period_start'], $data['period_end']));
+            $expected = max(0, $this->ledger->expectedShopCash($data['period_start'], $data['period_end']));
             if ($expected !== (int) $data['counted_amount'] && ! trim((string) ($data['discrepancy_note'] ?? ''))) {
                 $counted = (int) $data['counted_amount'];
                 $difference = abs($expected - $counted);

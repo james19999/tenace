@@ -278,7 +278,10 @@ class FinanceController extends Controller
         );
 
         return response()->json([
-            'expected_amount' => $cashSummary['closing_balance'],
+            'expected_amount' => max(0, $this->ledger->expectedShopCash(
+                $data['period_start'],
+                $data['period_end'],
+            )),
             'cash_summary' => $cashSummary,
         ]);
     }

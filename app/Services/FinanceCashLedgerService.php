@@ -4,6 +4,7 @@ namespace App\Services;
 
 use App\Models\FinanceCashMovement;
 use App\Models\FinanceCashClosure;
+use App\Models\Orders\Order;
 use App\Models\StockLocation;
 use App\Models\User;
 use Illuminate\Support\Facades\DB;
@@ -167,9 +168,14 @@ class FinanceCashLedgerService
         });
     }
 
-    public function expectedShopCash(int $locationId, string $from, string $to): int
+    public function expectedShopCash(string $from, string $to): int
     {
-        return $this->shopCashSummary($locationId, $from, $to)['closing_balance'];
+        // Remittance expectations follow the DG dashboard's weekly turnover:
+        // delivered boutique orders, merchandise amount only, excluding wholesale.
+        return (int) Order::query()->where('status', 'delivered')
+            ->where('is_wholesale', false)
+            ->whereBetween('delivered_at', [$from.' 00:00:00', $to.' 23:59:59'])
+            ->sum('total');
     }
 
     /**
