@@ -188,12 +188,20 @@ class FinanceCashLedgerService
             ->where('occurred_at', '<=', $to.' 23:59:59');
         $inflows = (int) (clone $periodMovements)->where('to_custody', 'shop')->sum('amount');
         $outflows = (int) (clone $periodMovements)->where('from_custody', 'shop')->sum('amount');
+        $inflowDetails = (clone $periodMovements)->where('to_custody', 'shop')
+            ->select('movement_type')->selectRaw('SUM(amount) as amount')->groupBy('movement_type')->get()
+            ->map(fn ($row): array => ['movement_type' => $row->movement_type, 'amount' => (int) $row->amount])->values()->all();
+        $outflowDetails = (clone $periodMovements)->where('from_custody', 'shop')
+            ->select('movement_type')->selectRaw('SUM(amount) as amount')->groupBy('movement_type')->get()
+            ->map(fn ($row): array => ['movement_type' => $row->movement_type, 'amount' => (int) $row->amount])->values()->all();
 
         return [
             'opening_balance' => $openingBalance,
             'period_inflows' => $inflows,
             'period_outflows' => $outflows,
             'closing_balance' => max(0, $openingBalance + $inflows - $outflows),
+            'inflow_details' => $inflowDetails,
+            'outflow_details' => $outflowDetails,
         ];
     }
 
