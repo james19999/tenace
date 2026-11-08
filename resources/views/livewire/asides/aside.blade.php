@@ -56,6 +56,10 @@
                 </li>
             @endif
 
+            @if(Auth::user()->user_type === 'LVS')
+                <li><a href="{{ route('courier-consignments.index') }}" class="{{ $active('courier-consignments.*') }}"><span class="icon material-icons">inventory_2</span><span class="text">Ma tournée</span></a></li>
+            @endif
+
             @if(in_array(Auth::user()->user_type, ['MNG', 'SCR', 'VDS', 'CSA', 'LVS', 'CALLCENTER', 'COMPTABLE', 'RCM', 'GRO', 'INFO', 'INFOGRAPHISTE', 'VIDEASTE'], true))
                 <li><a href="{{ route('employees.self-service') }}" class="{{ $active('employees.self-service') }}"><span class="icon material-icons">badge</span><span class="text">Mon espace personnel</span></a></li>
                 @if($showEquipmentPurchases)
@@ -529,6 +533,7 @@
                     </a>
                 </li>
             @elseif (Auth::user()->user_type == 'MNG')
+                <li><a href="{{ route('courier-consignments.index') }}" class="{{ $active('courier-consignments.*') }}"><span class="icon material-icons">inventory_2</span><span class="text">Consignation livreurs</span></a></li>
                 <li>
                     <a href="#mngComptaCollapse" class="{{ $active('finance.*') }}" data-toggle="collapse" aria-expanded="{{ request()->routeIs('finance.*') ? 'true' : 'false' }}">
                         <span class="caret material-icons">arrow_right</span>

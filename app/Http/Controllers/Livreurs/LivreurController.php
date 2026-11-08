@@ -662,7 +662,7 @@ class LivreurController extends Controller
                     ]);
                 }
                 $order=Order::with('orderItems')->findOrFail($orders->id);
-               if (! $stockDelivery->deliver($order, (int) Auth::id())) {
+               if (! $stockDelivery->deliver($order, (int) Auth::id(), $cashCollection)) {
                     $orders->refresh();
                     if ($orders->status === 'delivered'
                         && $orders->partner_id

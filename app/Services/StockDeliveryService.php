@@ -3,6 +3,7 @@
 namespace App\Services;
 
 use App\Models\Orders\Order;
+use App\Models\CourierConsignmentRun;
 use App\Models\Product;
 use App\Models\StockAuditLog;
 use App\Models\StockLocation;
@@ -21,9 +22,9 @@ class StockDeliveryService
      * Updates the legacy warehouse quantity only for warehouse sales and posts the location ledger once.
      * Returns false when the order was already delivered.
      */
-    public function deliver(Order $order, int $actorId): bool
+    public function deliver(Order $order, int $actorId, int $cashCollected = 0): bool
     {
-        return DB::transaction(function () use ($order, $actorId): bool {
+        return DB::transaction(function () use ($order, $actorId, $cashCollected): bool {
             $lockedOrder = Order::query()->lockForUpdate()->with('orderItems')->findOrFail($order->id);
             if ($lockedOrder->status === 'delivered') {
                 return false;
@@ -33,9 +34,23 @@ class StockDeliveryService
                 throw ValidationException::withMessages(['stock' => 'Une sortie de stock existe déjà pour cette commande. Vérifie son statut avant de poursuivre.']);
             }
 
+            $consignmentRun = null;
+            if (! $lockedOrder->partner_id && ! $lockedOrder->public_order_link_id && is_numeric($lockedOrder->user_id)) {
+                $consignmentRun = CourierConsignmentRun::query()
+                    ->where('courier_user_id', (int) $lockedOrder->user_id)
+                    ->where('status', 'open')
+                    ->latest('run_date')->latest('id')->lockForUpdate()->first();
+            }
+
             $rules = $this->settings->rules();
             $location = null;
-            if ($lockedOrder->is_wholesale) {
+            if ($consignmentRun) {
+                $location = StockLocation::query()->whereKey($consignmentRun->courier_location_id)
+                    ->where('type', 'courier')->where('is_active', true)->first();
+                if (! $location) {
+                    throw ValidationException::withMessages(['stock' => 'Le stock de tournée du livreur est indisponible. Contacte le responsable boutique.']);
+                }
+            } elseif ($lockedOrder->is_wholesale) {
                 $location = ! empty($rules['wholesale_sales_location_id'])
                     ? StockLocation::query()->whereKey($rules['wholesale_sales_location_id'])
                         ->where('type', 'shop')->where('is_active', true)->first()
@@ -111,6 +126,22 @@ class StockDeliveryService
                         'unit' => 'piece', 'notes' => 'Sortie à la livraison validée',
                     ]);
                 }
+            }
+
+            if ($consignmentRun && $movement) {
+                // Order total is the merchandise amount; montant may also contain
+                // delivery fees. Only the merchandise share belongs in the
+                // courier's cash remittance to the shop.
+                $merchandiseTotal = max(0, (int) $lockedOrder->total);
+                $merchandiseAlreadyPaid = min($merchandiseTotal, max(0, (int) $lockedOrder->paid_amount));
+                $cashForShop = min(max(0, $cashCollected), max(0, $merchandiseTotal - $merchandiseAlreadyPaid));
+                app(CourierConsignmentService::class)->recordDeliveredOrder(
+                    $consignmentRun,
+                    $lockedOrder,
+                    $movement,
+                    auth()->user() ?? \App\Models\User::query()->findOrFail($actorId),
+                    $cashForShop,
+                );
             }
 
             $lockedOrder->status = 'delivered';

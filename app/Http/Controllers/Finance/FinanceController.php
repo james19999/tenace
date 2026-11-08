@@ -271,12 +271,15 @@ class FinanceController extends Controller
         }
         $location = $locationQuery->firstOrFail();
 
+        $cashSummary = $this->ledger->shopCashSummary(
+            (int) $location->id,
+            $data['period_start'],
+            $data['period_end'],
+        );
+
         return response()->json([
-            'expected_amount' => max(0, $this->ledger->expectedShopCash(
-                (int) $location->id,
-                $data['period_start'],
-                $data['period_end'],
-            )),
+            'expected_amount' => $cashSummary['closing_balance'],
+            'cash_summary' => $cashSummary,
         ]);
     }
 

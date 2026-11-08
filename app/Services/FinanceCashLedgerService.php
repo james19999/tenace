@@ -169,12 +169,32 @@ class FinanceCashLedgerService
 
     public function expectedShopCash(int $locationId, string $from, string $to): int
     {
-        // Balance at the period close includes earlier unsettled cash and excludes
-        // collections that happen after this voucher's reporting period.
-        return (int) FinanceCashMovement::query()->where('stock_location_id', $locationId)
-            ->where('occurred_at', '<=', $to.' 23:59:59')
+        return $this->shopCashSummary($locationId, $from, $to)['closing_balance'];
+    }
+
+    /**
+     * Explain the physical shop-cash balance at period end. The dashboard's
+     * weekly turnover is gross delivered sales across all locations; this is
+     * the cash remaining in one shop after its recorded ins and outs.
+     */
+    public function shopCashSummary(int $locationId, string $from, string $to): array
+    {
+        $base = FinanceCashMovement::query()->where('stock_location_id', $locationId);
+        $openingBalance = (int) (clone $base)
+            ->where('occurred_at', '<', $from.' 00:00:00')
             ->selectRaw("COALESCE(SUM(CASE WHEN to_custody = 'shop' THEN amount ELSE 0 END), 0) - COALESCE(SUM(CASE WHEN from_custody = 'shop' THEN amount ELSE 0 END), 0) as balance")
             ->value('balance');
+        $periodMovements = (clone $base)->where('occurred_at', '>=', $from.' 00:00:00')
+            ->where('occurred_at', '<=', $to.' 23:59:59');
+        $inflows = (int) (clone $periodMovements)->where('to_custody', 'shop')->sum('amount');
+        $outflows = (int) (clone $periodMovements)->where('from_custody', 'shop')->sum('amount');
+
+        return [
+            'opening_balance' => $openingBalance,
+            'period_inflows' => $inflows,
+            'period_outflows' => $outflows,
+            'closing_balance' => max(0, $openingBalance + $inflows - $outflows),
+        ];
     }
 
     private function lockKey(string $custody, array $attributes): ?string

@@ -31,6 +31,7 @@ use App\Http\Controllers\Stock\StockAdjustmentController;
 use App\Http\Controllers\Stock\StockMovementController;
 use App\Http\Controllers\Stock\StockAlertController;
 use App\Http\Controllers\Stock\StockAuditController;
+use App\Http\Controllers\Stock\CourierConsignmentController;
 use App\Http\Livewire\Orders\OrderAuthUserList;
 use App\Http\Controllers\Admins\CheckController;
 use App\Http\Controllers\Orders\OrderController;
@@ -107,6 +108,13 @@ Route::post('/store/pathner',[DashboarController::class,'store_pathner'])->name(
 
 
 Route::middleware(['auth'])->group(function () {
+
+    Route::middleware(['role:ADMINUSER,MNG,LVS'])->prefix('tournees')->name('courier-consignments.')->group(function () {
+        Route::get('/', [CourierConsignmentController::class, 'index'])->name('index');
+        Route::post('/consigner', [CourierConsignmentController::class, 'assign'])->middleware('role:ADMINUSER,MNG')->name('assign');
+        Route::post('/{run}/rapprocher', [CourierConsignmentController::class, 'settle'])->name('settle');
+        Route::get('/{run}/bon', [CourierConsignmentController::class, 'receipt'])->name('receipt');
+    });
 
     Route::get('/mon-compte/parametres', [\App\Http\Controllers\AccountSettingsController::class, 'edit'])->name('account.settings');
     Route::put('/mon-compte/parametres/coordonnees', [\App\Http\Controllers\AccountSettingsController::class, 'updateProfile'])->name('account.settings.profile.update');
