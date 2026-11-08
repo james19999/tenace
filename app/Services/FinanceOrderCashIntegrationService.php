@@ -7,6 +7,7 @@ use App\Models\OrderPayment;
 use App\Models\Orders\Order;
 use App\Models\StockMovement;
 use App\Models\StockLocation;
+use App\Models\User;
 use Illuminate\Support\Facades\DB;
 
 class FinanceOrderCashIntegrationService
@@ -141,6 +142,58 @@ class FinanceOrderCashIntegrationService
                 $lockedOrder->paid_amount = $alreadyPaid + $remaining;
                 $lockedOrder->save();
             }
+        });
+    }
+
+    /** Reverse shop-cash entries when an order is canceled and its collected cash is returned. */
+    public function refundCashForCanceledOrder(Order $order, User $actor): int
+    {
+        if ($order->partner_id || $order->public_order_link_id) {
+            return 0;
+        }
+
+        return DB::transaction(function () use ($order, $actor): int {
+            $lockedOrder = Order::query()->lockForUpdate()->findOrFail($order->id);
+            $refunded = 0;
+            $payments = OrderPayment::query()->where('order_id', $lockedOrder->id)
+                ->where('status', 'collected')->whereIn('method', ['cash', 'manual'])->lockForUpdate()->get();
+
+            foreach ($payments as $payment) {
+                $salesMovements = FinanceCashMovement::query()->where('movement_type', 'sale_cash_received')
+                    ->where('source_type', 'order_payment')->where('source_id', $payment->id)->get();
+                $paymentRefunded = false;
+
+                foreach ($salesMovements as $saleMovement) {
+                    $amount = (int) $saleMovement->amount;
+                    if ($amount <= 0) {
+                        continue;
+                    }
+
+                    $this->ledger->record([
+                        'movement_type' => 'cash_refund',
+                        'from_custody' => 'shop',
+                        'to_custody' => 'external',
+                        'amount' => $amount,
+                        'stock_location_id' => $saleMovement->stock_location_id,
+                        'source_type' => 'order_cancellation',
+                        'source_id' => $lockedOrder->id,
+                        'source_key' => 'order-cancel-refund:'.$saleMovement->id,
+                        'source_reference' => $lockedOrder->code ?: (string) $lockedOrder->id,
+                        'occurred_at' => now(),
+                        'description' => 'Remboursement des espèces encaissées après annulation de la commande '.$lockedOrder->code.'.',
+                        'metadata' => ['order_id' => $lockedOrder->id, 'order_payment_id' => $payment->id, 'sale_movement_id' => $saleMovement->id],
+                        'created_by' => $actor->id,
+                    ]);
+                    $refunded += $amount;
+                    $paymentRefunded = true;
+                }
+
+                if ($paymentRefunded) {
+                    $payment->update(['status' => 'refunded']);
+                }
+            }
+
+            return $refunded;
         });
     }
 }

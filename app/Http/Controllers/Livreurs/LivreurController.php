@@ -564,6 +564,8 @@ class LivreurController extends Controller
                ['motif.required' => 'Entrer le motif d\'annulation.']
               );
 
+               app(\App\Services\FinanceOrderCashIntegrationService::class)
+                   ->refundCashForCanceledOrder($orders, $request->user());
 
                $orders->status=$request->status;
                $orders->motif=$request->motif;

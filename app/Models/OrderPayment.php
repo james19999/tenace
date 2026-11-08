@@ -5,6 +5,7 @@ namespace App\Models;
 use App\Models\Orders\Order;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class OrderPayment extends Model
 {
@@ -33,5 +34,12 @@ class OrderPayment extends Model
     public function confirmer(): BelongsTo
     {
         return $this->belongsTo(User::class, 'confirmed_by');
+    }
+
+    public function cashMovements(): HasMany
+    {
+        return $this->hasMany(FinanceCashMovement::class, 'source_id')
+            ->where('source_type', 'order_payment')
+            ->where('movement_type', 'sale_cash_received');
     }
 }

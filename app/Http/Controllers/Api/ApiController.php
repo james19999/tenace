@@ -208,8 +208,12 @@ class ApiController extends Controller
                  if($request->status=="canceled"){
                     $validator=Validator::make($request->all(),['motif'=>'required'],
                     ['motif.required' => 'Entrer le motif d\'annulation.']);
+                    if ($validator->fails()) {
+                        return Response::json(['status' => false, 'messages' => $validator->errors()->first()], 422);
+                    }
 
-
+                    app(\App\Services\FinanceOrderCashIntegrationService::class)
+                        ->refundCashForCanceledOrder($orders, $request->user());
 
                    $orders->status=$request->status;
                    $orders->motif=$request->motif;

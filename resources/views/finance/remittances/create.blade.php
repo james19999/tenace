@@ -35,9 +35,9 @@
 
                 <div class="remittance-cash-summary" aria-live="polite">
                     <div class="remittance-cash-item">
-                        <span>Chiffre d’affaires livré à remettre sur la période</span>
+                        <span>CA des commandes livrées sur la période</span>
                         <strong id="expected-amount">Calcul en cours…</strong>
-                        <small>Calculé comme sur le tableau de bord : commandes boutique livrées pendant la période, montant des produits, hors commandes grossistes.</small>
+                        <small>Le montant suit le CA du tableau de bord : seules les commandes boutique livrées sont comptées. Les commandes annulées et les mouvements bruts de caisse sont exclus.</small>
                     </div>
                     <div class="remittance-cash-item">
                         <label for="counted-amount">Montant compté ensemble (F CFA)</label>
