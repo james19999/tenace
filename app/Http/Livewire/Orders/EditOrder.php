@@ -27,6 +27,7 @@ class EditOrder extends Component
     public $search = '';
 
     public $deliveryAddress = '';
+    public $deliveryPhone = '';
 
     public $products = [];
 
@@ -36,6 +37,7 @@ class EditOrder extends Component
         $this->authorizeOrder($order);
         $this->order = $order;
         $this->deliveryAddress = (string) ($order->delivery_address ?: $order->costumer?->adresse ?: '');
+        $this->deliveryPhone = (string) ($order->delivery_phone ?? '');
 
         $this->tax = $order->tax;
         $this->remis = $order->remis;
@@ -337,6 +339,7 @@ class EditOrder extends Component
 
             'items' => 'required|array|min:1',
             'deliveryAddress' => 'required|string|max:1000',
+            'deliveryPhone' => 'nullable|string|max:50',
 
         ]);
 
@@ -371,6 +374,7 @@ class EditOrder extends Component
 
                 'montant' => $this->montant,
                 'delivery_address' => trim($this->deliveryAddress),
+                'delivery_phone' => trim((string) $this->deliveryPhone) !== '' ? trim((string) $this->deliveryPhone) : null,
 
 
             ]);

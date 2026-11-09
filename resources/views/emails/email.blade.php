@@ -19,8 +19,9 @@
                         <div class="col-md-6">
                            <h2>Client</h2>
                            <p>Nom : {{ $ordercostumer->name ?? '' }}</p>
-                           <p>Téléphone : {{ $ordercostumer->phone ?? '' }}</p>
-                           <p>Adresse   : {{ $ordercostumer->adresse ?? ''}}</p>
+                           <p>Téléphone à appeler pour la livraison : {{ $deliveryPhone ?: ($ordercostumer->phone ?? '') }}</p>
+                           @if($deliveryPhone)<p>Téléphone de la fiche client : {{ $ordercostumer->phone ?? '' }}</p>@endif
+                           <p>Adresse   : {{ $deliveryAddress ?: ($ordercostumer->adresse ?? '')}}</p>
                         </div>
                         <div class="col-md-6">
                             <h2>Commande</h2>

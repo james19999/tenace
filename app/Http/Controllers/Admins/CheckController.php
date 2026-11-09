@@ -96,6 +96,7 @@ class CheckController extends Controller
              'remis' => ['required', 'integer', 'between:0,100'],
              'is_wholesale' => ['nullable', 'boolean'],
              'delivery_address' => ['nullable', 'string', 'max:1000'],
+             'delivery_phone' => ['nullable', 'string', 'max:50'],
          ], [
              'tax.required' => 'Entre les frais de livraison.',
              'tax.integer' => 'Les frais de livraison doivent être un montant entier.',
@@ -219,6 +220,8 @@ class CheckController extends Controller
          $isAnonymousCustomer = $customerSelection === 'anonymous';
          $deliveryAddress = trim((string) $request->input('delivery_address', ''));
          $deliveryAddress = $deliveryAddress !== '' ? $deliveryAddress : null;
+         $deliveryPhone = trim((string) $request->input('delivery_phone', ''));
+         $deliveryPhone = $deliveryPhone !== '' ? $deliveryPhone : null;
 
          if ($isAnonymousCustomer) {
                 $request->validate([
@@ -282,6 +285,7 @@ class CheckController extends Controller
                           'montant'=>$amountDue,
                           'paid_amount'=>$paidAmount,
                           'delivery_address'=>$deliveryAddress,
+                          'delivery_phone'=>$deliveryPhone,
                           ...$shippingAttributes,
                           'code' => $code,
                           'brouillon' =>$this->brouillons() ,
@@ -367,6 +371,7 @@ class CheckController extends Controller
                 'montant'=>$amountDue,
                 'paid_amount'=>$paidAmount,
                 'delivery_address'=>$deliveryAddress,
+                'delivery_phone'=>$deliveryPhone,
                 ...$shippingAttributes,
                 'code' => $code,
                 'brouillon' =>$this->brouillons() ,

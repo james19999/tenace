@@ -86,7 +86,8 @@
                                     <td class="text-dark">{{ $i++ }}</td>
                                     <td class="text-dark">{{ $order->code }}</td>
                                     <td class="text-dark">
-                                        {{ $order->costumer->name ?? '-' }} | {{ $order->costumer->phone ?? '-' }}
+                                        {{ $order->costumer->name ?? '-' }} | {{ $order->delivery_phone ?: ($order->costumer->phone ?? '-') }}
+                                        @if($order->delivery_phone)<small class="d-block text-success">Numéro à appeler</small>@endif
                                     </td>
                                     <td class="text-dark">{{ $order->costumer->adresse }} F</td>
                                     <td class="text-dark">{{ $order->subtotal }} F</td>

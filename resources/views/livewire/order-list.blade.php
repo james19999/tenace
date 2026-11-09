@@ -311,9 +311,10 @@
                                     <i class="material-icons f-16 text-muted" style="vertical-align: middle;">person</i>
                                     {{ $order->costumer->name }}
                                 </div>
-                                @if ($order->costumer->phone)
-                                    <a href="tel:{{ $order->costumer->phone }}" class="text-primary small font-weight-bold">
-                                        <i class="fa fa-phone-alt fa-xs mr-1"></i>{{ $order->costumer->phone }}
+                                @if ($order->delivery_phone || $order->costumer->phone)
+                                    <a href="tel:{{ $order->delivery_phone ?: $order->costumer->phone }}" class="text-primary small font-weight-bold">
+                                        <i class="fa fa-phone-alt fa-xs mr-1"></i>{{ $order->delivery_phone ?: $order->costumer->phone }}
+                                        @if($order->delivery_phone)<small class="d-block">Numéro demandé pour la livraison</small>@endif
                                     </a>
                                 @endif
                             @else

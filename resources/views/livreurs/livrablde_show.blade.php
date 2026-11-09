@@ -237,7 +237,8 @@
                 <div class="dd-info">
                     <h2>Cliente</h2>
                     <p><strong>{{ $Orders->costumer->name ?? '—' }}</strong></p>
-                    <p>{{ $Orders->costumer->phone ?? 'Téléphone non renseigné' }}</p>
+                    <p><strong>À appeler :</strong> {{ $Orders->delivery_phone ?: ($Orders->costumer->phone ?? 'Téléphone non renseigné') }}</p>
+                    @if($Orders->delivery_phone)<p><small>Numéro alternatif demandé pour cette livraison. Fiche client : {{ $Orders->costumer->phone ?? '—' }}</small></p>@endif
                     <p>{{ $Orders->costumer->adresse ?? 'Adresse non renseignée' }}</p>
                 </div>
                 <div class="dd-info">

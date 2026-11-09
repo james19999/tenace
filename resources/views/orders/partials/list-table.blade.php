@@ -7,7 +7,7 @@
                     <tr>
                         <td>{{ ($orders->firstItem() ?? 1) + $loop->index }}</td>
                         <td><strong class="orders-code">{{ $order->code ?: '—' }}</strong></td>
-                        <td><strong>{{ $order->costumer->name ?? '—' }}</strong><small class="d-block text-muted">{{ $order->costumer->phone ?? 'Téléphone absent' }}</small></td>
+                        <td><strong>{{ $order->costumer->name ?? '—' }}</strong><small class="d-block text-muted">À appeler : {{ $order->delivery_phone ?: ($order->costumer->phone ?? 'Téléphone absent') }}</small></td>
                         <td>{{ $order->user->name ?? 'Non attribué' }}<small class="d-block text-muted">{{ $order->user->phone ?? '' }}</small></td>
                         <td>{{ $order->date_order ? \Carbon\Carbon::parse($order->date_order)->format('d/m/Y') : '—' }}</td>
                         <td>{{ $order->assigned_at?->format('d/m/Y H:i') ?? '—' }}</td>
@@ -34,7 +34,7 @@
             </div>
             <div class="order-mobile-customer">
                 <span class="material-icons" aria-hidden="true">person</span>
-                <div><strong>{{ $order->costumer->name ?? 'Cliente inconnue' }}</strong><small>{{ $order->costumer->phone ?? 'Téléphone absent' }}</small></div>
+                <div><strong>{{ $order->costumer->name ?? 'Cliente inconnue' }}</strong><small>À appeler : {{ $order->delivery_phone ?: ($order->costumer->phone ?? 'Téléphone absent') }}</small></div>
             </div>
             <div class="order-mobile-grid">
                 <div><small>Livreur</small><strong>{{ $order->user->name ?? 'Non attribué' }}</strong></div>

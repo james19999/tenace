@@ -322,14 +322,20 @@ class OrderController extends Controller
         $this->authorizeWholesalerOrder($order);
         $data = $request->validate([
             'delivery_address' => ['required', 'string', 'max:1000'],
+            'delivery_phone' => ['nullable', 'string', 'max:50'],
         ], [
             'delivery_address.required' => 'Saisis l’adresse de livraison.',
             'delivery_address.max' => 'L’adresse ne peut pas dépasser 1000 caractères.',
+            'delivery_phone.max' => 'Le numéro de livraison ne peut pas dépasser 50 caractères.',
         ]);
 
-        $order->update(['delivery_address' => trim($data['delivery_address'])]);
+        $deliveryPhone = trim((string) ($data['delivery_phone'] ?? ''));
+        $order->update([
+            'delivery_address' => trim($data['delivery_address']),
+            'delivery_phone' => $deliveryPhone !== '' ? $deliveryPhone : null,
+        ]);
 
-        return redirect()->back()->with('success', 'Adresse de livraison de la commande mise à jour.');
+        return redirect()->back()->with('success', 'Adresse et téléphone de livraison de la commande mis à jour.');
     }
 
     private function orderCountryCode(Order $order): string

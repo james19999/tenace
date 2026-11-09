@@ -49,6 +49,8 @@ class TenaCos extends Mailable
                 'status'=> $this->order->status,
                 'orders'=> $this->order->orderItems,
                 'ordercostumer'=> $this->order->costumer,
+                'deliveryPhone'=> $this->order->delivery_phone,
+                'deliveryAddress'=> $this->order->delivery_address,
             ],
         );
     }

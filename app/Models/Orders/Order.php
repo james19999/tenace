@@ -59,6 +59,7 @@ class Order extends Model
         'paid_amount',
         'delivery_mode',
         'delivery_address',
+        'delivery_phone',
         'transport_company_id',
         'shipping_country',
         'shipping_city',
