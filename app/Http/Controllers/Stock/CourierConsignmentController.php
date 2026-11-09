@@ -58,7 +58,7 @@ class CourierConsignmentController extends Controller
     public function assign(Request $request, CourierConsignmentService $service, StockModuleSettingsService $settings): RedirectResponse
     {
         $actor = $request->user();
-        abort_unless(in_array($actor->user_type, [User::ROLE_ADMIN, User::ROLE_MANAGER], true), 403);
+        abort_unless(in_array($actor->user_type, [User::ROLE_ADMIN, User::ROLE_MANAGER, User::ROLE_SECRETARY], true), 403);
         $shop = $this->shopFor($actor, $settings);
         abort_unless($shop, 403, 'Aucune boutique n’est affectée à ce responsable.');
         $data = $request->validate([
@@ -87,7 +87,7 @@ class CourierConsignmentController extends Controller
     public function settle(Request $request, CourierConsignmentRun $run, CourierConsignmentService $service, FinanceCashLedgerService $cashLedger, StockModuleSettingsService $settings): RedirectResponse
     {
         $actor = $request->user();
-        abort_unless(in_array($actor->user_type, [User::ROLE_ADMIN, User::ROLE_MANAGER], true)
+        abort_unless(in_array($actor->user_type, [User::ROLE_ADMIN, User::ROLE_MANAGER, User::ROLE_SECRETARY], true)
             && (int) $run->shop_location_id === (int) $this->shopFor($actor, $settings)?->id, 403);
         $data = $request->validate([
             'returned' => ['sometimes', 'array'], 'returned.*.product_id' => ['required_with:returned', 'integer'], 'returned.*.quantity' => ['required_with:returned', 'integer', 'min:0'],
@@ -112,7 +112,7 @@ class CourierConsignmentController extends Controller
         abort_unless($run->status === 'closed', 404);
         $actor = $request->user();
         abort_unless(($actor->user_type === User::ROLE_LIVREUR && (int) $run->courier_user_id === (int) $actor->id)
-            || (in_array($actor->user_type, [User::ROLE_ADMIN, User::ROLE_MANAGER], true) && (int) $run->shop_location_id === (int) $this->shopFor($actor, $settings)?->id), 403);
+            || (in_array($actor->user_type, [User::ROLE_ADMIN, User::ROLE_MANAGER, User::ROLE_SECRETARY], true) && (int) $run->shop_location_id === (int) $this->shopFor($actor, $settings)?->id), 403);
         $run->load(['shop', 'courier', 'lines.product', 'events.actor']);
         return view('stocks.courier-consignments.receipt', compact('run'));
     }

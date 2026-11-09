@@ -708,6 +708,7 @@
                     </ul>
                 </li>
             @elseif (Auth::user()->user_type == 'SCR')
+                <li><a href="{{ route('courier-consignments.index') }}" class="{{ $active('courier-consignments.*') }}"><span class="icon material-icons">inventory_2</span><span class="text">Consignation livreurs</span></a></li>
                 <li><a href="{{ route('dg-appointments.index') }}" class="{{ $active('dg-appointments.*') }}"><span class="icon material-icons">event</span><span class="text">Rendez-vous DG</span></a></li>
                 <li>
                     <a href="{{ route('product') }}" class="{{ $active('product') }}">

@@ -12,6 +12,12 @@
 
             <div class="row mb-4">
 
+                <div class="col-12 mb-3">
+                    <label for="edit-delivery-address">Adresse de livraison de cette commande</label>
+                    <textarea id="edit-delivery-address" class="form-control @error('deliveryAddress') is-invalid @enderror" rows="2" wire:model.live="deliveryAddress" maxlength="1000" required></textarea>
+                    @error('deliveryAddress') <div class="invalid-feedback d-block">{{ $message }}</div> @enderror
+                </div>
+
                 <div class="col-md-4">
                     <label>Frais de livraison</label>
 

@@ -58,6 +58,7 @@ class Order extends Model
         'montant',
         'paid_amount',
         'delivery_mode',
+        'delivery_address',
         'transport_company_id',
         'shipping_country',
         'shipping_city',

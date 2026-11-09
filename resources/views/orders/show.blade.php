@@ -157,7 +157,7 @@
                     <h2>Cliente</h2>
                     <p><strong>{{ $Orders->costumer->name ?? '—' }}</strong></p>
                     <p>{{ $Orders->costumer->phone ?? 'Téléphone non renseigné' }}</p>
-                    <p>{{ $Orders->costumer->adresse ?? 'Adresse non renseignée' }}</p>
+                    <p>{{ ($Orders->delivery_address ?: ($Orders->costumer->adresse ?? '')) ?: 'Adresse non renseignée' }}</p>
                 </div>
 
                 <div class="od-info">
@@ -280,6 +280,19 @@
 
         <section class="od-actions no-print">
             <h2 class="od-actions-title">Actions sur la commande</h2>
+            <div class="od-panel" style="margin-bottom:14px">
+                <h3>Adresse de livraison de cette commande</h3>
+                <form action="{{ route('ordershow.delivery-address', $Orders) }}" method="POST">
+                    @csrf
+                    @method('PUT')
+                    <div class="od-field">
+                        <label for="order-delivery-address">Adresse, quartier ou repère</label>
+                        <textarea id="order-delivery-address" class="form-control @error('delivery_address') is-invalid @enderror" name="delivery_address" rows="2" maxlength="1000" required>{{ old('delivery_address', $Orders->delivery_address ?: ($Orders->costumer->adresse ?? '')) }}</textarea>
+                        @error('delivery_address') <div class="invalid-feedback">{{ $message }}</div> @enderror
+                    </div>
+                    <button type="submit" class="od-btn od-btn-primary">Enregistrer l’adresse</button>
+                </form>
+            </div>
             <div class="od-action-grid">
                 @if (auth()->user()?->user_type !== \App\Models\User::ROLE_CALL_CENTER)
                 <div class="od-panel">
@@ -287,11 +300,6 @@
                     <form action="{{ route('refreshorder', $Orders->id) }}" method="POST">
                         @csrf
                         @method('PUT')
-                        <div class="od-field">
-                            <label for="order-address">Adresse de livraison</label>
-                            <input id="order-address" type="text" class="form-control @error('adresse') is-invalid @enderror" name="adresse" value="{{ $Orders->costumer->adresse ?? '' }}" placeholder="Adresse">
-                            @error('adresse') <div class="invalid-feedback">{{ $message }}</div> @enderror
-                        </div>
                         <div class="od-field">
                             <label for="order-time-refresh">Heure de livraison</label>
                             <input id="order-time-refresh" type="time" class="form-control @error('time') is-invalid @enderror" name="time" value="{{ $Orders->time }}">

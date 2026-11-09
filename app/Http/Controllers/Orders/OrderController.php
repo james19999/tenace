@@ -7,7 +7,6 @@ use App\Models\User;
 use App\Mail\TenaCos;
 use App\Models\Product;
 use App\Traits\MyTrait;
-use App\Models\Costumer;
 use App\Traits\NewTrait;
 use App\Models\Orders\Order;
 use Illuminate\Http\Request;
@@ -268,7 +267,6 @@ class OrderController extends Controller
         $validated = $request->validate([
             'user_take' => 'nullable|integer|exists:users,id',
             'time' => 'nullable|date_format:H:i',
-            'adresse' => 'nullable|string|max:1000',
         ]);
 
         $orders = Order::findOrfail($id);
@@ -302,11 +300,6 @@ class OrderController extends Controller
                 $orders->assigned_at = now();
             }
 
-            if (array_key_exists('adresse', $validated)) {
-                $customer = Costumer::findOrFail($orders->costumer_id);
-                $customer->update(['adresse' => $validated['adresse']]);
-            }
-
             $orders->save();
 
             $livreur = $orders->user_id ? User::find($orders->user_id) : null;
@@ -322,6 +315,21 @@ class OrderController extends Controller
         }
 
         return redirect()->back()->with('success', 'commande déjà en cours');
+    }
+
+    public function updateDeliveryAddress(Request $request, Order $order)
+    {
+        $this->authorizeWholesalerOrder($order);
+        $data = $request->validate([
+            'delivery_address' => ['required', 'string', 'max:1000'],
+        ], [
+            'delivery_address.required' => 'Saisis l’adresse de livraison.',
+            'delivery_address.max' => 'L’adresse ne peut pas dépasser 1000 caractères.',
+        ]);
+
+        $order->update(['delivery_address' => trim($data['delivery_address'])]);
+
+        return redirect()->back()->with('success', 'Adresse de livraison de la commande mise à jour.');
     }
 
     private function orderCountryCode(Order $order): string

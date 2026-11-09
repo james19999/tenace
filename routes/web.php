@@ -109,9 +109,9 @@ Route::post('/store/pathner',[DashboarController::class,'store_pathner'])->name(
 
 Route::middleware(['auth'])->group(function () {
 
-    Route::middleware(['role:ADMINUSER,MNG,LVS'])->prefix('tournees')->name('courier-consignments.')->group(function () {
+    Route::middleware(['role:ADMINUSER,MNG,SCR,LVS'])->prefix('tournees')->name('courier-consignments.')->group(function () {
         Route::get('/', [CourierConsignmentController::class, 'index'])->name('index');
-        Route::post('/consigner', [CourierConsignmentController::class, 'assign'])->middleware('role:ADMINUSER,MNG')->name('assign');
+        Route::post('/consigner', [CourierConsignmentController::class, 'assign'])->middleware('role:ADMINUSER,MNG,SCR')->name('assign');
         Route::post('/{run}/rapprocher', [CourierConsignmentController::class, 'settle'])->name('settle');
         Route::get('/{run}/bon', [CourierConsignmentController::class, 'receipt'])->name('receipt');
     });
@@ -461,6 +461,7 @@ Route::middleware(['auth'])->group(function () {
         Route::get('edit/order/{order}', EditOrder::class)->middleware('role:ADMINUSER,MNG,SCR,VDS,PT,CSA')->name('edit-order');
         Route::get('order/list', [OrderController::class, 'index'])->name('order');
         Route::get('order/show/{id}', [OrderController::class, 'show'])->name('ordershow');
+        Route::put('order/show/{order}/delivery-address', [OrderController::class, 'updateDeliveryAddress'])->name('ordershow.delivery-address');
         Route::get('order/show/{order}/package-photos/{photo}/download', [LivreurController::class, 'downloadPackagePhoto'])->middleware('role:ADMINUSER,MNG')->name('ordershow.package-photo.download');
         Route::post('order/show/{id}/payment', [OrderController::class, 'updatePayment'])->middleware('role:ADMINUSER,MNG,RCM')->name('ordershow.payment');
         Route::get('order/cancel/list', [OrderController::class, 'order_cancel_list'])->middleware('role:ADMINUSER,MNG,SCR,VDS,PT,CSA')->name('order-cancel-list');

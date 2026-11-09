@@ -95,6 +95,7 @@ class CheckController extends Controller
              'tax' => ['required', 'integer', 'min:0'],
              'remis' => ['required', 'integer', 'between:0,100'],
              'is_wholesale' => ['nullable', 'boolean'],
+             'delivery_address' => ['nullable', 'string', 'max:1000'],
          ], [
              'tax.required' => 'Entre les frais de livraison.',
              'tax.integer' => 'Les frais de livraison doivent être un montant entier.',
@@ -216,11 +217,12 @@ class CheckController extends Controller
          $paidAmount = (int) $request->input('paid_amount', 0);
          $customerSelection = (string) $request->input('costumer_id', '');
          $isAnonymousCustomer = $customerSelection === 'anonymous';
+         $deliveryAddress = trim((string) $request->input('delivery_address', ''));
+         $deliveryAddress = $deliveryAddress !== '' ? $deliveryAddress : null;
 
          if ($isAnonymousCustomer) {
                 $request->validate([
                     'phone'=>'required|string|max:50',
-                    'adresse'=>'required|string|max:1000',
                     'tax'=>'required',
                     'time'=>'required',
                     'date_order'=>'required|date',
@@ -230,7 +232,6 @@ class CheckController extends Controller
                 [
                     'date_order.required'=>'Mettez une date de livraison',
                     'phone.required'=>'Le numéro de téléphone',
-                    'adresse.required'=>'L\'adresse de livraison',
                     'tax.required'=>'Entrer les frais de livraison',
                     'time.required'=>'Entrer la date de livraison',
 
@@ -249,7 +250,7 @@ class CheckController extends Controller
 
                 if ($anonymousCustomer) {
                     $constumer = $anonymousCustomer;
-                    $constumer->adresse = $request->adresse;
+                    if ($deliveryAddress !== null) $constumer->adresse = $deliveryAddress;
                     $constumer->save();
                 } elseif ($exist) {
                     return redirect()->route('productcart')
@@ -260,7 +261,7 @@ class CheckController extends Controller
                         'name' => $this->generateAnonymousCustomerName(),
                         'phone' => $normalizedPhone,
                         'email' => null,
-                        'adresse' => $request->adresse,
+                        'adresse' => $deliveryAddress ?? '',
                         'user_id' => Auth::id(),
                     ]);
                 }
@@ -280,6 +281,7 @@ class CheckController extends Controller
                           'total'=>$itemsTotal,
                           'montant'=>$amountDue,
                           'paid_amount'=>$paidAmount,
+                          'delivery_address'=>$deliveryAddress,
                           ...$shippingAttributes,
                           'code' => $code,
                           'brouillon' =>$this->brouillons() ,
@@ -364,6 +366,7 @@ class CheckController extends Controller
                 'total'=>$itemsTotal,
                 'montant'=>$amountDue,
                 'paid_amount'=>$paidAmount,
+                'delivery_address'=>$deliveryAddress,
                 ...$shippingAttributes,
                 'code' => $code,
                 'brouillon' =>$this->brouillons() ,
