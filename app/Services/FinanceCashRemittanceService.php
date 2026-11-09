@@ -72,8 +72,10 @@ class FinanceCashRemittanceService
             $remittance->update(['reference' => sprintf('REM-%s-%06d', now()->format('Y'), $remittance->id)]);
             $this->audit->record($remittance, 'prepared_and_shop_signed', null, $remittance->fresh()->toArray());
             $collector->notify(new FinanceWorkflowNotification(
-                'Remise à récupérer',
-                'Une remise de '.$location->name.' attend ta confirmation : '.$remittance->reference.'.',
+                $collector->isAdmin() ? 'Remise à réceptionner' : 'Remise à récupérer',
+                $collector->isAdmin()
+                    ? 'Une remise de '.$location->name.' attend ta confirmation de réception : '.$remittance->reference.'.'
+                    : 'Une remise de '.$location->name.' attend ta confirmation : '.$remittance->reference.'.',
                 route('finance.remittances.show', $remittance->id),
                 'payments',
             ));
@@ -87,6 +89,7 @@ class FinanceCashRemittanceService
         return DB::transaction(function () use ($remittance, $collector, $signedVoucherPath, $bankSlipPath, $bankSlipReference): FinanceCashRemittance {
             $locked = FinanceCashRemittance::query()->lockForUpdate()->findOrFail($remittance->id);
             abort_unless($locked->status === 'awaiting_collector' && (int) $locked->collector_id === (int) $collector->id, 403);
+            abort_unless(! $collector->isAdmin(), 403);
             if ($locked->destination === 'bank_deposit' && (! $bankSlipPath || ! trim((string) $bankSlipReference))) {
                 throw ValidationException::withMessages(['bank_slip' => 'Ajoute le bordereau et sa référence avant de confirmer le dépôt bancaire.']);
             }
@@ -141,24 +144,60 @@ class FinanceCashRemittanceService
 
         return DB::transaction(function () use ($remittance, $director, $receivedAmount, $bankReference, $discrepancyNote, $bankSlipPath): FinanceCashRemittance {
             $locked = FinanceCashRemittance::query()->lockForUpdate()->findOrFail($remittance->id);
-            abort_unless($locked->status === 'in_transit', 409);
+            $directDirectorReceipt = $locked->status === 'awaiting_collector'
+                && (int) $locked->collector_id === (int) $director->id;
+            abort_unless($locked->status === 'in_transit' || $directDirectorReceipt, 409);
             if ($locked->destination === 'bank_deposit' && ((! $bankSlipPath && ! $locked->bank_slip_path) || ! trim((string) $bankReference))) {
                 throw ValidationException::withMessages(['bank_slip_reference' => 'Le bordereau bancaire doit être archivé et vérifié avant la confirmation du DG.']);
             }
-            $transitBalance = $this->ledger->balance('transit', $locked->stock_location_id, $locked->id);
-            if ($receivedAmount > $transitBalance) {
-                throw ValidationException::withMessages(['received_amount' => 'Le montant reçu ne peut pas dépasser le montant confié au collecteur.']);
+            $sourceCustody = 'transit';
+            if ($directDirectorReceipt) {
+                $shopBalance = $this->ledger->balance('shop', $locked->stock_location_id);
+                $availableBalance = $shopBalance;
+            } else {
+                $availableBalance = $this->ledger->balance('transit', $locked->stock_location_id, $locked->id);
+            }
+            if ($directDirectorReceipt && $locked->handed_over_amount > $availableBalance) {
+                $overage = $locked->handed_over_amount - $availableBalance;
+                if (! trim((string) ($discrepancyNote ?: $locked->discrepancy_note))) {
+                    throw ValidationException::withMessages(['discrepancy_note' => 'Explique le montant compté supérieur au solde suivi avant de confirmer la réception.']);
+                }
+                $this->ledger->record([
+                    'movement_type' => 'cash_count_overage', 'from_custody' => 'external', 'to_custody' => 'shop',
+                    'amount' => $overage, 'stock_location_id' => $locked->stock_location_id, 'remittance_id' => $locked->id,
+                    'source_type' => 'cash_remittance', 'source_id' => $locked->id,
+                    'source_key' => 'remittance:'.$locked->id.':count-overage', 'source_reference' => $locked->reference,
+                    'occurred_at' => now(), 'description' => 'Écart positif de comptage déclaré sur le bon : '.($discrepancyNote ?: $locked->discrepancy_note),
+                    'created_by' => $director->id,
+                ]);
+                $availableBalance += $overage;
+            }
+            if ($directDirectorReceipt && $locked->handed_over_amount > 0) {
+                $this->ledger->record([
+                    'movement_type' => 'remittance_handover', 'from_custody' => 'shop', 'to_custody' => 'transit',
+                    'amount' => $locked->handed_over_amount, 'stock_location_id' => $locked->stock_location_id,
+                    'remittance_id' => $locked->id, 'source_type' => 'cash_remittance', 'source_id' => $locked->id,
+                    'source_key' => 'remittance:'.$locked->id.':handover-direct', 'source_reference' => $locked->reference,
+                    'occurred_at' => now(), 'description' => 'Remise remise directement au DG, sans signature du collecteur intermédiaire.',
+                    'created_by' => $director->id,
+                ]);
+                $availableBalance = $this->ledger->balance('transit', $locked->stock_location_id, $locked->id);
+            }
+            if ($receivedAmount > $availableBalance) {
+                throw ValidationException::withMessages(['received_amount' => 'Le montant reçu dépasse les fonds disponibles pour cette remise.']);
             }
             if ($receivedAmount > 0) {
                 $this->ledger->record([
                     'movement_type' => $locked->destination === 'bank_deposit' ? 'bank_deposit_confirmed' : 'central_cash_received',
-                    'from_custody' => 'transit', 'to_custody' => 'general_cash', 'amount' => $receivedAmount,
+                    'from_custody' => $sourceCustody, 'to_custody' => 'general_cash', 'amount' => $receivedAmount,
                     'stock_location_id' => $locked->stock_location_id, 'remittance_id' => $locked->id,
                     'source_type' => 'cash_remittance', 'source_id' => $locked->id,
                     'source_key' => 'remittance:'.$locked->id.':receipt', 'source_reference' => $locked->reference,
                     'occurred_at' => now(),
-                    'description' => $locked->destination === 'bank_deposit' ? 'Dépôt bancaire confirmé par le DG, enregistré dans la caisse générale.' : 'Fonds reçus et confirmés par le DG.',
-                    'metadata' => ['destination' => $locked->destination, 'bank_slip_reference' => $bankReference],
+                    'description' => $directDirectorReceipt
+                        ? 'Remise boutique réceptionnée directement par le DG et enregistrée dans la caisse générale.'
+                        : ($locked->destination === 'bank_deposit' ? 'Dépôt bancaire confirmé par le DG, enregistré dans la caisse générale.' : 'Fonds reçus et confirmés par le DG.'),
+                    'metadata' => ['destination' => $locked->destination, 'bank_slip_reference' => $bankReference, 'direct_director_receipt' => $directDirectorReceipt],
                     'created_by' => $director->id,
                 ]);
             }
