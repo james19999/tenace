@@ -148,14 +148,14 @@ class OrderController extends Controller
         if (Auth::user()?->user_type === User::ROLE_PARTNER) {
             abort_unless((int) $Orders->partner_id === (int) Auth::id() || (int) $Orders->created_user === (int) Auth::id(), 404);
         }
-        $isWholesalerOrder = (bool) $Orders->is_wholesale;
         $countryCode = $this->orderCountryCode($Orders);
         $livreurs = User::query()->where('user_type', User::ROLE_LIVREUR)
             ->where('active', true)
-            ->when($isWholesalerOrder, fn ($query) => $query->where(function ($eligible) use ($countryCode) {
+            ->where(function ($eligible) use ($countryCode) {
                 $eligible->whereNull('country_code')
-                    ->orWhereRaw('UPPER(country_code) = ?', [$countryCode]);
-            }), fn ($query) => $query->whereRaw('UPPER(country_code) = ?', [$countryCode]))
+                    ->orWhereRaw("TRIM(COALESCE(country_code, '')) = ''")
+                    ->orWhereRaw('UPPER(TRIM(country_code)) = ?', [$countryCode]);
+            })
             ->orderBy('name')
             ->get(['id', 'name', 'phone', 'country_code']);
 
@@ -272,20 +272,18 @@ class OrderController extends Controller
         $orders = Order::findOrfail($id);
         $this->authorizeWholesalerOrder($orders);
         if (! empty($validated['user_take'])) {
-            $createdByWholesaler = (bool) $orders->is_wholesale;
             $courier = User::query()->whereKey($validated['user_take'])
                 ->where('user_type', User::ROLE_LIVREUR)
                 ->where('active', true)
-                ->when($createdByWholesaler, fn ($query) => $query->where(function ($eligible) use ($orders) {
+                ->where(function ($eligible) use ($orders) {
                     $eligible->whereNull('country_code')
-                        ->orWhereRaw('UPPER(country_code) = ?', [$this->orderCountryCode($orders)]);
-                }), fn ($query) => $query->whereRaw('UPPER(country_code) = ?', [$this->orderCountryCode($orders)]))
+                        ->orWhereRaw("TRIM(COALESCE(country_code, '')) = ''")
+                        ->orWhereRaw('UPPER(TRIM(country_code)) = ?', [$this->orderCountryCode($orders)]);
+                })
                 ->exists();
             if (! $courier) {
                 return redirect()->back()->withErrors([
-                    'user_take' => $createdByWholesaler
-                        ? 'Choisis un livreur actif sans pays partenaire ou rattaché au pays de livraison.'
-                        : 'Choisis un livreur actif rattaché au pays de cette commande.',
+                    'user_take' => 'Choisis un livreur actif sans pays défini ou rattaché au pays de cette commande.',
                 ])->withInput();
             }
         }
