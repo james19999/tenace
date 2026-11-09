@@ -18,6 +18,8 @@ class FinanceCashLedgerService
     public function record(array $attributes): FinanceCashMovement
     {
         return DB::transaction(function () use ($attributes): FinanceCashMovement {
+            $compartmentKey = $attributes['compartment_key'] ?? null;
+            unset($attributes['compartment_key']);
             $sourceKey = $attributes['source_key'] ?? null;
             if ($sourceKey) {
                 $existing = FinanceCashMovement::query()->where('source_key', $sourceKey)->first();
@@ -82,6 +84,8 @@ class FinanceCashLedgerService
                 'created_by' => $attributes['created_by'] ?? auth()->id(),
             ]));
             $movement->update(['entry_number' => sprintf('FIN-%s-%08d', now()->format('Y'), $movement->id)]);
+
+            app(FinanceCashCompartmentsService::class)->recordMovement($movement->fresh(), $compartmentKey);
 
             return $movement->fresh();
         });

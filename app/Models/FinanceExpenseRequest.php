@@ -9,7 +9,7 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 class FinanceExpenseRequest extends Model
 {
     protected $fillable = [
-        'reference', 'stock_location_id', 'category_id', 'category_name', 'description', 'amount',
+        'reference', 'stock_location_id', 'category_id', 'compartment_id', 'category_name', 'description', 'amount',
         'beneficiary', 'budget_reference', 'requested_payment_date', 'status', 'approval_route',
         'justification_path', 'justification_note', 'requested_by', 'submitted_at', 'finance_reviewed_by', 'finance_reviewed_at',
         'finance_comment', 'director_decided_by', 'director_decided_at', 'director_comment', 'payment_status',
@@ -40,6 +40,11 @@ class FinanceExpenseRequest extends Model
     public function category(): BelongsTo
     {
         return $this->belongsTo(TypeExpensive::class, 'category_id');
+    }
+
+    public function compartment(): BelongsTo
+    {
+        return $this->belongsTo(FinanceCashCompartment::class, 'compartment_id');
     }
 
     public function requester(): BelongsTo

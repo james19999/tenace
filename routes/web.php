@@ -138,6 +138,8 @@ Route::middleware(['auth'])->group(function () {
         Route::get('/rapports', [FinanceReportController::class, 'index'])->middleware('role:ADMINUSER,COMPTABLE,CSA')->name('reports.index');
         Route::get('/rapports/export', [FinanceReportController::class, 'export'])->middleware('role:ADMINUSER,COMPTABLE,CSA')->name('reports.export');
         Route::get('/gestion', [\App\Http\Controllers\Finance\FinanceManagementController::class, 'index'])->middleware('role:ADMINUSER,COMPTABLE')->name('management.index');
+        Route::get('/repartition', [\App\Http\Controllers\Finance\FinanceCashCompartmentsController::class, 'index'])->middleware('role:ADMINUSER,COMPTABLE')->name('compartments.index');
+        Route::post('/repartition', [\App\Http\Controllers\Finance\FinanceCashCompartmentsController::class, 'update'])->middleware('role:ADMINUSER')->name('compartments.update');
         Route::post('/gestion/budgets', [\App\Http\Controllers\Finance\FinanceManagementController::class, 'storeBudget'])->middleware('role:ADMINUSER,COMPTABLE')->name('management.budgets.store');
         Route::post('/gestion/avances', [\App\Http\Controllers\Finance\FinanceManagementController::class, 'storeAdvance'])->middleware('role:ADMINUSER')->name('management.advances.store');
         Route::post('/gestion/avances-employe/{expense}/decision', [\App\Http\Controllers\Finance\FinanceManagementController::class, 'decideEmployeeAdvance'])->middleware('role:ADMINUSER')->name('management.employee-advances.decide');

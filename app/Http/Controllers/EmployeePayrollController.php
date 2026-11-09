@@ -391,6 +391,7 @@ class EmployeePayrollController extends Controller
                     'occurred_at' => $paidAt,
                     'description' => 'Salaire net remis à '.$employee->name.' pour '.$locked->period_start->translatedFormat('F Y').'.',
                     'created_by' => $request->user()->id,
+                    'compartment_key' => $employee->isAdmin() ? 'dg_remuneration' : 'exploitation',
                 ]);
                 $payment->update(['finance_cash_movement_id' => $movement->id]);
             }

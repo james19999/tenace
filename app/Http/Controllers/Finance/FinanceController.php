@@ -453,6 +453,9 @@ class FinanceController extends Controller
             'cashierGeneralBalance' => $isAssignedCashier ? $this->ledger->balance('general_cash') : null,
             'directExpenseCategories' => $directExpenseCategories,
             'directExpenseDirectors' => $directExpenseDirectors,
+            'directExpenseCompartments' => $isAssignedCashier
+                ? \App\Models\FinanceCashCompartment::query()->orderBy('id')->get()
+                : collect(),
         ]);
     }
 
@@ -465,6 +468,7 @@ class FinanceController extends Controller
         $data = $request->validate([
             'director_user_id' => ['required', 'integer', Rule::exists('users', 'id')->where(fn ($query) => $query->where('active', true)->where('user_type', User::ROLE_ADMIN))],
             'category_id' => ['required', 'integer', 'exists:type_expensives,id'],
+            'compartment_id' => ['required', 'integer', 'exists:finance_cash_compartments,id'],
             'amount' => ['required', 'integer', 'min:1'],
             'beneficiary' => ['required', 'string', 'max:160'],
             'description' => ['required', 'string', 'max:5000'],
@@ -474,6 +478,7 @@ class FinanceController extends Controller
         $director = User::query()->where('active', true)->where('user_type', User::ROLE_ADMIN)->findOrFail($data['director_user_id']);
         $expense = $service->submit([
             'category_id' => $data['category_id'],
+            'compartment_id' => $data['compartment_id'],
             'amount' => $data['amount'],
             'beneficiary' => $data['beneficiary'],
             'description' => $data['description'],
@@ -549,6 +554,7 @@ class FinanceController extends Controller
 
         return view('finance.expenses.create', [
             'categories' => TypeExpensive::query()->orderBy('name')->get(['id', 'name']),
+            'compartments' => \App\Models\FinanceCashCompartment::query()->orderBy('id')->get(),
             'locations' => $locations,
             'isShopManager' => $user->isManager() || $isWholesaleManager,
             'isWholesaleManager' => $isWholesaleManager,
@@ -560,6 +566,7 @@ class FinanceController extends Controller
         $data = $request->validate([
             'stock_location_id' => [$request->user()->isManager() ? 'required' : 'nullable', 'integer', 'exists:stock_locations,id'],
             'category_id' => ['required', 'integer', 'exists:type_expensives,id'],
+            'compartment_id' => ['required', 'integer', 'exists:finance_cash_compartments,id'],
             'description' => ['required', 'string', 'max:5000'],
             'amount' => ['required', 'integer', 'min:1'],
             'beneficiary' => ['required', 'string', 'max:160'],
@@ -587,12 +594,14 @@ class FinanceController extends Controller
     public function showExpense(Request $request, FinanceExpenseRequest $expense): View
     {
         $this->authorizeExpense($request->user(), $expense);
-        $expense->load(['location', 'category', 'requester', 'financeReviewer', 'director', 'receiptReceiver', 'approvals.decider', 'payments.payer']);
+        $expense->load(['location', 'category', 'compartment', 'requester', 'financeReviewer', 'director', 'receiptReceiver', 'approvals.decider', 'payments.payer']);
         $cashierId = FinanceGeneralCashSetting::query()->whereKey(1)->value('cashier_user_id');
         $isAssignedCashier = $cashierId && (int) $cashierId === (int) $request->user()->id;
+        $directorApprovedCashierRequest = $expense->director_decided_at
+            && (int) $expense->director_decided_by !== (int) $request->user()->id;
         $canPayExpense = $cashierId
             && $isAssignedCashier
-            && (int) $expense->requested_by !== (int) $request->user()->id;
+            && ((int) $expense->requested_by !== (int) $request->user()->id || $directorApprovedCashierRequest);
         $canSubmitReceipt = (int) $expense->requested_by === (int) $request->user()->id;
         $canConfirmReceipt = ($request->user()->isAdmin() || $isAssignedCashier)
             && (int) $expense->requested_by !== (int) $request->user()->id

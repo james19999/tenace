@@ -3,6 +3,7 @@
 namespace App\Services;
 
 use App\Models\FinanceExpenseApproval;
+use App\Models\FinanceCashCompartment;
 use App\Models\FinanceExpensePayment;
 use App\Models\FinanceExpenseRequest;
 use App\Models\FinanceGeneralCashSetting;
@@ -63,6 +64,8 @@ class FinanceExpenseWorkflowService
                 'reference' => 'TMP-'.Str::uuid(),
                 'stock_location_id' => $data['stock_location_id'] ?? null,
                 'category_id' => $category->id,
+                'compartment_id' => $data['compartment_id']
+                    ?? FinanceCashCompartment::query()->where('key', 'exploitation')->value('id'),
                 'category_name' => $category->name,
                 'description' => $data['description'],
                 'amount' => $data['amount'],
@@ -252,7 +255,10 @@ class FinanceExpenseWorkflowService
         $cashierId = FinanceGeneralCashSetting::query()->whereKey(1)->value('cashier_user_id');
         abort_unless($cashierId && (int) $cashierId === (int) $payer->id, 403,
             'Seul le responsable désigné de la caisse générale peut remettre les fonds.');
-        abort_if((int) $expense->requested_by === (int) $payer->id, 403, 'Le responsable de caisse ne peut pas décaisser sa propre demande.');
+        $directorApprovedCashierRequest = $expense->director_decided_at
+            && (int) $expense->director_decided_by !== (int) $payer->id;
+        abort_if((int) $expense->requested_by === (int) $payer->id && ! $directorApprovedCashierRequest, 403,
+            'Le DG doit avoir approuvé la demande du caissier avant que celui-ci remette les fonds.');
         abort_unless(in_array($expense->status, ['authorized_to_pay', 'partially_paid'], true), 409);
         if ($amount <= 0 || (int) $expense->paid_amount + $amount > (int) $expense->amount) {
             throw ValidationException::withMessages(['amount' => 'Le paiement dépasse le reste autorisé de la dépense.']);
@@ -263,6 +269,10 @@ class FinanceExpenseWorkflowService
         return DB::transaction(function () use ($expense, $payer, $amount, $reference): FinanceExpensePayment {
             $locked = FinanceExpenseRequest::query()->lockForUpdate()->findOrFail($expense->id);
             abort_unless(in_array($locked->status, ['authorized_to_pay', 'partially_paid'], true), 409);
+            $directorApprovedCashierRequest = $locked->director_decided_at
+                && (int) $locked->director_decided_by !== (int) $payer->id;
+            abort_if((int) $locked->requested_by === (int) $payer->id && ! $directorApprovedCashierRequest, 403,
+                'Le DG doit avoir approuvé la demande du caissier avant que celui-ci remette les fonds.');
             if ((int) $locked->paid_amount + $amount > (int) $locked->amount) {
                 throw ValidationException::withMessages(['amount' => 'Le paiement dépasse le reste autorisé de la dépense.']);
             }
@@ -308,6 +318,7 @@ class FinanceExpenseWorkflowService
                     ? 'Prêt accordé à '.$locked->beneficiary.' · '.$locked->reference.'.'
                     : 'Paiement de la dépense '.$locked->reference.' au bénéficiaire '.$locked->beneficiary.'.',
                 'created_by' => $payer->id,
+                'compartment_key' => $locked->compartment?->key,
             ]);
 
             $locked->paid_amount = (int) $locked->paid_amount + $amount;
