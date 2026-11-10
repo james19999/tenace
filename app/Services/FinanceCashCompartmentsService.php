@@ -170,7 +170,7 @@ class FinanceCashCompartmentsService
             'salary_payment', 'tontine_recovery' => 'exploitation',
             'tontine_contribution' => 'reserves_benefices',
             'supplier_payment' => 'approvisionnement',
-            'equipment_purchase_advance' => 'investissements',
+            'equipment_purchase_advance' => 'approvisionnement',
             'cash_shortage_approved' => 'reserves_benefices',
             'expense_payment', 'staff_loan_disbursed' => $this->expensePaymentCompartment($movement),
             default => null,

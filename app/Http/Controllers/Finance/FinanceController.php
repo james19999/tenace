@@ -454,7 +454,7 @@ class FinanceController extends Controller
             'directExpenseCategories' => $directExpenseCategories,
             'directExpenseDirectors' => $directExpenseDirectors,
             'directExpenseCompartments' => $isAssignedCashier
-                ? \App\Models\FinanceCashCompartment::query()->orderBy('id')->get()
+                ? \App\Models\FinanceCashCompartment::query()->whereIn('key', ['exploitation', 'dg_remuneration'])->orderBy('id')->get()
                 : collect(),
         ]);
     }
@@ -468,7 +468,7 @@ class FinanceController extends Controller
         $data = $request->validate([
             'director_user_id' => ['required', 'integer', Rule::exists('users', 'id')->where(fn ($query) => $query->where('active', true)->where('user_type', User::ROLE_ADMIN))],
             'category_id' => ['required', 'integer', 'exists:type_expensives,id'],
-            'compartment_id' => ['required', 'integer', 'exists:finance_cash_compartments,id'],
+            'compartment_id' => ['required', 'integer', Rule::exists('finance_cash_compartments', 'id')->where(fn ($query) => $query->whereIn('key', ['exploitation', 'dg_remuneration']))],
             'amount' => ['required', 'integer', 'min:1'],
             'beneficiary' => ['required', 'string', 'max:160'],
             'description' => ['required', 'string', 'max:5000'],
@@ -479,6 +479,7 @@ class FinanceController extends Controller
         $expense = $service->submit([
             'category_id' => $data['category_id'],
             'compartment_id' => $data['compartment_id'],
+            'direct_director_expense' => true,
             'amount' => $data['amount'],
             'beneficiary' => $data['beneficiary'],
             'description' => $data['description'],
@@ -554,7 +555,7 @@ class FinanceController extends Controller
 
         return view('finance.expenses.create', [
             'categories' => TypeExpensive::query()->orderBy('name')->get(['id', 'name']),
-            'compartments' => \App\Models\FinanceCashCompartment::query()->orderBy('id')->get(),
+            'compartments' => $user->isAdmin() ? \App\Models\FinanceCashCompartment::query()->orderBy('id')->get() : collect(),
             'locations' => $locations,
             'isShopManager' => $user->isManager() || $isWholesaleManager,
             'isWholesaleManager' => $isWholesaleManager,
@@ -566,7 +567,7 @@ class FinanceController extends Controller
         $data = $request->validate([
             'stock_location_id' => [$request->user()->isManager() ? 'required' : 'nullable', 'integer', 'exists:stock_locations,id'],
             'category_id' => ['required', 'integer', 'exists:type_expensives,id'],
-            'compartment_id' => ['required', 'integer', 'exists:finance_cash_compartments,id'],
+            'compartment_id' => [$request->user()->isAdmin() ? 'required' : 'nullable', 'integer', 'exists:finance_cash_compartments,id'],
             'description' => ['required', 'string', 'max:5000'],
             'amount' => ['required', 'integer', 'min:1'],
             'beneficiary' => ['required', 'string', 'max:160'],

@@ -55,6 +55,7 @@ class FinanceExpenseWorkflowService
             $status = $directlyAuthorizedByDirector
                 ? 'authorized_to_pay'
                 : (($requiresDirectorReview || $accountantRequestNeedsDirector) ? 'awaiting_director' : 'awaiting_finance');
+            $compartmentKey = $this->compartmentKeyForExpense($category->name, $data, $requester);
             $approvalRoute = $directlyAuthorizedByDirector || $requiresDirectorReview
                 ? 'director_direct'
                 : ($accountantRequestNeedsDirector
@@ -64,8 +65,7 @@ class FinanceExpenseWorkflowService
                 'reference' => 'TMP-'.Str::uuid(),
                 'stock_location_id' => $data['stock_location_id'] ?? null,
                 'category_id' => $category->id,
-                'compartment_id' => $data['compartment_id']
-                    ?? FinanceCashCompartment::query()->where('key', 'exploitation')->value('id'),
+                'compartment_id' => FinanceCashCompartment::query()->where('key', $compartmentKey)->value('id'),
                 'category_name' => $category->name,
                 'description' => $data['description'],
                 'amount' => $data['amount'],
@@ -134,6 +134,30 @@ class FinanceExpenseWorkflowService
 
             return $expense->fresh();
         });
+    }
+
+    private function compartmentKeyForExpense(string $categoryName, array $data, User $requester): string
+    {
+        if (! empty($data['direct_director_expense']) && ! empty($data['compartment_id'])) {
+            return (string) FinanceCashCompartment::query()->whereKey($data['compartment_id'])->value('key');
+        }
+
+        if (empty($data['staff_advance_type']) && empty($data['commission_user_id'])) {
+            $normalizedCategory = mb_strtolower(Str::ascii($categoryName));
+
+            if (str_contains($normalizedCategory, 'marchand')
+                || str_contains($normalizedCategory, 'approvision')
+                || str_contains($normalizedCategory, 'reapprovision')
+                || str_contains($normalizedCategory, 'reassort')) {
+                return 'approvisionnement';
+            }
+
+            if ($requester->isAdmin() && ! empty($data['compartment_id'])) {
+                return (string) FinanceCashCompartment::query()->whereKey($data['compartment_id'])->value('key');
+            }
+        }
+
+        return 'exploitation';
     }
 
     public function financeDecision(FinanceExpenseRequest $expense, User $financeUser, string $decision, ?string $comment): FinanceExpenseRequest
