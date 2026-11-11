@@ -260,10 +260,21 @@ class LivreurController extends Controller
             ->where('status', 'ordered')
             ->where('brouillon', 1)
             ->where('type', 'PU')
-            ->where('status_order', false)
-            ->whereDate('created_at', Carbon::today());
+            ->where(function ($openOrder) {
+                $openOrder->where('status_order', false)->orWhereNull('status_order');
+            })
+            ->where(function ($openOrder) {
+                $openOrder->where('take', false)->orWhereNull('take');
+            })
+            ->where(function ($openOrder) {
+                $openOrder->whereNull('user_id')->orWhere('user_id', '');
+            })
+            ->where(function ($scheduled) {
+                $scheduled->whereDate('created_at', Carbon::today()->toDateString())
+                    ->orWhereDate('date_order', '>=', Carbon::today()->toDateString());
+            });
 
-        if (Auth::user()?->user_type === User::ROLE_LIVREUR) {
+        if (Auth::user()?->user_type === User::ROLE_LIVREUR && filled(Auth::user()->country_code)) {
             $courierCountry = $this->courierCountryCode(Auth::user());
             $defaultCountry = strtoupper((string) config('services.fedapay.country_code', 'TG'));
             $query->where(function ($countryOrders) use ($defaultCountry, $courierCountry) {
@@ -291,7 +302,8 @@ class LivreurController extends Controller
         $isCourier = auth()->user()?->user_type === 'LVS';
         if ($isCourier) {
             $courier = auth()->user();
-            $canHandleCountry = $this->orderCountryCode($Orders) === $this->courierCountryCode($courier);
+            $canHandleCountry = blank($courier->country_code)
+                || $this->orderCountryCode($Orders) === $this->courierCountryCode($courier);
             $canHandleWholesale = (bool) $Orders->is_wholesale && blank($courier->country_code);
             $isAssignedToCourier = (string) $Orders->user_id === (string) auth()->id();
             $isAvailableInCourierCountry = ! $Orders->user_id
@@ -772,40 +784,56 @@ class LivreurController extends Controller
 
 
   public function check_livraison($id){
-    $orders=Order::findOrfail($id);
-    $user = Auth::user();
+      $user = Auth::user();
+      $result = DB::transaction(function () use ($id, $user): string {
+          $order = Order::query()->lockForUpdate()->findOrFail($id);
 
-      if ($user?->user_type === User::ROLE_LIVREUR) {
-          $canHandleCountry = $this->orderCountryCode($orders) === $this->courierCountryCode($user);
-          $canHandleWholesale = (bool) $orders->is_wholesale && blank($user->country_code);
-          abort_unless($canHandleCountry || $canHandleWholesale, 403,
-              'Cette commande ne correspond pas au pays de ton compte livreur.');
-      }
+          if ($user?->user_type === User::ROLE_LIVREUR) {
+              $canHandleCountry = blank($user->country_code)
+                  || $this->orderCountryCode($order) === $this->courierCountryCode($user);
+              $canHandleWholesale = (bool) $order->is_wholesale && blank($user->country_code);
+              abort_unless($canHandleCountry || $canHandleWholesale, 403,
+                  'Cette commande ne correspond pas au pays de ton compte livreur.');
+          }
 
-      if($orders->take==false){
+          $isAvailable = $order->status === 'ordered'
+              && ! $order->status_order
+              && ! $order->take
+              && blank($order->user_id);
+          if (! $isAvailable) {
+              return 'taken';
+          }
+
           $hasDeliveryInProgress = Order::query()
-              ->where('user_id', Auth::id())
+              ->where('user_id', (string) $user->id)
               ->where('status_order', true)
               ->where('status', 'ordered')
               ->where('delivery_waiting', false)
               ->exists();
 
-              if (! $hasDeliveryInProgress) {
-                  $orders->user_id=Auth::user()->id;
-                  $orders->assigned_at=now();
-                  $orders->status_order=true;
-                  $orders->take=true;
-                  $orders->save();
-                  return back();
-              }else{
-                  return redirect()->route('livrable')
-                  ->with('error','Termine ou mets en attente ta livraison en cours avant d’en prendre une autre.');
-              }
-      }else{
-        return redirect()->route('livrable')
-        ->with('waring','La commande déjà pris par un livreur');
+          if ($hasDeliveryInProgress) {
+              return 'busy';
+          }
+
+          $order->user_id = $user->id;
+          $order->assigned_at = now();
+          $order->status_order = true;
+          $order->take = true;
+          $order->save();
+
+          return 'assigned';
+      });
+
+      if ($result === 'busy') {
+          return redirect()->route('livrable')
+              ->with('error', 'Termine ou mets en attente ta livraison en cours avant d’en prendre une autre.');
+      }
+      if ($result === 'taken') {
+          return redirect()->route('livrable')
+              ->with('waring', 'Cette course vient d’être prise par un autre livreur.');
       }
 
+      return back();
   }
 
   private function orderCountryCode(Order $order): string

@@ -124,6 +124,18 @@
 .sc-global-notification-menu article:last-child {
     border-bottom: 0;
 }
+.sc-global-notification-menu article.sc-global-notification-courier-order {
+    background: #fffafa;
+}
+.sc-global-notification-courier-tag {
+    flex: 0 0 auto;
+    padding: 4px 6px;
+    border-radius: 20px;
+    background: #edf7f0;
+    color: #287244;
+    font-size: 9px;
+    font-weight: 800;
+}
 .sc-global-notification-menu article > a {
     display: flex;
     min-width: 0;

@@ -1,4 +1,4 @@
-<li class="nav-item icon sc-global-notification" wire:init="showUnreadOnLogin" wire:poll.30s="checkForNewNotifications">
+<li class="nav-item icon sc-global-notification" wire:init="showUnreadOnLogin" @if(Auth::user()->user_type !== 'LVS' || $courierScheduledOrders->isNotEmpty()) wire:poll.30s="checkForNewNotifications" @endif>
     <button type="button" class="{{ $notificationCount > 0 ? 'has-unread' : '' }}" wire:click="toggle" aria-label="Notifications" aria-expanded="{{ $open ? 'true' : 'false' }}">
         <span class="material-icons">notifications</span>
         @if($notificationCount > 0)
@@ -10,9 +10,21 @@
         <section class="sc-global-notification-menu" aria-label="Notifications TENACOS">
             <header class="sc-global-notification-head">
                 <span class="sc-global-notification-title-icon"><span class="material-icons">notifications_active</span></span>
-                <span class="sc-global-notification-title"><strong>Notifications</strong><small>Service client · Stocks · Rendez-vous · Comptabilité</small></span>
+                <span class="sc-global-notification-title"><strong>Notifications</strong><small>{{ Auth::user()->user_type === 'LVS' ? 'Courses programmées à prendre en charge' : 'Service client · Stocks · Rendez-vous · Comptabilité' }}</small></span>
                 <span class="sc-global-notification-unread">{{ $notificationCount }} non lue(s)</span>
             </header>
+            @foreach($courierScheduledOrders as $courierOrder)
+                <article class="sc-global-notification-courier-order">
+                    <a href="{{ route('livrable') }}">
+                        <span class="sc-global-notification-icon"><span class="material-icons">local_shipping</span></span>
+                        <span class="sc-global-notification-copy">
+                            <strong>Course {{ $courierOrder->code ?: '#'.$courierOrder->id }} · {{ $courierOrder->costumer->name ?? 'Client' }}</strong>
+                            <small>À prendre · {{ $courierOrder->date_order ? \Carbon\Carbon::parse($courierOrder->date_order)->format('d/m/Y') : 'Aujourd’hui' }} à {{ $courierOrder->time ?: 'heure à confirmer' }}</small>
+                        </span>
+                    </a>
+                    <span class="sc-global-notification-courier-tag">Disponible</span>
+                </article>
+            @endforeach
             @forelse($notifications as $notification)
                 <article>
                     <a href="{{ $notification->data['url'] ?? route('service-cases.index') }}" wire:click.prevent="openNotification('{{ $notification->id }}')">
@@ -22,9 +34,11 @@
                     <button type="button" wire:click="markAsRead('{{ $notification->id }}')" aria-label="Marquer comme lue" title="Marquer comme lue"><span class="material-icons">done</span></button>
                 </article>
             @empty
-                <div class="sc-global-notification-empty"><span class="material-icons">notifications_none</span><strong>Tout est à jour</strong><span>Aucune notification non lue.</span></div>
+                @if($courierScheduledOrders->isEmpty())
+                    <div class="sc-global-notification-empty"><span class="material-icons">notifications_none</span><strong>Tout est à jour</strong><span>Aucune notification non lue.</span></div>
+                @endif
             @endforelse
-            <a class="sc-global-notification-footer" href="{{ $notifications->first()?->data['url'] ?? route('service-cases.index') }}">Ouvrir la notification<span class="material-icons">arrow_forward</span></a>
+            <a class="sc-global-notification-footer" href="{{ $notifications->first()?->data['url'] ?? route(Auth::user()->user_type === 'LVS' ? 'livrable' : 'service-cases.index') }}">{{ Auth::user()->user_type === 'LVS' ? 'Voir les courses disponibles' : 'Ouvrir la notification' }}<span class="material-icons">arrow_forward</span></a>
         </section>
     @endif
 

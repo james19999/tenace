@@ -8,6 +8,8 @@ use App\Notifications\DgAppointmentNotification;
 use App\Notifications\FinanceCashCountAlertNotification;
 use App\Notifications\FinanceExpenseReportNotification;
 use App\Notifications\FinanceWorkflowNotification;
+use App\Models\Orders\Order;
+use App\Models\User;
 use Illuminate\Support\Facades\Auth;
 use Livewire\Component;
 
@@ -16,10 +18,12 @@ class CustomerServiceNotifications extends Component
     public bool $open = false;
     public bool $loginNotificationShown = false;
     public array $knownNotificationIds = [];
+    public array $knownScheduledCourierOrderIds = [];
 
     public function mount(): void
     {
         $this->knownNotificationIds = array_map('strval', session()->get($this->seenNotificationsSessionKey(), []));
+        $this->knownScheduledCourierOrderIds = $this->scheduledCourierOrders()->modelKeys();
     }
 
     public function showUnreadOnLogin(): void
@@ -62,6 +66,20 @@ class CustomerServiceNotifications extends Component
                 'unreadCount' => (clone $unread)->count(),
                 'playSound' => true,
             ]);
+        } elseif (($courierOrders = $this->scheduledCourierOrders())->isNotEmpty()) {
+            $courseCount = $courierOrders->count();
+            $this->dispatchBrowserEvent('customer-service-notifications-push', [
+                'notification' => [
+                    'title' => 'Courses programmées disponibles',
+                    'message' => $courseCount === 1
+                        ? 'Une course programmée attend un livreur. Ouvre les notifications pour la consulter.'
+                        : $courseCount.' courses programmées attendent un livreur. Ouvre les notifications pour les consulter.',
+                    'url' => route('livrable'),
+                    'icon' => 'local_shipping',
+                ],
+                'unreadCount' => (clone $unread)->count() + $courierOrders->count(),
+                'playSound' => true,
+            ]);
         }
     }
 
@@ -88,6 +106,29 @@ class CustomerServiceNotifications extends Component
                 'playSound' => true,
             ]);
         }
+
+        $courierOrders = $this->scheduledCourierOrders();
+        $scheduledOrderIds = array_map('strval', $courierOrders->modelKeys());
+        $newScheduledOrderIds = array_values(array_diff($scheduledOrderIds, array_map('strval', $this->knownScheduledCourierOrderIds)));
+        $this->knownScheduledCourierOrderIds = $scheduledOrderIds;
+
+        if ($newScheduledOrderIds !== []) {
+            $newCourseCount = count($newScheduledOrderIds);
+            $this->dispatchBrowserEvent('customer-service-notifications-push', [
+                'notification' => [
+                    'title' => 'Nouvelle course programmée',
+                    'message' => $newCourseCount === 1
+                        ? 'Une nouvelle course est disponible pour les livreurs.'
+                        : $newCourseCount.' nouvelles courses sont disponibles pour les livreurs.',
+                    'url' => route('livrable'),
+                    'icon' => 'local_shipping',
+                ],
+                'unreadCount' => Auth::user()->unreadNotifications()
+                    ->whereIn('type', $this->notificationTypes())
+                    ->count() + $courierOrders->count(),
+                'playSound' => true,
+            ]);
+        }
     }
 
     protected function notificationData($notification): array
@@ -103,6 +144,10 @@ class CustomerServiceNotifications extends Component
 
     protected function notificationTypes(): array
     {
+        if (Auth::user()?->user_type === User::ROLE_LIVREUR) {
+            return [];
+        }
+
         return [
             CustomerServiceCaseNotification::class,
             StockControlNotification::class,
@@ -175,10 +220,51 @@ class CustomerServiceNotifications extends Component
     {
         $unread = Auth::user()->unreadNotifications()
             ->whereIn('type', $this->notificationTypes());
+        $courierOrders = $this->scheduledCourierOrders();
 
         return view('livewire.customer-service-notifications', [
-            'notificationCount' => (clone $unread)->count(),
+            'notificationCount' => (clone $unread)->count() + $courierOrders->count(),
             'notifications' => (clone $unread)->latest()->limit(6)->get(),
+            'courierScheduledOrders' => $courierOrders,
         ]);
+    }
+
+    protected function scheduledCourierOrders()
+    {
+        $courier = Auth::user();
+        if ($courier?->user_type !== User::ROLE_LIVREUR || ! $courier->active) {
+            return Order::query()->whereRaw('1 = 0')->get();
+        }
+
+        $courierCountry = strtoupper(trim((string) ($courier->country_code ?: config('services.fedapay.country_code', 'TG'))));
+        $defaultCountry = strtoupper((string) config('services.fedapay.country_code', 'TG'));
+
+        return Order::query()
+            ->with('costumer')
+            ->where('status', 'ordered')
+            ->where('brouillon', 1)
+            ->where('type', 'PU')
+            ->where(function ($query): void {
+                $query->where('status_order', false)->orWhereNull('status_order');
+            })
+            ->where(function ($query): void {
+                $query->where('take', false)->orWhereNull('take');
+            })
+            ->where(function ($query): void {
+                $query->whereNull('user_id')->orWhere('user_id', '');
+            })
+            ->where(function ($query): void {
+                $query->whereDate('created_at', today()->toDateString())
+                    ->orWhereDate('date_order', '>=', today()->toDateString());
+            })
+            ->when(filled($courier->country_code), function ($orders) use ($defaultCountry, $courierCountry): void {
+                $orders->whereRaw(
+                    "UPPER(COALESCE(NULLIF(country_code, ''), NULLIF(shipping_country, ''), ?)) = ?",
+                    [$defaultCountry, $courierCountry]
+                );
+            })
+            ->orderBy('date_order')
+            ->orderBy('time')
+            ->get();
     }
 }
