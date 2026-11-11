@@ -4,22 +4,24 @@
 @section('content')
 
     <div class="dashboard-page">
-        <div class="dashboard-welcome">
-            <div class="dashboard-welcome-copy">
-                <span class="dashboard-welcome-eyebrow">TENACOS · ESPACE DE PILOTAGE</span>
-                <h1>Bonjour {{ Auth::user()->name }}</h1>
-                <p>Voici un aperçu de l’activité et des commandes à suivre.</p>
-            </div>
-            <div class="dashboard-datetime" aria-label="Date et heure locales">
-                <div class="dashboard-date-icon"><span class="material-icons" aria-hidden="true">calendar_month</span></div>
-                <div class="dashboard-date-copy">
-                    <span id="dashboard-current-date">{{ now()->locale('fr')->translatedFormat('l d F Y') }}</span>
-                    <strong id="dashboard-current-time">{{ now()->format('H:i:s') }}</strong>
-                    <small>Heure locale · Lomé</small>
+        @if (Auth::user()->user_type !== 'LVS')
+            <div class="dashboard-welcome">
+                <div class="dashboard-welcome-copy">
+                    <span class="dashboard-welcome-eyebrow">TENACOS · ESPACE DE PILOTAGE</span>
+                    <h1>Bonjour {{ Auth::user()->name }}</h1>
+                    <p>Voici un aperçu de l’activité et des commandes à suivre.</p>
                 </div>
-                <span class="dashboard-live-dot" aria-hidden="true"></span>
+                <div class="dashboard-datetime" aria-label="Date et heure locales">
+                    <div class="dashboard-date-icon"><span class="material-icons" aria-hidden="true">calendar_month</span></div>
+                    <div class="dashboard-date-copy">
+                        <span id="dashboard-current-date">{{ now()->locale('fr')->translatedFormat('l d F Y') }}</span>
+                        <strong id="dashboard-current-time">{{ now()->format('H:i:s') }}</strong>
+                        <small>Heure locale · Lomé</small>
+                    </div>
+                    <span class="dashboard-live-dot" aria-hidden="true"></span>
+                </div>
             </div>
-        </div>
+        @endif
 
     <div class="row dashboard-content">
         @if (Auth::user()->user_type == 'ADMINUSER')
