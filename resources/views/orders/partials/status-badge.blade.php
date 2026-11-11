@@ -1,4 +1,6 @@
-@if ($order->status === 'ordered')
+@if ($order->status === 'ordered' && $order->delivery_waiting)
+    <span class="badge orders-status orders-status-waiting">En attente</span>
+@elseif ($order->status === 'ordered')
     <span class="badge orders-status orders-status-progress">En cours</span>
 @elseif ($order->status === 'delivered')
     <span class="badge orders-status orders-status-delivered">Livrée</span>

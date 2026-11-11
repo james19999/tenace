@@ -22,6 +22,10 @@ class Order extends Model
             if ($order->status === 'delivered' && ($order->isDirty('status') || ! $order->delivered_at)) {
                 $order->delivered_at = now();
             }
+
+            if (in_array($order->status, ['delivered', 'canceled'], true)) {
+                $order->delivery_waiting = false;
+            }
         });
 
         static::saved(function (self $order): void {
@@ -39,6 +43,7 @@ class Order extends Model
         'assigned_at' => 'datetime',
         'delivered_at' => 'datetime',
         'is_wholesale' => 'boolean',
+        'delivery_waiting' => 'boolean',
     ];
 
     protected $fillable=[
@@ -74,6 +79,7 @@ class Order extends Model
         'public_tracking_token',
         'partner_order_status',
         'delivery_location_url',
+        'delivery_waiting',
     ];
 
 

@@ -36,6 +36,9 @@ class OrderController extends Controller
     public function invoice(Order $order)
     {
         $this->authorizeWholesalerOrder($order);
+        if (Auth::user()?->user_type === User::ROLE_LIVREUR) {
+            abort_unless((string) $order->user_id === (string) Auth::id(), 403);
+        }
         $order->load('orderItems.product', 'costumer');
 
         return view('orders.invoice', compact('order'));
@@ -201,6 +204,7 @@ class OrderController extends Controller
 
     public function change_order_status(Request $request, $id, StockDeliveryService $stockDelivery)
     {
+        $request->validate(['status' => ['required', 'in:ordered,waiting,delivered,canceled']]);
 
         $orders = Order::findOrfail($id);
         $this->authorizeWholesalerOrder($orders);
@@ -227,8 +231,17 @@ class OrderController extends Controller
                 $this->RemoveImprevue($orders);
                 $orders->save();
                 return redirect()->back()->with('success', 'commande annuler');
+            } else if ($request->status === 'waiting') {
+                abort_unless($orders->status === 'ordered', 409, 'Seule une commande en cours peut être mise en attente.');
+                $data = $request->validate(['motif' => ['nullable', 'string', 'max:500']]);
+                $orders->delivery_waiting = true;
+                $orders->motif = filled($data['motif'] ?? null) ? trim($data['motif']) : null;
+                $orders->save();
+                return redirect()->back()->with('success', 'Livraison mise en attente à la demande de la cliente.');
             } else if ($request->status == "ordered") {
                 $orders->status = $request->status;
+                $orders->delivery_waiting = false;
+                $orders->motif = null;
                 $orders->save();
                 return redirect()->back()->with('success', 'commande remise en cours');
             } else if ($request->status == "delivered") {
@@ -290,6 +303,8 @@ class OrderController extends Controller
         if ($orders->status_order == 0 || $orders->status_order == 1) {
             $orders->status_order = true;
             $orders->status = 'ordered';
+            $orders->delivery_waiting = false;
+            $orders->motif = null;
             $orders->take = true;
             $orders->time = $validated['time'] ?? $orders->time;
 
@@ -453,6 +468,8 @@ class OrderController extends Controller
                 $orders->user_id = $request->user_report;
                 $orders->assigned_at = now();
                 $orders->status = "ordered";
+                $orders->delivery_waiting = false;
+                $orders->motif = null;
                 $orders->time = $request->time;
                 $orders->created_at = $request->date_report;
                 $orders->take = true;

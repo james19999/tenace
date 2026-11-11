@@ -9,6 +9,9 @@
             'canceled' => ['Annulée', 'danger'],
         ];
         [$statusLabel, $statusTone] = $statusLabels[$Orders->status] ?? ['Statut inconnu', 'secondary'];
+        if ($Orders->status === 'ordered' && $Orders->delivery_waiting) {
+            [$statusLabel, $statusTone] = ['En attente', 'info'];
+        }
         $orderDate = $Orders->created_at ? $Orders->created_at->format('d/m/Y à H:i') : '—';
         $itemsSubtotal = (float) $Orders->orderItems->sum(fn ($item) => (float) $item->price * (int) $item->quantity);
         $discountRate = min(100, max(0, (float) $Orders->remis));
@@ -56,6 +59,7 @@
         .dd-info strong { color:var(--dd-ink); font-weight:700; }
         .dd-status { display:inline-flex; align-items:center; padding:5px 10px; border-radius:999px; font-size:12px; font-weight:800; }
         .dd-status.badge-warning { color:#8b5b00; background:#fff2cc; }
+        .dd-status.badge-info { color:#245b91; background:#d9eaff; }
         .dd-status.badge-success { color:#176b43; background:#dff5e9; }
         .dd-status.badge-danger { color:#a62828; background:#fde5e5; }
         .dd-status.badge-secondary { color:#4f5663; background:#eceef2; }
@@ -214,7 +218,7 @@
             </div>
             <div class="dd-heading-actions">
                 @if ($Orders->status === 'delivered')
-                    <button type="button" onclick="printDiv('printableArea')" class="dd-btn dd-btn-primary">Imprimer la commande</button>
+                    <a href="{{ route('orders.invoice', $Orders) }}" target="_blank" rel="noopener" class="dd-btn dd-btn-primary">Imprimer le reçu</a>
                 @endif
             </div>
         </div>
@@ -305,7 +309,9 @@
                 <div class="dd-order-alert">
                     <h2>Statut de livraison</h2>
                     <p><strong>{{ $statusLabel }}</strong>
-                        @if ($Orders->status === 'ordered')
+                        @if ($Orders->status === 'ordered' && $Orders->delivery_waiting)
+                            · La cliente demande de patienter
+                        @elseif ($Orders->status === 'ordered')
                             · Livraison à effectuer
                         @elseif ($Orders->status === 'delivered')
                             · Livraison confirmée
@@ -313,7 +319,7 @@
                             · Commande annulée
                         @endif
                     </p>
-                    @if ($Orders->status === 'canceled' && $Orders->motif)<p>Motif : {{ $Orders->motif }}</p>@endif
+                    @if (($Orders->status === 'canceled' || ($Orders->status === 'ordered' && $Orders->delivery_waiting)) && $Orders->motif)<p>{{ $Orders->status === 'canceled' ? 'Motif' : 'Précision' }} : {{ $Orders->motif }}</p>@endif
                 </div>
                 @if ($paidAmount === null)
                     <div class="dd-order-alert">
@@ -442,7 +448,8 @@
                         <div class="dd-field">
                             <label for="delivery-status">Statut</label>
                             <select name="status" id="delivery-status" class="form-control">
-                                <option value="delivered">Valider la livraison</option>
+                                <option value="waiting" @selected($Orders->delivery_waiting)>Mettre en attente · la cliente demande de patienter</option>
+                                <option value="delivered" @selected(! $Orders->delivery_waiting)>Valider la livraison</option>
                                 <option value="canceled">Annuler la commande</option>
                             </select>
                         </div>
@@ -458,8 +465,8 @@
                             </div>
                         @endif
                         <div class="dd-field">
-                            <label for="delivery-motif">Motif, si annulation</label>
-                            <input id="delivery-motif" type="text" class="form-control @error('motif') is-invalid @enderror" name="motif" value="{{ old('motif') }}" placeholder="Préciser le motif d’annulation">
+                            <label for="delivery-motif">Précision ou motif d’annulation</label>
+                            <input id="delivery-motif" type="text" class="form-control @error('motif') is-invalid @enderror" name="motif" value="{{ old('motif', $Orders->motif) }}" placeholder="Ex. la cliente demande d’attendre quelques minutes">
                             @error('motif') <div class="invalid-feedback">{{ $message }}</div> @enderror
                         </div>
                         <button type="submit" class="dd-btn dd-btn-primary">Enregistrer</button>
@@ -483,12 +490,23 @@
             var paymentPanel = document.getElementById('delivery-mobile-payment-panel');
             var statusSelect = document.getElementById('delivery-status');
             var paymentField = document.getElementById('delivery-payment-method-field');
+            var deliveryMethodSelect = document.getElementById('delivery-payment-method');
+            var motifField = document.getElementById('delivery-motif');
             function updateDeliveryPaymentChoice() {
                 if (paymentPanel && methodSelect) {
                     paymentPanel.hidden = methodSelect.value !== 'mobile_money';
                 }
                 if (paymentField && statusSelect) {
                     paymentField.hidden = statusSelect.value !== 'delivered';
+                }
+                if (deliveryMethodSelect && statusSelect) {
+                    deliveryMethodSelect.required = statusSelect.value === 'delivered';
+                }
+                if (motifField && statusSelect) {
+                    motifField.required = statusSelect.value === 'canceled';
+                    motifField.placeholder = statusSelect.value === 'canceled'
+                        ? 'Préciser le motif d’annulation'
+                        : 'Ex. la cliente demande d’attendre quelques minutes';
                 }
             }
             if (methodSelect) methodSelect.addEventListener('change', function () {

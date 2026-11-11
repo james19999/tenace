@@ -57,7 +57,7 @@
     .orders-table tbody tr:hover{background:#fcfaf9}.orders-code{color:#84211f;white-space:nowrap}.orders-table td small{margin-top:3px;font-size:10px}
     .orders-empty-row,.orders-mobile-empty{padding:34px 15px!important;text-align:center;color:#7c828e!important}
     .orders-status{display:inline-flex;align-items:center;padding:6px 9px;border-radius:20px;font-size:10px;font-weight:750;white-space:nowrap}
-    .orders-status-progress{background:#fff2d9;color:#8a641f}.orders-status-delivered{background:#e9f5ed;color:#34734b}.orders-status-canceled{background:#fae9e8;color:#a13b36}.orders-status-other{background:#f0f1f4;color:#626875}
+    .orders-status-progress{background:#fff2d9;color:#8a641f}.orders-status-waiting{background:#e7f1ff;color:#285b92}.orders-status-delivered{background:#e9f5ed;color:#34734b}.orders-status-canceled{background:#fae9e8;color:#a13b36}.orders-status-other{background:#f0f1f4;color:#626875}
     .orders-mobile-list{display:none}.order-mobile-card{margin:0 0 11px;padding:14px;border:1px solid #e7e9ee;border-radius:12px;background:#fff;box-shadow:0 4px 15px rgba(30,35,45,.035)}
     .order-mobile-top{display:flex;align-items:center;justify-content:space-between;gap:10px;padding-bottom:11px;border-bottom:1px solid #eff0f3}
     .order-mobile-top>div{display:grid;gap:3px}.order-mobile-top small,.order-mobile-grid small{color:#838995;font-size:10px;font-weight:650}.order-mobile-top strong{color:#84211f;font-size:14px}

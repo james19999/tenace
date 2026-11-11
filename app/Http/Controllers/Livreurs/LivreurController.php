@@ -549,6 +549,7 @@ class LivreurController extends Controller
         FedaPayService $fedapay,
         FedaPayPaymentProcessor $fedapayProcessor
     ){
+        $request->validate(['status' => ['required', 'in:waiting,delivered,canceled']]);
 
         $orders=Order::findOrfail($id);
 
@@ -559,6 +560,15 @@ class LivreurController extends Controller
          );
 
          if($orders){
+             if ($request->status === 'waiting') {
+               abort_unless($orders->status === 'ordered', 409, 'Seule une commande en cours peut être mise en attente.');
+               $data = $request->validate(['motif' => ['nullable', 'string', 'max:500']]);
+               $orders->delivery_waiting = true;
+               $orders->motif = filled($data['motif'] ?? null) ? trim($data['motif']) : null;
+               $orders->save();
+               return redirect()->back()->with('success', 'Livraison mise en attente à la demande de la cliente.');
+             }
+
              if($request->status=="canceled"){
                $request->validate(['motif'=>'required'],
                ['motif.required' => 'Entrer le motif d\'annulation.']
@@ -568,6 +578,8 @@ class LivreurController extends Controller
                    ->refundCashForCanceledOrder($orders, $request->user());
 
                $orders->status=$request->status;
+               $orders->delivery_waiting=false;
+               $orders->motif=null;
                $orders->motif=$request->motif;
                if ($orders->partner_id && $orders->public_tracking_token) {
                    $orders->partner_order_status = 'canceled';
@@ -689,6 +701,8 @@ class LivreurController extends Controller
                    $orders->paid_amount = (int) $orders->paid_amount + $cashCollection;
                }
                $orders->status=$request->status;
+               $orders->delivery_waiting=false;
+               $orders->motif=null;
                $orders->user_id=Auth::user()->id;
                $orders->status_order=false;
                $orders->take=false;

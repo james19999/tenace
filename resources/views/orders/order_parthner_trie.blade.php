@@ -84,7 +84,9 @@
                          <td style="color: black ">{{ $order->tax }} F </td>
                          <td style="color: black ">{{ $order->total }} F </td>
                          <td style="color: black ">
-                                @if ($order->status=="ordered")
+                                @if ($order->status=="ordered" && $order->delivery_waiting)
+                                <span class="badge badge-info"> En attente</span>
+                                @elseif ($order->status=="ordered")
                                 <span class="badge badge-warning"> En cours</span>
 
                                 @elseif($order->status=="delivered")

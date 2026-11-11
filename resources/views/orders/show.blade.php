@@ -9,6 +9,9 @@
             'canceled' => ['Annulée', 'danger'],
         ];
         [$statusLabel, $statusTone] = $statusLabels[$Orders->status] ?? ['Statut inconnu', 'secondary'];
+        if ($Orders->status === 'ordered' && $Orders->delivery_waiting) {
+            [$statusLabel, $statusTone] = ['En attente', 'info'];
+        }
         $orderDate = $Orders->created_at ? $Orders->created_at->format('d/m/Y à H:i') : '—';
         $amountDue = (float) ($Orders->montant ?? ((float) $Orders->total + (float) $Orders->tax));
         $paidAmount = $Orders->paid_amount;
@@ -36,6 +39,7 @@
         .od-heading-facts strong { color:#fff; font-size:11px; }
         .od-hero-status { display:inline-flex; align-items:center; min-height:34px; padding:7px 12px; border-radius:999px; font-size:12px; font-weight:800; }
         .od-hero-status.badge-warning { color:#604100; background:#ffe29a; }
+        .od-hero-status.badge-info { color:#245b91; background:#d9eaff; }
         .od-hero-status.badge-success { color:#145a39; background:#b8f0d0; }
         .od-hero-status.badge-danger { color:#851b1b; background:#ffd2d2; }
         .od-hero-status.badge-secondary { color:#424956; background:#e8ebf0; }
@@ -54,6 +58,7 @@
         .od-delivery-phone { padding:7px 8px; border-radius:8px; background:#edf7f0; color:#176b43 !important; font-weight:800; }
         .od-status { display:inline-flex; align-items:center; padding:5px 10px; border-radius:999px; font-size:12px; font-weight:800; }
         .od-status.badge-warning { color:#8b5b00; background:#fff2cc; }
+        .od-status.badge-info { color:#245b91; background:#d9eaff; }
         .od-status.badge-success { color:#176b43; background:#dff5e9; }
         .od-status.badge-danger { color:#a62828; background:#fde5e5; }
         .od-status.badge-secondary { color:#4f5663; background:#eceef2; }
@@ -207,7 +212,7 @@
             <div class="od-heading-actions">
                 <span class="od-hero-status badge-{{ $statusTone }}">{{ $statusLabel }}</span>
                 <a href="{{ route('order') }}" class="od-btn"><span aria-hidden="true">←</span> Retour</a>
-                <button type="button" onclick="printDiv('printableArea')" class="od-btn od-btn-primary">Imprimer la commande</button>
+                <a href="{{ route('orders.invoice', $Orders) }}" target="_blank" rel="noopener" class="od-btn od-btn-primary">Imprimer le reçu</a>
             </div>
         </div>
 
@@ -248,7 +253,7 @@
                     <p>Créée le : <strong>{{ $orderDate }}</strong></p>
                     <p>Livraison : <strong>{{ $Orders->time ?: 'À définir' }}</strong></p>
                     <p>Statut : <span class="od-status badge-{{ $statusTone }}">{{ $statusLabel }}</span></p>
-                    @if ($Orders->status === 'canceled' && $Orders->motif)
+                    @if (($Orders->status === 'canceled' || ($Orders->status === 'ordered' && $Orders->delivery_waiting)) && $Orders->motif)
                         <p>Motif : <strong>{{ $Orders->motif }}</strong></p>
                     @endif
                 </div>
@@ -414,14 +419,15 @@
                         <div class="od-field">
                             <label for="order-status">Nouveau statut</label>
                             <select name="status" id="order-status" class="form-control">
-                                <option value="ordered" {{ $Orders->status === 'ordered' ? 'selected' : '' }}>En cours</option>
+                                <option value="ordered" {{ $Orders->status === 'ordered' && ! $Orders->delivery_waiting ? 'selected' : '' }}>En cours</option>
+                                <option value="waiting" {{ $Orders->status === 'ordered' && $Orders->delivery_waiting ? 'selected' : '' }}>En attente · cliente demande de patienter</option>
                                 <option value="delivered" {{ $Orders->status === 'delivered' ? 'selected' : '' }}>Valider / livrée</option>
                                 <option value="canceled" {{ $Orders->status === 'canceled' ? 'selected' : '' }}>Annuler</option>
                             </select>
                         </div>
                         <div class="od-field">
-                            <label for="order-motif">Motif d’annulation, si nécessaire</label>
-                            <input id="order-motif" type="text" class="form-control @error('motif') is-invalid @enderror" name="motif" value="{{ old('motif') }}" placeholder="Motif">
+                            <label for="order-motif">Motif d’annulation ou précision d’attente</label>
+                            <input id="order-motif" type="text" class="form-control @error('motif') is-invalid @enderror" name="motif" value="{{ old('motif', $Orders->motif) }}" placeholder="Ex. la cliente demande d’attendre quelques minutes">
                             @error('motif') <div class="invalid-feedback">{{ $message }}</div> @enderror
                         </div>
                         <button type="submit" class="od-btn od-btn-primary">Enregistrer le statut</button>
@@ -454,4 +460,19 @@
 
         <div class="od-back no-print"><a href="{{ route('order') }}" class="od-btn">← Retour à la liste des commandes</a></div>
     </div>
+    <script>
+        (() => {
+            const status = document.getElementById('order-status');
+            const note = document.getElementById('order-motif');
+            if (!status || !note) return;
+            const syncNote = () => {
+                note.required = status.value === 'canceled';
+                note.placeholder = status.value === 'canceled'
+                    ? 'Préciser le motif d’annulation'
+                    : 'Ex. la cliente demande d’attendre quelques minutes';
+            };
+            status.addEventListener('change', syncNote);
+            syncNote();
+        })();
+    </script>
 @endsection
