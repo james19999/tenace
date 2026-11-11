@@ -46,6 +46,7 @@ use App\Http\Controllers\CustomerPortalController;
 use App\Http\Controllers\PartnerOrderController;
 use App\Http\Controllers\PartnerMonitoringController;
 use App\Http\Controllers\CourierPublicOrderController;
+use App\Http\Controllers\CourierPushSubscriptionController;
 use App\Http\Controllers\DgAppointmentController;
 use App\Http\Controllers\FedaPayWebhookController;
 use App\Http\Controllers\ProductQuantityPriceController;
@@ -108,6 +109,12 @@ Route::post('/store/pathner',[DashboarController::class,'store_pathner'])->name(
 
 
 Route::middleware(['auth'])->group(function () {
+
+    Route::middleware(['role:LVS'])->prefix('courier/push')->name('courier.push.')->group(function () {
+        Route::get('/public-key', [CourierPushSubscriptionController::class, 'publicKey'])->name('public-key');
+        Route::post('/subscriptions', [CourierPushSubscriptionController::class, 'store'])->middleware('throttle:12,1')->name('subscriptions.store');
+        Route::delete('/subscriptions', [CourierPushSubscriptionController::class, 'destroy'])->middleware('throttle:12,1')->name('subscriptions.destroy');
+    });
 
     Route::middleware(['role:ADMINUSER,MNG,SCR,LVS'])->prefix('tournees')->name('courier-consignments.')->group(function () {
         Route::get('/', [CourierConsignmentController::class, 'index'])->name('index');

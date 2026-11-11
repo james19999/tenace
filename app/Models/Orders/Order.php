@@ -11,6 +11,8 @@ use App\Models\PublicOrderLink;
 use App\Models\Orders\OrderItem;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\DB;
 
 class Order extends Model
 {
@@ -35,6 +37,21 @@ class Order extends Model
                 } catch (\Throwable $exception) {
                     report($exception);
                 }
+            }
+
+            if ($order->wasRecentlyCreated || $order->wasChanged([
+                'status', 'status_order', 'take', 'user_id', 'date_order', 'time', 'brouillon', 'type', 'country_code', 'shipping_country',
+            ])) {
+                $orderId = (int) $order->getKey();
+                $actorId = Auth::id() ? (int) Auth::id() : null;
+                DB::afterCommit(static function () use ($orderId, $actorId): void {
+                    try {
+                        app(\App\Services\CourierPushNotificationService::class)
+                            ->notifyOrderAvailability($orderId, $actorId);
+                    } catch (\Throwable $exception) {
+                        report($exception);
+                    }
+                });
             }
         });
     }

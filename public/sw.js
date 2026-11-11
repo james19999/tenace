@@ -1,4 +1,44 @@
-const CACHE_NAME = 'tenace-pwa-v1.0.3';
+const CACHE_NAME = 'tenace-pwa-v1.0.4';
+
+self.addEventListener('push', (event) => {
+  let payload = {};
+  try {
+    payload = event.data ? event.data.json() : {};
+  } catch (error) {
+    payload = {title: 'Nouvelle course disponible', body: 'Ouvre TENACOS pour consulter les livraisons.'};
+  }
+
+  const title = payload.title || 'Nouvelle course disponible';
+  const options = {
+    body: payload.body || 'Une nouvelle livraison est disponible.',
+    icon: '/icons/icon-192x192.png',
+    badge: '/icons/icon-192x192.png',
+    tag: payload.tag || 'tenacos-course',
+    renotify: false,
+    data: {url: payload.url || '/livrable/list'}
+  };
+  event.waitUntil(self.registration.showNotification(title, options));
+});
+
+self.addEventListener('notificationclick', (event) => {
+  event.notification.close();
+  const requestedUrl = event.notification.data && event.notification.data.url;
+  let target = new URL('/livrable/list', self.location.origin);
+  try {
+    const candidate = new URL(requestedUrl || '/livrable/list', self.location.origin);
+    if (candidate.origin === self.location.origin) target = candidate;
+  } catch (error) {}
+
+  event.waitUntil(clients.matchAll({type: 'window', includeUncontrolled: true}).then((windowClients) => {
+    for (const client of windowClients) {
+      if (new URL(client.url).origin === self.location.origin && 'focus' in client) {
+        client.navigate(target.href);
+        return client.focus();
+      }
+    }
+    return clients.openWindow(target.href);
+  }));
+});
 
 const PRECACHE_ASSETS = [
   '/icons/icon-192x192.png',

@@ -318,7 +318,7 @@
         // 2. Gestion du Service Worker et de la notification de mise à jour
         if ('serviceWorker' in navigator) {
             window.addEventListener('load', () => {
-                navigator.serviceWorker.register('/sw.js?v=1.0.3', { updateViaCache: 'none' }).then((registration) => {
+                navigator.serviceWorker.register('/sw.js?v=1.0.4', { updateViaCache: 'none' }).then((registration) => {
                     let promptedUpdateVersion = null;
 
                     async function getWorkerVersion(worker) {

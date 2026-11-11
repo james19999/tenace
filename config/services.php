@@ -41,4 +41,10 @@ return [
         'base_url' => 'https://sandbox-api.fedapay.com/v1',
     ],
 
+    'webpush' => [
+        'subject' => env('WEBPUSH_SUBJECT', env('APP_URL', 'https://tenace.tenacostogo.com')),
+        'public_key' => env('WEBPUSH_VAPID_PUBLIC_KEY'),
+        'private_key' => env('WEBPUSH_VAPID_PRIVATE_KEY'),
+    ],
+
 ];

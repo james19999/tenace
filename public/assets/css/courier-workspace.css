@@ -94,6 +94,13 @@
 .courier-dashboard-actions{display:flex;flex-wrap:wrap;gap:9px;margin:0 0 17px}
 .courier-dashboard-actions .courier-action-button{min-height:42px}
 .courier-dashboard-actions .courier-action-button.is-secondary{color:var(--cw-red)!important;background:#fff}
+.courier-push-panel{display:flex;align-items:center;justify-content:space-between;gap:16px;margin:0 0 18px;padding:14px 16px;background:#fff;border:1px solid var(--cw-line)}
+.courier-push-copy{display:flex;align-items:flex-start;gap:12px;min-width:0}
+.courier-push-copy>.material-icons{display:grid;place-items:center;flex:none;width:40px;height:40px;color:var(--cw-red);background:#f8eded;font-size:21px}
+.courier-push-copy strong{display:block;color:var(--cw-ink);font-size:14px;font-weight:800}
+.courier-push-copy p{margin:3px 0;color:#667286;font-size:12px}
+.courier-push-copy small{color:#788496;font-size:11px}
+.courier-push-panel .courier-action-button{flex:none}
 .courier-dashboard-kpis{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px;margin-bottom:18px}
 .courier-dashboard-kpi{display:flex;align-items:flex-start;gap:12px;min-width:0;padding:16px;background:#fff;border:1px solid var(--cw-line)}
 .courier-dashboard-kpi>.material-icons{display:grid;place-items:center;flex:none;width:40px;height:40px;color:#811919;background:#f8eded;font-size:21px;line-height:1}
@@ -142,6 +149,8 @@
     .courier-dashboard-actions{display:grid;grid-template-columns:1fr;gap:13px;margin-bottom:22px}
     .courier-dashboard-actions .courier-action-button{min-height:54px;padding:13px 14px}
     .courier-dashboard-actions .courier-action-button{width:100%}
+    .courier-push-panel{align-items:stretch;flex-direction:column;gap:12px;margin-bottom:20px;padding:14px}
+    .courier-push-panel .courier-action-button{width:100%;min-height:48px}
     .courier-dashboard-kpis{grid-template-columns:repeat(2,minmax(0,1fr));gap:7px;margin-bottom:13px}
     .courier-dashboard-kpi{flex-direction:column;gap:7px;padding:11px}
     .courier-dashboard-kpi>.material-icons{width:31px;height:31px;font-size:18px}
