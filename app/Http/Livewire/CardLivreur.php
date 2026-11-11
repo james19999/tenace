@@ -27,7 +27,7 @@ class CardLivreur extends Component
 
        $startOfWeek = Carbon::now()->startOfWeek();
 
-        $orders = Order::where('user_id', $this->authuser)
+        $orders = Order::with('costumer')->where('user_id', $this->authuser)
                        ->where('delivered_at', '>=', $startOfWeek)
                        ->get();
 

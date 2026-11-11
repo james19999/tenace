@@ -137,13 +137,14 @@ class ApiController extends Controller
         $orders=Order::findOrfail($id);
 
           if($orders->take==false){
+              $hasDeliveryInProgress = Order::query()
+                  ->where('user_id', Auth::id())
+                  ->where('status_order', true)
+                  ->where('status', 'ordered')
+                  ->where('delivery_waiting', false)
+                  ->exists();
 
-              $order =Order::where('user_id',Auth::user()->id)
-                     ->where('status_order',true)
-                      ->whereDate('created_at',Carbon::today())
-                      ->get();
-
-                  if($order->count()==0){
+                  if (! $hasDeliveryInProgress) {
                       $orders->user_id=Auth::user()->id;
                       $orders->assigned_at=now();
                       $orders->status_order=true;
@@ -151,7 +152,7 @@ class ApiController extends Controller
                       $orders->save();
                       return Response::json(['status'=>true ,'messages'=>"Commande ajouter"]);
                   }else{
-                      return  Response::json(['status'=>false,'messages'=>"Vous avez des commandés non livrées"]);
+                      return  Response::json(['status'=>false,'messages'=>"Termine ou mets en attente ta livraison en cours avant d’en prendre une autre."]);
                   }
           }else{
             return  Response::json(['status'=>400,'messages'=>"Commande déjà prise"]);

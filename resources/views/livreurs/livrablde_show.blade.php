@@ -20,6 +20,9 @@
         $paidAmount = $Orders->paid_amount;
         $remainingAmount = $paidAmount === null ? null : max(0, $amountDue - (float) $paidAmount);
         $isAssignedCourier = auth()->user()?->user_type === 'LVS' && (string) $Orders->user_id === (string) auth()->id();
+        $backUrl = $isAssignedCourier
+            ? route('authlivrable', auth()->id())
+            : (auth()->user()?->user_type === 'LVS' ? route('livrable') : (url()->previous() ?: route('livrable')));
         $deliveryCountry = strtoupper(trim((string) ($Orders->country_code ?: ($Orders->shipping_country ?: (auth()->user()?->country_code ?: config('services.fedapay.country_code', 'TG'))))));
         $fedapayService = app(\App\Services\Payments\FedaPayService::class);
         $mobilePaymentAvailable = $isAssignedCourier && $deliveryCountry === 'TG' && $Orders->status === 'ordered'
@@ -42,6 +45,9 @@
         .dd-btn { display:inline-flex; align-items:center; justify-content:center; gap:7px; min-height:42px; padding:9px 15px; border:1px solid var(--dd-line); border-radius:10px; background:#fff; color:var(--dd-ink); font-weight:700; text-decoration:none; cursor:pointer; }
         .dd-btn:hover { text-decoration:none; filter:brightness(.97); }
         .dd-btn-primary { color:#fff; background:var(--dd-red); border-color:var(--dd-red); }
+        .right-area .main-content .dd-btn.dd-btn-primary,.right-area .main-content .dd-btn.dd-btn-primary:visited{color:#fff!important;background:var(--dd-red);border-color:var(--dd-red)}
+        .right-area .main-content .dd-btn.dd-btn-primary:hover,.right-area .main-content .dd-btn.dd-btn-primary:focus{color:#fff!important;background:#681313;border-color:#681313;text-decoration:none;box-shadow:0 0 0 3px #851b1b2b}
+        .dd-btn:focus-visible{outline:3px solid #851b1b55;outline-offset:2px}
         .dd-heading-actions { display:flex; gap:9px; flex-wrap:wrap; }
         .dd-paper, .dd-panel { background:#fff; border:1px solid var(--dd-line); border-radius:16px; box-shadow:0 8px 24px rgba(27,34,49,.045); }
         .dd-paper { position:relative; clear:both; padding:24px; }
@@ -217,8 +223,9 @@
                 <p class="dd-subtitle">Informations de livraison et articles à remettre à la cliente.</p>
             </div>
             <div class="dd-heading-actions">
+                <a href="{{ $backUrl }}" class="dd-btn"><span class="material-icons" aria-hidden="true">arrow_back</span>Retour</a>
                 @if ($Orders->status === 'delivered')
-                    <a href="{{ route('orders.invoice', $Orders) }}" target="_blank" rel="noopener" class="dd-btn dd-btn-primary">Imprimer le reçu</a>
+                    <a href="{{ route('orders.invoice', $Orders) }}" target="_blank" rel="noopener" class="dd-btn dd-btn-primary"><span class="material-icons" aria-hidden="true">print</span>Imprimer le reçu</a>
                 @endif
             </div>
         </div>

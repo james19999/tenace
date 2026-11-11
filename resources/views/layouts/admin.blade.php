@@ -32,6 +32,9 @@
         <link rel="stylesheet" href="{{ asset('assets/css/product-detail.css') }}?v=20261019.2">
     @endif
     <link rel="stylesheet" href="{{ asset('assets/css/legacy-square-pages.css') }}?v=20261019.1">
+    @if (request()->routeIs('authlivrable', 'livrable', 'show-deliveries') || (request()->routeIs('Admin') && auth()->user()?->user_type === 'LVS'))
+        <link rel="stylesheet" href="{{ asset('assets/css/courier-workspace.css') }}?v=20261111.6">
+    @endif
 
     <style>
         :root {
