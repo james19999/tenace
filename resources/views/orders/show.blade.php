@@ -420,7 +420,7 @@
                             <label for="order-status">Nouveau statut</label>
                             <select name="status" id="order-status" class="form-control">
                                 <option value="ordered" {{ $Orders->status === 'ordered' && ! $Orders->delivery_waiting ? 'selected' : '' }}>En cours</option>
-                                <option value="waiting" {{ $Orders->status === 'ordered' && $Orders->delivery_waiting ? 'selected' : '' }}>En attente · cliente demande de patienter</option>
+                                <option value="waiting" {{ $Orders->status === 'ordered' && $Orders->delivery_waiting ? 'selected' : '' }}>En attente</option>
                                 <option value="delivered" {{ $Orders->status === 'delivered' ? 'selected' : '' }}>Valider / livrée</option>
                                 <option value="canceled" {{ $Orders->status === 'canceled' ? 'selected' : '' }}>Annuler</option>
                             </select>

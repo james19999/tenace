@@ -309,9 +309,7 @@
                 <div class="dd-order-alert">
                     <h2>Statut de livraison</h2>
                     <p><strong>{{ $statusLabel }}</strong>
-                        @if ($Orders->status === 'ordered' && $Orders->delivery_waiting)
-                            · La cliente demande de patienter
-                        @elseif ($Orders->status === 'ordered')
+                        @if ($Orders->status === 'ordered' && ! $Orders->delivery_waiting)
                             · Livraison à effectuer
                         @elseif ($Orders->status === 'delivered')
                             · Livraison confirmée
@@ -448,7 +446,7 @@
                         <div class="dd-field">
                             <label for="delivery-status">Statut</label>
                             <select name="status" id="delivery-status" class="form-control">
-                                <option value="waiting" @selected($Orders->delivery_waiting)>Mettre en attente · la cliente demande de patienter</option>
+                                <option value="waiting" @selected($Orders->delivery_waiting)>En attente</option>
                                 <option value="delivered" @selected(! $Orders->delivery_waiting)>Valider la livraison</option>
                                 <option value="canceled">Annuler la commande</option>
                             </select>
