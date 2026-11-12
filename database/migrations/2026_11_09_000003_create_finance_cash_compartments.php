@@ -65,7 +65,7 @@ return new class extends Migration
             ['key' => 'fiscalite', 'name' => 'Fiscalité', 'description' => 'Impôts, taxes et obligations fiscales.', 'percentage' => 0, 'created_at' => $now, 'updated_at' => $now],
             ['key' => 'securite', 'name' => 'Trésorerie de sécurité', 'description' => 'Réserve disponible pour les imprévus.', 'percentage' => 0, 'created_at' => $now, 'updated_at' => $now],
             ['key' => 'developpement', 'name' => 'Développement', 'description' => 'Expansion, marketing et nouveaux marchés.', 'percentage' => 0, 'created_at' => $now, 'updated_at' => $now],
-            ['key' => 'reserves_benefices', 'name' => 'Réserves et bénéfices', 'description' => 'Réserves et bénéfices approuvés.', 'percentage' => 0, 'created_at' => $now, 'updated_at' => $now],
+            ['key' => 'reserves_benefices', 'name' => 'Réserves, tontine et régularisations de caisse', 'description' => 'Réserve affectée aux cotisations tontine et aux régularisations de caisse approuvées.', 'percentage' => 0, 'created_at' => $now, 'updated_at' => $now],
         ]);
 
         DB::table('finance_expense_requests')
