@@ -79,7 +79,7 @@ class DashboarController extends Controller
 
         $isAdmin = Auth::check() && Auth::user()->user_type === 'ADMINUSER';
         $orderStatusCounts = in_array(Auth::user()->user_type, [User::ROLE_ADMIN, User::ROLE_MANAGER], true)
-            ? $this->orderStatusCounts(Auth::user())
+            ? $this->orderStatusCounts(Auth::user(), [$startOfWeek->toDateString(), $startOfNextWeek->copy()->subDay()->toDateString()])
             : ['in_progress' => 0, 'waiting' => 0, 'delivered' => 0, 'canceled' => 0];
 
         if ($isAdmin) {
@@ -293,7 +293,16 @@ class DashboarController extends Controller
             $activeTab = 'in_progress';
         }
 
-        $counts = $this->orderStatusCounts($user);
+        $today = Carbon::today()->toDateString();
+        $filters = $request->validate([
+            'date_debut' => ['nullable', 'date_format:Y-m-d'],
+            'date_fin' => ['nullable', 'date_format:Y-m-d', 'after_or_equal:date_debut'],
+        ]);
+        $dateStart = $filters['date_debut'] ?? $today;
+        $dateEnd = $filters['date_fin'] ?? $dateStart;
+        $dateRange = [$dateStart, $dateEnd];
+
+        $counts = $this->orderStatusCounts($user, $dateRange);
         $orders = Order::query()->with(['costumer', 'user'])
             ->where('brouillon', 1);
         $this->scopeDashboardOrders($orders, $user);
@@ -307,27 +316,56 @@ class DashboarController extends Controller
             }),
         };
 
+        $this->applyOrderStatusDateFilter($orders, $activeTab, $dateRange);
+
         $orders = $orders->orderByDesc('updated_at')->paginate(15)->withQueryString();
 
-        return view('dashboard.order-status-board', compact('orders', 'counts', 'activeTab'));
+        return view('dashboard.order-status-board', compact('orders', 'counts', 'activeTab', 'dateStart', 'dateEnd'));
     }
 
-    private function orderStatusCounts(User $user): array
+    private function orderStatusCounts(User $user, ?array $dateRange = null): array
     {
-        $query = Order::query()->where('brouillon', 1);
-        $this->scopeDashboardOrders($query, $user);
-        $row = $query->selectRaw("SUM(CASE WHEN status = 'ordered' AND COALESCE(delivery_waiting, 0) = 0 THEN 1 ELSE 0 END) AS in_progress")
-            ->selectRaw("SUM(CASE WHEN status = 'ordered' AND delivery_waiting = 1 THEN 1 ELSE 0 END) AS waiting")
-            ->selectRaw("SUM(CASE WHEN status = 'delivered' THEN 1 ELSE 0 END) AS delivered")
-            ->selectRaw("SUM(CASE WHEN status = 'canceled' THEN 1 ELSE 0 END) AS canceled")
-            ->first();
-
-        return [
-            'in_progress' => (int) ($row->in_progress ?? 0),
-            'waiting' => (int) ($row->waiting ?? 0),
-            'delivered' => (int) ($row->delivered ?? 0),
-            'canceled' => (int) ($row->canceled ?? 0),
+        $definitions = [
+            'in_progress' => fn (Builder $query) => $query->where('status', 'ordered')->where(fn (Builder $q) => $q->where('delivery_waiting', false)->orWhereNull('delivery_waiting')),
+            'waiting' => fn (Builder $query) => $query->where('status', 'ordered')->where('delivery_waiting', true),
+            'delivered' => fn (Builder $query) => $query->where('status', 'delivered'),
+            'canceled' => fn (Builder $query) => $query->where('status', 'canceled'),
         ];
+
+        $counts = [];
+        foreach ($definitions as $status => $applyStatus) {
+            $query = Order::query()->where('brouillon', 1);
+            $this->scopeDashboardOrders($query, $user);
+            $applyStatus($query);
+            if ($dateRange !== null) {
+                $this->applyOrderStatusDateFilter($query, $status, $dateRange);
+            }
+            $counts[$status] = $query->count();
+        }
+
+        return $counts;
+    }
+
+    private function applyOrderStatusDateFilter(Builder $query, string $status, array $dateRange): void
+    {
+        [$dateStart, $dateEnd] = $dateRange;
+        $start = Carbon::parse($dateStart)->startOfDay();
+        $end = Carbon::parse($dateEnd)->addDay()->startOfDay();
+
+        // Active orders are grouped by their scheduled delivery date. Completed
+        // and canceled orders use the timestamp of their final status change.
+        $dateColumn = match ($status) {
+            'delivered' => 'delivered_at',
+            'canceled' => 'updated_at',
+            default => 'date_order',
+        };
+
+        if ($dateColumn === 'date_order') {
+            $query->whereBetween($dateColumn, [$dateStart, $dateEnd]);
+            return;
+        }
+
+        $query->where($dateColumn, '>=', $start)->where($dateColumn, '<', $end);
     }
 
     private function scopeDashboardOrders(Builder $orders, User $user): void
