@@ -7,6 +7,7 @@ use App\Models\FinanceCashMovement;
 use App\Models\FinanceCashClosure;
 use App\Models\FinanceCashRemittance;
 use App\Models\FinanceExpenseRequest;
+use App\Models\FinanceExternalLoan;
 use App\Models\FinanceEquipmentPurchaseRequest;
 use App\Models\FinanceGeneralCashSetting;
 use App\Models\FinanceTontineContributionRequest;
@@ -39,6 +40,7 @@ class FinanceController extends Controller
         $canSeeAll = $user->isAdmin() || $user->isAccountant();
         $cashierId = FinanceGeneralCashSetting::query()->whereKey(1)->value('cashier_user_id');
         $canSeeCentral = $user->isAdmin() || ($cashierId && (int) $cashierId === (int) $user->id);
+        $canAccessLoans = $user->isAdmin();
         $locationIds = StockLocation::query()->where('type', 'shop')
             ->when(! $canSeeAll, fn ($query) => $query->where('responsible_user_id', $user->id))
             ->pluck('id');
@@ -148,6 +150,10 @@ class FinanceController extends Controller
             'pendingExpenses' => (clone $expenses)->whereIn('status', ['awaiting_finance', 'awaiting_director'])->count(),
             'supplierPayables' => $supplierPayables,
             'overdueSupplierInvoices' => $overdueSupplierInvoices,
+            'canAccessLoans' => $canAccessLoans,
+            'activeLoanBalance' => $canAccessLoans
+                ? (int) FinanceExternalLoan::query()->where('status', 'active')->sum(DB::raw('total_repayable - amount_repaid'))
+                : 0,
             'recentMovements' => $movements->latest('occurred_at')->paginate(10, ['*'], 'movements_page')->withQueryString(),
             'cashTrend' => $cashTrend,
             'cashFlowComparison' => $cashFlowComparison,

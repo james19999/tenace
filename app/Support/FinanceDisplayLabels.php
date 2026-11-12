@@ -25,6 +25,8 @@ class FinanceDisplayLabels
             'sale_cash_received' => 'Vente encaissée',
             'expense_payment' => 'Dépense payée',
             'staff_loan_disbursed' => 'Prêt au personnel accordé',
+            'external_loan_received' => 'Emprunt reçu',
+            'external_loan_repayment' => 'Remboursement d’emprunt',
             'tontine_contribution' => 'Cotisation tontine',
             'tontine_recovery' => 'Somme de tontine récupérée',
             'salary_payment' => 'Salaire versé',
@@ -118,6 +120,8 @@ class FinanceDisplayLabels
             'employee_salary_updated' => 'Salaire convenu modifié',
             'salary_period_created' => 'Mois de salaire ajouté au suivi',
             'tontine_created' => 'Tontine créée',
+            'external_loan_received' => 'Emprunt bancaire enregistré et reçu',
+            'external_loan_repayment' => 'Remboursement d’emprunt enregistré',
             'tontine_contribution_paid' => 'Cotisation de tontine payée',
             'tontine_recovery_received' => 'Somme de tontine récupérée',
             'salary_advance_paid' => 'Avance sur salaire versée',
@@ -155,6 +159,7 @@ class FinanceDisplayLabels
             'EmployeePayrollPayment' => 'Versement de salaire',
             'FinanceTontine' => 'Tontine',
             'FinanceTontineMovement' => 'Mouvement de tontine',
+            'FinanceExternalLoan' => 'Emprunt bancaire',
             default => self::humanize($shortName),
         };
     }
@@ -168,6 +173,14 @@ class FinanceDisplayLabels
         $labels = [
             'reference' => 'Référence du dossier',
             'supplier_name' => 'Fournisseur',
+            'lender_name' => 'Banque ou microfinance',
+            'contract_reference' => 'Référence du contrat',
+            'received_amount' => 'Montant reçu',
+            'total_repayable' => 'Montant total à rembourser',
+            'initial_repaid_amount' => 'Déjà remboursé avant le suivi',
+            'received_on' => 'Date de réception des fonds',
+            'next_payment_on' => 'Prochaine échéance',
+            'remaining_amount' => 'Reste à rembourser',
             'invoice_number' => 'Référence de la facture TENACOS',
             'supplier_invoice_number' => 'Numéro de facture fournisseur',
             'invoice_date' => 'Date de la facture',
@@ -215,7 +228,7 @@ class FinanceDisplayLabels
             'denominations' => 'Détail des coupures comptées',
         ];
         $moneyFields = [
-            'amount', 'paid_amount', 'expected_amount', 'counted_amount', 'handed_over_amount',
+            'amount', 'paid_amount', 'received_amount', 'total_repayable', 'initial_repaid_amount', 'remaining_amount', 'expected_amount', 'counted_amount', 'handed_over_amount',
             'received_amount', 'theoretical_amount', 'variance_amount', 'amount_paid_now',
         ];
         $dateFields = ['invoice_date', 'due_date', 'requested_payment_date', 'period_start', 'period_end', 'closing_date'];

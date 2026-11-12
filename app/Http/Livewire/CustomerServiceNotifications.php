@@ -7,6 +7,7 @@ use App\Notifications\StockControlNotification;
 use App\Notifications\DgAppointmentNotification;
 use App\Notifications\FinanceCashCountAlertNotification;
 use App\Notifications\FinanceExpenseReportNotification;
+use App\Notifications\FinanceExternalLoanDueNotification;
 use App\Notifications\FinanceWorkflowNotification;
 use App\Models\Orders\Order;
 use App\Models\User;
@@ -155,6 +156,7 @@ class CustomerServiceNotifications extends Component
             FinanceCashCountAlertNotification::class,
             FinanceExpenseReportNotification::class,
             FinanceWorkflowNotification::class,
+            FinanceExternalLoanDueNotification::class,
         ];
     }
 

@@ -16,7 +16,7 @@ class FinanceAuditController extends Controller
         abort_unless($request->user()->isAdmin() || $request->user()->isAccountant(), 403);
         $filters = $request->validate([
             'action' => ['nullable', 'string', 'max:64'],
-            'subject_type' => ['nullable', Rule::in(['FinanceCashRemittance', 'FinanceExpenseRequest', 'FinanceSupplierInvoice', 'FinanceCashClosure'])],
+            'subject_type' => ['nullable', Rule::in(['FinanceCashRemittance', 'FinanceExpenseRequest', 'FinanceSupplierInvoice', 'FinanceCashClosure', 'FinanceExternalLoan'])],
             'user_id' => ['nullable', 'integer', 'exists:users,id'],
             'from' => ['nullable', 'date'],
             'to' => ['nullable', 'date', 'after_or_equal:from'],

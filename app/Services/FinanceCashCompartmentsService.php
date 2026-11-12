@@ -167,7 +167,7 @@ class FinanceCashCompartmentsService
     private function compartmentForOutflow(FinanceCashMovement $movement): ?string
     {
         return match ($movement->movement_type) {
-            'salary_payment', 'tontine_recovery' => 'exploitation',
+            'salary_payment', 'tontine_recovery', 'external_loan_repayment' => 'exploitation',
             'tontine_contribution' => 'reserves_benefices',
             'supplier_payment' => 'approvisionnement',
             'equipment_purchase_advance' => 'approvisionnement',

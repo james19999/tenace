@@ -212,6 +212,11 @@ Route::middleware(['auth'])->group(function () {
         Route::post('/fournisseurs/factures/{invoice}/controle', [FinanceSupplierInvoiceController::class, 'review'])->middleware('role:ADMINUSER')->name('suppliers.review');
         Route::post('/fournisseurs/factures/{invoice}/paiements', [FinanceSupplierInvoiceController::class, 'pay'])->middleware('role:ADMINUSER,MNG,COMPTABLE,SCR,VDS,CSA,LVS,CALLCENTER,RCM,GRO')->name('suppliers.pay');
         Route::get('/fournisseurs/pieces/{kind}/{id}', [FinanceSupplierInvoiceController::class, 'attachment'])->middleware('role:ADMINUSER,MNG,COMPTABLE,SCR,VDS,CSA,LVS,CALLCENTER,RCM,GRO')->whereIn('kind', ['supplier-invoice', 'supplier-payment'])->name('suppliers.attachments.download');
+        Route::get('/emprunts', [\App\Http\Controllers\Finance\FinanceExternalLoanController::class, 'index'])->middleware('role:ADMINUSER')->name('loans.index');
+        Route::get('/emprunts/nouveau', [\App\Http\Controllers\Finance\FinanceExternalLoanController::class, 'create'])->middleware('role:ADMINUSER')->name('loans.create');
+        Route::post('/emprunts', [\App\Http\Controllers\Finance\FinanceExternalLoanController::class, 'store'])->middleware('role:ADMINUSER')->name('loans.store');
+        Route::post('/emprunts/{loan}/remboursements', [\App\Http\Controllers\Finance\FinanceExternalLoanController::class, 'repay'])->middleware('role:ADMINUSER')->name('loans.repayments.store');
+        Route::get('/emprunts/{loan}', [\App\Http\Controllers\Finance\FinanceExternalLoanController::class, 'show'])->middleware('role:ADMINUSER')->name('loans.show');
         Route::get('/pieces/{kind}/{id}', [FinanceController::class, 'downloadAttachment'])->whereIn('kind', ['remittance', 'signed-voucher', 'expense', 'payment', 'expense-receipt'])->name('attachments.download');
     });
 
