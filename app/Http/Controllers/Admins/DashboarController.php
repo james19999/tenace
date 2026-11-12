@@ -21,6 +21,7 @@ use Illuminate\Support\Facades\DB;
 use App\Http\Controllers\Controller;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Database\Eloquent\Builder;
 
 class DashboarController extends Controller
 {
@@ -77,6 +78,9 @@ class DashboarController extends Controller
             ->paginate(10, ['*'], 'overduePage');
 
         $isAdmin = Auth::check() && Auth::user()->user_type === 'ADMINUSER';
+        $orderStatusCounts = in_array(Auth::user()->user_type, [User::ROLE_ADMIN, User::ROLE_MANAGER], true)
+            ? $this->orderStatusCounts(Auth::user())
+            : ['in_progress' => 0, 'waiting' => 0, 'delivered' => 0, 'canceled' => 0];
 
         if ($isAdmin) {
             $chart_options = [
@@ -274,9 +278,78 @@ class DashboarController extends Controller
             'Orderdelivered', 'Ordercanceled', 'Orderall', 'OrderdeAmount',
             'expensesLast12Months',
             'expensesPaidThisYear', 'expensesAwaitingDecision', 'supplierInvoicesDue',
-            'totalWholesaleCommandes', 'totalWholesaleOrdersThisWeek', 'wholesaleDeliveredTodayAmount'
+            'totalWholesaleCommandes', 'totalWholesaleOrdersThisWeek', 'wholesaleDeliveredTodayAmount', 'orderStatusCounts'
         ));
      }
+
+    public function orderStatusBoard(Request $request)
+    {
+        $user = $request->user();
+        abort_unless(in_array($user->user_type, [User::ROLE_ADMIN, User::ROLE_MANAGER], true), 403);
+
+        $allowedTabs = ['in_progress', 'waiting', 'delivered', 'canceled'];
+        $activeTab = $request->query('tab', 'in_progress');
+        if (! in_array($activeTab, $allowedTabs, true)) {
+            $activeTab = 'in_progress';
+        }
+
+        $counts = $this->orderStatusCounts($user);
+        $orders = Order::query()->with(['costumer', 'user'])
+            ->where('brouillon', 1);
+        $this->scopeDashboardOrders($orders, $user);
+
+        match ($activeTab) {
+            'waiting' => $orders->where('status', 'ordered')->where('delivery_waiting', true),
+            'delivered' => $orders->where('status', 'delivered'),
+            'canceled' => $orders->where('status', 'canceled'),
+            default => $orders->where('status', 'ordered')->where(function (Builder $query): void {
+                $query->where('delivery_waiting', false)->orWhereNull('delivery_waiting');
+            }),
+        };
+
+        $orders = $orders->orderByDesc('updated_at')->paginate(15)->withQueryString();
+
+        return view('dashboard.order-status-board', compact('orders', 'counts', 'activeTab'));
+    }
+
+    private function orderStatusCounts(User $user): array
+    {
+        $query = Order::query()->where('brouillon', 1);
+        $this->scopeDashboardOrders($query, $user);
+        $row = $query->selectRaw("SUM(CASE WHEN status = 'ordered' AND COALESCE(delivery_waiting, 0) = 0 THEN 1 ELSE 0 END) AS in_progress")
+            ->selectRaw("SUM(CASE WHEN status = 'ordered' AND delivery_waiting = 1 THEN 1 ELSE 0 END) AS waiting")
+            ->selectRaw("SUM(CASE WHEN status = 'delivered' THEN 1 ELSE 0 END) AS delivered")
+            ->selectRaw("SUM(CASE WHEN status = 'canceled' THEN 1 ELSE 0 END) AS canceled")
+            ->first();
+
+        return [
+            'in_progress' => (int) ($row->in_progress ?? 0),
+            'waiting' => (int) ($row->waiting ?? 0),
+            'delivered' => (int) ($row->delivered ?? 0),
+            'canceled' => (int) ($row->canceled ?? 0),
+        ];
+    }
+
+    private function scopeDashboardOrders(Builder $orders, User $user): void
+    {
+        if ($user->user_type !== User::ROLE_MANAGER) {
+            return;
+        }
+
+        $employees = User::query()->when(
+            $user->primary_stock_location_id,
+            fn (Builder $query) => $query->where('primary_stock_location_id', $user->primary_stock_location_id),
+            fn (Builder $query) => $query->whereKey($user->id),
+        );
+
+        $creatorIds = (clone $employees)->select('id');
+        $courierIds = (clone $employees)->selectRaw('CAST(id AS CHAR)');
+        $orders->where(function (Builder $query) use ($creatorIds, $courierIds): void {
+            $query->whereIn('created_user', $creatorIds)
+                ->orWhereIn('order_by', $creatorIds)
+                ->orWhereIn('user_id', $courierIds);
+        });
+    }
 
     /**
      * Aggregate dashboard chart rows in MySQL instead of loading every source

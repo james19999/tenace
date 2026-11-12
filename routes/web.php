@@ -453,6 +453,8 @@ Route::middleware(['auth'])->group(function () {
     // -------------------------------------------------------------------------
     Route::middleware(['role:ADMINUSER,MNG,SCR,LVS'])->group(function () {
         Route::get('/Admin', [DashboarController::class, 'dashboard'])->name('Admin');
+        Route::get('/commandes/statuts', [DashboarController::class, 'orderStatusBoard'])
+            ->middleware('role:ADMINUSER,MNG')->name('orders.status-board');
         Route::get('/rupture/products/stock', [DashboarController::class, 'rupture'])->name('rupture');
     });
 

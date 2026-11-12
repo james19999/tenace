@@ -106,7 +106,7 @@
                     <div class="card-body">
                         <div class="row">
                             <div class="col">
-                                <h5 class="text-uppercase text-muted mb-0 card-title">Commades en cours</h5><span
+                                <h5 class="text-uppercase text-muted mb-0 card-title">Commandes en cours aujourd’hui</h5><span
                                     style="font-size: 130%" class="h1 font-weight-bold mb-0">{{ $Ordered }}</span>
                             </div>
                             <div class="col-auto col">
@@ -132,7 +132,7 @@
                     <div class="card-body">
                         <div class="row">
                             <div class="col">
-                                <h5 class="text-uppercase text-muted mb-0 card-title">Commades livrées</h5><span
+                                <h5 class="text-uppercase text-muted mb-0 card-title">Commandes livrées aujourd’hui</h5><span
                                     style="font-size: 130%" class="h1 font-weight-bold mb-0">{{ $Orderdelivered }}</span>
                             </div>
                             <div class="col-auto col">
@@ -152,6 +152,8 @@
                     </div>
                 </div>
             </div>
+
+            @include('dashboard.partials.order-status-cards')
 
 
             <div class="col-12 col-sm-6 col-md-6 col-lg-3 dashboard-kpi-revenue">
@@ -361,7 +363,7 @@
                     <div class="card-body">
                         <div class="row">
                             <div class="col">
-                                <h5 class="text-uppercase text-muted mb-0 card-title">Commades en cours</h5><span
+                                <h5 class="text-uppercase text-muted mb-0 card-title">Commandes en cours aujourd’hui</h5><span
                                     style="font-size: 130%" class="h1 font-weight-bold mb-0">{{ $Ordered }}</span>
                             </div>
                             <div class="col-auto col">
@@ -380,7 +382,7 @@
                     <div class="card-body">
                         <div class="row">
                             <div class="col">
-                                <h5 class="text-uppercase text-muted mb-0 card-title">Commades livrées</h5><span
+                                <h5 class="text-uppercase text-muted mb-0 card-title">Commandes livrées aujourd’hui</h5><span
                                     style="font-size: 130%" class="h1 font-weight-bold mb-0">{{ $Orderdelivered }}</span>
                             </div>
                             <div class="col-auto col">
@@ -394,6 +396,7 @@
                     </div>
                 </div>
             </div>
+            @include('dashboard.partials.order-status-cards')
             <div class="col-12 col-sm-6 col-md-6 col-lg-3">
                 <a href="{{ route('rupture') }}">
                     <div class="card shadow">
@@ -631,6 +634,12 @@
         .dashboard-content .card-title{font-size:10px;letter-spacing:.04em;line-height:1.35}.dashboard-content .h1{font-size:clamp(19px,1.8vw,24px)!important;letter-spacing:-.45px}
         .dashboard-content>.col-12>a{display:block;height:100%;text-decoration:none}
         .dashboard-content>.dashboard-kpi-link{display:block;height:100%;color:inherit;text-decoration:none}
+        .dashboard-content>.dashboard-status-kpi>.card{height:calc(100% - 12px);margin-top:12px;border:1px solid #e8e9ed;background:#fff}
+        .dashboard-status-kpi .card-body{display:flex;align-items:center;justify-content:space-between;gap:10px;min-height:105px}
+        .dashboard-status-kpi-copy{min-width:0}.dashboard-status-kpi-copy .card-title{margin:0 0 5px!important}.dashboard-status-kpi-copy .h1{margin:0;color:#282b35;font-size:clamp(22px,2vw,29px)!important;font-variant-numeric:tabular-nums}
+        .dashboard-status-kpi-copy small{display:block;margin-top:3px;color:#858c98;font-size:10px}
+        .dashboard-status-kpi-icon{display:grid;place-items:center;flex:none;width:43px;height:43px;background:#f7eeee;color:#861b1b;font-size:23px}
+        .dashboard-status-kpi.is-canceled .dashboard-status-kpi-icon{background:#fbefee;color:#a33e39}.dashboard-status-kpi.is-progress .dashboard-status-kpi-icon{background:#eaf1fb;color:#4269a0}.dashboard-status-kpi.is-waiting .dashboard-status-kpi-icon{background:#fff4df;color:#a46a13}.dashboard-status-kpi.is-delivered .dashboard-status-kpi-icon{background:#eaf5ed;color:#237443}
         .dashboard-kpi-icon{display:grid;place-items:center;width:42px;height:42px;border-radius:11px;font-size:23px}
         .dashboard-kpi-icon-expense{background:#fae9e7;color:#a33e39}.dashboard-kpi-icon-pending{background:#fff3dc;color:#a66a10}.dashboard-kpi-icon-supplier{background:#e8effa;color:#4169a1}
         html[data-app-theme="dark"] .dashboard-kpi-icon-expense{background:#3a2727;color:#ff9b93}html[data-app-theme="dark"] .dashboard-kpi-icon-pending{background:#393124;color:#f1bd68}html[data-app-theme="dark"] .dashboard-kpi-icon-supplier{background:#252f3c;color:#91b3e8}
@@ -672,6 +681,7 @@
         html[data-app-theme="dark"] .dashboard-content .h1 { color:#edf1f5 !important; }
         html[data-app-theme="dark"] .dashboard-content > .col-12 > .card,
         html[data-app-theme="dark"] .dashboard-content > .col-12 > a > .card { background:#1e232b !important; border-color:#373f4b !important; }
+        html[data-app-theme="dark"] .dashboard-content>.dashboard-status-kpi>.card{background:#1e232b;border-color:#373f4b}.dashboard-status-kpi .dashboard-status-kpi-copy .h1{color:#282b35}html[data-app-theme="dark"] .dashboard-status-kpi .dashboard-status-kpi-copy .h1{color:#edf1f5}
         @media(max-width:767.98px){
             .dashboard-welcome{margin:4px 0 14px;padding:16px}
             .dashboard-datetime{width:100%;min-width:0}
