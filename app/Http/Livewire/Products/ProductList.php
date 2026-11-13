@@ -45,7 +45,7 @@ class ProductList extends Component
 
     public function AddToCart($id): void
     {
-        if (Auth::user()?->isWholesaleSalesRole()) {
+        if (Auth::user()?->hasWholesaleAccess()) {
             $this->addWholesaleQuantity((int) $id);
             return;
         }
@@ -72,8 +72,9 @@ class ProductList extends Component
                 return;
             }
         }
-        if (Auth::user()?->isWholesaleSalesRole()) {
-            $wholesaleLocationId = app(StockModuleSettingsService::class)->rules()['wholesale_sales_location_id'] ?? null;
+        if (Auth::user()?->hasWholesaleAccess()) {
+            $wholesaleLocationId = Auth::user()?->wholesaleResponsibilityLocationId()
+                ?? app(StockModuleSettingsService::class)->rules()['wholesale_sales_location_id'] ?? null;
             $available = $this->shopQuantity((int) $product->id, $wholesaleLocationId ? (int) $wholesaleLocationId : null);
             if ($available <= 0) {
                 $this->cartMessage = 'Ce produit n’est pas disponible dans la boutique grossiste.';
@@ -139,7 +140,8 @@ class ProductList extends Component
             return;
         }
 
-        $locationId = app(StockModuleSettingsService::class)->rules()['wholesale_sales_location_id'] ?? null;
+        $locationId = Auth::user()?->wholesaleResponsibilityLocationId()
+            ?? app(StockModuleSettingsService::class)->rules()['wholesale_sales_location_id'] ?? null;
         $available = $this->shopQuantity((int) $product->id, $locationId ? (int) $locationId : null);
         $cart = Cart::instance('cart');
         $existingItems = $cart->content()->filter(fn ($item) => (int) $item->id === (int) $product->id);
@@ -179,7 +181,7 @@ class ProductList extends Component
     {
         $user = Auth::user();
         $isPartner = $user?->user_type === \App\Models\User::ROLE_PARTNER;
-        $isCommercialManager = $user?->isWholesaleSalesRole() ?? false;
+        $isCommercialManager = $user?->hasWholesaleAccess() ?? false;
         $isShopManager = $user?->isManager() ?? false;
         $usesRetailShopStock = in_array($user?->user_type, [
             \App\Models\User::ROLE_MANAGER,
@@ -191,7 +193,7 @@ class ProductList extends Component
         $partnerCountryCode = $isPartner ? strtoupper((string) $user->country_code) : null;
         $stockRules = app(StockModuleSettingsService::class)->rules();
         $salesLocationId = $stockRules['default_sales_location_id'] ?? null;
-        $wholesaleLocationId = $stockRules['wholesale_sales_location_id'] ?? null;
+        $wholesaleLocationId = $user->wholesaleResponsibilityLocationId() ?? ($stockRules['wholesale_sales_location_id'] ?? null);
         $sellerShop = app(ShopSalesLocationResolver::class)->forUser($user, false);
         $stockQuantityExpression = $usesRetailShopStock
             ? 'COALESCE(shop_stock.quantity, 0)'

@@ -13,13 +13,13 @@
     @if ($errors->any())<div class="alert alert-danger"><strong>Vérifie les informations.</strong><ul class="mb-0">@foreach ($errors->all() as $error)<li>{{ $error }}</li>@endforeach</ul></div>@endif
 
     <div class="finance-stat-grid">
-        @if($canSeeCentral)<article class="finance-stat finance-stat-primary"><span>Caisse générale</span><strong>{{ number_format($generalCash, 0, ',', ' ') }} F</strong><small>Solde confirmé par les mouvements</small></article>@else<article class="finance-stat finance-stat-primary"><span>{{ auth()->user()->user_type === 'RCM' || auth()->user()->user_type === 'GRO' ? 'Espèces du grossiste' : ($canSeeAll ? 'Espèces des boutiques' : 'Espèces de ta boutique') }}</span><strong>{{ number_format($shopCash, 0, ',', ' ') }} F</strong><small>Solde actuel du journal de caisse : entrées moins sorties</small></article>@endif
-        <article class="finance-stat"><span>Variation nette de caisse · {{ $cashTrend['current_month'] }}</span><strong class="{{ $cashTrend['current_month_net'] < 0 ? 'finance-negative' : 'finance-positive' }}">{{ $cashTrend['current_month_net'] > 0 ? '+' : '' }}{{ number_format($cashTrend['current_month_net'], 0, ',', ' ') }} F</strong><small>Entrées moins sorties depuis le 1er du mois · {{ $cashTrend['previous_month'] }} : {{ $cashTrend['previous_month_net'] > 0 ? '+' : '' }}{{ number_format($cashTrend['previous_month_net'], 0, ',', ' ') }} F</small></article>
+        @if($canViewGeneralCashBalance)<article class="finance-stat finance-stat-primary"><span>Caisse générale</span><strong>{{ number_format($generalCash, 0, ',', ' ') }} F</strong><small>Solde confirmé par les mouvements</small></article>@elseif($canSeeAll || $canSeeCentral)<article class="finance-stat finance-stat-primary"><span>Solde global</span><strong>Confidentiel</strong><small>Consultation réservée à l’administration</small></article>@else<article class="finance-stat finance-stat-primary"><span>{{ auth()->user()->user_type === 'RCM' || auth()->user()->user_type === 'GRO' ? 'Espèces du grossiste' : 'Espèces de ta boutique' }}</span><strong>{{ number_format($shopCash, 0, ',', ' ') }} F</strong><small>Solde actuel du journal de caisse : entrées moins sorties</small></article>@endif
+        @if($canSeeAll && !auth()->user()->isAdmin())<article class="finance-stat"><span>Variation globale</span><strong>Confidentielle</strong><small>Consultation réservée à l’administration</small></article>@else<article class="finance-stat"><span>Variation nette de caisse · {{ $cashTrend['current_month'] }}</span><strong class="{{ $cashTrend['current_month_net'] < 0 ? 'finance-negative' : 'finance-positive' }}">{{ $cashTrend['current_month_net'] > 0 ? '+' : '' }}{{ number_format($cashTrend['current_month_net'], 0, ',', ' ') }} F</strong><small>Entrées moins sorties depuis le 1er du mois · {{ $cashTrend['previous_month'] }} : {{ $cashTrend['previous_month_net'] > 0 ? '+' : '' }}{{ number_format($cashTrend['previous_month_net'], 0, ',', ' ') }} F</small></article>@endif
         <article class="finance-stat"><span>Fonds en transit</span><strong>{{ number_format(max(0, $inTransit), 0, ',', ' ') }} F</strong><small>En attente de confirmation du DG</small></article>
         @if(auth()->user()->isAdmin())<article class="finance-stat"><span>Dettes fournisseurs</span><strong>{{ number_format($supplierPayables, 0, ',', ' ') }} F</strong><small>{{ $overdueSupplierInvoices }} facture(s) échue(s)</small></article>@endif
     </div>
 
-    <section class="finance-chart-grid">
+    @if(!$canSeeAll || auth()->user()->isAdmin())<section class="finance-chart-grid">
         <article class="finance-panel finance-chart-card finance-chart-wide">
             <div class="finance-panel-heading"><div><h2>Évolution de la caisse</h2><p>Solde jour par jour · comparaison avec le mois précédent · {{ $cashTrend['custody_label'] }}</p></div><span class="finance-chart-period">{{ $cashTrend['current_month'] }}</span></div>
             <div class="finance-chart-wrap"><canvas id="finance-cash-trend" role="img" aria-label="Évolution journalière du solde et comparaison au mois précédent"></canvas></div>
@@ -29,7 +29,7 @@
             <div class="finance-chart-wrap finance-chart-small"><canvas id="finance-cash-flow" role="img" aria-label="Comparaison des entrées et sorties de caisse"></canvas></div>
             <div class="finance-chart-legend"><span><i class="finance-legend-in"></i>Entrées</span><span><i class="finance-legend-out"></i>Sorties</span></div>
         </article>
-    </section>
+    </section>@endif
 
     <nav class="finance-action-strip" aria-label="Suivi des opérations comptables">
         <a href="{{ route('finance.remittances.index') }}"><span class="material-icons">payments</span><span><strong>Remises</strong><small>{{ $pendingRemittances }} à suivre</small></span><span class="material-icons finance-action-arrow">chevron_right</span></a>
@@ -133,8 +133,8 @@
 <script>
 document.addEventListener('DOMContentLoaded', function () {
     if (typeof Chart === 'undefined') return;
-    var trend = @json($cashTrend);
-    var comparison = @json($cashFlowComparison);
+    var trend = @json($canSeeAll && !auth()->user()->isAdmin() ? null : $cashTrend);
+    var comparison = @json($canSeeAll && !auth()->user()->isAdmin() ? null : $cashFlowComparison);
     var number = function (value) { return new Intl.NumberFormat('fr-FR').format(value) + ' F'; };
     var dark = document.documentElement.getAttribute('data-app-theme') === 'dark';
     var theme = getComputedStyle(document.documentElement);

@@ -48,7 +48,7 @@ class OrderController extends Controller
         if (Auth::user()?->user_type === User::ROLE_PARTNER) {
             return app(PartnerOrderController::class)->index($request);
         }
-        $wholesaleOnly = Auth::user()?->isWholesaleSalesRole() ?? false;
+        $wholesaleOnly = Auth::user()?->hasWholesaleAccess() ?? false;
         $ownWholesaleOnly = Auth::user()?->user_type === User::ROLE_WHOLESALER;
 
         $filter = $request->get('filter', 'today');
@@ -410,7 +410,7 @@ class OrderController extends Controller
         if ($user?->user_type === User::ROLE_WHOLESALER) {
             abort_unless((int) $order->created_user === (int) $user->id && (bool) $order->is_wholesale, 404);
         }
-        if ($user?->isWholesaleSalesRole() && ! $order->is_wholesale) {
+        if ($user?->hasWholesaleAccess() && ! $order->is_wholesale) {
             abort(404);
         }
     }

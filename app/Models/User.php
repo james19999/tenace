@@ -126,6 +126,46 @@ class User extends Authenticatable
         return in_array($this->user_type, [self::ROLE_COMMERCIAL_MANAGER, self::ROLE_WHOLESALER], true);
     }
 
+    public function isWholesaleShopResponsible(): bool
+    {
+        return $this->wholesaleResponsibilityLocationId() !== null;
+    }
+
+    public function wholesaleResponsibilityLocationId(): ?int
+    {
+        // Read the configured ID directly: rules() deliberately clears the
+        // wholesale ID when it matches the default shop, but that must not
+        // hide a courier's explicit responsibility for that location.
+        $configuredLocationId = (int) (StockModuleSetting::query()->latest('id')->first()?->rules['wholesale_sales_location_id'] ?? 0);
+        $assignedWholesaleLocationId = StockLocation::query()
+            ->where('type', 'shop')->where('is_active', true)
+            ->where(function ($assigned) use ($configuredLocationId): void {
+                $assigned->where('responsible_user_id', $this->id);
+                if ($this->primary_stock_location_id) {
+                    $assigned->orWhere('id', (int) $this->primary_stock_location_id);
+                }
+            })
+            ->where(function ($query) use ($configuredLocationId): void {
+                if ($configuredLocationId > 0) {
+                    $query->whereKey($configuredLocationId)->orWhere(function ($fallback): void {
+                        $fallback->whereRaw('LOWER(name) LIKE ?', ['%grossiste%'])
+                            ->orWhereRaw('LOWER(code) LIKE ?', ['%grossiste%']);
+                    });
+                    return;
+                }
+                $query->whereRaw('LOWER(name) LIKE ?', ['%grossiste%'])
+                    ->orWhereRaw('LOWER(code) LIKE ?', ['%grossiste%']);
+            })
+            ->value('id');
+
+        return $assignedWholesaleLocationId ? (int) $assignedWholesaleLocationId : null;
+    }
+
+    public function hasWholesaleAccess(): bool
+    {
+        return $this->isWholesaleSalesRole() || $this->isWholesaleShopResponsible();
+    }
+
     public function hasRole(string|array $roles): bool
     {
         return in_array($this->user_type, (array) $roles, true);

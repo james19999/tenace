@@ -12,9 +12,9 @@
 
     <section class="cash-plan-kpis">
         <article><span>Encaissements réels · ce mois</span><strong>{{ number_format($realReceipts, 0, ',', ' ') }} F</strong></article>
-        <article><span>Fonds à répartir</span><strong>{{ number_format($summary['unallocated_balance'], 0, ',', ' ') }} F</strong></article>
+        @if(auth()->user()->isAdmin())<article><span>Fonds à répartir</span><strong>{{ number_format($summary['unallocated_balance'], 0, ',', ' ') }} F</strong></article>@endif
         <article><span>Dépenses payées · ce mois</span><strong>{{ number_format($expenses, 0, ',', ' ') }} F</strong></article>
-        <article><span>Solde physique caisse générale</span><strong>{{ number_format($summary['cash_balance'], 0, ',', ' ') }} F</strong></article>
+        @if(auth()->user()->isAdmin())<article><span>Solde physique caisse générale</span><strong>{{ number_format($summary['cash_balance'], 0, ',', ' ') }} F</strong></article>@endif
     </section>
 
     @if(! $summary['percentages_configured'])
@@ -22,13 +22,13 @@
     @endif
 
     <section class="cash-plan-section">
-        <div class="cash-plan-section-title"><div><h2>Les huit compartiments</h2><p>Un paiement autorisé est imputé au compartiment choisi dans la demande.</p></div><span>Solde total affecté : <b>{{ number_format($summary['allocated_balance'], 0, ',', ' ') }} F</b></span></div>
+        <div class="cash-plan-section-title"><div><h2>Les huit compartiments</h2><p>Un paiement autorisé est imputé au compartiment choisi dans la demande.</p></div>@if(auth()->user()->isAdmin())<span>Solde total affecté : <b>{{ number_format($summary['allocated_balance'], 0, ',', ' ') }} F</b></span>@endif</div>
         <div class="cash-plan-grid">
             @foreach($summary['compartments'] as $compartment)
                 <article class="cash-plan-card">
                     <div class="cash-plan-card-top"><span>{{ $compartment->percentage }} %</span><small>{{ $compartment->entries_count ?? '' }}</small></div>
                     <h3>{{ $compartment->name }}</h3><p>{{ $compartment->description }}</p>
-                    <div class="cash-plan-balance"><span>Solde virtuel</span><strong class="{{ $compartment->balance < 0 ? 'is-negative' : '' }}">{{ number_format($compartment->balance, 0, ',', ' ') }} F</strong></div>
+                    @if(auth()->user()->isAdmin())<div class="cash-plan-balance"><span>Solde virtuel</span><strong class="{{ $compartment->balance < 0 ? 'is-negative' : '' }}">{{ number_format($compartment->balance, 0, ',', ' ') }} F</strong></div>@endif
                     <div class="cash-plan-progress {{ $compartment->utilization > 100 ? 'is-over' : '' }}"><i style="width:{{ min(100, max(0, $compartment->utilization)) }}%"></i></div>
                     <small>Enveloppe : {{ number_format((int) $compartment->allocated_total, 0, ',', ' ') }} F · Dépensé : {{ number_format((int) $compartment->spent_total, 0, ',', ' ') }} F · Utilisé : {{ $compartment->utilization }} %</small>
                     <small>Demandes en cours : {{ number_format($compartment->pending_amount, 0, ',', ' ') }} F</small>

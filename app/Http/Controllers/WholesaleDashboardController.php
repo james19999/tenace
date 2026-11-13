@@ -15,7 +15,7 @@ class WholesaleDashboardController extends Controller
     {
         $base = fn () => Order::query()
             ->where('is_wholesale', true)
-            ->where('created_user', $request->user()->id);
+            ->when(! $request->user()->isWholesaleShopResponsible(), fn ($query) => $query->where('created_user', $request->user()->id));
         $notCancelled = static fn ($query) => $query
             ->where('status', '!=', 'canceled')
             ->where(fn ($status) => $status->whereNull('partner_order_status')->orWhere('partner_order_status', '!=', 'canceled'));
@@ -32,7 +32,8 @@ class WholesaleDashboardController extends Controller
             'revenue' => (int) $delivered($base())->where($notCancelled)->sum('subtotal'),
         ];
 
-        $wholesaleLocationId = $settings->rules()['wholesale_sales_location_id'] ?? null;
+        $wholesaleLocationId = $request->user()->wholesaleResponsibilityLocationId()
+            ?? ($settings->rules()['wholesale_sales_location_id'] ?? null);
         $cashSummary = [
             'remitted' => 0,
             'in_register' => 0,

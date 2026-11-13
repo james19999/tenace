@@ -11,7 +11,7 @@
             $tontinePendingCount = \App\Models\FinanceTontineContributionRequest::query()->where('status', 'awaiting_payment')->count();
         }
     }
-    $hasTontineAccountingMenu = Auth::check() && in_array(Auth::user()->user_type, ['ADMINUSER', 'MNG', 'COMPTABLE', 'SCR', 'VDS', 'CSA', 'CALLCENTER', 'RCM'], true);
+    $hasTontineAccountingMenu = Auth::check() && (in_array(Auth::user()->user_type, ['ADMINUSER', 'MNG', 'COMPTABLE', 'SCR', 'VDS', 'CSA', 'CALLCENTER', 'RCM'], true) || Auth::user()->hasWholesaleAccess());
     $dashboard = match (Auth::user()->user_type) {
         'PT' => ['route' => 'partner.dashboard', 'label' => 'Tableau de bord'],
         \App\Models\User::ROLE_WHOLESALER => ['route' => 'wholesaler.dashboard', 'label' => 'Tableau de bord'],
@@ -58,6 +58,14 @@
 
             @if(Auth::user()->user_type === 'LVS')
                 <li><a href="{{ route('courier-consignments.index') }}" class="{{ $active('courier-consignments.*') }}"><span class="icon material-icons">inventory_2</span><span class="text">Ma tournée</span></a></li>
+            @endif
+
+            @if(Auth::user()->isWholesaleShopResponsible() && !Auth::user()->isWholesaleSalesRole())
+                <li><a href="{{ route('wholesaler.dashboard') }}" class="{{ $active('wholesaler.dashboard') }}"><span class="icon material-icons">dashboard</span><span class="text">Boutique grossiste</span></a></li>
+                <li><a href="{{ route('product') }}" class="{{ $active('product') }}"><span class="icon material-icons">store</span><span class="text">Produits</span></a></li>
+                <li><a href="{{ route('productcart') }}" class="{{ $active('productcart') }}"><span class="icon material-icons">add_shopping_cart</span><span class="text">Panier <span class="badge badge-pill badge-danger js-cart-count">{{ $cartCount }}</span></span></a></li>
+                <li><a href="{{ route('order') }}" class="{{ $active('order', 'ordershow') }}"><span class="icon material-icons">shopping_cart</span><span class="text">Commandes grossistes</span></a></li>
+                <li><a href="{{ route('finance.remittances.index') }}" class="{{ $active('finance.remittances.*') }}"><span class="icon material-icons">payments</span><span class="text">Remises grossiste</span></a></li>
             @endif
 
             @if(in_array(Auth::user()->user_type, ['MNG', 'SCR', 'VDS', 'CSA', 'LVS', 'CALLCENTER', 'COMPTABLE', 'RCM', 'GRO', 'INFO', 'INFOGRAPHISTE', 'VIDEASTE'], true))
@@ -402,6 +410,9 @@
                     </a>
                 </li>
             @elseif (Auth::user()->user_type === \App\Models\User::ROLE_WHOLESALER)
+                @if(Auth::user()->isWholesaleShopResponsible())
+                    <li><a href="{{ route('wholesaler.dashboard') }}" class="{{ $active('wholesaler.dashboard') }}"><span class="icon material-icons">dashboard</span><span class="text">Espace boutique grossiste</span></a></li>
+                @endif
                 <li>
                     <a href="{{ route('product') }}" class="{{ $active('product') }}">
                         <span class="icon material-icons">store</span>
@@ -436,7 +447,13 @@
                         <span class="text">Demandes de dépenses @if(($financeBadges['expenses'] ?? 0) > 0)<span class="badge badge-pill badge-danger">{{ $financeBadges['expenses'] > 99 ? '99+' : $financeBadges['expenses'] }}</span>@endif</span>
                     </a>
                 </li>
+                @if($showTontines)<li><a href="{{ route('finance.tontines.index') }}" class="{{ $active('finance.tontines.*') }}"><span class="icon material-icons">savings</span><span class="text">Tontines</span></a></li>@endif
                 @if($financeBadges['general_cashier'] ?? false)<li><a href="{{ route('finance.suppliers.index') }}" class="{{ $active('finance.suppliers.*') }}"><span class="icon material-icons">receipt_long</span><span class="text">Factures fournisseurs @if(($financeBadges['suppliers'] ?? 0) > 0)<span class="badge badge-pill badge-danger">{{ $financeBadges['suppliers'] > 99 ? '99+' : $financeBadges['suppliers'] }}</span>@endif</span></a></li>@endif
+                @if(Auth::user()->isLivreur())
+                    <li><a href="{{ route('authlivrable', Auth::id()) }}" class="{{ $active('authlivrable') }}"><span class="icon material-icons">assignment_ind</span><span class="text">Mes livraisons</span></a></li>
+                    <li><a href="{{ route('livrable') }}" class="{{ $active('livrable') }}"><span class="icon material-icons">two_wheeler</span><span class="text">Livraisons</span></a></li>
+                    <li><a href="{{ route('show-deliveries') }}" class="{{ $active('show-deliveries') }}"><span class="icon material-icons">leaderboard</span><span class="text">Classement</span></a></li>
+                @endif
             @elseif (Auth::user()->user_type === \App\Models\User::ROLE_COMMERCIAL_MANAGER)
                 <li>
                     <a href="{{ route('product') }}" class="{{ $active('product') }}">
@@ -684,6 +701,12 @@
                     <a href="{{ route('stock-control.balances') }}" class="{{ $active('stock-control.balances') }}">
                         <span class="icon material-icons">inventory_2</span>
                         <span class="text">État du stock</span>
+                    </a>
+                </li>
+                <li>
+                    <a href="{{ route('stock-control.counts.index') }}" class="{{ $active('stock-control.counts.*') }}">
+                        <span class="icon material-icons">fact_check</span>
+                        <span class="text">Inventaire entrepôt @if(($stockBadges['counts'] ?? 0) > 0)<span class="badge badge-pill badge-danger">{{ $stockBadges['counts'] }}</span>@endif</span>
                     </a>
                 </li>
                 <li>

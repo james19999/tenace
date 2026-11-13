@@ -68,8 +68,9 @@ class CheckController extends Controller
             return redirect()->route('productcart')->with('error', 'Ajoute au moins un produit avant de valider la commande.');
          }
 
-         if (Auth::user()?->isWholesaleSalesRole()) {
-             $wholesaleLocationId = app(StockModuleSettingsService::class)->rules()['wholesale_sales_location_id'] ?? null;
+         if (Auth::user()?->hasWholesaleAccess()) {
+             $wholesaleLocationId = Auth::user()?->wholesaleResponsibilityLocationId()
+                 ?? app(StockModuleSettingsService::class)->rules()['wholesale_sales_location_id'] ?? null;
              $wholesaleLocation = $wholesaleLocationId
                  ? StockLocation::query()->whereKey($wholesaleLocationId)->where('type', 'shop')->where('is_active', true)->first()
                  : null;
@@ -111,12 +112,12 @@ class CheckController extends Controller
                  return $product && $product->quantityPriceTiers->contains(fn ($tier) => $quantity >= (int) $tier->min_quantity);
              });
          $promotion = QuantityPromotionSetting::current();
-         if (Auth::user()?->isWholesaleSalesRole() && ! $isWholesaleOrder) {
+         if (Auth::user()?->hasWholesaleAccess() && ! $isWholesaleOrder) {
              return redirect()->route('productcart')->withErrors([
                  'is_wholesale' => 'Cette fonction est réservée aux commandes grossistes. Augmente la quantité jusqu’à atteindre un palier grossiste.',
              ])->withInput();
          }
-         if (Auth::user()?->isWholesaleSalesRole()) {
+         if (Auth::user()?->hasWholesaleAccess()) {
              foreach ($cartItems->groupBy(fn ($item) => (int) $item->id) as $productId => $items) {
                  $product = Product::query()->with('quantityPriceTiers')->find($productId);
                  $quantity = (int) $items->sum('qty');
@@ -133,7 +134,8 @@ class CheckController extends Controller
          }
          $qualifiedWholesaleProduct = false;
          if ($isWholesaleOrder) {
-             $wholesaleLocationId = app(StockModuleSettingsService::class)->rules()['wholesale_sales_location_id'] ?? null;
+             $wholesaleLocationId = Auth::user()?->wholesaleResponsibilityLocationId()
+                 ?? app(StockModuleSettingsService::class)->rules()['wholesale_sales_location_id'] ?? null;
              $wholesaleLocation = $wholesaleLocationId
                  ? StockLocation::query()->whereKey($wholesaleLocationId)->where('type', 'shop')->where('is_active', true)->first()
                  : null;

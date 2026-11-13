@@ -17,8 +17,8 @@ class FinanceSidebarBadgeService
     {
         $isAdmin = $user->isAdmin();
         $isAccountant = $user->isAccountant();
-        $isManager = $user->isManager();
-        $isWholesaleManager = $user->isWholesaleSalesRole();
+        $isManager = $user->isManager() || $user->isWholesaleShopResponsible();
+        $isWholesaleManager = $user->hasWholesaleAccess();
         $cashierId = FinanceGeneralCashSetting::query()->whereKey(1)->value('cashier_user_id');
         $isCashier = $cashierId && (int) $cashierId === (int) $user->id;
         $shopIds = StockLocation::query()->where('type', 'shop')

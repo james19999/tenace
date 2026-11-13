@@ -44,9 +44,10 @@ class ProductCart extends Component
 
     private function removeUnavailableWholesaleCartItems(): void
     {
-        if (! auth()->user()?->isWholesaleSalesRole()) return;
+        if (! auth()->user()?->hasWholesaleAccess()) return;
 
-        $locationId = app(StockModuleSettingsService::class)->rules()['wholesale_sales_location_id'] ?? null;
+        $locationId = auth()->user()?->wholesaleResponsibilityLocationId()
+            ?? app(StockModuleSettingsService::class)->rules()['wholesale_sales_location_id'] ?? null;
         foreach (Cart::instance('cart')->content() as $item) {
             $available = $locationId ? (int) DB::table('stock_movement_lines as sml')
                 ->join('stock_movements as sm', 'sm.id', '=', 'sml.movement_id')
@@ -144,7 +145,7 @@ class ProductCart extends Component
     }
 
     public function increment($rowId){
-        if (auth()->user()?->isWholesaleSalesRole()) return;
+        if (auth()->user()?->hasWholesaleAccess()) return;
         $produit=Cart::instance('cart')->get($rowId);
         if (!$produit || !$produit->model) return;
         $qty=$produit->qty+1;
@@ -182,7 +183,7 @@ class ProductCart extends Component
         $quantity = filter_var($quantity, FILTER_VALIDATE_INT);
         if ($quantity === false) return;
         $quantity = max(1, (int) $quantity);
-        if (auth()->user()?->isWholesaleSalesRole()) {
+        if (auth()->user()?->hasWholesaleAccess()) {
             $minimum = (int) $item->model->quantityPriceTiers()->min('min_quantity');
             if ($minimum < 1 || $quantity < $minimum) {
                 $this->stockNotice = $minimum > 0
@@ -195,7 +196,7 @@ class ProductCart extends Component
         $available = $this->availableShopQuantity($item->model, $targetWholesale);
         if ($quantity > $available) {
             $this->stockNotice = $this->stockLimitMessage($item->model, $available, $targetWholesale);
-            if ($available < 1 || (auth()->user()?->isWholesaleSalesRole() && $available < $minimum)) return;
+            if ($available < 1 || (auth()->user()?->hasWholesaleAccess() && $available < $minimum)) return;
             $quantity = $available;
         } else {
             $this->stockNotice = '';
@@ -222,7 +223,7 @@ class ProductCart extends Component
 
             return $reserve + $withCouriers;
         }
-        $isCommercialManager = auth()->user()?->isWholesaleSalesRole() ?? false;
+        $isCommercialManager = auth()->user()?->hasWholesaleAccess() ?? false;
         $useWholesaleStock = $isCommercialManager || ($wholesale ?? $this->isWholesaleOrder);
         $locationId = app(ShopSalesLocationResolver::class)
             ->forUser(auth()->user(), $useWholesaleStock)?->id;
@@ -238,14 +239,14 @@ class ProductCart extends Component
 
 
     public function decrement($rowId){
-        if (auth()->user()?->isWholesaleSalesRole()) return;
+        if (auth()->user()?->hasWholesaleAccess()) return;
         $produit=Cart::instance('cart')->get($rowId);
         if (!$produit || !$produit->model) return;
         $this->stockNotice = '';
         $qty=max(1, $produit->qty-1);
 
         $targetWholesale = $this->isWholesaleForCartWithQuantity($rowId, (int) $qty);
-        if (! $targetWholesale && ! auth()->user()?->isWholesaleSalesRole()) {
+        if (! $targetWholesale && ! auth()->user()?->hasWholesaleAccess()) {
             $mainShopQuantity = $this->availableShopQuantity($produit->model, false);
             if ($qty > $mainShopQuantity) {
                 if ($mainShopQuantity < 1) {
@@ -298,7 +299,7 @@ class ProductCart extends Component
     {
         $user = auth()->user();
         $isPartner = $user?->user_type === \App\Models\User::ROLE_PARTNER;
-        $isCommercialManager = $user?->isWholesaleSalesRole() ?? false;
+        $isCommercialManager = $user?->hasWholesaleAccess() ?? false;
         $partnerCartItems = Cart::instance('cart')->content();
         $partnerDeliveryFeeTotal = 0;
         return view('livewire.products.product-cart', [

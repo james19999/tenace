@@ -27,7 +27,9 @@ class RoleMiddleware
         $user = Auth::user();
 
         // Vérification que l'utilisateur a l'un des rôles autorisés
-        if (! in_array($user->user_type, $roles, true)) {
+        $hasWholesaleRouteAccess = $user->isWholesaleShopResponsible()
+            && array_intersect($roles, [User::ROLE_COMMERCIAL_MANAGER, User::ROLE_WHOLESALER]) !== [];
+        if (! in_array($user->user_type, $roles, true) && ! $hasWholesaleRouteAccess) {
             $destination = $this->homeForUser($user);
 
             // Un rôle grossiste ne doit pas rester bloqué sur /Admin après

@@ -344,13 +344,6 @@ Route::middleware(['auth'])->group(function () {
         Route::post('/transfers', [StockTransferController::class, 'store'])->name('transfers.store');
         Route::post('/transfers/{transfer}/authorize', [StockTransferController::class, 'authorizeTransfer'])->name('transfers.authorize');
         Route::post('/transfers/{transfer}/ship', [StockTransferController::class, 'ship'])->name('transfers.ship');
-        Route::get('/counts', [StockCountController::class, 'index'])->name('counts.index');
-        Route::get('/counts/create', [StockCountController::class, 'create'])->name('counts.create');
-        Route::post('/counts', [StockCountController::class, 'store'])->name('counts.store');
-        Route::get('/counts/{count}/products/search', [StockCountController::class, 'searchProducts'])->name('counts.products.search');
-        Route::get('/counts/{count}', [StockCountController::class, 'show'])->name('counts.show');
-        Route::get('/counts/{count}/print', [StockCountController::class, 'printReceipt'])->name('counts.print');
-        Route::post('/counts/{count}/submit', [StockCountController::class, 'submit'])->name('counts.submit');
         Route::post('/counts/{count}/approve', [StockCountController::class, 'approve'])->name('counts.approve');
         Route::get('/adjustments', [StockAdjustmentController::class, 'index'])->name('adjustments.index');
         Route::get('/adjustments/create', [StockAdjustmentController::class, 'create'])->name('adjustments.create');
@@ -364,6 +357,16 @@ Route::middleware(['auth'])->group(function () {
         Route::get('/alerts', [StockAlertController::class, 'index'])->name('alerts.index');
         Route::post('/alerts/refresh', [StockAlertController::class, 'refresh'])->name('alerts.refresh');
         Route::post('/alerts/{alert}/resolve', [StockAlertController::class, 'resolve'])->name('alerts.resolve');
+    });
+
+    Route::middleware(['role:ADMINUSER,MNG,COMPTABLE'])->prefix('stock-control')->name('stock-control.')->group(function () {
+        Route::get('/counts', [StockCountController::class, 'index'])->name('counts.index');
+        Route::get('/counts/create', [StockCountController::class, 'create'])->name('counts.create');
+        Route::post('/counts', [StockCountController::class, 'store'])->name('counts.store');
+        Route::get('/counts/{count}/products/search', [StockCountController::class, 'searchProducts'])->name('counts.products.search');
+        Route::get('/counts/{count}', [StockCountController::class, 'show'])->name('counts.show');
+        Route::get('/counts/{count}/print', [StockCountController::class, 'printReceipt'])->name('counts.print');
+        Route::post('/counts/{count}/submit', [StockCountController::class, 'submit'])->name('counts.submit');
     });
 
     Route::middleware(['role:ADMINUSER,MNG'])->prefix('stock-control')->name('stock-control.')->group(function () {

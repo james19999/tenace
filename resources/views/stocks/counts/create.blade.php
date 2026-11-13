@@ -23,7 +23,7 @@
                     </table>
                     <small class="stock-count-reconciliation-caption">Exemples des écarts actuels. L’écart indique une différence à examiner, pas la quantité à saisir pour un emplacement.</small>
                 </div>
-            @else
+            @elseif(auth()->user()->isAdmin())
                 <p class="stock-count-reconciliation-clear">Aucun écart entre le stock global et les quantités des emplacements vendables n’a été détecté.</p>
             @endif
         </aside>

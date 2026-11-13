@@ -12,7 +12,7 @@
         <a href="{{ route('check-type', $order) }}" class="btn btn-sm {{ $order->type === 'PR' ? 'btn-dark' : 'btn-warning' }}"><i class="material-icons f-16">edit</i> {{ $order->type === 'PR' ? 'Privée' : 'Publique' }}</a>
     @elseif (Auth::user()->user_type === \App\Models\User::ROLE_CALL_CENTER)
         <a href="{{ route('ordershow', $order) }}" class="btn btn-sm btn-success"><i class="material-icons f-16">visibility</i> Détails</a>
-    @elseif (Auth::user()->isWholesaleSalesRole())
+    @elseif (Auth::user()->hasWholesaleAccess())
         <a href="{{ route('ordershow', $order) }}" class="btn btn-sm btn-success"><i class="material-icons f-16">visibility</i> {{ Auth::user()->user_type === \App\Models\User::ROLE_WHOLESALER ? 'Détails de la commande' : 'Détails / livreur' }}</a>
     @endif
     @if (in_array(Auth::user()->user_type, ['ADMINUSER', 'MNG', 'SCR', 'VDS', 'PT', 'CSA'], true))

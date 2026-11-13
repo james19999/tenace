@@ -13,16 +13,16 @@
                 <h1>État du stock par emplacement</h1>
                 <p>Le stock global correspond aux entrepôts. Les quantités des boutiques et des zones de contrôle restent affichées séparément.</p>
             </div>
-            @if (!auth()->user()->isAccountant())
+            @if (auth()->user()->isAdmin() || auth()->user()->isAccountant())
                 <div class="transfer-detail-heading-actions">
-                    <a href="{{ route('stock-control.counts.create', ['warehouse_only' => 1, 'opening_balance' => 1]) }}" class="stock-control-hero-action"><span class="material-icons">playlist_add_check</span>Saisir le stock réel de l’entrepôt</a>
-                    <a href="{{ route('stock-control.receipts.index') }}" class="stock-control-hero-action"><span class="material-icons">move_to_inbox</span>Réceptions</a>
+                    <a href="{{ route('stock-control.counts.create', ['warehouse_only' => 1]) }}" class="stock-control-hero-action"><span class="material-icons">playlist_add_check</span>Inventorier le stock réel de l’entrepôt</a>
+                    @if(auth()->user()->isAdmin())<a href="{{ route('stock-control.receipts.index') }}" class="stock-control-hero-action"><span class="material-icons">move_to_inbox</span>Réceptions</a>@endif
                 </div>
             @endif
             <div class="stock-control-hero-mark" aria-hidden="true"><span class="material-icons">inventory</span></div>
         </header>
 
-        @if(abs($unallocated) > 0.0005)
+        @if(auth()->user()->isAdmin() && abs($unallocated) > 0.0005)
             <section class="stock-control-alert stock-balance-notice" role="status">
                 <span class="material-icons">info</span>
                 <div>
@@ -38,9 +38,9 @@
         @endif
 
         <section class="stock-balance-summary" aria-label="Résumé du stock">
-            <article><span class="material-icons">inventory_2</span><div><small>Stock global · entrepôts</small><strong>{{ number_format($warehouseTotal, 0, ',', ' ') }}</strong><span>Somme des quantités journalisées dans les entrepôts</span></div></article>
+            @if(auth()->user()->isAdmin())<article><span class="material-icons">inventory_2</span><div><small>Stock global · entrepôts</small><strong>{{ number_format($warehouseTotal, 0, ',', ' ') }}</strong><span>Somme des quantités journalisées dans les entrepôts</span></div></article>@endif
             <article><span class="material-icons">storefront</span><div><small>Stock dans les boutiques</small><strong>{{ number_format($shopTotal, 0, ',', ' ') }}</strong><span>Quantités transférées vers les boutiques</span></div></article>
-            <article class="{{ $unallocated < 0 ? 'is-warning' : '' }}"><span class="material-icons">location_searching</span><div><small>{{ $productionCatalogueInShop ? 'Reprise du stock catalogue' : 'Écart catalogue historique / journal' }}</small><strong>{{ number_format(abs($unallocated), 0, ',', ' ') }}</strong><span>{{ $productionCatalogueInShop ? 'Quantités historiques rattachées à la boutique' : ($unallocated < 0 ? 'Le journal dépasse l’ancien total catalogue' : 'Quantité catalogue à rapprocher') }}</span></div></article>
+            @if(auth()->user()->isAdmin())<article class="{{ $unallocated < 0 ? 'is-warning' : '' }}"><span class="material-icons">location_searching</span><div><small>{{ $productionCatalogueInShop ? 'Reprise du stock catalogue' : 'Écart catalogue historique / journal' }}</small><strong>{{ number_format(abs($unallocated), 0, ',', ' ') }}</strong><span>{{ $productionCatalogueInShop ? 'Quantités historiques rattachées à la boutique' : ($unallocated < 0 ? 'Le journal dépasse l’ancien total catalogue' : 'Quantité catalogue à rapprocher') }}</span></div></article>@endif
             <article class="is-muted"><span class="material-icons">inventory</span><div><small>Zones de contrôle</small><strong>{{ number_format($blockedTotal, 0, ',', ' ') }} / {{ number_format($transitTotal, 0, ',', ' ') }}</strong><span>Bloqué / en transit</span></div></article>
         </section>
 

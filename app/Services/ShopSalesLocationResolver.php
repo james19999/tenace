@@ -11,9 +11,9 @@ class ShopSalesLocationResolver
     public function forUser(?User $user, ?bool $wholesale = null): ?StockLocation
     {
         $rules = app(StockModuleSettingsService::class)->rules();
-        $useWholesale = $wholesale ?? $user?->isWholesaleSalesRole() === true;
+        $useWholesale = $wholesale ?? $user?->hasWholesaleAccess() === true;
         $locationId = $useWholesale
-            ? ($rules['wholesale_sales_location_id'] ?? null)
+            ? ($user?->wholesaleResponsibilityLocationId() ?? ($rules['wholesale_sales_location_id'] ?? null))
             : null;
 
         if (! $useWholesale && $user) {

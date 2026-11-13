@@ -29,6 +29,7 @@ class StockCountController extends Controller
         app(StockControlNotificationService::class)->markTabAsRead(auth()->user(), 'counts');
         $counts = StockCount::query()
             ->with(['location:id,name,code', 'creator:id,name', 'counter:id,name'])
+            ->when($request->user()->isAccountant(), fn ($query) => $query->whereHas('location', fn ($location) => $location->where('type', 'warehouse')))
             ->when($request->filled('status'), fn ($q) => $q->where('status', $request->input('status')))
             ->latest('id')->paginate(15)->withQueryString();
 
@@ -45,13 +46,16 @@ class StockCountController extends Controller
         ]);
         $productId = $filters['product_id'] ?? null;
         $openingBalance = (bool) ($filters['opening_balance'] ?? false);
-        $warehouseOnly = (bool) ($filters['warehouse_only'] ?? false);
+        $isAccountant = $request->user()->isAccountant();
+        $warehouseOnly = (bool) ($filters['warehouse_only'] ?? false) || $isAccountant;
         $locations = StockLocation::query()->where('is_active', true)
             ->whereIn('type', ($productId || $warehouseOnly) ? ['warehouse'] : ['warehouse', 'shop'])
             ->orderBy('name')->get(['id', 'name', 'code', 'type']);
         $locationId = $filters['location_id'] ?? (($warehouseOnly && $locations->count() === 1) ? $locations->first()->id : null);
-        $users = User::query()->where('active', true)->whereIn('user_type', ['ADMINUSER', 'MNG'])
-            ->orderBy('name')->get(['id', 'name', 'user_type']);
+        $users = $isAccountant
+            ? User::query()->whereKey($request->user()->id)->get(['id', 'name', 'user_type'])
+            : User::query()->where('active', true)->whereIn('user_type', ['ADMINUSER', 'MNG'])
+                ->orderBy('name')->get(['id', 'name', 'user_type']);
         $catalogueIsShop = ! empty(app(StockModuleSettingsService::class)->rules()['legacy_catalogue_stock_migrated_to_shop']);
         $locatedBalances = DB::table('stock_movement_lines as sml')
             ->join('stock_movements as sm', 'sm.id', '=', 'sml.movement_id')
@@ -59,7 +63,7 @@ class StockCountController extends Controller
             ->where('sm.status', 'posted')->where('sl.type', 'warehouse')
             ->select('sml.product_id')->selectRaw('SUM(sml.quantity_delta) as located_quantity')
             ->groupBy('sml.product_id');
-        $stockReconciliationExamples = $catalogueIsShop ? collect() : DB::table('products as p')
+        $stockReconciliationExamples = ($catalogueIsShop || ! $request->user()->isAdmin()) ? collect() : DB::table('products as p')
             ->leftJoinSub($locatedBalances, 'lb', 'lb.product_id', '=', 'p.id')
             ->when($productId, fn ($query) => $query->where('p.id', $productId))
             ->whereRaw('ABS(p.qt_initial - COALESCE(lb.located_quantity, 0)) >= 0.0005')
@@ -89,6 +93,14 @@ class StockCountController extends Controller
         $location = StockLocation::query()->findOrFail($data['location_id']);
         if (! $location->is_active || ! in_array($location->type, ['warehouse', 'shop'], true)) {
             throw ValidationException::withMessages(['location_id' => 'Choisis un entrepôt ou une boutique active.']);
+        }
+        if ($request->user()->isAccountant()) {
+            if ($location->type !== 'warehouse') {
+                throw ValidationException::withMessages(['location_id' => 'Le comptable peut inventorier uniquement un entrepôt.']);
+            }
+            if ((int) $data['counter_id'] !== (int) $request->user()->id) {
+                throw ValidationException::withMessages(['counter_id' => 'Le comptable doit saisir lui-même les quantités de l’entrepôt.']);
+            }
         }
 
         $count = DB::transaction(function () use ($request, $data, $location): StockCount {
@@ -135,12 +147,15 @@ class StockCountController extends Controller
 
         return redirect()->route('stock-control.counts.show', array_filter([
             'count' => $count, 'product_id' => $data['product_id'] ?? null,
-        ]))->with('success', 'Inventaire créé. Le comptage est à saisir par le responsable désigné.');
+        ]))->with('success', $request->user()->isAccountant()
+            ? 'Inventaire de l’entrepôt créé. Tu peux saisir les quantités réellement comptées.'
+            : 'Inventaire créé. Le comptage est à saisir par le responsable désigné.');
     }
 
     public function searchProducts(Request $request, StockCount $count): JsonResponse
     {
         abort_unless($count->status === 'in_progress' && (int) $count->counter_id === (int) $request->user()->id, 403);
+        abort_if($request->user()->isAccountant() && $count->location?->type !== 'warehouse', 403);
         $filters = $request->validate([
             'search' => ['nullable', 'string', 'min:2', 'max:120', 'required_without:product_id'],
             'product_id' => ['nullable', 'integer', 'exists:products,id', 'required_without:search'],
@@ -163,13 +178,14 @@ class StockCountController extends Controller
     {
         app(StockControlNotificationService::class)->markTabAsRead(auth()->user(), 'counts');
         $count->load(['location:id,name,code,responsible_user_id', 'creator:id,name', 'counter:id,name']);
+        abort_if(auth()->user()->isAccountant() && $count->location?->type !== 'warehouse', 403);
         $auditLogs = StockAuditLog::query()->with('user:id,name')
             ->where('subject_type', StockCount::class)->where('subject_id', $count->id)
             ->orderBy('created_at')->orderBy('id')->get();
         $lineCount = $count->lines()->whereNotNull('counted_quantity')->count();
         $count->setRelation('lines', $count->lines()->whereNotNull('counted_quantity')->with('product:id,name,price_market')->get());
         $canCount = $count->status === 'in_progress' && (int) $count->counter_id === (int) auth()->id();
-        $canApprove = $count->status === 'submitted';
+        $canApprove = $count->status === 'submitted' && ! auth()->user()->isAccountant();
         $approvalMessage = 'Le comptage est prêt à être enregistré sans validation supplémentaire.';
         $canSecondCount = false;
         $requiresSecondCount = false;
@@ -182,6 +198,7 @@ class StockCountController extends Controller
     public function printReceipt(StockCount $count): View
     {
         abort_unless($count->status === 'completed', 404);
+        abort_if(auth()->user()->isAccountant() && $count->location?->type !== 'warehouse', 403);
         $count->load(['location:id,name,code', 'creator:id,name', 'counter:id,name']);
         $count->setRelation('lines', $count->lines()->whereNotNull('counted_quantity')->with(['product:id,name', 'lot:id,lot_code'])->get());
         $columns = ['Produit', 'Lot', 'Stock attendu', 'Quantité comptée', 'Écart appliqué'];
@@ -211,6 +228,7 @@ class StockCountController extends Controller
     public function submit(Request $request, StockCount $count): RedirectResponse
     {
         abort_unless((int) $count->counter_id === (int) $request->user()->id, 403);
+        abort_if($request->user()->isAccountant() && $count->location?->type !== 'warehouse', 403);
         $data = $request->validate([
             'quantities' => ['required', 'array', 'min:1'],
             'quantities.*' => ['required', 'integer', 'min:0', 'max:999999999'],
