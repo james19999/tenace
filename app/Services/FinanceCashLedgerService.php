@@ -172,14 +172,21 @@ class FinanceCashLedgerService
         });
     }
 
-    public function expectedShopCash(string $from, string $to): int
+    public function expectedShopCash(int $locationId, string $from, string $to): int
     {
-        // Remittance expectations follow the DG dashboard's weekly turnover:
-        // delivered boutique orders, merchandise amount only, excluding wholesale.
-        return (int) Order::query()->where('status', 'delivered')
-            ->where('is_wholesale', false)
+        $ordersWithCashAtLocation = DB::table('finance_cash_movements as movements')
+            ->join('order_payments as payments', 'payments.id', '=', 'movements.source_id')
+            ->where('movements.stock_location_id', $locationId)
+            ->where('movements.movement_type', 'sale_cash_received')
+            ->where('movements.source_type', 'order_payment')
+            ->select('payments.order_id')->distinct();
+        $deliveredSales = (int) Order::query()->where('status', 'delivered')
             ->whereBetween('delivered_at', [$from.' 00:00:00', $to.' 23:59:59'])
-            ->sum('total');
+            ->whereIn('id', $ordersWithCashAtLocation)->sum('total');
+
+        // Keep the dashboard's delivered merchandise turnover as the expected
+        // amount, but subtract cash already handed over for this same period.
+        return max(0, $deliveredSales - $this->remittedForPeriod($locationId, $from, $to));
     }
 
     /**
@@ -204,15 +211,36 @@ class FinanceCashLedgerService
         $outflowDetails = (clone $periodMovements)->where('from_custody', 'shop')
             ->select('movement_type')->selectRaw('SUM(amount) as amount')->groupBy('movement_type')->get()
             ->map(fn ($row): array => ['movement_type' => $row->movement_type, 'amount' => (int) $row->amount])->values()->all();
+        $remittedAfterPeriod = $this->remittedAfterPeriod($locationId, $from, $to);
 
         return [
             'opening_balance' => $openingBalance,
             'period_inflows' => $inflows,
             'period_outflows' => $outflows,
-            'closing_balance' => max(0, $openingBalance + $inflows - $outflows),
+            'remitted_after_period' => $remittedAfterPeriod,
+            'closing_balance' => max(0, $openingBalance + $inflows - $outflows - $remittedAfterPeriod),
             'inflow_details' => $inflowDetails,
             'outflow_details' => $outflowDetails,
         ];
+    }
+
+    private function remittedAfterPeriod(int $locationId, string $from, string $to): int
+    {
+        return $this->remittedForPeriod($locationId, $from, $to, $to.' 23:59:59');
+    }
+
+    private function remittedForPeriod(int $locationId, string $from, string $to, ?string $after = null): int
+    {
+        return (int) FinanceCashMovement::query()
+            ->join('finance_cash_remittances as remittances', 'remittances.id', '=', 'finance_cash_movements.remittance_id')
+            ->where('remittances.stock_location_id', $locationId)
+            ->whereDate('remittances.period_start', '<=', $to)
+            ->whereDate('remittances.period_end', '>=', $from)
+            ->where('finance_cash_movements.movement_type', 'remittance_handover')
+            ->where('finance_cash_movements.from_custody', 'shop')
+            ->where('finance_cash_movements.to_custody', 'transit')
+            ->when($after, fn ($query) => $query->where('finance_cash_movements.occurred_at', '>', $after))
+            ->sum('finance_cash_movements.amount');
     }
 
     private function lockKey(string $custody, array $attributes): ?string

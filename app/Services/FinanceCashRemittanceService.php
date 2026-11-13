@@ -3,6 +3,7 @@
 namespace App\Services;
 
 use App\Models\FinanceCashRemittance;
+use App\Models\FinanceCashMovement;
 use App\Models\StockLocation;
 use App\Models\User;
 use App\Notifications\FinanceWorkflowNotification;
@@ -38,7 +39,7 @@ class FinanceCashRemittanceService
                 throw ValidationException::withMessages(['collector_id' => 'Le responsable de la caisse et la personne qui récupère les fonds doivent confirmer avec leurs comptes respectifs.']);
             }
 
-            $expected = max(0, $this->ledger->expectedShopCash($data['period_start'], $data['period_end']));
+            $expected = $this->ledger->expectedShopCash((int) $location->id, $data['period_start'], $data['period_end']);
             if ($expected !== (int) $data['counted_amount'] && ! trim((string) ($data['discrepancy_note'] ?? ''))) {
                 $counted = (int) $data['counted_amount'];
                 $difference = abs($expected - $counted);
@@ -151,36 +152,58 @@ class FinanceCashRemittanceService
                 throw ValidationException::withMessages(['bank_slip_reference' => 'Le bordereau bancaire doit être archivé et vérifié avant la confirmation du DG.']);
             }
             $sourceCustody = 'transit';
+            $alreadyHandedOver = (int) FinanceCashMovement::query()
+                ->where('remittance_id', $locked->id)
+                ->where('movement_type', 'remittance_handover')
+                ->where('from_custody', 'shop')
+                ->where('to_custody', 'transit')
+                ->sum('amount');
+            $handoverRemainder = max(0, (int) $locked->handed_over_amount - $alreadyHandedOver);
             if ($directDirectorReceipt) {
                 $shopBalance = $this->ledger->balance('shop', $locked->stock_location_id);
-                $availableBalance = $shopBalance;
-            } else {
-                $availableBalance = $this->ledger->balance('transit', $locked->stock_location_id, $locked->id);
-            }
-            if ($directDirectorReceipt && $locked->handed_over_amount > $availableBalance) {
-                $overage = $locked->handed_over_amount - $availableBalance;
-                if (! trim((string) ($discrepancyNote ?: $locked->discrepancy_note))) {
-                    throw ValidationException::withMessages(['discrepancy_note' => 'Explique le montant compté supérieur au solde suivi avant de confirmer la réception.']);
+                if ($handoverRemainder > $shopBalance) {
+                    $overage = $handoverRemainder - $shopBalance;
+                    if (! trim((string) ($discrepancyNote ?: $locked->discrepancy_note))) {
+                        throw ValidationException::withMessages(['discrepancy_note' => 'Explique le montant compté supérieur au solde suivi avant de confirmer la réception.']);
+                    }
+                    $this->ledger->record([
+                        'movement_type' => 'cash_count_overage', 'from_custody' => 'external', 'to_custody' => 'shop',
+                        'amount' => $overage, 'stock_location_id' => $locked->stock_location_id, 'remittance_id' => $locked->id,
+                        'source_type' => 'cash_remittance', 'source_id' => $locked->id,
+                        'source_key' => 'remittance:'.$locked->id.':count-overage', 'source_reference' => $locked->reference,
+                        'occurred_at' => now(), 'description' => 'Écart positif de comptage déclaré sur le bon : '.($discrepancyNote ?: $locked->discrepancy_note),
+                        'created_by' => $director->id,
+                    ]);
+                    $shopBalance += $overage;
                 }
-                $this->ledger->record([
-                    'movement_type' => 'cash_count_overage', 'from_custody' => 'external', 'to_custody' => 'shop',
-                    'amount' => $overage, 'stock_location_id' => $locked->stock_location_id, 'remittance_id' => $locked->id,
-                    'source_type' => 'cash_remittance', 'source_id' => $locked->id,
-                    'source_key' => 'remittance:'.$locked->id.':count-overage', 'source_reference' => $locked->reference,
-                    'occurred_at' => now(), 'description' => 'Écart positif de comptage déclaré sur le bon : '.($discrepancyNote ?: $locked->discrepancy_note),
-                    'created_by' => $director->id,
-                ]);
-                $availableBalance += $overage;
-            }
-            if ($directDirectorReceipt && $locked->handed_over_amount > 0) {
-                $this->ledger->record([
-                    'movement_type' => 'remittance_handover', 'from_custody' => 'shop', 'to_custody' => 'transit',
-                    'amount' => $locked->handed_over_amount, 'stock_location_id' => $locked->stock_location_id,
-                    'remittance_id' => $locked->id, 'source_type' => 'cash_remittance', 'source_id' => $locked->id,
-                    'source_key' => 'remittance:'.$locked->id.':handover-direct', 'source_reference' => $locked->reference,
-                    'occurred_at' => now(), 'description' => 'Remise remise directement au DG, sans signature du collecteur intermédiaire.',
-                    'created_by' => $director->id,
-                ]);
+                if ($handoverRemainder > 0) {
+                    $this->ledger->record([
+                        'movement_type' => 'remittance_handover', 'from_custody' => 'shop', 'to_custody' => 'transit',
+                        'amount' => $handoverRemainder, 'stock_location_id' => $locked->stock_location_id,
+                        'remittance_id' => $locked->id, 'source_type' => 'cash_remittance', 'source_id' => $locked->id,
+                        'source_key' => 'remittance:'.$locked->id.($alreadyHandedOver > 0 ? ':handover-direct-completion' : ':handover-direct'),
+                        'source_reference' => $locked->reference, 'occurred_at' => now(),
+                        'description' => 'Remise boutique remise au DG et débitée de la caisse boutique.',
+                        'created_by' => $director->id,
+                    ]);
+                }
+                $availableBalance = $this->ledger->balance('transit', $locked->stock_location_id, $locked->id);
+            } else {
+                if ($handoverRemainder > 0) {
+                    $shopBalance = $this->ledger->balance('shop', $locked->stock_location_id);
+                    if ($handoverRemainder > $shopBalance) {
+                        throw ValidationException::withMessages(['received_amount' => 'La caisse de la boutique ne contient pas le montant confié. La remise doit être vérifiée avant réception.']);
+                    }
+                    $this->ledger->record([
+                        'movement_type' => 'remittance_handover', 'from_custody' => 'shop', 'to_custody' => 'transit',
+                        'amount' => $handoverRemainder, 'stock_location_id' => $locked->stock_location_id,
+                        'remittance_id' => $locked->id, 'source_type' => 'cash_remittance', 'source_id' => $locked->id,
+                        'source_key' => 'remittance:'.$locked->id.':handover-confirmation-repair',
+                        'source_reference' => $locked->reference, 'occurred_at' => now(),
+                        'description' => 'Sortie de caisse boutique enregistrée à la confirmation de réception de la remise.',
+                        'created_by' => $director->id,
+                    ]);
+                }
                 $availableBalance = $this->ledger->balance('transit', $locked->stock_location_id, $locked->id);
             }
             if ($receivedAmount > $availableBalance) {

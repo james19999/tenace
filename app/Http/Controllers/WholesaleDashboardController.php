@@ -3,12 +3,15 @@
 namespace App\Http\Controllers;
 
 use App\Models\Orders\Order;
+use App\Models\FinanceCashMovement;
+use App\Services\FinanceCashLedgerService;
+use App\Services\StockModuleSettingsService;
 use Illuminate\Http\Request;
 use Illuminate\View\View;
 
 class WholesaleDashboardController extends Controller
 {
-    public function index(Request $request): View
+    public function index(Request $request, StockModuleSettingsService $settings, FinanceCashLedgerService $ledger): View
     {
         $base = fn () => Order::query()
             ->where('is_wholesale', true)
@@ -29,9 +32,24 @@ class WholesaleDashboardController extends Controller
             'revenue' => (int) $delivered($base())->where($notCancelled)->sum('subtotal'),
         ];
 
+        $wholesaleLocationId = $settings->rules()['wholesale_sales_location_id'] ?? null;
+        $cashSummary = [
+            'remitted' => 0,
+            'in_register' => 0,
+        ];
+        if ($wholesaleLocationId) {
+            $cashSummary['remitted'] = (int) FinanceCashMovement::query()
+                ->where('stock_location_id', $wholesaleLocationId)
+                ->where('movement_type', 'remittance_handover')
+                ->where('from_custody', 'shop')
+                ->where('to_custody', 'transit')
+                ->sum('amount');
+            $cashSummary['in_register'] = $ledger->balance('shop', (int) $wholesaleLocationId);
+        }
+
         $recentOrders = $base()->with('costumer')
             ->latest('date_order')->latest('id')->limit(8)->get();
 
-        return view('wholesale.dashboard', compact('summary', 'recentOrders'));
+        return view('wholesale.dashboard', compact('summary', 'cashSummary', 'recentOrders'));
     }
 }

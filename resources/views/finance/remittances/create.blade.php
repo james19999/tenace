@@ -35,9 +35,9 @@
 
                 <div class="remittance-cash-summary" aria-live="polite">
                     <div class="remittance-cash-item">
-                        <span>CA des commandes livrées sur la période</span>
+                        <span>Solde encore disponible à remettre</span>
                         <strong id="expected-amount">Calcul en cours…</strong>
-                        <small>Le montant suit le CA du tableau de bord : seules les commandes boutique livrées sont comptées. Les commandes annulées et les mouvements bruts de caisse sont exclus.</small>
+                        <small>Calculé pour cette boutique à partir des mouvements de caisse. Les remises déjà sorties sont déduites, même si tu consultes une période passée.</small>
                     </div>
                     <div class="remittance-cash-item">
                         <label for="counted-amount">Montant compté ensemble (F CFA)</label>
@@ -48,6 +48,7 @@
                         <div><span>Solde reporté avant la période</span><strong id="cash-opening">—</strong></div>
                         <div><span>Entrées de caisse pendant la période</span><strong id="cash-inflows">—</strong><small id="cash-inflow-details"></small></div>
                         <div><span>Sorties de caisse pendant la période</span><strong id="cash-outflows">—</strong><small id="cash-outflow-details"></small></div>
+                        <div><span>Remises sorties après cette période</span><strong id="cash-remitted-after">—</strong><small>Déduites du montant encore disponible</small></div>
                     </div>
                     <div class="remittance-difference" id="remittance-difference">Saisis le montant compté pour voir l’écart.</div>
                 </div>
@@ -86,7 +87,7 @@
 </div>
 
 <style>
-    .finance-page{max-width:1150px;padding:18px 22px 40px}.finance-page-heading{margin-bottom:18px}.finance-page-heading h1{font-weight:800;margin:8px 0}.finance-page-heading p{color:#758194}.finance-panel{padding:24px;background:#fff;border:1px solid #e1e5eb}.finance-form-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:16px}.finance-form-grid>label{font-weight:700;color:#465164}.finance-form-grid small{display:block;font-weight:400;color:#758194;margin-top:5px}.finance-form-wide{grid-column:1/-1}.remittance-cash-summary{grid-column:1/-1;display:grid;grid-template-columns:1fr 1fr;gap:0;border:1px solid #dce5dd;background:#f7fbf7}.remittance-cash-item{padding:18px 20px}.remittance-cash-item+ .remittance-cash-item{border-left:1px solid #dce5dd}.remittance-cash-item>span,.remittance-cash-item>label{display:block;color:#59677a;font-weight:700;margin:0 0 7px}.remittance-cash-item>strong{display:block;font-size:28px;line-height:1.25;color:#187b2a}.remittance-cash-item small{display:block;color:#758194;margin-top:6px}.remittance-breakdown{grid-column:1/-1;display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px;padding:12px 18px;border:1px solid #dce5dd;border-top:0;background:#fff}.remittance-breakdown-title{grid-column:1/-1;color:#59677a;font-size:12px}.remittance-breakdown>div{display:grid;align-content:start;gap:4px}.remittance-breakdown span{color:#758194;font-size:12px}.remittance-breakdown strong{color:#465164;font-size:16px}.remittance-breakdown small{color:#758194;font-size:11px;line-height:1.5}.remittance-difference{grid-column:1/-1;padding:12px 20px;border-top:1px solid #dce5dd;color:#536174;font-weight:700}.remittance-difference.is-match{color:#187b2a;background:#f1f8f2}.remittance-difference.is-shortage,.remittance-difference.is-overage{color:#a4510b;background:#fff8ed}.remittance-difference.is-error{color:#a82929;background:#fff3f3}.finance-signature-note{display:flex;gap:12px;background:#f5f8f5;padding:13px;margin:20px 0;color:#4f5b6a}.finance-signature-note .material-icons{color:#187b2a}@media(max-width:700px){.finance-page{padding:10px}.finance-panel{padding:16px}.finance-form-grid{grid-template-columns:1fr}.finance-form-wide{grid-column:auto}.remittance-cash-summary{grid-template-columns:1fr}.remittance-cash-item+.remittance-cash-item{border-left:0;border-top:1px solid #dce5dd}.remittance-cash-item>strong{font-size:24px}.remittance-breakdown{grid-template-columns:1fr}}
+    .finance-page{max-width:1150px;padding:18px 22px 40px}.finance-page-heading{margin-bottom:18px}.finance-page-heading h1{font-weight:800;margin:8px 0}.finance-page-heading p{color:#758194}.finance-panel{padding:24px;background:#fff;border:1px solid #e1e5eb}.finance-form-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:16px}.finance-form-grid>label{font-weight:700;color:#465164}.finance-form-grid small{display:block;font-weight:400;color:#758194;margin-top:5px}.finance-form-wide{grid-column:1/-1}.remittance-cash-summary{grid-column:1/-1;display:grid;grid-template-columns:1fr 1fr;gap:0;border:1px solid #dce5dd;background:#f7fbf7}.remittance-cash-item{padding:18px 20px}.remittance-cash-item+ .remittance-cash-item{border-left:1px solid #dce5dd}.remittance-cash-item>span,.remittance-cash-item>label{display:block;color:#59677a;font-weight:700;margin:0 0 7px}.remittance-cash-item>strong{display:block;font-size:28px;line-height:1.25;color:#187b2a}.remittance-cash-item small{display:block;color:#758194;margin-top:6px}.remittance-breakdown{grid-column:1/-1;display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px;padding:12px 18px;border:1px solid #dce5dd;border-top:0;background:#fff}.remittance-breakdown-title{grid-column:1/-1;color:#59677a;font-size:12px}.remittance-breakdown>div{display:grid;align-content:start;gap:4px}.remittance-breakdown span{color:#758194;font-size:12px}.remittance-breakdown strong{color:#465164;font-size:16px}.remittance-breakdown small{color:#758194;font-size:11px;line-height:1.5}.remittance-difference{grid-column:1/-1;padding:12px 20px;border-top:1px solid #dce5dd;color:#536174;font-weight:700}.remittance-difference.is-match{color:#187b2a;background:#f1f8f2}.remittance-difference.is-shortage,.remittance-difference.is-overage{color:#a4510b;background:#fff8ed}.remittance-difference.is-error{color:#a82929;background:#fff3f3}.finance-signature-note{display:flex;gap:12px;background:#f5f8f5;padding:13px;margin:20px 0;color:#4f5b6a}.finance-signature-note .material-icons{color:#187b2a}@media(max-width:700px){.finance-page{padding:10px}.finance-panel{padding:16px}.finance-form-grid{grid-template-columns:1fr}.finance-form-wide{grid-column:auto}.remittance-cash-summary{grid-template-columns:1fr}.remittance-cash-item+.remittance-cash-item{border-left:0;border-top:1px solid #dce5dd}.remittance-cash-item>strong{font-size:24px}.remittance-breakdown{grid-template-columns:1fr}}
 </style>
 <script>
     (() => {
@@ -98,6 +99,7 @@
         const cashOpeningOutput = document.getElementById('cash-opening');
         const cashInflowsOutput = document.getElementById('cash-inflows');
         const cashOutflowsOutput = document.getElementById('cash-outflows');
+        const cashRemittedAfterOutput = document.getElementById('cash-remitted-after');
         const cashInflowDetailsOutput = document.getElementById('cash-inflow-details');
         const cashOutflowDetailsOutput = document.getElementById('cash-outflow-details');
         const differenceOutput = document.getElementById('remittance-difference');
@@ -153,6 +155,7 @@
             cashOpeningOutput.textContent = '—';
             cashInflowsOutput.textContent = '—';
             cashOutflowsOutput.textContent = '—';
+            cashRemittedAfterOutput.textContent = '—';
             cashInflowDetailsOutput.textContent = '';
             cashOutflowDetailsOutput.textContent = '';
             renderDifference();
@@ -183,6 +186,7 @@
                 cashOpeningOutput.textContent = money(Number(result.cash_summary.opening_balance));
                 cashInflowsOutput.textContent = money(Number(result.cash_summary.period_inflows));
                 cashOutflowsOutput.textContent = money(Number(result.cash_summary.period_outflows));
+                cashRemittedAfterOutput.textContent = money(Number(result.cash_summary.remitted_after_period));
                 cashInflowDetailsOutput.textContent = formatDetails(result.cash_summary.inflow_details || []);
                 cashOutflowDetailsOutput.textContent = formatDetails(result.cash_summary.outflow_details || []);
                 renderDifference();
