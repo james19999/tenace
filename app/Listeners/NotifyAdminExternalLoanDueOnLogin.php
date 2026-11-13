@@ -9,6 +9,6 @@ class NotifyAdminExternalLoanDueOnLogin
 {
     public function handle(Login $event): void
     {
-        app(FinanceExternalLoanDueNotificationService::class)->notifyDueLoans($event->user);
+        app(FinanceExternalLoanDueNotificationService::class)->notifyDueLoans($event->user, onLogin: true);
     }
 }
