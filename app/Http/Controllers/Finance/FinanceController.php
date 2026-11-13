@@ -796,7 +796,7 @@ class FinanceController extends Controller
         $wholesaleLocationId = $this->wholesaleLocationId($user);
         if ($user->hasWholesaleAccess()) {
             $query->where(fn ($scope) => $scope->where('responsible_user_id', $user->id)
-                ->when($wholesaleLocationId, fn ($scope) => $scope->orWhereKey($wholesaleLocationId)));
+                ->when($wholesaleLocationId, fn ($scope) => $scope->orWhere('id', $wholesaleLocationId)));
         } elseif ($wholesaleLocationId) {
             $query->where('responsible_user_id', $user->id)->where('id', '<>', $wholesaleLocationId);
         } else {
