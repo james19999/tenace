@@ -177,7 +177,7 @@ class StockCountController extends Controller
     public function show(StockCount $count): View
     {
         app(StockControlNotificationService::class)->markTabAsRead(auth()->user(), 'counts');
-        $count->load(['location:id,name,code,responsible_user_id', 'creator:id,name', 'counter:id,name']);
+        $count->load(['location:id,name,code,type,responsible_user_id', 'creator:id,name', 'counter:id,name']);
         abort_if(auth()->user()->isAccountant() && $count->location?->type !== 'warehouse', 403);
         $auditLogs = StockAuditLog::query()->with('user:id,name')
             ->where('subject_type', StockCount::class)->where('subject_id', $count->id)
