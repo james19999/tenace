@@ -4,7 +4,6 @@ namespace App\Services;
 
 use App\Models\FinanceCashMovement;
 use App\Models\FinanceCashClosure;
-use App\Models\Orders\Order;
 use App\Models\StockLocation;
 use App\Models\User;
 use Illuminate\Support\Facades\DB;
@@ -174,19 +173,10 @@ class FinanceCashLedgerService
 
     public function expectedShopCash(int $locationId, string $from, string $to): int
     {
-        $ordersWithCashAtLocation = DB::table('finance_cash_movements as movements')
-            ->join('order_payments as payments', 'payments.id', '=', 'movements.source_id')
-            ->where('movements.stock_location_id', $locationId)
-            ->where('movements.movement_type', 'sale_cash_received')
-            ->where('movements.source_type', 'order_payment')
-            ->select('payments.order_id')->distinct();
-        $deliveredSales = (int) Order::query()->where('status', 'delivered')
-            ->whereBetween('delivered_at', [$from.' 00:00:00', $to.' 23:59:59'])
-            ->whereIn('id', $ordersWithCashAtLocation)->sum('total');
-
-        // Keep the dashboard's delivered merchandise turnover as the expected
-        // amount, but subtract cash already handed over for this same period.
-        return max(0, $deliveredSales - $this->remittedForPeriod($locationId, $from, $to));
+        // Use the physical cash balance. Remittances made during this period
+        // are already included in its outflows; only remittances made after
+        // the selected period need an extra deduction for historical reports.
+        return $this->shopCashSummary($locationId, $from, $to)['closing_balance'];
     }
 
     /**
