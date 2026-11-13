@@ -20,11 +20,13 @@ class CustomerServiceNotifications extends Component
     public bool $loginNotificationShown = false;
     public array $knownNotificationIds = [];
     public array $knownScheduledCourierOrderIds = [];
+    public array $knownWaitingCourierOrderIds = [];
 
     public function mount(): void
     {
         $this->knownNotificationIds = array_map('strval', session()->get($this->seenNotificationsSessionKey(), []));
         $this->knownScheduledCourierOrderIds = $this->scheduledCourierOrders()->modelKeys();
+        $this->knownWaitingCourierOrderIds = $this->waitingCourierOrders()->modelKeys();
     }
 
     public function showUnreadOnLogin(): void
@@ -65,6 +67,20 @@ class CustomerServiceNotifications extends Component
             $this->dispatchBrowserEvent('customer-service-notifications-push', [
                 'notification' => $this->notificationData($notification),
                 'unreadCount' => (clone $unread)->count(),
+                'playSound' => true,
+            ]);
+        } elseif (($waitingOrders = $this->waitingCourierOrders())->isNotEmpty()) {
+            $waitingCount = $waitingOrders->count();
+            $this->dispatchBrowserEvent('customer-service-notifications-push', [
+                'notification' => [
+                    'title' => 'Livraison(s) en attente',
+                    'message' => $waitingCount === 1
+                        ? 'Tu as une livraison en attente. Ouvre les notifications pour la consulter.'
+                        : 'Tu as '.$waitingCount.' livraisons en attente. Ouvre les notifications pour les consulter.',
+                    'url' => route('livrable'),
+                    'icon' => 'schedule',
+                ],
+                'unreadCount' => $waitingCount + $this->scheduledCourierOrders()->count(),
                 'playSound' => true,
             ]);
         } elseif (($courierOrders = $this->scheduledCourierOrders())->isNotEmpty()) {
@@ -127,6 +143,26 @@ class CustomerServiceNotifications extends Component
                 'unreadCount' => Auth::user()->unreadNotifications()
                     ->whereIn('type', $this->notificationTypes())
                     ->count() + $courierOrders->count(),
+                'playSound' => true,
+            ]);
+        }
+
+        $waitingOrders = $this->waitingCourierOrders();
+        $waitingOrderIds = array_map('strval', $waitingOrders->modelKeys());
+        $newWaitingOrderIds = array_values(array_diff($waitingOrderIds, array_map('strval', $this->knownWaitingCourierOrderIds)));
+        $this->knownWaitingCourierOrderIds = $waitingOrderIds;
+        if ($newWaitingOrderIds !== []) {
+            $newWaitingCount = count($newWaitingOrderIds);
+            $this->dispatchBrowserEvent('customer-service-notifications-push', [
+                'notification' => [
+                    'title' => 'Livraison(s) en attente',
+                    'message' => $newWaitingCount === 1
+                        ? 'Une de tes livraisons est maintenant en attente.'
+                        : $newWaitingCount.' de tes livraisons sont maintenant en attente.',
+                    'url' => route('livrable'),
+                    'icon' => 'schedule',
+                ],
+                'unreadCount' => $waitingOrders->count() + $this->scheduledCourierOrders()->count(),
                 'playSound' => true,
             ]);
         }
@@ -223,12 +259,30 @@ class CustomerServiceNotifications extends Component
         $unread = Auth::user()->unreadNotifications()
             ->whereIn('type', $this->notificationTypes());
         $courierOrders = $this->scheduledCourierOrders();
+        $waitingCourierOrders = $this->waitingCourierOrders();
 
         return view('livewire.customer-service-notifications', [
-            'notificationCount' => (clone $unread)->count() + $courierOrders->count(),
+            'notificationCount' => (clone $unread)->count() + $courierOrders->count() + $waitingCourierOrders->count(),
             'notifications' => (clone $unread)->latest()->limit(6)->get(),
             'courierScheduledOrders' => $courierOrders,
+            'waitingCourierOrders' => $waitingCourierOrders,
         ]);
+    }
+
+    protected function waitingCourierOrders()
+    {
+        $courier = Auth::user();
+        if ($courier?->user_type !== User::ROLE_LIVREUR || ! $courier->active) {
+            return Order::query()->whereRaw('1 = 0')->get();
+        }
+
+        return Order::query()
+            ->with('costumer')
+            ->where('user_id', (string) $courier->id)
+            ->where('status', 'ordered')
+            ->where('delivery_waiting', true)
+            ->orderByDesc('updated_at')
+            ->get();
     }
 
     protected function scheduledCourierOrders()

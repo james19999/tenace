@@ -1,4 +1,4 @@
-<li class="nav-item icon sc-global-notification" wire:init="showUnreadOnLogin" @if(Auth::user()->user_type !== 'LVS' || $courierScheduledOrders->isNotEmpty()) wire:poll.30s="checkForNewNotifications" @endif>
+<li class="nav-item icon sc-global-notification" wire:init="showUnreadOnLogin" @if(Auth::user()->user_type !== 'LVS' || $courierScheduledOrders->isNotEmpty() || $waitingCourierOrders->isNotEmpty()) wire:poll.30s="checkForNewNotifications" @endif>
     <button type="button" class="{{ $notificationCount > 0 ? 'has-unread' : '' }}" wire:click="toggle" aria-label="Notifications" aria-expanded="{{ $open ? 'true' : 'false' }}">
         <span class="material-icons">notifications</span>
         @if($notificationCount > 0)
@@ -10,9 +10,21 @@
         <section class="sc-global-notification-menu" aria-label="Notifications TENACOS">
             <header class="sc-global-notification-head">
                 <span class="sc-global-notification-title-icon"><span class="material-icons">notifications_active</span></span>
-                <span class="sc-global-notification-title"><strong>Notifications</strong><small>{{ Auth::user()->user_type === 'LVS' ? 'Courses programmées à prendre en charge' : 'Service client · Stocks · Rendez-vous · Comptabilité' }}</small></span>
+                <span class="sc-global-notification-title"><strong>Notifications</strong><small>{{ Auth::user()->user_type === 'LVS' ? 'Courses disponibles et livraisons en attente' : 'Service client · Stocks · Rendez-vous · Comptabilité' }}</small></span>
                 <span class="sc-global-notification-unread">{{ $notificationCount }} non lue(s)</span>
             </header>
+            @foreach($waitingCourierOrders as $waitingOrder)
+                <article class="sc-global-notification-courier-order">
+                    <a href="{{ route('livrableshow', $waitingOrder) }}">
+                        <span class="sc-global-notification-icon"><span class="material-icons">schedule</span></span>
+                        <span class="sc-global-notification-copy">
+                            <strong>Livraison {{ $waitingOrder->code ?: '#'.$waitingOrder->id }} · {{ $waitingOrder->costumer->name ?? 'Client' }}</strong>
+                            <small>Commande en attente · {{ $waitingOrder->updated_at?->diffForHumans() }}</small>
+                        </span>
+                    </a>
+                    <span class="sc-global-notification-courier-tag">En attente</span>
+                </article>
+            @endforeach
             @foreach($courierScheduledOrders as $courierOrder)
                 <article class="sc-global-notification-courier-order">
                     <a href="{{ route('livrable') }}">
@@ -34,11 +46,11 @@
                     <button type="button" wire:click="markAsRead('{{ $notification->id }}')" aria-label="Marquer comme lue" title="Marquer comme lue"><span class="material-icons">done</span></button>
                 </article>
             @empty
-                @if($courierScheduledOrders->isEmpty())
+                @if($courierScheduledOrders->isEmpty() && $waitingCourierOrders->isEmpty())
                     <div class="sc-global-notification-empty"><span class="material-icons">notifications_none</span><strong>Tout est à jour</strong><span>Aucune notification non lue.</span></div>
                 @endif
             @endforelse
-            <a class="sc-global-notification-footer" href="{{ $notifications->first()?->data['url'] ?? route(Auth::user()->user_type === 'LVS' ? 'livrable' : 'service-cases.index') }}">{{ Auth::user()->user_type === 'LVS' ? 'Voir les courses disponibles' : 'Ouvrir la notification' }}<span class="material-icons">arrow_forward</span></a>
+            <a class="sc-global-notification-footer" href="{{ $notifications->first()?->data['url'] ?? route(Auth::user()->user_type === 'LVS' ? 'livrable' : 'service-cases.index') }}">{{ Auth::user()->user_type === 'LVS' ? 'Ouvrir mon espace livreur' : 'Ouvrir la notification' }}<span class="material-icons">arrow_forward</span></a>
         </section>
     @endif
 

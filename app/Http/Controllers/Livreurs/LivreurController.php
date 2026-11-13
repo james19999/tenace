@@ -808,7 +808,12 @@ class LivreurController extends Controller
               ->where('user_id', (string) $user->id)
               ->where('status_order', true)
               ->where('status', 'ordered')
-              ->where('delivery_waiting', false)
+              ->where(function ($query): void {
+                  // A missing legacy flag means the delivery is still active.
+                  // Orders explicitly placed on hold never block another claim,
+                  // so a courier may keep any number of waiting deliveries.
+                  $query->where('delivery_waiting', false)->orWhereNull('delivery_waiting');
+              })
               ->exists();
 
           if ($hasDeliveryInProgress) {
