@@ -403,12 +403,6 @@
                         <span class="text">Mes commandes</span>
                     </a>
                 </li>
-                <li>
-                    <a href="{{ route('with-auth-user-list') }}" class="{{ $active('with-auth-user-list') }}">
-                        <span class="icon material-icons">money</span>
-                        <span class="text">Demande de virement</span>
-                    </a>
-                </li>
             @elseif (Auth::user()->user_type === \App\Models\User::ROLE_WHOLESALER)
                 @if(Auth::user()->isWholesaleShopResponsible())
                     <li><a href="{{ route('wholesaler.dashboard') }}" class="{{ $active('wholesaler.dashboard') }}"><span class="icon material-icons">dashboard</span><span class="text">Espace boutique grossiste</span></a></li>
