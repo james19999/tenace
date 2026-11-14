@@ -319,7 +319,7 @@
                             <div class="col">
                                 <h5 class="text-uppercase text-muted mb-0 card-title">Chiffre d’affaires hebdomadaire</h5>
                                 <span style="font-size: 130%" class="h1 font-weight-bold mb-0">{{ number_format((float) $totalOrdersThisWeek, 0, ',', ' ') }} XOF</span>
-                                <small class="d-block text-muted mt-2">Commandes boutique livrées cette semaine</small>
+                                <small class="d-block text-muted mt-2">Commandes livrées cette semaine · boutique et tournées</small>
                             </div>
                             <div class="col-auto col">
                                 <div class="btn btn-transparent-primary btn-lg btn-circle">
