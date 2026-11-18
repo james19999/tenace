@@ -18,8 +18,11 @@ class FinanceDirectorWalletController extends Controller
     {
         abort_unless($request->user()->isAdmin(), 403);
         $wallet = $service->openFor((int) $request->user()->id);
-        $service->syncAvailableRemuneration($wallet);
-        $summary = $service->summary($wallet);
+        $remunerationCompartmentBalance = $service->syncRemunerationCompartment($wallet);
+        $summary = array_merge($service->summary($wallet), [
+            'remuneration_compartment_balance' => $remunerationCompartmentBalance,
+            'remuneration_compartment_pending' => $remunerationCompartmentBalance - (int) $wallet->remuneration_compartment_synced_balance,
+        ]);
 
         return view('finance.director-wallet.index', $summary);
     }

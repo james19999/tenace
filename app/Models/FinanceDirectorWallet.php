@@ -8,9 +8,9 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class FinanceDirectorWallet extends Model
 {
-    protected $fillable = ['user_id', 'started_at'];
+    protected $fillable = ['user_id', 'started_at', 'remuneration_compartment_synced_balance'];
 
-    protected $casts = ['started_at' => 'datetime'];
+    protected $casts = ['started_at' => 'datetime', 'remuneration_compartment_synced_balance' => 'integer'];
 
     public function user(): BelongsTo
     {

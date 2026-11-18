@@ -2,7 +2,7 @@
 
 namespace App\Services;
 
-use App\Models\EmployeePayrollPeriod;
+use App\Models\FinanceCashCompartment;
 use App\Models\FinanceDirectorWallet;
 use App\Models\FinanceDirectorWalletCategory;
 use App\Models\FinanceDirectorWalletEntry;
@@ -23,7 +23,7 @@ class FinanceDirectorWalletService
     {
         $wallet->load('categories');
         $totals = $wallet->entries()->selectRaw(
-            "COALESCE(SUM(CASE WHEN entry_type IN ('opening','salary') THEN amount ELSE 0 END),0) as credits, COALESCE(SUM(CASE WHEN entry_type='withdrawal' THEN amount ELSE 0 END),0) as withdrawals"
+            "COALESCE(SUM(CASE WHEN entry_type IN ('opening','salary') THEN amount ELSE 0 END),0) as credits, COALESCE(SUM(CASE WHEN entry_type='withdrawal' THEN amount ELSE 0 END),0) as withdrawals, COALESCE(SUM(CASE WHEN entry_type='external_decrease' THEN amount ELSE 0 END),0) as external_decreases"
         )->first();
         $wallet->categories->each(function (FinanceDirectorWalletCategory $category) use ($wallet): void {
             $category->setAttribute('balance', (int) $wallet->entries()->where('category_id', $category->id)
@@ -36,37 +36,46 @@ class FinanceDirectorWalletService
             'categories' => $wallet->categories,
             'credits' => (int) $totals->credits,
             'withdrawals' => (int) $totals->withdrawals,
-            'balance' => (int) $totals->credits - (int) $totals->withdrawals,
+            'external_decreases' => (int) $totals->external_decreases,
+            'balance' => (int) $totals->credits - (int) $totals->withdrawals - (int) $totals->external_decreases,
+            'remuneration_compartment_imported_balance' => (int) $wallet->remuneration_compartment_synced_balance,
             'percentage_total' => (int) $wallet->categories->sum('percentage'),
             'opening_exists' => $wallet->entries()->where('entry_type', 'opening')->exists(),
             'entries' => $wallet->entries()->with('category')->latest('occurred_at')->latest('id')->paginate(15),
         ];
     }
 
-    public function syncAvailableRemuneration(FinanceDirectorWallet $wallet): int
+    public function syncRemunerationCompartment(FinanceDirectorWallet $wallet): int
     {
-        $periods = EmployeePayrollPeriod::query()->where('user_id', $wallet->user_id)
-            ->whereNotNull('available_at')->where('period_start', '>=', $wallet->started_at->copy()->startOfMonth())
-            ->where('salary_amount', '>', 0)->orderBy('period_start')->get();
-        $added = 0;
-        foreach ($periods as $period) {
-            $added += DB::transaction(function () use ($wallet, $period): int {
-                $locked = FinanceDirectorWallet::query()->lockForUpdate()->findOrFail($wallet->id);
-                $key = 'payroll-period:'.$period->id;
-                if ($locked->entries()->where('source_key', 'like', $key.':%')->exists()) {
-                    return 0;
-                }
-                $categories = $locked->categories()->lockForUpdate()->get();
-                if ($categories->isEmpty() || (int) $categories->sum('percentage') !== 100) {
-                    return 0;
-                }
-                $this->allocate($locked, $categories, (int) $period->salary_amount, 'salary', $key,
-                    'Rémunération DG · '.$period->period_start->translatedFormat('F Y'), $period->available_at, $wallet->user_id);
-                return (int) $period->salary_amount;
-            });
-        }
+        $compartment = FinanceCashCompartment::query()->where('key', 'dg_remuneration')->first();
+        $actualBalance = $compartment
+            ? (int) $compartment->entries()->selectRaw(
+                "COALESCE(SUM(CASE WHEN entry_type='allocation' THEN amount ELSE -amount END),0) as balance"
+            )->value('balance')
+            : 0;
 
-        return $added;
+        return DB::transaction(function () use ($wallet, $actualBalance): int {
+            $locked = FinanceDirectorWallet::query()->lockForUpdate()->findOrFail($wallet->id);
+            $previous = (int) $locked->remuneration_compartment_synced_balance;
+            $delta = $actualBalance - $previous;
+            if ($delta === 0) {
+                return $actualBalance;
+            }
+            $categories = $locked->categories()->lockForUpdate()->get();
+            if ($categories->isEmpty() || (int) $categories->sum('percentage') !== 100) {
+                return $actualBalance;
+            }
+
+            if ($delta > 0) {
+                $this->allocate($locked, $categories, $delta, 'salary', 'dg-compartment-sync:'.\Illuminate\Support\Str::uuid(),
+                    'Solde synchronisé depuis Répartition des fonds · Rémunération du DG', now(), $wallet->user_id);
+            } else {
+                $this->deductCompartmentDecrease($locked, $categories, abs($delta), $wallet->user_id);
+            }
+            $locked->update(['remuneration_compartment_synced_balance' => max(0, $actualBalance)]);
+
+            return $actualBalance;
+        });
     }
 
     public function recordCredit(FinanceDirectorWallet $wallet, int $amount, string $type, string $sourceKey, string $description, int $actorId): void
@@ -129,6 +138,52 @@ class FinanceDirectorWalletService
                 'category_id' => $category->id, 'entry_type' => $type, 'amount' => $part,
                 'source_key' => $sourceKey.':'.$category->id, 'description' => $description,
                 'occurred_at' => $occurredAt, 'created_by' => $actorId,
+            ]);
+        }
+    }
+
+    private function deductCompartmentDecrease(FinanceDirectorWallet $wallet, $categories, int $amount, int $actorId): void
+    {
+        $balances = [];
+        $total = 0;
+        foreach ($categories as $category) {
+            $balance = (int) $wallet->entries()->where('category_id', $category->id)->selectRaw(
+                "COALESCE(SUM(CASE WHEN entry_type IN ('opening','salary') THEN amount ELSE -amount END),0) as balance"
+            )->value('balance');
+            $balances[] = [$category, max(0, $balance)];
+            $total += max(0, $balance);
+        }
+        $deduction = $amount;
+        $weightTotal = $total > 0 ? $total : (int) $categories->sum('percentage');
+        if ($weightTotal <= 0) {
+            return;
+        }
+        $remaining = $deduction;
+        $parts = [];
+        $remainders = [];
+        foreach ($balances as [$category, $balance]) {
+            $weight = $total > 0 ? $balance : (int) $category->percentage;
+            $weighted = $deduction * $weight;
+            $part = intdiv($weighted, $weightTotal);
+            $parts[] = [$category, $part];
+            if ($weight > 0) {
+                $remainders[] = ['index' => count($parts) - 1, 'fraction' => $weighted % $weightTotal, 'id' => $category->id];
+            }
+            $remaining -= $part;
+        }
+        usort($remainders, fn ($a, $b) => [$b['fraction'], $a['id']] <=> [$a['fraction'], $b['id']]);
+        for ($index = 0; $index < $remaining; $index++) {
+            $parts[$remainders[$index]['index']][1]++;
+        }
+
+        foreach ($parts as [$category, $part]) {
+            if ($part <= 0) {
+                continue;
+            }
+            $wallet->entries()->create([
+                'category_id' => $category->id, 'entry_type' => 'external_decrease', 'amount' => $part,
+                'source_key' => 'dg-compartment-decrease:'.\Illuminate\Support\Str::uuid().':'.$category->id,
+                'description' => 'Baisse synchronisée du solde Rémunération du DG', 'occurred_at' => now(), 'created_by' => $actorId,
             ]);
         }
     }
