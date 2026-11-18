@@ -152,6 +152,12 @@ Route::middleware(['auth'])->group(function () {
         Route::get('/gestion', [\App\Http\Controllers\Finance\FinanceManagementController::class, 'index'])->middleware('role:ADMINUSER,COMPTABLE')->name('management.index');
         Route::get('/repartition', [\App\Http\Controllers\Finance\FinanceCashCompartmentsController::class, 'index'])->middleware('role:ADMINUSER,COMPTABLE')->name('compartments.index');
         Route::post('/repartition', [\App\Http\Controllers\Finance\FinanceCashCompartmentsController::class, 'update'])->middleware('role:ADMINUSER')->name('compartments.update');
+        Route::get('/portefeuille-dg', [\App\Http\Controllers\Finance\FinanceDirectorWalletController::class, 'index'])->middleware('role:ADMINUSER')->name('director-wallet.index');
+        Route::post('/portefeuille-dg/solde-initial', [\App\Http\Controllers\Finance\FinanceDirectorWalletController::class, 'storeOpening'])->middleware('role:ADMINUSER')->name('director-wallet.opening');
+        Route::post('/portefeuille-dg/categories', [\App\Http\Controllers\Finance\FinanceDirectorWalletController::class, 'storeCategory'])->middleware('role:ADMINUSER')->name('director-wallet.categories.store');
+        Route::put('/portefeuille-dg/categories/repartition', [\App\Http\Controllers\Finance\FinanceDirectorWalletController::class, 'updatePercentages'])->middleware('role:ADMINUSER')->name('director-wallet.categories.update');
+        Route::delete('/portefeuille-dg/categories/{category}', [\App\Http\Controllers\Finance\FinanceDirectorWalletController::class, 'destroyCategory'])->middleware('role:ADMINUSER')->name('director-wallet.categories.destroy');
+        Route::post('/portefeuille-dg/retraits', [\App\Http\Controllers\Finance\FinanceDirectorWalletController::class, 'withdraw'])->middleware('role:ADMINUSER')->name('director-wallet.withdraw');
         Route::post('/gestion/budgets', [\App\Http\Controllers\Finance\FinanceManagementController::class, 'storeBudget'])->middleware('role:ADMINUSER,COMPTABLE')->name('management.budgets.store');
         Route::post('/gestion/avances', [\App\Http\Controllers\Finance\FinanceManagementController::class, 'storeAdvance'])->middleware('role:ADMINUSER')->name('management.advances.store');
         Route::post('/gestion/avances/{advance}/annuler', [\App\Http\Controllers\Finance\FinanceManagementController::class, 'cancelSalaryAdvance'])->middleware('role:ADMINUSER')->name('management.advances.cancel');
