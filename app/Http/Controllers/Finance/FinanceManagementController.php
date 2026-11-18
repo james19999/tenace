@@ -55,6 +55,8 @@ class FinanceManagementController extends Controller
         $budgets->each(function (FinanceBudget $budget): void {
             $budget->actual_amount = (int) DB::table('finance_expense_payments as payments')
                 ->join('finance_expense_requests as requests', 'requests.id', '=', 'payments.expense_request_id')
+                ->whereNotExists(fn ($voided) => $voided->selectRaw('1')->from('finance_staff_advances as advances')
+                    ->whereColumn('advances.finance_expense_payment_id', 'payments.id')->whereNotNull('advances.voided_at'))
                 ->where('requests.category_name', $budget->category_name)
                 ->where(fn ($scope) => $scope->whereNull('requests.staff_advance_type')->orWhere('requests.staff_advance_type', '<>', 'loan'))
                 ->when($budget->stock_location_id, fn ($query) => $query->where('requests.stock_location_id', $budget->stock_location_id), fn ($query) => $query->whereNull('requests.stock_location_id'))
@@ -72,6 +74,10 @@ class FinanceManagementController extends Controller
             ->latest('granted_on')->paginate(20, ['*'], 'advance_page')->withQueryString();
         $pendingEmployeeAdvances = FinanceExpenseRequest::query()->with(['staffMember', 'requester'])
             ->whereIn('staff_advance_type', ['salary_advance', 'loan'])->whereIn('status', ['awaiting_finance', 'awaiting_director'])->latest('submitted_at')->paginate(10, ['*'], 'staff_advance_page')->withQueryString();
+        $cancelableSalaryAdvances = FinanceExpenseRequest::query()->with('staffMember')
+            ->where('staff_advance_type', 'salary_advance')->where('paid_amount', 0)
+            ->whereIn('status', ['awaiting_finance', 'awaiting_director', 'authorized_to_pay'])
+            ->latest('submitted_at')->limit(30)->get();
         $loansToDisburse = FinanceExpenseRequest::query()->with('staffMember')
             ->where('staff_advance_type', 'loan')->whereIn('status', ['authorized_to_pay', 'partially_paid'])
             ->latest('director_decided_at')->paginate(10, ['*'], 'loan_disbursement_page')->withQueryString();
@@ -102,6 +108,7 @@ class FinanceManagementController extends Controller
             'salaryPeriods' => EmployeePayrollPeriod::query()->with('employee')->orderByDesc('period_start')->limit(100)->get(),
             'advances' => $advances,
             'pendingEmployeeAdvances' => $pendingEmployeeAdvances,
+            'cancelableSalaryAdvances' => $cancelableSalaryAdvances,
             'loansToDisburse' => $loansToDisburse,
             'purchaseRequests' => $purchaseRequests,
             'purchaseSetting' => $purchaseSetting,
@@ -139,7 +146,13 @@ class FinanceManagementController extends Controller
             'payroll_period_id' => ['nullable', 'required_if:advance_type,salary_advance', 'integer', 'exists:employee_payroll_periods,id'],
             'repayment_method' => ['nullable', 'required_if:advance_type,loan', Rule::in(['fixed_amount', 'salary_percent'])],
             'repayment_value' => ['nullable', 'required_if:advance_type,loan', 'numeric', 'min:0.01', 'max:1000000000'],
+            'submission_key' => ['required', 'uuid'],
         ]);
+        $existingRequest = FinanceExpenseRequest::query()->where('submission_key', $data['submission_key'])->first();
+        if ($existingRequest) {
+            abort_unless((int) $existingRequest->requested_by === (int) $request->user()->id, 403);
+            return back()->with('info', 'Cette avance a déjà été enregistrée. Consulte son dossier dans le suivi des avances.');
+        }
         if (($data['advance_type'] ?? null) === 'loan') {
             $max = $data['repayment_method'] === 'salary_percent' ? 100 : 1000000000;
             if ((float) $data['repayment_value'] > $max || ($data['repayment_method'] === 'fixed_amount' && floor((float) $data['repayment_value']) !== (float) $data['repayment_value'])) {
@@ -154,7 +167,7 @@ class FinanceManagementController extends Controller
                 ->findOrFail($data['payroll_period_id']);
             $alreadyPaid = (int) $payrollPeriod->payments()->where('kind', 'salary')->sum('amount');
             $alreadyAdvanced = (int) FinanceStaffAdvance::query()
-                ->where('payroll_period_id', $payrollPeriod->id)
+                ->active()->where('payroll_period_id', $payrollPeriod->id)
                 ->sum('amount');
             $pendingAdvances = (int) FinanceExpenseRequest::query()
                 ->where('staff_payroll_period_id', $payrollPeriod->id)
@@ -177,11 +190,86 @@ class FinanceManagementController extends Controller
             'staff_payroll_period_id' => $payrollPeriod?->id,
             'staff_repayment_method' => $data['repayment_method'] ?? null,
             'staff_repayment_value' => $data['repayment_value'] ?? null,
+            'submission_key' => $data['submission_key'],
         ], $request->user(), $request->user()->isAdmin());
 
         return back()->with('success', $request->user()->isAdmin()
             ? ($data['advance_type'] === 'loan' ? 'Prêt autorisé. Enregistre sa remise réelle ; le solde à récupérer sera suivi séparément des dépenses.' : 'Avance autorisée par le DG. Enregistre ensuite son paiement pour mettre à jour la caisse et le suivi du salarié.')
             : 'Demande d’avance transmise au circuit de validation. Elle sera inscrite au suivi après son paiement autorisé.');
+    }
+
+    public function cancelSalaryAdvance(Request $request, FinanceStaffAdvance $advance, FinanceCashLedgerService $ledger, FinanceAuditService $audit): RedirectResponse
+    {
+        abort_unless($request->user()->isAdmin(), 403);
+        $data = $request->validate([
+            'reason' => ['required', 'string', 'min:5', 'max:2000'],
+            'cash_returned' => ['required', 'accepted'],
+        ]);
+
+        DB::transaction(function () use ($advance, $data, $request, $ledger, $audit): void {
+            $locked = FinanceStaffAdvance::query()->lockForUpdate()->findOrFail($advance->id);
+            abort_unless($locked->advance_type === 'salary_advance', 422, 'Seules les avances sur salaire peuvent être corrigées depuis cette page.');
+            abort_if($locked->voided_at, 409, 'Cette avance a déjà été annulée.');
+            abort_if($locked->repayments()->exists(), 409, 'Cette avance a déjà des remboursements ; elle ne peut pas être annulée ici.');
+
+            $payment = $locked->financeExpensePayment;
+            $originalMovement = $payment
+                ? FinanceCashMovement::query()->where('source_id', $payment->id)->whereIn('source_type', ['expense_payment', 'staff_loan_disbursement'])->first()
+                : $locked->employeePayrollPayment?->cashMovement;
+            abort_unless($originalMovement
+                && $originalMovement->from_custody === 'general_cash'
+                && $originalMovement->to_custody === 'external'
+                && (int) $originalMovement->amount === (int) $locked->amount, 409,
+                'Le décaissement d’origine est introuvable ou ne correspond pas au montant. Aucun changement n’a été effectué.');
+
+            $before = $locked->only(['voided_at', 'voided_by', 'void_reason', 'reversal_cash_movement_id']);
+            $reversal = $ledger->record([
+                'movement_type' => 'salary_advance_reversal',
+                'from_custody' => 'external',
+                'to_custody' => 'general_cash',
+                'amount' => (int) $locked->amount,
+                'source_type' => 'salary_advance_reversal',
+                'source_id' => $locked->id,
+                'source_key' => 'salary-advance-reversal:'.$locked->id,
+                'source_reference' => $locked->reference,
+                'occurred_at' => now(),
+                'description' => 'Retour en caisse du montant de l’avance '.$locked->reference.' · Motif : '.$data['reason'],
+                'metadata' => ['original_movement_id' => $originalMovement->id, 'advance_id' => $locked->id],
+                'created_by' => $request->user()->id,
+            ]);
+            $locked->forceFill([
+                'voided_at' => now(),
+                'voided_by' => $request->user()->id,
+                'void_reason' => $data['reason'],
+                'reversal_cash_movement_id' => $reversal->id,
+            ])->save();
+            $audit->record($locked, 'staff_advance_voided', $before, $locked->only(['voided_at', 'voided_by', 'void_reason', 'reversal_cash_movement_id']), $data['reason']);
+        });
+
+        return back()->with('success', 'L’avance a été annulée avec une écriture de retour en caisse. Le solde salarial est recalculé et l’opération reste dans l’audit.');
+    }
+
+    public function cancelUnpaidSalaryAdvance(Request $request, FinanceExpenseRequest $expense, FinanceAuditService $audit): RedirectResponse
+    {
+        abort_unless($request->user()->isAdmin(), 403);
+        $data = $request->validate(['reason' => ['required', 'string', 'min:5', 'max:2000']]);
+
+        DB::transaction(function () use ($expense, $data, $audit): void {
+            $locked = FinanceExpenseRequest::query()->lockForUpdate()->findOrFail($expense->id);
+            abort_unless($locked->staff_advance_type === 'salary_advance', 422, 'Cette action concerne uniquement les avances sur salaire.');
+            abort_unless((int) $locked->paid_amount === 0 && in_array($locked->status, ['awaiting_finance', 'awaiting_director', 'authorized_to_pay'], true), 409,
+                'Cette avance a déjà été payée ou ne peut plus être annulée ici.');
+
+            $before = $locked->only(['status', 'cancellation_reason', 'director_decided_by', 'director_decided_at']);
+            $locked->status = 'cancelled';
+            $locked->cancellation_reason = $data['reason'];
+            $locked->director_decided_by = auth()->id();
+            $locked->director_decided_at = now();
+            $locked->save();
+            $audit->record($locked, 'staff_advance_request_cancelled', $before, $locked->only(['status', 'cancellation_reason', 'director_decided_by', 'director_decided_at']), $data['reason']);
+        });
+
+        return back()->with('success', 'La demande d’avance a été annulée. Le montant réservé est de nouveau disponible dans le suivi du salaire.');
     }
 
     public function decideEmployeeAdvance(Request $request, FinanceExpenseRequest $expense, FinanceAuditService $audit): RedirectResponse

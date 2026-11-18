@@ -266,6 +266,8 @@ class FinanceProfitabilityController extends Controller
         $operatingExpenseQuery = DB::table('finance_expense_payments as p')
             ->join('finance_expense_requests as e', 'e.id', '=', 'p.expense_request_id')
             ->whereBetween('p.paid_at', [$from->copy()->startOfDay(), $to->copy()->endOfDay()])
+            ->whereNotExists(fn ($voided) => $voided->selectRaw('1')->from('finance_staff_advances as a')
+                ->whereColumn('a.finance_expense_payment_id', 'p.id')->whereNotNull('a.voided_at'))
             ->whereNull('e.commission_user_id')
             ->where(fn ($query) => $query->whereNull('e.staff_advance_type')->orWhere('e.staff_advance_type', '<>', 'loan'))
             ->whereRaw("LOWER(e.category_name) NOT LIKE '%achat de stock%' AND LOWER(e.category_name) NOT LIKE '%marchandise%' AND LOWER(e.category_name) NOT LIKE '%approvisionnement%' AND LOWER(e.category_name) NOT LIKE '%investissement%' AND LOWER(e.category_name) NOT LIKE '%immobilisation%' AND LOWER(e.category_name) NOT LIKE '%achat de matériel%' AND LOWER(e.category_name) NOT LIKE '%retrait%' AND LOWER(e.category_name) NOT LIKE '%prélèvement%' AND LOWER(e.category_name) NOT LIKE '%emprunt%' AND LOWER(e.category_name) NOT LIKE '%tontine%' AND LOWER(e.category_name) NOT LIKE '%impôt sur le bénéfice%'");

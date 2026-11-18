@@ -154,6 +154,8 @@ Route::middleware(['auth'])->group(function () {
         Route::post('/repartition', [\App\Http\Controllers\Finance\FinanceCashCompartmentsController::class, 'update'])->middleware('role:ADMINUSER')->name('compartments.update');
         Route::post('/gestion/budgets', [\App\Http\Controllers\Finance\FinanceManagementController::class, 'storeBudget'])->middleware('role:ADMINUSER,COMPTABLE')->name('management.budgets.store');
         Route::post('/gestion/avances', [\App\Http\Controllers\Finance\FinanceManagementController::class, 'storeAdvance'])->middleware('role:ADMINUSER')->name('management.advances.store');
+        Route::post('/gestion/avances/{advance}/annuler', [\App\Http\Controllers\Finance\FinanceManagementController::class, 'cancelSalaryAdvance'])->middleware('role:ADMINUSER')->name('management.advances.cancel');
+        Route::post('/gestion/demandes-avance/{expense}/annuler', [\App\Http\Controllers\Finance\FinanceManagementController::class, 'cancelUnpaidSalaryAdvance'])->middleware('role:ADMINUSER')->name('management.advance-requests.cancel');
         Route::post('/gestion/avances-employe/{expense}/decision', [\App\Http\Controllers\Finance\FinanceManagementController::class, 'decideEmployeeAdvance'])->middleware('role:ADMINUSER')->name('management.employee-advances.decide');
         Route::post('/gestion/materiel/responsable', [\App\Http\Controllers\Finance\FinanceEquipmentPurchaseController::class, 'setResponsible'])->middleware('role:ADMINUSER')->name('management.purchases.responsible');
         Route::post('/gestion/materiel/{purchase}/autoriser-fonds', [\App\Http\Controllers\Finance\FinanceEquipmentPurchaseController::class, 'authorizeFunds'])->middleware('role:ADMINUSER')->name('management.purchases.authorize');

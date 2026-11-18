@@ -3,6 +3,7 @@
 @section('content')
 <main class="employee-self-service">
     @if(session('success'))<div class="alert alert-success">{{ session('success') }}</div>@endif
+    @if(session('info'))<div class="alert alert-info">{{ session('info') }}</div>@endif
     @if($errors->any())<div class="alert alert-danger"><ul class="mb-0">@foreach($errors->all() as $error)<li>{{ $error }}</li>@endforeach</ul></div>@endif
     <header class="ess-heading"><div><span>MON ESPACE PERSONNEL</span><h1>{{ $activePage === 'purchases' ? 'Achats de matériel' : 'Bonjour '.$employee->name }}</h1><p>{{ $activePage === 'purchases' ? 'Envoie les besoins d’achat au DG, puis joins les reçus après avoir reçu les fonds.' : 'Ton salaire, tes demandes et tes remboursements réunis au même endroit.' }}</p></div><div class="ess-heading-actions"><small><span class="material-icons" aria-hidden="true">storefront</span>{{ $employeeShopLocation?->name ?? 'Boutique non renseignée' }}</small>@if($activePage === 'payroll')<a class="ess-primary-link" href="#ess-new-advance"><span class="material-icons" aria-hidden="true">add</span>Faire une demande</a>@endif</div></header>
 
@@ -27,7 +28,7 @@
     </section>
 
     <section class="ess-card ess-request-card" id="ess-new-advance"><div class="ess-card-head"><span class="ess-section-icon material-icons" aria-hidden="true">request_quote</span><div><span class="ess-section-kicker">BESOIN D’ARGENT</span><h2>Demander une avance ou un prêt</h2><p>Choisis le type de demande et indique le montant. La Direction te répondra ici.</p></div></div>
-        <form class="ess-request-form" method="POST" action="{{ route('employees.self-service.advances.store') }}">@csrf
+        <form class="ess-request-form" method="POST" action="{{ route('employees.self-service.advances.store') }}" onsubmit="const b=this.querySelector('button:not([type]),button[type=submit]');if(b){b.disabled=true}return true">@csrf<input type="hidden" name="submission_key" value="{{ (string) \Illuminate\Support\Str::uuid() }}">
             <label>Type de demande<select class="form-control" name="advance_type" id="ess-advance-type" required><option value="salary_advance">Avance sur salaire</option><option value="loan">Prêt à rembourser séparément</option></select></label>
             <label>Montant demandé (F CFA)<input class="form-control" id="ess-advance-amount" data-salary-max="{{ $availableForAdvance }}" type="number" name="amount" min="1" max="{{ $availableForAdvance ?: '' }}" step="1" required><small id="ess-advance-cap">@if($profile->monthly_salary && $profile->salary_effective_from)Maximum sur salaire : {{ number_format($availableForAdvance,0,',',' ') }} F CFA.@elseLe salaire n’est pas encore renseigné ; une avance sur salaire ne pourra pas être demandée.@endif</small></label>
             <label>Motif<textarea class="form-control" name="reason" rows="3" maxlength="2000" required placeholder="Explique brièvement le motif de ta demande"></textarea></label>
@@ -75,7 +76,7 @@
                     $loanDeducted = (int) $period->payments->where('kind', 'salary')->sum('loan_deduction_amount');
                     $salaryNetPaid = (int) $period->payments->where('kind', 'salary')->sum(fn ($payment) => $payment->net_amount ?? $payment->amount);
                     $linkedAdvancePaymentIds = $period->staffAdvances->pluck('employee_payroll_payment_id')->filter()->map(fn ($id) => (int) $id)->all();
-                    $advancePaid = (int) $period->staffAdvances->where('advance_type', 'salary_advance')->sum('amount') + (int) $period->payments->where('kind', 'advance')->whereNotIn('id', $linkedAdvancePaymentIds)->sum('amount');
+                    $advancePaid = (int) $period->staffAdvances->where('advance_type', 'salary_advance')->whereNull('voided_at')->sum('amount') + (int) $period->payments->where('kind', 'advance')->whereNotIn('id', $linkedAdvancePaymentIds)->sum('amount');
                 @endphp
                 <tr><td>{{ $period->period_start->translatedFormat('F Y') }}</td><td>{{ number_format($period->salary_amount,0,',',' ') }} F @if($period->carry_forward_in>0)<small class="d-block">dont {{ number_format($period->carry_forward_in,0,',',' ') }} F reportés</small>@endif</td><td>{{ number_format($advancePaid,0,',',' ') }} F</td><td>{{ number_format($loanDeducted,0,',',' ') }} F</td><td>{{ number_format($salaryNetPaid,0,',',' ') }} F</td><td><strong>{{ number_format(max(0,$period->salary_amount-$salaryPaid-$advancePaid-$period->carried_forward_out),0,',',' ') }} F</strong></td></tr>
             @empty<tr><td colspan="6" class="ess-empty">Aucun mois de salaire n’est encore configuré dans ton dossier.</td></tr>@endforelse

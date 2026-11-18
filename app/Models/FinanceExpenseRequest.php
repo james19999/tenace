@@ -16,6 +16,7 @@ class FinanceExpenseRequest extends Model
         'paid_amount', 'paid_at', 'paid_by', 'cancellation_reason',
         'staff_user_id', 'staff_advance_type', 'staff_payroll_period_id', 'staff_repayment_method', 'staff_repayment_value', 'commission_user_id', 'commission_period_start', 'commission_period_end',
         'receipt_paths', 'receipts_submitted_at', 'receipt_received_at', 'receipt_received_by',
+        'submission_key',
     ];
 
     protected $casts = [

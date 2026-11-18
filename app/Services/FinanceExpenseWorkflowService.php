@@ -15,6 +15,7 @@ use App\Notifications\FinanceWorkflowNotification;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Notification;
 use Illuminate\Support\Str;
+use Illuminate\Database\QueryException;
 use Illuminate\Validation\ValidationException;
 
 class FinanceExpenseWorkflowService
@@ -29,6 +30,13 @@ class FinanceExpenseWorkflowService
 
     public function submit(array $data, User $requester, bool $directlyAuthorizedByDirector = false, bool $notifyCashier = true, bool $requiresDirectorReview = false): FinanceExpenseRequest
     {
+        if (! empty($data['submission_key'])) {
+            $existing = FinanceExpenseRequest::query()->where('submission_key', $data['submission_key'])->first();
+            if ($existing) {
+                abort_unless((int) $existing->requested_by === (int) $requester->id, 403);
+                return $existing;
+            }
+        }
         abort_if($directlyAuthorizedByDirector && ! $requester->isAdmin(), 403);
         abort_if($requiresDirectorReview && ! $requester->isAdmin(), 403);
         if ($requester->isManager() && empty($data['stock_location_id']) && empty($data['staff_user_id'])) {
@@ -46,6 +54,7 @@ class FinanceExpenseWorkflowService
 
         $accountantRequestNeedsDirector = $requester->isAccountant() && empty($data['staff_advance_type']);
 
+        try {
         return DB::transaction(function () use ($data, $requester, $directlyAuthorizedByDirector, $notifyCashier, $requiresDirectorReview, $accountantRequestNeedsDirector): FinanceExpenseRequest {
             $category = ! empty($data['category_id'])
                 ? TypeExpensive::query()->findOrFail($data['category_id'])
@@ -82,6 +91,7 @@ class FinanceExpenseWorkflowService
                 'staff_payroll_period_id' => $data['staff_payroll_period_id'] ?? null,
                 'staff_repayment_method' => $data['staff_repayment_method'] ?? null,
                 'staff_repayment_value' => $data['staff_repayment_value'] ?? null,
+                'submission_key' => $data['submission_key'] ?? null,
                 'commission_user_id' => $data['commission_user_id'] ?? null,
                 'commission_period_start' => $data['commission_period_start'] ?? null,
                 'commission_period_end' => $data['commission_period_end'] ?? null,
@@ -134,6 +144,17 @@ class FinanceExpenseWorkflowService
 
             return $expense->fresh();
         });
+        } catch (QueryException $exception) {
+            if (! empty($data['submission_key'])) {
+                $existing = FinanceExpenseRequest::query()->where('submission_key', $data['submission_key'])->first();
+                if ($existing) {
+                    abort_unless((int) $existing->requested_by === (int) $requester->id, 403);
+                    return $existing;
+                }
+            }
+
+            throw $exception;
+        }
     }
 
     private function compartmentKeyForExpense(string $categoryName, array $data, User $requester): string
@@ -313,7 +334,7 @@ class FinanceExpenseWorkflowService
                     ->findOrFail($locked->staff_payroll_period_id);
                 $alreadyPaid = (int) $payrollPeriod->payments()->sum('amount');
                 $alreadyAdvanced = (int) \App\Models\FinanceStaffAdvance::query()
-                    ->where('payroll_period_id', $payrollPeriod->id)
+                    ->active()->where('payroll_period_id', $payrollPeriod->id)
                     ->sum('amount');
                 $pendingAdvances = (int) FinanceExpenseRequest::query()
                     ->where('staff_payroll_period_id', $payrollPeriod->id)

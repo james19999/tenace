@@ -59,12 +59,12 @@ class EmployeePayrollController extends Controller
         $advanceRequests = FinanceExpenseRequest::query()->with(['approvals.decider', 'payments.payer'])
             ->where('staff_user_id', $employee->id)->whereNotNull('staff_advance_type')
             ->latest('submitted_at')->limit(30)->get();
-        $personalLoans = FinanceStaffAdvance::query()->with(['repayments.receiver'])
+        $personalLoans = FinanceStaffAdvance::query()->active()->with(['repayments.receiver'])
             ->where('user_id', $employee->id)->where('advance_type', 'loan')
             ->latest('granted_on')->limit(30)->get();
         $currentPeriodSalary = (int) ($currentPeriod?->salary_amount ?? 0);
         $currentPaid = (int) ($currentPeriod?->payments()->where('kind', 'salary')->sum('amount') ?? 0);
-        $currentAdvanced = $currentPeriod ? (int) FinanceStaffAdvance::query()->where('payroll_period_id', $currentPeriod->id)->where('advance_type', 'salary_advance')->sum('amount') : 0;
+        $currentAdvanced = $currentPeriod ? (int) FinanceStaffAdvance::query()->active()->where('payroll_period_id', $currentPeriod->id)->where('advance_type', 'salary_advance')->sum('amount') : 0;
         $currentPending = $currentPeriod ? (int) FinanceExpenseRequest::query()->where('staff_payroll_period_id', $currentPeriod->id)
             ->whereIn('status', ['awaiting_finance', 'awaiting_director', 'authorized_to_pay', 'partially_paid'])->sum(DB::raw('amount - paid_amount')) : 0;
         $availableForAdvance = max(0, $currentPeriodSalary - $currentPaid - $currentAdvanced - $currentPending - (int) ($currentPeriod?->carried_forward_out ?? 0));
@@ -88,7 +88,13 @@ class EmployeePayrollController extends Controller
             'amount' => ['required', 'integer', 'min:1'],
             'reason' => ['required', 'string', 'max:2000'],
             'advance_type' => ['required', Rule::in(['salary_advance', 'loan'])],
+            'submission_key' => ['required', 'uuid'],
         ]);
+        $existingRequest = FinanceExpenseRequest::query()->where('submission_key', $data['submission_key'])->first();
+        if ($existingRequest) {
+            abort_unless((int) $existingRequest->requested_by === (int) $employee->id, 403);
+            return redirect()->route('employees.self-service')->with('info', 'Cette demande a déjà été envoyée. Elle apparaît dans le suivi de tes demandes.');
+        }
         $period = null;
         if ($data['advance_type'] === 'salary_advance') {
             $profile = EmployeeProfile::query()->where('user_id', $employee->id)->firstOrFail();
@@ -102,7 +108,7 @@ class EmployeePayrollController extends Controller
             }
 
             $alreadyPaid = (int) $period->payments()->where('kind', 'salary')->sum('amount');
-            $alreadyAdvanced = (int) FinanceStaffAdvance::query()->where('payroll_period_id', $period->id)->where('advance_type', 'salary_advance')->sum('amount');
+            $alreadyAdvanced = (int) FinanceStaffAdvance::query()->active()->where('payroll_period_id', $period->id)->where('advance_type', 'salary_advance')->sum('amount');
             $pendingAdvances = (int) FinanceExpenseRequest::query()->where('staff_payroll_period_id', $period->id)
                 ->whereIn('status', ['awaiting_finance', 'awaiting_director', 'authorized_to_pay', 'partially_paid'])
                 ->sum(DB::raw('amount - paid_amount'));
@@ -123,6 +129,7 @@ class EmployeePayrollController extends Controller
             'staff_user_id' => $employee->id,
             'staff_advance_type' => $data['advance_type'],
             'staff_payroll_period_id' => $period?->id,
+            'submission_key' => $data['submission_key'],
         ], $employee);
 
         return redirect()->route('employees.self-service')->with('success', 'Ta demande a été envoyée à la Direction. Tu verras ici quand elle sera acceptée ou refusée.');
@@ -286,7 +293,7 @@ class EmployeePayrollController extends Controller
                 return;
             }
             $alreadyPaid = (int) $locked->payments()->where('kind', 'salary')->sum('amount');
-            $alreadyAdvanced = (int) FinanceStaffAdvance::query()->where('payroll_period_id', $locked->id)->where('advance_type', 'salary_advance')->sum('amount');
+            $alreadyAdvanced = (int) FinanceStaffAdvance::query()->active()->where('payroll_period_id', $locked->id)->where('advance_type', 'salary_advance')->sum('amount');
             $pendingAdvances = (int) FinanceExpenseRequest::query()
                 ->where('staff_payroll_period_id', $locked->id)
                 ->whereIn('status', ['awaiting_finance', 'awaiting_director', 'authorized_to_pay', 'partially_paid'])
@@ -501,7 +508,7 @@ class EmployeePayrollController extends Controller
             $previousPeriods = EmployeePayrollPeriod::query()
                 ->where('user_id', $employee->id)
                 ->whereDate('period_start', '<', $periodStart)
-                ->with(['payments:id,period_id,kind,amount', 'staffAdvances:id,payroll_period_id,advance_type,amount,employee_payroll_payment_id'])
+                ->with(['payments:id,period_id,kind,amount', 'staffAdvances:id,payroll_period_id,advance_type,amount,employee_payroll_payment_id,voided_at'])
                 ->orderBy('period_start')
                 ->lockForUpdate()
                 ->get();
@@ -517,9 +524,10 @@ class EmployeePayrollController extends Controller
                 $salaryPaid = (int) $previousPeriod->payments->where('kind', 'salary')->sum('amount');
                 $salaryAdvances = $previousPeriod->staffAdvances->where('advance_type', 'salary_advance');
                 $linkedAdvancePaymentIds = $salaryAdvances->pluck('employee_payroll_payment_id')->filter()->map(fn ($id): int => (int) $id)->all();
+                $activeSalaryAdvances = $salaryAdvances->whereNull('voided_at');
                 $legacyAdvances = (int) $previousPeriod->payments->where('kind', 'advance')
                     ->whereNotIn('id', $linkedAdvancePaymentIds)->sum('amount');
-                $paid = $salaryPaid + (int) $salaryAdvances->sum('amount') + $legacyAdvances;
+                $paid = $salaryPaid + (int) $activeSalaryAdvances->sum('amount') + $legacyAdvances;
                 $pending = (int) ($pendingAmounts[$previousPeriod->id] ?? 0);
                 $unspent = max(0, (int) $previousPeriod->salary_amount - $paid - $pending - (int) $previousPeriod->carried_forward_out);
 

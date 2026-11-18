@@ -11,8 +11,9 @@ class FinanceStaffAdvance extends Model
     protected $fillable = [
         'reference', 'user_id', 'finance_expense_payment_id', 'employee_payroll_payment_id', 'amount', 'advance_type', 'repayment_method', 'repayment_value', 'payroll_period_id',
         'repaid_amount', 'granted_on', 'reason', 'created_by',
+        'voided_at', 'voided_by', 'void_reason', 'reversal_cash_movement_id',
     ];
-    protected $casts = ['amount' => 'integer', 'repaid_amount' => 'integer', 'granted_on' => 'date', 'repayment_value' => 'decimal:2'];
+    protected $casts = ['amount' => 'integer', 'repaid_amount' => 'integer', 'granted_on' => 'date', 'repayment_value' => 'decimal:2', 'voided_at' => 'datetime'];
 
     public function employee(): BelongsTo { return $this->belongsTo(User::class, 'user_id'); }
     public function payrollPeriod(): BelongsTo { return $this->belongsTo(EmployeePayrollPeriod::class, 'payroll_period_id'); }
@@ -20,4 +21,9 @@ class FinanceStaffAdvance extends Model
     public function employeePayrollPayment(): BelongsTo { return $this->belongsTo(EmployeePayrollPayment::class, 'employee_payroll_payment_id'); }
     public function creator(): BelongsTo { return $this->belongsTo(User::class, 'created_by'); }
     public function repayments(): HasMany { return $this->hasMany(FinanceStaffAdvanceRepayment::class, 'advance_id')->orderBy('received_at'); }
+
+    public function scopeActive($query)
+    {
+        return $query->whereNull('voided_at');
+    }
 }
