@@ -135,6 +135,7 @@ class FinanceProfitabilityController extends Controller
             abort_if($period->status === 'closed', 409, 'Cette période est déjà clôturée.');
 
             $snapshot = $this->calculate($start, $end);
+            abort_unless($snapshot['cost_reliable'], 422, 'La période ne peut pas être clôturée : rapproche d’abord les sorties de stock et les coûts d’achat des commandes livrées.');
             $period->update([
                 'status' => 'closed', 'snapshot' => $snapshot, 'closed_by' => $request->user()->id,
                 'closed_at' => now(), 'period_end' => $end->toDateString(),
@@ -221,18 +222,22 @@ class FinanceProfitabilityController extends Controller
 
     private function calculate(Carbon $from, Carbon $to): array
     {
+        // Revenue follows delivered orders, like the main dashboard. A missing stock
+        // movement must raise a stock warning, not make a real sale disappear.
         $salesOrders = DB::table('orders as o')->whereIn('o.status', ['delivered', 'canceled'])
-            ->whereBetween('o.delivered_at', [$from->copy()->startOfDay(), $to->copy()->endOfDay()])
-            ->whereExists(fn ($query) => $query->selectRaw('1')->from('stock_movements as sm')->whereColumn('sm.order_id', 'o.id')->where('sm.type', 'sale')->where('sm.status', 'posted'));
+            ->whereBetween('o.delivered_at', [$from->copy()->startOfDay(), $to->copy()->endOfDay()]);
         $deliveredOrders = DB::table('orders')->where('status', 'delivered')
             ->whereBetween('delivered_at', [$from->copy()->startOfDay(), $to->copy()->endOfDay()]);
         $grossSales = (int) round((float) (clone $salesOrders)->sum(DB::raw('CAST(COALESCE(o.subtotal, o.total, 0) AS DECIMAL(18,2))')));
         $recordedDiscounts = (int) round((float) (clone $salesOrders)->sum(DB::raw('GREATEST(CAST(COALESCE(o.subtotal, o.total, 0) AS DECIMAL(18,2)) - CAST(COALESCE(o.total, 0) AS DECIMAL(18,2)), 0)')));
-        $salesCount = (int) (clone $salesOrders)->count();
-        $receivables = (int) round((float) (clone $deliveredOrders)->sum(DB::raw('GREATEST(CAST(COALESCE(montant, total + COALESCE(tax, 0), total, 0) AS DECIMAL(18,2)) - COALESCE(paid_amount, 0), 0)')));
+        $salesCount = (int) (clone $deliveredOrders)->count();
+        $confirmedPayments = DB::table('order_payments')->whereIn('status', ['collected', 'confirmed'])
+            ->select('order_id')->selectRaw('SUM(amount) as total_paid')->groupBy('order_id');
+        $receivables = (int) round((float) DB::table('orders as o')->leftJoinSub($confirmedPayments, 'payments', fn ($join) => $join->on('payments.order_id', '=', 'o.id'))
+            ->where('o.status', 'delivered')->whereBetween('o.delivered_at', [$from->copy()->startOfDay(), $to->copy()->endOfDay()])
+            ->sum(DB::raw('GREATEST(CAST(COALESCE(o.montant, o.total + COALESCE(o.tax, 0), o.total, 0) AS DECIMAL(18,2)) - GREATEST(COALESCE(o.paid_amount, 0), COALESCE(payments.total_paid, 0)), 0)')));
         $cancelledSalesQuery = DB::table('orders as o')->where('o.status', 'canceled')
-            ->whereBetween('o.canceled_at', [$from->copy()->startOfDay(), $to->copy()->endOfDay()])
-            ->whereExists(fn ($query) => $query->selectRaw('1')->from('stock_movements as sm')->whereColumn('sm.order_id', 'o.id')->where('sm.type', 'sale')->where('sm.status', 'posted'));
+            ->whereBetween('o.canceled_at', [$from->copy()->startOfDay(), $to->copy()->endOfDay()]);
         $cancelledSales = (int) round((float) (clone $cancelledSalesQuery)->sum(DB::raw('CAST(COALESCE(o.total, o.subtotal, 0) AS DECIMAL(18,2))')));
         $estimatedCancellationDates = (int) (clone $cancelledSalesQuery)->where('o.canceled_at_is_estimated', true)->count();
 
@@ -255,9 +260,27 @@ class FinanceProfitabilityController extends Controller
             ->whereBetween('sm.occurred_at', [$from->copy()->startOfDay(), $to->copy()->endOfDay()])
             ->where('sml.quantity_delta', '>', 0)->whereNotNull('sml.unit_cost')
             ->selectRaw('COALESCE(SUM(sml.quantity_delta * sml.unit_cost), 0) as total')->value('total'));
-        $costOfGoodsSold = $openingStock['value'] + $purchases + $directSupplyCosts - $closingStock['value'];
-        $negativeCostRollforward = $costOfGoodsSold < 0;
-        $costOfGoodsSold = max(0, $costOfGoodsSold);
+        $rollforwardCost = $openingStock['value'] + $purchases + $directSupplyCosts - $closingStock['value'];
+        $negativeCostRollforward = $rollforwardCost < 0;
+        $saleCostLines = DB::table('stock_movement_lines as sml')->join('stock_movements as sm', 'sm.id', '=', 'sml.movement_id')
+            ->where('sm.type', 'sale')->where('sm.status', 'posted')
+            ->whereBetween('sm.occurred_at', [$from->copy()->startOfDay(), $to->copy()->endOfDay()])
+            ->where('sml.quantity_delta', '<', 0);
+        $saleCostLineCount = (int) (clone $saleCostLines)->count();
+        $ordersWithoutSaleMovement = (int) (clone $deliveredOrders)->whereNotExists(fn ($query) => $query->selectRaw('1')
+            ->from('stock_movements as sm')->whereColumn('sm.order_id', 'orders.id')->where('sm.type', 'sale')->where('sm.status', 'posted'))->count();
+        $saleMovementCost = (int) round((float) (clone $saleCostLines)->whereNotNull('sml.unit_cost')
+            ->selectRaw('COALESCE(SUM(ABS(sml.quantity_delta) * sml.unit_cost), 0) as total')->value('total'));
+        $saleCostCoverage = (int) (clone $saleCostLines)->whereNull('sml.unit_cost')->count();
+        $costSource = $saleCostLineCount > 0 && $saleCostCoverage === 0 && $ordersWithoutSaleMovement === 0
+            ? 'sale_movements'
+            : 'stock_rollforward';
+        $costReliable = $costSource === 'sale_movements'
+            || (! $negativeCostRollforward && $saleCostCoverage === 0 && $ordersWithoutSaleMovement === 0
+                && ($salesCount === 0 || $saleCostLineCount > 0));
+        $costOfGoodsSold = $costReliable
+            ? ($costSource === 'sale_movements' ? $saleMovementCost : max(0, $rollforwardCost))
+            : null;
 
         $payrollCosts = (int) round((float) DB::table('employee_payroll_payments')
             ->whereBetween('paid_at', [$from->copy()->startOfDay(), $to->copy()->endOfDay()])->sum('amount'));
@@ -293,14 +316,10 @@ class FinanceProfitabilityController extends Controller
             "COALESCE(SUM(CASE WHEN to_custody IN ('general_cash','shop','transit','bank') THEN amount ELSE 0 END),0) - COALESCE(SUM(CASE WHEN from_custody IN ('general_cash','shop','transit','bank') THEN amount ELSE 0 END),0) as balance"
         )->value('balance');
 
-        $grossMargin = $netSales - $costOfGoodsSold;
-        $operatingResult = $grossMargin - $operatingExpenses;
-        $preTaxResult = $operatingResult - $otherExpenses + $otherIncome;
-        $netResult = $preTaxResult - $incomeTax;
-        $saleCostCoverage = (int) DB::table('stock_movement_lines as sml')->join('stock_movements as sm', 'sm.id', '=', 'sml.movement_id')
-            ->where('sm.type', 'sale')->where('sm.status', 'posted')->whereBetween('sm.occurred_at', [$from->copy()->startOfDay(), $to->copy()->endOfDay()])
-            ->where('sml.quantity_delta', '<', 0)->whereNull('sml.unit_cost')->count();
-
+        $grossMargin = $costReliable ? $netSales - $costOfGoodsSold : null;
+        $operatingResult = $grossMargin === null ? null : $grossMargin - $operatingExpenses;
+        $preTaxResult = $operatingResult === null ? null : $operatingResult - $otherExpenses + $otherIncome;
+        $netResult = $preTaxResult === null ? null : $preTaxResult - $incomeTax;
         return [
             'gross_sales' => $grossSales, 'cancelled_sales' => $cancelledSales, 'discounts' => $discounts,
             'recorded_discounts' => $recordedDiscounts, 'manual_discounts' => $manualDiscounts,
@@ -310,13 +329,17 @@ class FinanceProfitabilityController extends Controller
             'cost_of_goods_sold' => $costOfGoodsSold, 'gross_margin' => $grossMargin,
             'operating_expenses' => $operatingExpenses, 'operating_expense_lines' => $expenseLines, 'other_expenses' => $otherExpenses,
             'other_income' => $otherIncome, 'pre_tax_result' => $preTaxResult, 'income_tax' => $incomeTax,
-            'net_result' => $netResult, 'gross_margin_rate' => $netSales !== 0 ? round($grossMargin / $netSales * 100, 2) : 0,
-            'net_margin_rate' => $netSales !== 0 ? round($netResult / $netSales * 100, 2) : 0,
+            'net_result' => $netResult, 'gross_margin_rate' => $grossMargin !== null && $netSales !== 0 ? round($grossMargin / $netSales * 100, 2) : null,
+            'net_margin_rate' => $netResult !== null && $netSales !== 0 ? round($netResult / $netSales * 100, 2) : null,
             'cash_available' => $cashAvailable, 'missing_sale_cost_lines' => $saleCostCoverage,
             'missing_opening_unit_costs' => $openingStock['missing'], 'missing_closing_unit_costs' => $closingStock['missing'],
             'negative_opening_stock_balances' => $openingStock['negative'], 'negative_closing_stock_balances' => $closingStock['negative'],
             'estimated_cancellation_dates' => $estimatedCancellationDates,
             'negative_cost_rollforward' => $negativeCostRollforward,
+            'cost_source' => $costSource,
+            'sale_cost_line_count' => $saleCostLineCount,
+            'orders_without_sale_movement' => $ordersWithoutSaleMovement,
+            'cost_reliable' => $costReliable,
         ];
     }
 
@@ -356,8 +379,17 @@ class FinanceProfitabilityController extends Controller
         if ($metrics['negative_opening_stock_balances'] > 0 || $metrics['negative_closing_stock_balances'] > 0) {
             $warnings[] = 'Des produits ont un solde de stock négatif. Le stock initial ou final et le coût des ventes peuvent être incohérents.';
         }
-        if ($metrics['negative_cost_rollforward']) {
+        if ($metrics['negative_cost_rollforward'] && $metrics['cost_source'] !== 'sale_movements') {
             $warnings[] = 'La formule du coût des ventes donne un montant négatif avant correction à zéro. Le résultat affiché n’est pas fiable tant que le stock et les réceptions ne sont pas rapprochés.';
+        }
+        if ($metrics['sales_count'] > 0 && $metrics['sale_cost_line_count'] === 0) {
+            $warnings[] = 'Aucune sortie de stock vendue ne correspond à la période. Le coût des marchandises et la marge ne peuvent pas être confirmés à partir des stocks.';
+        }
+        if ($metrics['orders_without_sale_movement'] > 0) {
+            $warnings[] = $metrics['orders_without_sale_movement'].' commande(s) livrée(s) n’ont pas de sortie de stock enregistrée. Les ventes sont incluses au chiffre d’affaires, mais le coût des marchandises doit être rapproché.';
+        }
+        if (! $metrics['cost_reliable']) {
+            $warnings[] = 'La marge et le résultat sont masqués, car les coûts de stock disponibles ne permettent pas un calcul fiable. Rapproche les sorties vendues et les coûts d’achat.';
         }
         if ($metrics['estimated_cancellation_dates'] > 0) {
             $warnings[] = $metrics['estimated_cancellation_dates'].' annulation(s) historique(s) utilisent la dernière date de modification comme approximation; les nouvelles annulations ont une date dédiée.';
@@ -388,7 +420,7 @@ class FinanceProfitabilityController extends Controller
             'net_margin_rate' => 'Taux de rentabilité nette (%)',
         ];
 
-        $rows = collect($labels)->map(fn ($label, $key) => [$label, $metrics[$key] ?? 0])->values()->all();
+        $rows = collect($labels)->map(fn ($label, $key) => [$label, $metrics[$key] ?? 'À rapprocher'])->values()->all();
         if (! empty($metrics['operating_expense_lines'])) {
             $rows[] = ['Détail des charges d’exploitation', ''];
             foreach ($metrics['operating_expense_lines'] as $line) {

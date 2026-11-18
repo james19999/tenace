@@ -6,7 +6,7 @@
     @if($errors->any())<div class="alert alert-danger"><ul class="mb-0">@foreach($errors->all() as $error)<li>{{ $error }}</li>@endforeach</ul></div>@endif
 
     @php
-        $money = fn ($amount) => number_format((float) $amount, 0, ',', ' ').' F CFA';
+        $money = fn ($amount) => $amount === null ? 'À rapprocher' : number_format((float) $amount, 0, ',', ' ').' F CFA';
         $labels = ['sales_discount'=>'Remise commerciale','direct_supply_cost'=>'Frais directs d’approvisionnement','other_income'=>'Autre produit','other_expense'=>'Autre charge','income_tax'=>'Impôt sur le bénéfice'];
         $comparisonRows = [
             ['Chiffre d’affaires net', 'net_sales'], ['Encaissements', 'cash_receipts'], ['Coût des marchandises vendues', 'cost_of_goods_sold'],
@@ -16,7 +16,7 @@
     @endphp
 
     <header class="profit-hero">
-        <div><span class="profit-kicker">TENACOS · PILOTAGE DE DIRECTION</span><h1>Rentabilité &amp; performance</h1><p>Résultats calculés à partir des ventes, du stock, des paiements et des dépenses déjà enregistrés.</p></div>
+        <div><span class="profit-kicker">TENACOS · PILOTAGE DE DIRECTION</span><h1>Rentabilité &amp; performance</h1><p>Les ventes suivent les commandes livrées (boutique et grossiste). Les encaissements suivent la date de paiement ; les créances montrent le reste dû sur ces commandes.</p></div>
         <div class="profit-exports">
             @foreach(['xlsx'=>'Excel','pdf'=>'PDF','csv'=>'CSV'] as $format=>$title)
                 <a href="{{ route('finance.profitability.export', array_merge(request()->query(), ['format'=>$format])) }}"><span class="material-icons" aria-hidden="true">{{ ['xlsx'=>'grid_on','pdf'=>'picture_as_pdf','csv'=>'table_view'][$format] }}</span>{{ $title }}</a>
@@ -51,11 +51,11 @@
         <article class="is-primary"><span>Chiffre d’affaires net</span><strong>{{ $money($metrics['net_sales']) }}</strong><small>{{ number_format($metrics['sales_count']) }} commande(s) livrée(s) · hors taxe</small></article>
         <article><span>Encaissements clients</span><strong>{{ $money($metrics['cash_receipts']) }}</strong><small>Paiements confirmés, toutes méthodes, à leur date d’encaissement</small></article>
         <article><span>Créances clients</span><strong>{{ $money($metrics['receivables']) }}</strong><small>Reste dû sur les commandes livrées pendant la période</small></article>
-        <article><span>Coût des marchandises vendues</span><strong>{{ $money($metrics['cost_of_goods_sold']) }}</strong><small>Stock initial + achats + frais directs − stock final</small></article>
-        <article class="is-positive"><span>Marge brute</span><strong>{{ $money($metrics['gross_margin']) }}</strong><small>Taux de marge brute : {{ number_format($metrics['gross_margin_rate'],2,',',' ') }} %</small></article>
+        <article><span>Coût des marchandises vendues</span><strong>{{ $money($metrics['cost_of_goods_sold']) }}</strong><small>{{ $metrics['cost_source']==='sale_movements' ? 'Calculé sur les coûts enregistrés à la sortie des produits vendus' : 'Estimé par stock initial + achats − stock final' }}</small></article>
+        <article class="is-positive"><span>Marge brute</span><strong>{{ $money($metrics['gross_margin']) }}</strong><small>Taux de marge brute : {{ $metrics['gross_margin_rate'] === null ? 'À rapprocher' : number_format($metrics['gross_margin_rate'],2,',',' ').' %' }}</small></article>
         <article><span>Charges d’exploitation</span><strong>{{ $money($metrics['operating_expenses']) }}</strong><small>Personnel, commissions et dépenses payées</small></article>
         <article><span>Résultat avant impôts</span><strong>{{ $money($metrics['pre_tax_result']) }}</strong><small>Après autres charges et autres produits</small></article>
-        <article class="is-result {{ $metrics['net_result']<0?'is-negative':'' }}"><span>Résultat net</span><strong>{{ $money($metrics['net_result']) }}</strong><small>Rentabilité nette : {{ number_format($metrics['net_margin_rate'],2,',',' ') }} %</small></article>
+        <article class="is-result {{ $metrics['net_result'] !== null && $metrics['net_result']<0?'is-negative':'' }}"><span>Résultat net</span><strong>{{ $money($metrics['net_result']) }}</strong><small>Rentabilité nette : {{ $metrics['net_margin_rate'] === null ? 'À rapprocher' : number_format($metrics['net_margin_rate'],2,',',' ').' %' }}</small></article>
         <article><span>Valeur du stock final</span><strong>{{ $money($metrics['closing_stock']) }}</strong><small>Valorisation au coût d’achat enregistré</small></article>
         <article><span>Trésorerie disponible</span><strong>{{ $money($metrics['cash_available']) }}</strong><small>Solde net de caisse, boutique, transit et banque</small></article>
     </section>
@@ -69,10 +69,14 @@
                 <div><dt>Remises déjà appliquées aux commandes</dt><dd>− {{ $money($metrics['recorded_discounts']) }}</dd></div>
                 <div><dt>Remises complémentaires saisies</dt><dd>− {{ $money($metrics['manual_discounts']) }}</dd></div>
                 <div class="is-total"><dt>Chiffre d’affaires net</dt><dd>{{ $money($metrics['net_sales']) }}</dd></div>
-                <div><dt>Stock initial</dt><dd>{{ $money($metrics['opening_stock']) }}</dd></div>
-                <div><dt>Achats reçus</dt><dd>+ {{ $money($metrics['purchases']) }}</dd></div>
-                <div><dt>Frais d’approvisionnement saisis</dt><dd>+ {{ $money($metrics['direct_supply_costs']) }}</dd></div>
-                <div><dt>Stock final</dt><dd>− {{ $money($metrics['closing_stock']) }}</dd></div>
+                @if($metrics['cost_source']==='sale_movements')
+                    <div><dt>Coût des sorties de stock vendues</dt><dd>{{ $money($metrics['cost_of_goods_sold']) }}</dd></div>
+                @else
+                    <div><dt>Stock initial</dt><dd>{{ $money($metrics['opening_stock']) }}</dd></div>
+                    <div><dt>Achats reçus</dt><dd>+ {{ $money($metrics['purchases']) }}</dd></div>
+                    <div><dt>Frais d’approvisionnement saisis</dt><dd>+ {{ $money($metrics['direct_supply_costs']) }}</dd></div>
+                    <div><dt>Stock final</dt><dd>− {{ $money($metrics['closing_stock']) }}</dd></div>
+                @endif
                 <div class="is-total"><dt>Coût des marchandises vendues</dt><dd>{{ $money($metrics['cost_of_goods_sold']) }}</dd></div>
                 <div><dt>Charges d’exploitation</dt><dd>− {{ $money($metrics['operating_expenses']) }}</dd></div>
                 <div><dt>Autres charges / produits</dt><dd>{{ $money($metrics['other_income']-$metrics['other_expenses']) }}</dd></div>
@@ -84,8 +88,8 @@
             <header><div><span class="profit-kicker">ÉVOLUTION</span><h2>Comparaison de périodes</h2><p>{{ $filters['compare_from']->translatedFormat('d F Y') }} – {{ $filters['compare_to']->translatedFormat('d F Y') }}</p></div></header>
             <dl class="profit-breakdown">
                 @foreach($comparisonRows as [$label,$key])
-                    @php($delta=(int)$metrics[$key]-(int)$comparison[$key])
-                    <div><dt>{{ $label }}<small>Période précédente : {{ $money($comparison[$key]) }}</small></dt><dd class="{{ $delta<0?'is-down':'is-up' }}">{{ $delta>0?'+':'' }}{{ $money($delta) }}</dd></div>
+                    @php($delta=$metrics[$key]===null || $comparison[$key]===null ? null : (int)$metrics[$key]-(int)$comparison[$key])
+                    <div><dt>{{ $label }}<small>Période précédente : {{ $money($comparison[$key]) }}</small></dt><dd class="{{ $delta !== null && $delta<0?'is-down':'is-up' }}">{{ $delta === null ? 'À rapprocher' : (($delta>0?'+':'').$money($delta)) }}</dd></div>
                 @endforeach
             </dl>
         </article>

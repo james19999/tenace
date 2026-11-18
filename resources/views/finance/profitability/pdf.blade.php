@@ -7,9 +7,9 @@
 <p class="period">TENACOS · Période du {{ $filters['from']->format('d/m/Y') }} au {{ $filters['to']->format('d/m/Y') }} · FCFA</p>
 <div class="kpis">
 @foreach([['Chiffre d’affaires net','net_sales'],['Encaissements clients','cash_receipts'],['Créances clients','receivables'],['Coût des marchandises vendues','cost_of_goods_sold'],['Marge brute','gross_margin'],['Charges d’exploitation','operating_expenses'],['Résultat avant impôts','pre_tax_result'],['Résultat net','net_result'],['Taux marge brute','gross_margin_rate'],['Taux rentabilité nette','net_margin_rate'],['Valeur stock final','closing_stock'],['Trésorerie disponible','cash_available']] as [$label,$key])
-<div class="kpi"><small>{{ $label }}</small><strong>{{ number_format((float)($metrics[$key]??0),2,',',' ') }}{{ str_contains($key,'rate')?' %':' F CFA' }}</strong></div>
+<div class="kpi"><small>{{ $label }}</small><strong>{{ ($metrics[$key] ?? null) === null ? 'À rapprocher' : number_format((float)$metrics[$key],2,',',' ').(str_contains($key,'rate')?' %':' F CFA') }}</strong></div>
 @endforeach
 </div>
-<table><thead><tr><th>Indicateur</th><th class="value">Montant</th></tr></thead><tbody>@foreach($rows as [$label,$amount])<tr><td>{{ $label }}</td><td class="value">{{ number_format((float)$amount,2,',',' ') }}{{ str_contains($label,'Taux')?' %':' F CFA' }}</td></tr>@endforeach</tbody></table>
+<table><thead><tr><th>Indicateur</th><th class="value">Montant</th></tr></thead><tbody>@foreach($rows as [$label,$amount])<tr><td>{{ $label }}</td><td class="value">{{ is_numeric($amount) ? number_format((float)$amount,2,',',' ').(str_contains($label,'Taux')?' %':' F CFA') : $amount }}</td></tr>@endforeach</tbody></table>
 <p class="note">Le stock est valorisé avec le coût d’achat enregistré sur les produits. Les frais d’approvisionnement, remises, autres produits et impôts saisis manuellement sont détaillés dans le logiciel et audités.</p>
 </body></html>

@@ -162,7 +162,7 @@
                         <div class="row">
                             <div class="col">
                 <h5 class="text-uppercase text-muted mb-0 card-title">Chiffre d'affaire annuel</h5><span
-                                    style="font-size: 130%" class="h1 font-weight-bold mb-0">{{ $totalCommandes }}
+                                    style="font-size: 130%" class="h1 font-weight-bold mb-0">{{ number_format((float) $totalCommandes, 0, ',', ' ') }}
                                     XOF</span>
                             </div>
                             <div class="col-auto col">
