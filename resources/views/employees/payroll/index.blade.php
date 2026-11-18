@@ -21,10 +21,6 @@
         </section>
     @endif
 
-    @if($employee->employeeProfile?->monthly_salary && $employee->employeeProfile?->salary_effective_from)
-        <section class="ep-panel ep-create"><div><h2>Ajouter un mois au suivi</h2><p>Le montant est copié depuis le salaire actuel. Une modification future du salaire ne changera pas les mois déjà créés.</p></div><form method="POST" action="{{ route('employees.payroll.periods.store',$employee->employeeProfile->tracking_id) }}">@csrf<label>Mois<input type="month" name="period" value="{{ old('period',now()->format('Y-m')) }}" required></label><label>Note (facultative)<input name="note" value="{{ old('note') }}" maxlength="500" placeholder="Ex. Salaire de base"></label><button class="btn btn-primary">Ajouter ce mois</button></form></section>
-    @endif
-
     <section class="ep-period-list">
         @forelse($periods as $period)
             @php($paidTotal=(int)$period->payments->sum('amount'))
@@ -36,7 +32,7 @@
             @php($salaryPaid=(int)$period->payments->where('kind','salary')->sum('amount'))
             @php($loanDeducted=(int)$period->payments->where('kind','salary')->sum('loan_deduction_amount'))
             @php($paidTotal=$salaryPaid+$advanceTotal)
-            @php($remaining=max(0,(int)$period->salary_amount-$paidTotal))
+            @php($remaining=max(0,(int)$period->salary_amount-$paidTotal-(int)$period->carried_forward_out))
             @php($availableToPay=max(0,$remaining-(int)$period->pending_advance_amount))
             @php($defaultLoanDeduction=min($availableToPay,(int)$period->loan_deduction_due))
             @php($defaultNetToPay=max(0,$availableToPay-$defaultLoanDeduction))
@@ -48,11 +44,12 @@
                     <form class="ep-availability-form" method="POST" action="{{ route('employees.payroll.periods.available',[$employee->employeeProfile->tracking_id,$period]) }}">@csrf<span>Le salarié ne voit pas encore le salaire de ce mois.</span><button class="btn btn-outline-primary">Rendre le salaire disponible</button></form>
                 @endif
                 <div class="ep-summary" aria-label="Résumé du salaire">
-                    <div><span>Salaire brut du mois</span><strong>{{ number_format($period->salary_amount,0,',',' ') }} F</strong><small>Montant convenu</small></div>
+                    <div><span>Salaire mensuel</span><strong>{{ number_format(max(0,(int)$period->salary_amount-(int)$period->carry_forward_in),0,',',' ') }} F</strong><small>Montant contractuel</small></div>
+                    @if($period->carry_forward_in>0)<div><span>Report des mois précédents</span><strong>{{ number_format($period->carry_forward_in,0,',',' ') }} F</strong><small>Solde non retiré ajouté</small></div>@endif
                     <div><span>Avances sur salaire</span><strong>{{ number_format($advanceTotal,0,',',' ') }} F</strong><small>Déjà remises au salarié</small></div>
                     <div><span>Prêts déjà retenus</span><strong>{{ number_format($loanDeducted,0,',',' ') }} F</strong><small>Déduits des salaires versés</small></div>
                     <div><span>Salaire brut comptabilisé</span><strong>{{ number_format($salaryPaid,0,',',' ') }} F</strong><small>Avant les retenues de prêt</small></div>
-                    <div class="is-balance"><span>Reste brut à solder</span><strong>{{ number_format($remaining,0,',',' ') }} F</strong><small>Après les avances et salaires versés</small></div>
+                    <div class="is-balance"><span>Solde salarial restant</span><strong>{{ number_format($remaining,0,',',' ') }} F</strong><small>Après versements et reports au mois suivant</small></div>
                 </div>
                 @if($period->loan_deduction_due > 0)<p class="ep-note">Retenue prévue ce mois : jusqu’à {{ number_format($period->loan_deduction_due,0,',',' ') }} F CFA, dans la limite du salaire brut réglé et du solde des prêts.</p>@endif
                 @if($period->note)<p class="ep-note">{{ $period->note }}</p>@endif
@@ -68,13 +65,13 @@
 
                 @if($availableToPay>0)
                     @if($period->available_at)
-                    <details class="ep-payment-form"><summary>Enregistrer un versement de salaire</summary><form method="POST" action="{{ route('employees.payroll.payments.store',[$employee->employeeProfile->tracking_id,$period]) }}" data-payroll-month="{{ $period->period_start->format('Y-m') }}" data-month-salary="{{ (int)$period->salary_amount }}" data-salary-paid="{{ $salaryPaid }}" data-advances-paid="{{ $advanceTotal }}" data-advances-pending="{{ (int)$period->pending_advance_amount }}" data-available-gross="{{ $availableToPay }}">@csrf<input type="hidden" name="submission_key" value="{{ (string) \Illuminate\Support\Str::uuid() }}"><input type="hidden" name="kind" value="salary">
+                    <details class="ep-payment-form"><summary>Enregistrer un versement de salaire</summary><form method="POST" action="{{ route('employees.payroll.payments.store',[$employee->employeeProfile->tracking_id,$period]) }}" data-payroll-month="{{ $period->period_start->format('Y-m') }}" data-month-salary="{{ max(0,(int)$period->salary_amount-(int)$period->carry_forward_in) }}" data-salary-paid="{{ $salaryPaid }}" data-advances-paid="{{ $advanceTotal }}" data-advances-pending="{{ (int)$period->pending_advance_amount }}" data-available-gross="{{ $availableToPay }}">@csrf<input type="hidden" name="submission_key" value="{{ (string) \Illuminate\Support\Str::uuid() }}"><input type="hidden" name="kind" value="salary">
                         <section class="ep-loan-payment-preview"><div class="ep-loan-payment-heading"><div><strong>Détail avant paiement</strong><small>Indique le montant net que le salarié recevra. Le brut et les retenues sont calculés automatiquement.</small></div><strong class="ep-preview-net-total" aria-live="polite">Net à remettre : {{ number_format($defaultNetToPay,0,',',' ') }} F</strong></div>
-                            <div class="ep-salary-breakdown"><div><span>Salaire du mois</span><strong>{{ number_format((int)$period->salary_amount,0,',',' ') }} F</strong></div><div><span>Avances déjà remises <small>(déjà déduites du solde)</small></span><strong>{{ number_format($advanceTotal,0,',',' ') }} F</strong></div><div><span>Salaire brut déjà versé</span><strong>{{ number_format($salaryPaid,0,',',' ') }} F</strong></div>@if($period->pending_advance_amount>0)<div><span>Avances en attente réservées</span><strong>{{ number_format((int)$period->pending_advance_amount,0,',',' ') }} F</strong></div>@endif<div><span>Brut imputé au salaire</span><strong class="ep-preview-gross">{{ number_format($availableToPay,0,',',' ') }} F</strong></div><div><span>Retenues mensuelles des prêts</span><strong class="ep-preview-deductions">{{ number_format($defaultLoanDeduction,0,',',' ') }} F</strong></div><div class="ep-breakdown-net"><span>Montant net à remettre</span><strong class="ep-preview-net">{{ number_format($defaultNetToPay,0,',',' ') }} F</strong></div><div><span>Reste du salaire après ce versement</span><strong class="ep-preview-balance">{{ number_format(max(0,$remaining-$availableToPay),0,',',' ') }} F</strong></div></div>
+                            <div class="ep-salary-breakdown"><div><span>Salaire contractuel du mois</span><strong>{{ number_format(max(0,(int)$period->salary_amount-(int)$period->carry_forward_in),0,',',' ') }} F</strong></div>@if($period->carry_forward_in>0)<div><span>Report des mois précédents</span><strong>{{ number_format($period->carry_forward_in,0,',',' ') }} F</strong></div>@endif<div><span>Total salarial de la période</span><strong>{{ number_format((int)$period->salary_amount,0,',',' ') }} F</strong></div><div><span>Avances déjà remises <small>(déjà déduites du solde)</small></span><strong>{{ number_format($advanceTotal,0,',',' ') }} F</strong></div><div><span>Salaire brut déjà versé</span><strong>{{ number_format($salaryPaid,0,',',' ') }} F</strong></div>@if($period->pending_advance_amount>0)<div><span>Avances en attente réservées</span><strong>{{ number_format((int)$period->pending_advance_amount,0,',',' ') }} F</strong></div>@endif<div><span>Brut imputé au salaire</span><strong class="ep-preview-gross">{{ number_format($availableToPay,0,',',' ') }} F</strong></div><div><span>Retenues mensuelles des prêts</span><strong class="ep-preview-deductions">{{ number_format($defaultLoanDeduction,0,',',' ') }} F</strong></div><div class="ep-breakdown-net"><span>Montant net à remettre</span><strong class="ep-preview-net">{{ number_format($defaultNetToPay,0,',',' ') }} F</strong></div><div><span>Reste du salaire après ce versement</span><strong class="ep-preview-balance">{{ number_format(max(0,$remaining-$availableToPay),0,',',' ') }} F</strong></div></div>
                             @if($activeLoans->isNotEmpty())
                                 <div class="ep-loan-preview-list">
                                     @foreach($activeLoans as $loan)
-                                        @php($loanMonthlyPlan=$loan->repayment_method==='salary_percent'?max(1,(int)round($period->salary_amount*((float)$loan->repayment_value/100))):(int)$loan->repayment_value)
+                                        @php($loanMonthlyPlan=$loan->repayment_method==='salary_percent'?max(1,(int)round(max(0,(int)$period->salary_amount-(int)$period->carry_forward_in)*((float)$loan->repayment_value/100))):(int)$loan->repayment_value)
                                         <article class="ep-loan-preview-row {{ !$loan->repayment_method ? 'is-plan-missing' : '' }}" data-outstanding="{{ max(0,(int)$loan->amount-(int)$loan->repaid_amount) }}" data-granted-on="{{ $loan->granted_on?->toDateString() }}" data-monthly-plan="{{ $loanMonthlyPlan }}" data-repayments="{{ $loan->repayments->map(fn($repayment)=>['date'=>$repayment->received_at->format('Y-m-d'),'amount'=>(int)$repayment->amount])->values()->toJson() }}">
                                             <div>
                                                 <strong>{{ $loan->reference }} · Prêt</strong>

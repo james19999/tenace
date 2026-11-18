@@ -2,8 +2,8 @@
 
 namespace App\Services;
 
-use App\Models\FinanceExpenseApproval;
 use App\Models\FinanceCashCompartment;
+use App\Models\FinanceExpenseApproval;
 use App\Models\FinanceExpensePayment;
 use App\Models\FinanceExpenseRequest;
 use App\Models\FinanceGeneralCashSetting;
@@ -290,6 +290,7 @@ class FinanceExpenseWorkflowService
         if ($expense->staff_advance_type === 'loan' && $amount !== (int) $expense->amount - (int) $expense->paid_amount) {
             throw ValidationException::withMessages(['amount' => 'Un prêt doit être remis en une seule fois pour conserver un seul plan de remboursement mensuel.']);
         }
+
         return DB::transaction(function () use ($expense, $payer, $amount, $reference): FinanceExpensePayment {
             $locked = FinanceExpenseRequest::query()->lockForUpdate()->findOrFail($expense->id);
             abort_unless(in_array($locked->status, ['authorized_to_pay', 'partially_paid'], true), 409);
@@ -320,7 +321,7 @@ class FinanceExpenseWorkflowService
                     ->whereIn('status', ['awaiting_finance', 'awaiting_director', 'authorized_to_pay', 'partially_paid'])
                     ->sum(DB::raw('amount - paid_amount'));
                 $currentRequestRemaining = max(0, (int) $locked->amount - (int) $locked->paid_amount);
-                if ($alreadyPaid + $alreadyAdvanced + $pendingAdvances + $currentRequestRemaining > (int) $payrollPeriod->salary_amount) {
+                if ($alreadyPaid + $alreadyAdvanced + $pendingAdvances + $currentRequestRemaining + (int) $payrollPeriod->carried_forward_out > (int) $payrollPeriod->salary_amount) {
                     throw ValidationException::withMessages(['amount' => 'Le paiement dépasserait le salaire restant de ce mois. Vérifie les avances et demandes en cours.']);
                 }
             }

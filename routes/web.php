@@ -144,6 +144,11 @@ Route::middleware(['auth'])->group(function () {
         Route::get('/', [FinanceController::class, 'index'])->middleware('role:ADMINUSER,MNG,COMPTABLE,SCR,VDS,CSA,LVS,CALLCENTER,RCM')->name('dashboard');
         Route::get('/rapports', [FinanceReportController::class, 'index'])->middleware('role:ADMINUSER,COMPTABLE,CSA')->name('reports.index');
         Route::get('/rapports/export', [FinanceReportController::class, 'export'])->middleware('role:ADMINUSER,COMPTABLE,CSA')->name('reports.export');
+        Route::get('/rentabilite', [\App\Http\Controllers\Finance\FinanceProfitabilityController::class, 'index'])->middleware('role:ADMINUSER,COMPTABLE')->name('profitability.index');
+        Route::get('/rentabilite/export', [\App\Http\Controllers\Finance\FinanceProfitabilityController::class, 'export'])->middleware('role:ADMINUSER,COMPTABLE')->name('profitability.export');
+        Route::post('/rentabilite/ajustements', [\App\Http\Controllers\Finance\FinanceProfitabilityController::class, 'storeAdjustment'])->middleware('role:ADMINUSER')->name('profitability.adjustments.store');
+        Route::post('/rentabilite/ajustements/{adjustment}/annuler', [\App\Http\Controllers\Finance\FinanceProfitabilityController::class, 'voidAdjustment'])->middleware('role:ADMINUSER')->name('profitability.adjustments.void');
+        Route::post('/rentabilite/cloture', [\App\Http\Controllers\Finance\FinanceProfitabilityController::class, 'closePeriod'])->middleware('role:ADMINUSER')->name('profitability.close');
         Route::get('/gestion', [\App\Http\Controllers\Finance\FinanceManagementController::class, 'index'])->middleware('role:ADMINUSER,COMPTABLE')->name('management.index');
         Route::get('/repartition', [\App\Http\Controllers\Finance\FinanceCashCompartmentsController::class, 'index'])->middleware('role:ADMINUSER,COMPTABLE')->name('compartments.index');
         Route::post('/repartition', [\App\Http\Controllers\Finance\FinanceCashCompartmentsController::class, 'update'])->middleware('role:ADMINUSER')->name('compartments.update');

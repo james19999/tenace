@@ -12,6 +12,9 @@
         }
     }
     $hasTontineAccountingMenu = Auth::check() && (in_array(Auth::user()->user_type, ['ADMINUSER', 'MNG', 'COMPTABLE', 'SCR', 'VDS', 'CSA', 'CALLCENTER', 'RCM'], true) || Auth::user()->hasWholesaleAccess());
+    $storefrontOrderBadge = Auth::check()
+        ? Auth::user()->unreadNotifications()->where('type', \App\Notifications\StorefrontOrderNotification::class)->count()
+        : 0;
     $dashboard = match (Auth::user()->user_type) {
         'PT' => ['route' => 'partner.dashboard', 'label' => 'Tableau de bord'],
         \App\Models\User::ROLE_WHOLESALER => ['route' => 'wholesaler.dashboard', 'label' => 'Tableau de bord'],
@@ -132,6 +135,7 @@
                         @if(Auth::user()->isAdmin())<li><a href="{{ route('finance.loans.index') }}" class="{{ $active('finance.loans.*') }}"><span class="icon material-icons">remove</span><span class="text">Emprunts bancaires</span></a></li>@endif
                         <li><a href="{{ route('finance.compartments.index') }}" class="{{ $active('finance.compartments.*') }}"><span class="icon material-icons">remove</span><span class="text">Répartition des fonds</span></a></li>
                         <li><a href="{{ route('finance.reports.index') }}" class="{{ $active('finance.reports.*') }}"><span class="icon material-icons">remove</span><span class="text">Rapports et exports</span></a></li>
+                        <li><a href="{{ route('finance.profitability.index') }}" class="{{ $active('finance.profitability.*') }}"><span class="icon material-icons">query_stats</span><span class="text">Rentabilité</span></a></li>
                         <li><a href="{{ route('finance.audit.index') }}" class="{{ $active('finance.audit.*') }}"><span class="icon material-icons">remove</span><span class="text">Journal d’audit</span></a></li>
                     </ul>
                 </li>
@@ -211,7 +215,7 @@
                 <li>
                     <a href="{{ route('order') }}" class="{{ $active('order') }}">
                         <span class="icon material-icons">shopping_cart</span>
-                        <span class="text">Commandes</span>
+                        <span class="text">Commandes @if($storefrontOrderBadge > 0)<span class="badge badge-pill badge-danger">{{ $storefrontOrderBadge > 99 ? '99+' : $storefrontOrderBadge }}</span>@endif</span>
                     </a>
                 </li>
 
@@ -528,14 +532,14 @@
                     <a href="{{ route('order-liste-order') }}" class="{{ $active('order-liste-order') }}">
                         <span class="icon material-icons">add_shopping_cart
                         </span>
-                        <span class="text">Gestion commande</span>
+                        <span class="text">Gestion commande @if($storefrontOrderBadge > 0)<span class="badge badge-pill badge-danger">{{ $storefrontOrderBadge > 99 ? '99+' : $storefrontOrderBadge }}</span>@endif</span>
                     </a>
                 </li>
             @elseif (Auth::user()->user_type == 'CSA')
                 <li>
                     <a href="{{ route('order') }}" class="{{ $active('order') }}">
                         <span class="icon material-icons">shopping_cart</span>
-                        <span class="text">Commandes</span>
+                        <span class="text">Commandes @if($storefrontOrderBadge > 0)<span class="badge badge-pill badge-danger">{{ $storefrontOrderBadge > 99 ? '99+' : $storefrontOrderBadge }}</span>@endif</span>
                     </a>
                 </li>
                 <li>
@@ -615,7 +619,7 @@
                 <li>
                     <a href="{{ route('order') }}" class="{{ $active('order') }}">
                         <span class="icon material-icons">shopping_cart</span>
-                        <span class="text">Commandes</span>
+                        <span class="text">Commandes @if($storefrontOrderBadge > 0)<span class="badge badge-pill badge-danger">{{ $storefrontOrderBadge > 99 ? '99+' : $storefrontOrderBadge }}</span>@endif</span>
                     </a>
                 </li>
                 <li>
@@ -724,6 +728,7 @@
                         <li><a href="{{ route('finance.management.index') }}" class="{{ $active('finance.management.*') }}"><span class="icon material-icons">remove</span><span class="text">Suivi financier avancé</span></a></li>
                         <li><a href="{{ route('finance.compartments.index') }}" class="{{ $active('finance.compartments.*') }}"><span class="icon material-icons">remove</span><span class="text">Répartition des fonds</span></a></li>
                         <li><a href="{{ route('finance.reports.index') }}" class="{{ $active('finance.reports.*') }}"><span class="icon material-icons">remove</span><span class="text">Rapports et exports</span></a></li>
+                        <li><a href="{{ route('finance.profitability.index') }}" class="{{ $active('finance.profitability.*') }}"><span class="icon material-icons">query_stats</span><span class="text">Rentabilité</span></a></li>
                         <li><a href="{{ route('finance.audit.index') }}" class="{{ $active('finance.audit.*') }}"><span class="icon material-icons">remove</span><span class="text">Journal d’audit</span></a></li>
                     </ul>
                 </li>
@@ -752,7 +757,7 @@
                 <li>
                     <a href="{{ route('order') }}" class="{{ $active('order') }}">
                         <span class="icon material-icons">shopping_cart</span>
-                        <span class="text">Commandes</span>
+                        <span class="text">Commandes @if($storefrontOrderBadge > 0)<span class="badge badge-pill badge-danger">{{ $storefrontOrderBadge > 99 ? '99+' : $storefrontOrderBadge }}</span>@endif</span>
                     </a>
                 </li>
                 <li>
@@ -816,7 +821,7 @@
                 <li><a href="{{ route('dg-appointments.index') }}" class="{{ $active('dg-appointments.*') }}"><span class="icon material-icons">event</span><span class="text">Rendez-vous DG</span></a></li>
                 <li><a href="{{ route('product') }}" class="{{ $active('product') }}"><span class="icon material-icons">store</span><span class="text">Produits</span></a></li>
                 <li><a href="{{ route('productcart') }}" class="{{ $active('productcart') }}"><span class="icon material-icons">add_shopping_cart</span><span class="text">Panier <span class="badge badge-pill badge-danger js-cart-count">{{ $cartCount }}</span></span></a></li>
-                <li><a href="{{ route('order') }}" class="{{ $active('order', 'ordershow') }}"><span class="icon material-icons">shopping_cart</span><span class="text">Commandes</span></a></li>
+                <li><a href="{{ route('order') }}" class="{{ $active('order', 'ordershow') }}"><span class="icon material-icons">shopping_cart</span><span class="text">Commandes @if($storefrontOrderBadge > 0)<span class="badge badge-pill badge-danger">{{ $storefrontOrderBadge > 99 ? '99+' : $storefrontOrderBadge }}</span>@endif</span></a></li>
                 <li>
                     <a href="{{ route('costumer.follow-up') }}" class="{{ $active('costumer.follow-up') }}">
                         <span class="icon material-icons">support_agent</span>

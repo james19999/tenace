@@ -4,36 +4,35 @@ namespace App\Http\Controllers\Finance;
 
 use App\Http\Controllers\Controller;
 use App\Models\Commission;
+use App\Models\EmployeePayrollPeriod;
 use App\Models\FinanceAsset;
 use App\Models\FinanceBudget;
 use App\Models\FinanceCashMovement;
 use App\Models\FinanceCommissionSettlement;
-use App\Models\FinanceExpenseRequest;
-use App\Models\FinanceExpenseApproval;
 use App\Models\FinanceEquipmentPurchaseRequest;
 use App\Models\FinanceEquipmentPurchaseSetting;
+use App\Models\FinanceExpenseApproval;
+use App\Models\FinanceExpenseRequest;
 use App\Models\FinanceStaffAdvance;
 use App\Models\FinanceStaffAdvanceRepayment;
-use App\Models\EmployeePayrollPeriod;
 use App\Models\FinanceSupplierInvoice;
-use App\Models\OrderPayment;
 use App\Models\Orders\Order;
 use App\Models\StockLocation;
 use App\Models\User;
+use App\Notifications\FinanceWorkflowNotification;
 use App\Services\FinanceAuditService;
 use App\Services\FinanceCashLedgerService;
-use App\Notifications\FinanceWorkflowNotification;
 use Illuminate\Database\Eloquent\Collection as EloquentCollection;
-use Illuminate\Pagination\LengthAwarePaginator;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Pagination\LengthAwarePaginator;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
-use Symfony\Component\HttpFoundation\StreamedResponse;
 use Illuminate\Validation\Rule;
 use Illuminate\Validation\ValidationException;
 use Illuminate\View\View;
+use Symfony\Component\HttpFoundation\StreamedResponse;
 
 class FinanceManagementController extends Controller
 {
@@ -81,11 +80,13 @@ class FinanceManagementController extends Controller
             $elapsedMonths = $this->completedMonths($asset->acquired_on, now());
             $depreciable = max(0, $asset->purchase_amount - $asset->residual_amount);
             $asset->estimated_book_value = max($asset->residual_amount, $asset->purchase_amount - (int) floor($depreciable * min($elapsedMonths, $asset->useful_life_months) / max(1, $asset->useful_life_months)));
+
             return $asset;
         });
         $purchaseRequests = FinanceEquipmentPurchaseRequest::query()->with(['assignee', 'creator', 'approver', 'issuer', 'reviewer', 'receiptReceiver', 'returnedReceiver'])
             ->latest()->paginate(10, ['*'], 'purchase_page')->withQueryString();
         $purchaseSetting = FinanceEquipmentPurchaseSetting::query()->with('assignee')->find(1);
+
         return view('finance.management.index', [
             'tab' => $tab,
             'teamView' => $teamView,
@@ -124,6 +125,7 @@ class FinanceManagementController extends Controller
         $data['created_by'] = $request->user()->id;
         $budget = FinanceBudget::query()->create($data);
         $audit->record($budget, 'budget_created', null, $budget->toArray());
+
         return back()->with('success', 'Budget enregistré. Les dépenses payées seront rapprochées automatiquement.');
     }
 
@@ -158,7 +160,7 @@ class FinanceManagementController extends Controller
                 ->where('staff_payroll_period_id', $payrollPeriod->id)
                 ->whereIn('status', ['awaiting_finance', 'awaiting_director', 'authorized_to_pay', 'partially_paid'])
                 ->sum(DB::raw('amount - paid_amount'));
-            $remaining = max(0, (int) $payrollPeriod->salary_amount - $alreadyPaid - $alreadyAdvanced - $pendingAdvances);
+            $remaining = max(0, (int) $payrollPeriod->salary_amount - $alreadyPaid - $alreadyAdvanced - $pendingAdvances - (int) $payrollPeriod->carried_forward_out);
             if ((int) $data['amount'] > $remaining) {
                 throw ValidationException::withMessages(['amount' => 'L’avance dépasse le reste du salaire de ce mois ('.number_format($remaining, 0, ',', ' ').' F).']);
             }
@@ -176,6 +178,7 @@ class FinanceManagementController extends Controller
             'staff_repayment_method' => $data['repayment_method'] ?? null,
             'staff_repayment_value' => $data['repayment_value'] ?? null,
         ], $request->user(), $request->user()->isAdmin());
+
         return back()->with('success', $request->user()->isAdmin()
             ? ($data['advance_type'] === 'loan' ? 'Prêt autorisé. Enregistre sa remise réelle ; le solde à récupérer sera suivi séparément des dépenses.' : 'Avance autorisée par le DG. Enregistre ensuite son paiement pour mettre à jour la caisse et le suivi du salarié.')
             : 'Demande d’avance transmise au circuit de validation. Elle sera inscrite au suivi après son paiement autorisé.');
@@ -243,7 +246,9 @@ class FinanceManagementController extends Controller
             $locked = FinanceStaffAdvance::query()->lockForUpdate()->findOrFail($advance->id);
             abort_if($locked->advance_type !== 'loan', 422, 'Une avance sur salaire est déduite du mois concerné et ne se rembourse pas dans cette liste.');
             $remaining = $locked->amount - $locked->repaid_amount;
-            if ($data['amount'] > $remaining) throw ValidationException::withMessages(['amount' => 'Le remboursement dépasse le solde de l’avance ('.number_format($remaining, 0, ',', ' ').' F).']);
+            if ($data['amount'] > $remaining) {
+                throw ValidationException::withMessages(['amount' => 'Le remboursement dépasse le solde de l’avance ('.number_format($remaining, 0, ',', ' ').' F).']);
+            }
             $repayment = FinanceStaffAdvanceRepayment::query()->create(['advance_id' => $locked->id, 'amount' => $data['amount'], 'received_at' => $data['received_at'], 'received_by' => $request->user()->id]);
             $locked->increment('repaid_amount', $data['amount']);
             $ledger->record([
@@ -255,6 +260,7 @@ class FinanceManagementController extends Controller
             ]);
             $audit->record($locked, 'staff_advance_repayment', ['repaid_amount' => $remaining], ['repaid_amount' => $remaining + $data['amount']]);
         });
+
         return back()->with('success', 'Remboursement enregistré et ajouté à la caisse générale.');
     }
 
@@ -296,7 +302,9 @@ class FinanceManagementController extends Controller
             ->whereDate('commission_period_start', '<=', $data['period_end'])->whereDate('commission_period_end', '>=', $data['period_start'])
             ->whereIn('status', ['awaiting_finance', 'awaiting_director', 'authorized_to_pay', 'partially_paid'])
             ->sum(DB::raw('amount - paid_amount'));
-        if ($data['amount'] > max(0, $accrued - $alreadyRequested - $alreadyPaid)) throw ValidationException::withMessages(['amount' => 'La demande dépasse les commissions calculées restantes sur cette période.']);
+        if ($data['amount'] > max(0, $accrued - $alreadyRequested - $alreadyPaid)) {
+            throw ValidationException::withMessages(['amount' => 'La demande dépasse les commissions calculées restantes sur cette période.']);
+        }
         $workflow->submit([
             'category_name' => 'Commission du personnel',
             'description' => 'Règlement des commissions calculées du '.$data['period_start'].' au '.$data['period_end'].'.',
@@ -308,6 +316,7 @@ class FinanceManagementController extends Controller
             'commission_period_start' => $data['period_start'],
             'commission_period_end' => $data['period_end'],
         ], $request->user());
+
         return back()->with('success', 'Demande de règlement transmise au circuit de validation. Le paiement sera enregistré dans le suivi après autorisation.');
     }
 
@@ -323,11 +332,14 @@ class FinanceManagementController extends Controller
         ]);
         $data['reference'] = 'TMP-'.Str::uuid();
         $data['created_by'] = $request->user()->id;
-        if ($request->hasFile('document')) $data['document_path'] = $request->file('document')->store('finance/assets', 'local');
+        if ($request->hasFile('document')) {
+            $data['document_path'] = $request->file('document')->store('finance/assets', 'local');
+        }
         unset($data['document']);
         $asset = FinanceAsset::query()->create($data);
         $asset->update(['reference' => sprintf('IMM-%s-%06d', now()->format('Y'), $asset->id)]);
         $audit->record($asset, 'asset_registered', null, $asset->toArray());
+
         return back()->with('success', 'Immobilisation enregistrée. Sa valeur nette est une estimation de suivi à faire valider par le cabinet.');
     }
 
@@ -335,6 +347,7 @@ class FinanceManagementController extends Controller
     {
         $this->authorizeFinance($request->user());
         abort_unless($asset->document_path && \Illuminate\Support\Facades\Storage::disk('local')->exists($asset->document_path), 404);
+
         return \Illuminate\Support\Facades\Storage::disk('local')->download($asset->document_path);
     }
 
@@ -342,6 +355,7 @@ class FinanceManagementController extends Controller
     {
         $this->authorizeFinance($request->user());
         $assets = FinanceAsset::query()->with('location')->where('status', 'in_service')->orderBy('name')->get();
+
         return response()->streamDownload(function () use ($assets): void {
             $output = fopen('php://output', 'w');
             fwrite($output, "\xEF\xBB\xBF");
@@ -365,13 +379,17 @@ class FinanceManagementController extends Controller
     private function completedMonths(Carbon $from, Carbon $to): int
     {
         $months = (($to->year - $from->year) * 12) + $to->month - $from->month;
-        if ($to->day < $from->day) $months--;
+        if ($to->day < $from->day) {
+            $months--;
+        }
+
         return max(0, $months);
     }
 
     private function receivables(Request $request): EloquentCollection
     {
         $search = trim((string) $request->query('q', ''));
+
         return Order::query()->with(['costumer', 'payments'])
             ->whereNotIn('status', ['delivered', 'canceled'])->whereNull('partner_id')->whereNull('public_order_link_id')
             ->when($search !== '', fn ($query) => $query->where(function ($where) use ($search): void {
@@ -384,6 +402,7 @@ class FinanceManagementController extends Controller
                 $order->receivable_paid = min($order->receivable_total, max((int) $order->paid_amount, $payments));
                 $order->balance_due = max(0, $order->receivable_total - $order->receivable_paid);
                 $order->balance_age_days = (int) $order->created_at->diffInDays(now());
+
                 return $order;
             })->filter(fn (Order $order) => $order->balance_due > 0)->values();
     }
@@ -427,6 +446,7 @@ class FinanceManagementController extends Controller
             $balance += $averageInflow - $outflow;
             $weeks[] = ['start' => $start, 'end' => $end, 'inflow' => $averageInflow, 'supplier_due' => $supplierDue, 'expense_due' => $expenseDue, 'loan_due' => $loanDue, 'outflow' => $outflow, 'projected_balance' => $balance];
         }
+
         return ['opening_balance' => $ledger->balance('general_cash'), 'average_inflow' => $averageInflow, 'weeks' => $weeks];
     }
 }

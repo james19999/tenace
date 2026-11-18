@@ -2,22 +2,22 @@
 
 namespace App\Http\Controllers\Orders;
 
-use Carbon\Carbon;
-use App\Models\User;
-use App\Mail\TenaCos;
-use App\Models\Product;
-use App\Traits\MyTrait;
-use App\Traits\NewTrait;
-use App\Models\Orders\Order;
-use Illuminate\Http\Request;
-use Illuminate\Support\Facades\DB;
 use App\Http\Controllers\Controller;
 use App\Http\Controllers\PartnerOrderController;
-use Illuminate\Support\Facades\Auth;
-use Illuminate\Support\Facades\Mail;
-use App\Models\PourcentageCommission;
+use App\Mail\TenaCos;
+use App\Models\Orders\Order;
+use App\Models\Product;
+use App\Models\User;
+use App\Notifications\StorefrontOrderNotification;
 use App\Services\StockDeliveryService;
 use App\Support\WestAfricaShippingCatalog;
+use App\Traits\MyTrait;
+use App\Traits\NewTrait;
+use Carbon\Carbon;
+use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Mail;
 
 class OrderController extends Controller
 {
@@ -43,8 +43,13 @@ class OrderController extends Controller
 
         return view('orders.invoice', compact('order'));
     }
+
     public function index(Request $request)
     {
+        Auth::user()?->unreadNotifications()
+            ->where('type', StorefrontOrderNotification::class)
+            ->update(['read_at' => now()]);
+
         if (Auth::user()?->user_type === User::ROLE_PARTNER) {
             return app(PartnerOrderController::class)->index($request);
         }
@@ -57,7 +62,9 @@ class OrderController extends Controller
         }
         $search = mb_substr(trim((string) $request->query('search', '')), 0, 100);
         $applySearch = function ($query) use ($search): void {
-            if ($search === '') return;
+            if ($search === '') {
+                return;
+            }
 
             $query->where(function ($matches) use ($search) {
                 $matches->where('code', 'like', '%'.$search.'%')
@@ -130,7 +137,6 @@ class OrderController extends Controller
         ))->with('search', $search);
     }
 
-
     public function addnewproduct(Request $request, $id)
     {
 
@@ -143,6 +149,7 @@ class OrderController extends Controller
             'high_price',
         ]);
     }
+
     public function show($id)
     {
 
@@ -169,7 +176,7 @@ class OrderController extends Controller
         //     'high_price',
         // ]);
 
-        return  view('orders.show', compact('Orders', 'livreurs'));
+        return view('orders.show', compact('Orders', 'livreurs'));
     }
 
     public function updatePayment(Request $request, string $id)
@@ -210,7 +217,7 @@ class OrderController extends Controller
         $this->authorizeWholesalerOrder($orders);
 
         if ($orders) {
-            if ($request->status == "canceled") {
+            if ($request->status == 'canceled') {
                 $request->validate(
                     ['motif' => 'required'],
                     ['motif.required' => 'Entrer le motif d\'annulation.']
@@ -230,21 +237,24 @@ class OrderController extends Controller
                 $this->RemovePub($orders);
                 $this->RemoveImprevue($orders);
                 $orders->save();
+
                 return redirect()->back()->with('success', 'commande annuler');
-            } else if ($request->status === 'waiting') {
+            } elseif ($request->status === 'waiting') {
                 abort_unless($orders->status === 'ordered', 409, 'Seule une commande en cours peut être mise en attente.');
                 $data = $request->validate(['motif' => ['nullable', 'string', 'max:500']]);
                 $orders->delivery_waiting = true;
                 $orders->motif = filled($data['motif'] ?? null) ? trim($data['motif']) : null;
                 $orders->save();
+
                 return redirect()->back()->with('success', 'Livraison mise en attente à la demande de la cliente.');
-            } else if ($request->status == "ordered") {
+            } elseif ($request->status == 'ordered') {
                 $orders->status = $request->status;
                 $orders->delivery_waiting = false;
                 $orders->motif = null;
                 $orders->save();
+
                 return redirect()->back()->with('success', 'commande remise en cours');
-            } else if ($request->status == "delivered") {
+            } elseif ($request->status == 'delivered') {
                 $order = Order::with('orderItems')->findOrFail($orders->id);
                 if (! $stockDelivery->deliver($order, (int) Auth::id())) {
                     return redirect()->back()->with('success', 'Cette commande a déjà été validée comme livrée.');
@@ -265,15 +275,14 @@ class OrderController extends Controller
                 $this->CalculTauxPub($order);
                 $this->processCommissions($order);
 
-
                 $orders->save();
+
                 return redirect()->back()->with('success', 'commande valider');
             }
         } else {
             return redirect()->back()->with('success', 'error');
         }
     }
-
 
     public function refresh_order(Request $request, $id)
     {
@@ -308,7 +317,7 @@ class OrderController extends Controller
             $orders->take = true;
             $orders->time = $validated['time'] ?? $orders->time;
 
-            if (!empty($validated['user_take'])) {
+            if (! empty($validated['user_take'])) {
                 $orders->user_id = $validated['user_take'];
                 $orders->assigned_at = now();
             }
@@ -320,7 +329,7 @@ class OrderController extends Controller
                 try {
                     Mail::to($livreur->email)->send(new TenaCos($orders));
                 } catch (\Throwable $e) {
-                    \Illuminate\Support\Facades\Log::error("Erreur d'envoi email livreur : " . $e->getMessage());
+                    \Illuminate\Support\Facades\Log::error("Erreur d'envoi email livreur : ".$e->getMessage());
                 }
             }
 
@@ -372,7 +381,7 @@ class OrderController extends Controller
         $this->authorizeWholesalerOrder($order);
         $order->delete();
 
-        return  redirect()->back()->with('success', 'Commande supprimer');
+        return redirect()->back()->with('success', 'Commande supprimer');
     }
 
     public function edit_hours_order(Request $request, $id)
@@ -415,9 +424,6 @@ class OrderController extends Controller
         }
     }
 
-
-
-
     public function updateProdSale($prod_id, $newQty)
     {
         $prod = Product::where('id', $prod_id)->first();
@@ -434,25 +440,26 @@ class OrderController extends Controller
             $prod->benefice = $bnvendu;
             //dd($prod->qts_sell);
             $prod->update();
+
             return true; //$prod->qt_initial;
         } else {
             return false;
         }
     }
 
-
-    public  function check_type($id)
+    public function check_type($id)
     {
 
         $order = Order::findOrFail($id);
-        if ($order->type === "PR") {
-            $order->type = "PU";
-        } elseif ($order->type === "PU") {
-            $order->type = "PR";
+        if ($order->type === 'PR') {
+            $order->type = 'PU';
+        } elseif ($order->type === 'PU') {
+            $order->type = 'PR';
         } else {
             return back()->with('error', 'Le type de cette commande ne peut pas être modifié.');
         }
         $order->save();
+
         return back();
     }
 
@@ -460,14 +467,13 @@ class OrderController extends Controller
     {
         $orders = Order::findOrfail($id);
 
-
         if ($orders) {
-            # code...
+            // code...
             if ($orders->status_order == 0 || $orders->status_order == 1) {
                 $orders->status_order = true;
                 $orders->user_id = $request->user_report;
                 $orders->assigned_at = now();
-                $orders->status = "ordered";
+                $orders->status = 'ordered';
                 $orders->delivery_waiting = false;
                 $orders->motif = null;
                 $orders->time = $request->time;
@@ -477,8 +483,8 @@ class OrderController extends Controller
 
                 return redirect()->back()->with('success', "Commande  programmée sur $request->date_report à $request->time ");
             } else {
-                # code...
-                return redirect()->back()->with('success', "Erreur de la reprogrammation");
+                // code...
+                return redirect()->back()->with('success', 'Erreur de la reprogrammation');
             }
         }
     }
@@ -489,8 +495,10 @@ class OrderController extends Controller
             ->whereNotNull('user_id')
             ->get();
         $livreurs = User::where('user_type', 'LVS')->get();
-        return  view('orders.order_canceled', compact('orders', 'livreurs'));
+
+        return view('orders.order_canceled', compact('orders', 'livreurs'));
     }
+
     public function order_report_list()
     {
         $orders = Order::whereDate('created_at', '>', Carbon::today())
@@ -498,6 +506,7 @@ class OrderController extends Controller
 
         return view('orders.order_report_list', compact('orders'));
     }
+
     public function ordered_list()
     {
         $livreurs = User::where('user_type', 'LVS')->get();
@@ -514,22 +523,21 @@ class OrderController extends Controller
         $orders = Order::findOrfail($id);
         $this->authorizeWholesalerOrder($orders);
 
-
         if ($orders) {
-            # code...
+            // code...
             if ($orders->status_order == 0 || $orders->status_order == 1) {
                 $orders->status_order = false;
                 $orders->user_id = null;
-                $orders->status = "ordered";
+                $orders->status = 'ordered';
                 $orders->time = $request->time;
                 $orders->take = false;
                 $orders->created_at = Carbon::now();
                 $orders->save();
 
-                return redirect()->back()->with('success', "Succès");
+                return redirect()->back()->with('success', 'Succès');
             } else {
-                # code...
-                return redirect()->back()->with('success', "Erreur de la reprogrammation");
+                // code...
+                return redirect()->back()->with('success', 'Erreur de la reprogrammation');
             }
         }
     }
@@ -540,14 +548,14 @@ class OrderController extends Controller
         $endDate = $request->input('end_date');
         $created_user = $request->input('costumer_id');
 
-        $orders = Order::whereBetween('delivered_at', [$startDate . ' 00:00:00', $endDate . ' 23:59:59'])
-            ->where("status", "delivered")
+        $orders = Order::whereBetween('delivered_at', [$startDate.' 00:00:00', $endDate.' 23:59:59'])
+            ->where('status', 'delivered')
             ->where('costumer_id', $created_user)
             ->get();
 
         $users = User::where('user_type', 'PT')->get();
 
-        return view('orders.order_parthner_trie', compact("orders", "users"));
+        return view('orders.order_parthner_trie', compact('orders', 'users'));
     }
 
     public function order_repport(Request $request)
@@ -556,9 +564,9 @@ class OrderController extends Controller
         $orders = Order::whereYear('delivered_at', $request->year)
             ->where('status', 'delivered')
             ->get();
+
         return view('orders.order_repport', compact('orders'));
     }
-
 
     public function countDeliveriesByDay()
     {
@@ -585,6 +593,7 @@ class OrderController extends Controller
 
         return $results;
     }
+
     public function countTotalDeliveries()
     {
         $startOfWeek = Carbon::now()->startOfWeek(); // Début de la semaine (lundi)
@@ -617,6 +626,7 @@ class OrderController extends Controller
 
         if ($viewer?->user_type === 'PT') {
             $countryCode = strtoupper(trim((string) $viewer->country_code));
+
             return in_array($countryCode, array_keys(WestAfricaShippingCatalog::countries()), true)
                 ? $countryCode
                 : '___NONE___';
@@ -632,6 +642,7 @@ class OrderController extends Controller
         }
 
         $viewerCountry = strtoupper(trim((string) ($viewer?->country_code ?: config('services.fedapay.country_code', 'TG'))));
+
         return in_array($viewerCountry, array_keys(WestAfricaShippingCatalog::countries()), true)
             ? $viewerCountry
             : '___NONE___';
@@ -645,7 +656,6 @@ class OrderController extends Controller
         }
     }
 
-
     public function formatDeliveriesByDay()
     {
         $dailyData = $this->countDeliveriesByDay();
@@ -658,7 +668,7 @@ class OrderController extends Controller
             $formatted[$total->id] = [
                 'name' => $total->name,
                 'total_deliveries' => $total->total_deliveries,
-                'days' => []
+                'days' => [],
             ];
         }
 
@@ -677,7 +687,6 @@ class OrderController extends Controller
         return $formatted;
     }
 
-
     public function showDeliveries()
     {
         $formatted = $this->formatDeliveriesByDay();
@@ -693,9 +702,6 @@ class OrderController extends Controller
 
         return view('orders.filter');
     }
-
-
-
 
     public function annualRanking($year = null)
     {
@@ -719,8 +725,6 @@ class OrderController extends Controller
             ->orderByDesc('total_revenue')
             ->get();
     }
-
-
 
     public function ranking(Request $request)
     {

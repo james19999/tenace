@@ -2,24 +2,29 @@
 
 namespace App\Http\Livewire;
 
+use App\Models\Orders\Order;
+use App\Models\User;
 use App\Notifications\CustomerServiceCaseNotification;
-use App\Notifications\StockControlNotification;
 use App\Notifications\DgAppointmentNotification;
 use App\Notifications\FinanceCashCountAlertNotification;
 use App\Notifications\FinanceExpenseReportNotification;
 use App\Notifications\FinanceExternalLoanDueNotification;
 use App\Notifications\FinanceWorkflowNotification;
-use App\Models\Orders\Order;
-use App\Models\User;
+use App\Notifications\StockControlNotification;
+use App\Notifications\StorefrontOrderNotification;
 use Illuminate\Support\Facades\Auth;
 use Livewire\Component;
 
 class CustomerServiceNotifications extends Component
 {
     public bool $open = false;
+
     public bool $loginNotificationShown = false;
+
     public array $knownNotificationIds = [];
+
     public array $knownScheduledCourierOrderIds = [];
+
     public array $knownWaitingCourierOrderIds = [];
 
     public function mount(): void
@@ -108,8 +113,7 @@ class CustomerServiceNotifications extends Component
             ->limit(30)
             ->get();
         $knownIds = array_map('strval', $this->knownNotificationIds);
-        $newUnread = $latest->filter(fn ($notification) =>
-            ! in_array((string) $notification->id, $knownIds, true) && is_null($notification->read_at)
+        $newUnread = $latest->filter(fn ($notification) => ! in_array((string) $notification->id, $knownIds, true) && is_null($notification->read_at)
         );
 
         $this->rememberNotificationIds($latest->pluck('id')->map(fn ($id) => (string) $id)->all());
@@ -193,6 +197,7 @@ class CustomerServiceNotifications extends Component
             FinanceExpenseReportNotification::class,
             FinanceWorkflowNotification::class,
             FinanceExternalLoanDueNotification::class,
+            StorefrontOrderNotification::class,
         ];
     }
 

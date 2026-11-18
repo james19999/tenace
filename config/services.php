@@ -47,4 +47,8 @@ return [
         'private_key' => env('WEBPUSH_VAPID_PRIVATE_KEY'),
     ],
 
+    'storefront' => [
+        'api_key' => env('TENACOS_STOREFRONT_API_KEY'),
+    ],
+
 ];

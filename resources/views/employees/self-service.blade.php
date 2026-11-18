@@ -8,8 +8,22 @@
 
     @if($activePage==='payroll')
     <section class="ess-summary" aria-label="Résumé de ta situation">
-        <article class="ess-summary-salary"><span class="ess-summary-icon material-icons" aria-hidden="true">payments</span><div><span>Salaire mensuel convenu</span><strong>{{ $profile->monthly_salary ? number_format($profile->monthly_salary,0,',',' ').' F CFA' : 'À renseigner' }}</strong><small>@if($profile->salary_effective_from)Montant contractuel · applicable depuis {{ $profile->salary_effective_from->format('m/Y') }}. Le DG rend chaque mois visible quand les fonds sont prêts.@else Demande à l’administration de renseigner ton salaire @endif</small></div></article>
-        <article class="ess-summary-available"><span class="ess-summary-icon material-icons" aria-hidden="true">account_balance_wallet</span><div><span>Avance disponible ce mois</span><strong>{{ number_format($availableForAdvance,0,',',' ') }} F CFA</strong><small>Après déduction du salaire payé et des avances déjà demandées ou versées.</small></div></article>
+        <article class="ess-summary-salary"><span class="ess-summary-icon material-icons" aria-hidden="true">payments</span><div>
+            <span>Salaire disponible ce mois · report inclus</span>
+            <strong>{{ $currentPeriod ? number_format($currentPeriod->salary_amount,0,',',' ').' F CFA' : ($profile->monthly_salary ? number_format($profile->monthly_salary,0,',',' ').' F CFA' : 'À renseigner') }}</strong>
+            <small>
+                @if($profile->salary_effective_from)
+                    Salaire mensuel contractuel : {{ number_format($profile->monthly_salary,0,',',' ') }} F CFA
+                    @if($currentPeriod && $currentPeriod->carry_forward_in > 0)
+                        · {{ number_format($currentPeriod->carry_forward_in,0,',',' ') }} F CFA reportés des mois précédents
+                    @endif
+                    . Le salaire est disponible dès le début du mois.
+                @else
+                    Demande à l’administration de renseigner ton salaire.
+                @endif
+            </small>
+        </div></article>
+        <article class="ess-summary-available"><span class="ess-summary-icon material-icons" aria-hidden="true">account_balance_wallet</span><div><span>Solde salarial disponible</span><strong>{{ number_format($availableForAdvance,0,',',' ') }} F CFA</strong><small>Après déduction des versements, des avances déjà remises et des demandes en attente.</small></div></article>
     </section>
 
     <section class="ess-card ess-request-card" id="ess-new-advance"><div class="ess-card-head"><span class="ess-section-icon material-icons" aria-hidden="true">request_quote</span><div><span class="ess-section-kicker">BESOIN D’ARGENT</span><h2>Demander une avance ou un prêt</h2><p>Choisis le type de demande et indique le montant. La Direction te répondra ici.</p></div></div>
@@ -54,16 +68,17 @@
     </div>
 
     <section class="ess-card ess-salary-card"><div class="ess-card-head"><span class="ess-section-icon material-icons" aria-hidden="true">calendar_month</span><div><span class="ess-section-kicker">HISTORIQUE</span><h2>Suivi des salaires</h2><p>Salaires versés, avances prises et montant restant pour chaque mois.</p></div></div>
-        <div class="table-responsive"><table class="table ess-table"><thead><tr><th>Mois</th><th>Salaire convenu</th><th>Avances payées</th><th>Retenue prêts</th><th>Net remis</th><th>Reste à régler</th></tr></thead><tbody>
+        <div class="table-responsive"><table class="table ess-table"><thead><tr><th>Mois</th><th>Salaire du mois</th><th>Avances payées</th><th>Retenue prêts</th><th>Net remis</th><th>Solde restant</th></tr></thead><tbody>
             @forelse($periods as $period)
                 @php
                     $salaryPaid = (int) $period->payments->where('kind', 'salary')->sum('amount');
                     $loanDeducted = (int) $period->payments->where('kind', 'salary')->sum('loan_deduction_amount');
                     $salaryNetPaid = (int) $period->payments->where('kind', 'salary')->sum(fn ($payment) => $payment->net_amount ?? $payment->amount);
-                    $advancePaid = (int) $period->staffAdvances->where('advance_type', 'salary_advance')->sum('amount') + (int) $period->payments->where('kind', 'advance')->sum('amount');
+                    $linkedAdvancePaymentIds = $period->staffAdvances->pluck('employee_payroll_payment_id')->filter()->map(fn ($id) => (int) $id)->all();
+                    $advancePaid = (int) $period->staffAdvances->where('advance_type', 'salary_advance')->sum('amount') + (int) $period->payments->where('kind', 'advance')->whereNotIn('id', $linkedAdvancePaymentIds)->sum('amount');
                 @endphp
-                <tr><td>{{ $period->period_start->translatedFormat('F Y') }}</td><td>{{ number_format($period->salary_amount,0,',',' ') }} F</td><td>{{ number_format($advancePaid,0,',',' ') }} F</td><td>{{ number_format($loanDeducted,0,',',' ') }} F</td><td>{{ number_format($salaryNetPaid,0,',',' ') }} F</td><td><strong>{{ number_format(max(0,$period->salary_amount-$salaryPaid-$advancePaid),0,',',' ') }} F</strong></td></tr>
-            @empty<tr><td colspan="6" class="ess-empty">Aucun salaire n’a encore été rendu disponible par le DG.</td></tr>@endforelse
+                <tr><td>{{ $period->period_start->translatedFormat('F Y') }}</td><td>{{ number_format($period->salary_amount,0,',',' ') }} F @if($period->carry_forward_in>0)<small class="d-block">dont {{ number_format($period->carry_forward_in,0,',',' ') }} F reportés</small>@endif</td><td>{{ number_format($advancePaid,0,',',' ') }} F</td><td>{{ number_format($loanDeducted,0,',',' ') }} F</td><td>{{ number_format($salaryNetPaid,0,',',' ') }} F</td><td><strong>{{ number_format(max(0,$period->salary_amount-$salaryPaid-$advancePaid-$period->carried_forward_out),0,',',' ') }} F</strong></td></tr>
+            @empty<tr><td colspan="6" class="ess-empty">Aucun mois de salaire n’est encore configuré dans ton dossier.</td></tr>@endforelse
         </tbody></table></div>
     </section>
 

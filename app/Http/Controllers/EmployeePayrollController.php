@@ -3,11 +3,11 @@
 namespace App\Http\Controllers;
 
 use App\Models\EmployeePayrollPayment;
-use App\Models\EmployeeProfile;
 use App\Models\EmployeePayrollPeriod;
+use App\Models\EmployeeProfile;
 use App\Models\FinanceAuditEvent;
-use App\Models\FinanceExpenseRequest;
 use App\Models\FinanceEquipmentPurchaseSetting;
+use App\Models\FinanceExpenseRequest;
 use App\Models\FinanceStaffAdvance;
 use App\Models\StockLocation;
 use App\Models\User;
@@ -48,6 +48,9 @@ class EmployeePayrollController extends Controller
         }
         $profile = EmployeeProfile::query()->firstOrCreate(['user_id' => $employee->id]);
         $employee->setRelation('employeeProfile', $profile);
+        $currentPeriod = $activePage === 'payroll'
+            ? $this->ensureCurrentSalaryPeriod($employee, $profile)
+            : null;
 
         $periods = EmployeePayrollPeriod::query()->where('user_id', $employee->id)->whereNotNull('available_at')
             ->with(['payments.payer', 'staffAdvances.creator', 'staffAdvances.financeExpensePayment.expense'])
@@ -59,13 +62,12 @@ class EmployeePayrollController extends Controller
         $personalLoans = FinanceStaffAdvance::query()->with(['repayments.receiver'])
             ->where('user_id', $employee->id)->where('advance_type', 'loan')
             ->latest('granted_on')->limit(30)->get();
-        $currentPeriod = EmployeePayrollPeriod::query()->where('user_id', $employee->id)->whereDate('period_start', now()->startOfMonth())->first();
-        $currentPeriodSalary = (int) ($currentPeriod?->salary_amount ?? $profile->monthly_salary ?? 0);
+        $currentPeriodSalary = (int) ($currentPeriod?->salary_amount ?? 0);
         $currentPaid = (int) ($currentPeriod?->payments()->where('kind', 'salary')->sum('amount') ?? 0);
         $currentAdvanced = $currentPeriod ? (int) FinanceStaffAdvance::query()->where('payroll_period_id', $currentPeriod->id)->where('advance_type', 'salary_advance')->sum('amount') : 0;
         $currentPending = $currentPeriod ? (int) FinanceExpenseRequest::query()->where('staff_payroll_period_id', $currentPeriod->id)
             ->whereIn('status', ['awaiting_finance', 'awaiting_director', 'authorized_to_pay', 'partially_paid'])->sum(DB::raw('amount - paid_amount')) : 0;
-        $availableForAdvance = max(0, $currentPeriodSalary - $currentPaid - $currentAdvanced - $currentPending);
+        $availableForAdvance = max(0, $currentPeriodSalary - $currentPaid - $currentAdvanced - $currentPending - (int) ($currentPeriod?->carried_forward_out ?? 0));
         $purchaseRequests = class_exists(\App\Models\FinanceEquipmentPurchaseRequest::class)
             ? \App\Models\FinanceEquipmentPurchaseRequest::query()->with(['creator', 'approver', 'issuer', 'reviewer', 'receiptReceiver', 'returnedReceiver'])->where('assigned_to', $employee->id)->latest()->limit(20)->get()
             : collect();
@@ -75,7 +77,7 @@ class EmployeePayrollController extends Controller
         $canManagePurchases = $canCreatePurchases || $purchaseRequests->isNotEmpty();
         abort_unless($activePage !== 'purchases' || $canManagePurchases, 404);
 
-        return view('employees.self-service', compact('employee', 'employeeShopLocation', 'profile', 'periods', 'advanceRequests', 'personalLoans', 'purchaseRequests', 'purchaseSetting', 'availableForAdvance', 'activePage', 'canManagePurchases', 'canCreatePurchases'));
+        return view('employees.self-service', compact('employee', 'employeeShopLocation', 'profile', 'currentPeriod', 'periods', 'advanceRequests', 'personalLoans', 'purchaseRequests', 'purchaseSetting', 'availableForAdvance', 'activePage', 'canManagePurchases', 'canCreatePurchases'));
     }
 
     public function requestOwnAdvance(Request $request, FinanceExpenseWorkflowService $workflow): RedirectResponse
@@ -94,23 +96,9 @@ class EmployeePayrollController extends Controller
                 throw ValidationException::withMessages(['amount' => 'Ton salaire n’est pas encore renseigné. Contacte l’administration pour demander une avance sur salaire.']);
             }
 
-            $periodStart = now()->startOfMonth();
-            if ($periodStart->lt($profile->salary_effective_from->copy()->startOfMonth())) {
-                throw ValidationException::withMessages(['amount' => 'Le salaire convenu ne s’applique pas encore à ce mois.']);
-            }
-            $period = EmployeePayrollPeriod::query()->where('user_id', $employee->id)->whereDate('period_start', $periodStart)->first();
+            $period = $this->ensureCurrentSalaryPeriod($employee, $profile);
             if (! $period) {
-                $period = EmployeePayrollPeriod::query()->create([
-                    'reference' => 'TMP-'.Str::uuid(), 'user_id' => $employee->id,
-                    'period_start' => $periodStart->toDateString(), 'salary_amount' => $profile->monthly_salary,
-                    'note' => 'Suivi créé lors d’une demande d’avance par l’employé.', 'created_by' => $employee->id,
-                ]);
-                $period->update(['reference' => sprintf('SAL-%s-%06d', $periodStart->format('Y'), $period->id)]);
-                FinanceAuditEvent::query()->create([
-                    'subject_type' => 'EmployeePayrollPeriod', 'subject_id' => $period->id, 'action' => 'salary_period_created',
-                    'after_values' => ['reference' => $period->reference, 'employee' => $employee->name, 'period' => $periodStart->format('Y-m'), 'salary_amount' => $period->salary_amount],
-                    'reason' => 'Suivi ouvert lors d’une demande d’avance sur salaire.', 'user_id' => $employee->id, 'created_at' => now(),
-                ]);
+                throw ValidationException::withMessages(['amount' => 'Le salaire convenu ne s’applique pas encore à ce mois.']);
             }
 
             $alreadyPaid = (int) $period->payments()->where('kind', 'salary')->sum('amount');
@@ -118,7 +106,7 @@ class EmployeePayrollController extends Controller
             $pendingAdvances = (int) FinanceExpenseRequest::query()->where('staff_payroll_period_id', $period->id)
                 ->whereIn('status', ['awaiting_finance', 'awaiting_director', 'authorized_to_pay', 'partially_paid'])
                 ->sum(DB::raw('amount - paid_amount'));
-            $available = max(0, (int) $period->salary_amount - $alreadyPaid - $alreadyAdvanced - $pendingAdvances);
+            $available = max(0, (int) $period->salary_amount - $alreadyPaid - $alreadyAdvanced - $pendingAdvances - (int) $period->carried_forward_out);
             if ((int) $data['amount'] > $available) {
                 throw ValidationException::withMessages(['amount' => 'Le montant dépasse le solde disponible de '.number_format($available, 0, ',', ' ').' F CFA.']);
             }
@@ -144,6 +132,9 @@ class EmployeePayrollController extends Controller
     {
         $this->authorizeAccess($employee);
         $employee->load('employeeProfile');
+        if ($employee->employeeProfile) {
+            $this->ensureCurrentSalaryPeriod($employee, $employee->employeeProfile);
+        }
 
         $periods = EmployeePayrollPeriod::query()
             ->where('user_id', $employee->id)
@@ -300,7 +291,7 @@ class EmployeePayrollController extends Controller
                 ->where('staff_payroll_period_id', $locked->id)
                 ->whereIn('status', ['awaiting_finance', 'awaiting_director', 'authorized_to_pay', 'partially_paid'])
                 ->sum(DB::raw('amount - paid_amount'));
-            $remaining = max(0, (int) $locked->salary_amount - $alreadyPaid - $alreadyAdvanced - $pendingAdvances);
+            $remaining = max(0, (int) $locked->salary_amount - $alreadyPaid - $alreadyAdvanced - $pendingAdvances - (int) $locked->carried_forward_out);
             $paidAt = \Illuminate\Support\Carbon::parse($data['paid_at'])->startOfDay();
             $requestedNetAmount = (int) $data['net_amount'];
             $eligibleLoanDues = [];
@@ -321,7 +312,7 @@ class EmployeePayrollController extends Controller
                     continue;
                 }
                 $scheduled = $loan->repayment_method === 'salary_percent'
-                    ? max(1, (int) round($locked->salary_amount * ((float) $loan->repayment_value / 100)))
+                    ? max(1, (int) round(max(0, (int) $locked->salary_amount - (int) $locked->carry_forward_in) * ((float) $loan->repayment_value / 100)))
                     : (int) $loan->repayment_value;
                 $alreadyRepaidThisMonth = (int) $loan->repayments()
                     ->where('received_at', '>=', $monthStart)
@@ -471,6 +462,109 @@ class EmployeePayrollController extends Controller
         ], true);
     }
 
+    private function ensureCurrentSalaryPeriod(User $employee, EmployeeProfile $profile): ?EmployeePayrollPeriod
+    {
+        if (! $profile->monthly_salary || ! $profile->salary_effective_from) {
+            return null;
+        }
+
+        $periodStart = now()->startOfMonth();
+        if ($periodStart->lt($profile->salary_effective_from->copy()->startOfMonth())) {
+            return null;
+        }
+
+        return DB::transaction(function () use ($employee, $profile, $periodStart): EmployeePayrollPeriod {
+            User::query()->lockForUpdate()->findOrFail($employee->id);
+
+            $period = EmployeePayrollPeriod::query()
+                ->where('user_id', $employee->id)
+                ->whereDate('period_start', $periodStart)
+                ->lockForUpdate()
+                ->first();
+            $wasCreated = ! $period;
+
+            if (! $period) {
+                $period = EmployeePayrollPeriod::query()->create([
+                    'reference' => 'TMP-'.Str::uuid(),
+                    'user_id' => $employee->id,
+                    'period_start' => $periodStart->toDateString(),
+                    'salary_amount' => (int) $profile->monthly_salary,
+                    'carry_forward_in' => null,
+                    'carried_forward_out' => 0,
+                    'note' => 'Suivi mensuel créé automatiquement au début du mois.',
+                    'created_by' => $employee->id,
+                ]);
+                $period->update(['reference' => sprintf('SAL-%s-%06d', $periodStart->format('Y'), $period->id)]);
+            }
+
+            $carryForwardWasProcessed = $period->carry_forward_in !== null;
+            $previousPeriods = EmployeePayrollPeriod::query()
+                ->where('user_id', $employee->id)
+                ->whereDate('period_start', '<', $periodStart)
+                ->with(['payments:id,period_id,kind,amount', 'staffAdvances:id,payroll_period_id,advance_type,amount,employee_payroll_payment_id'])
+                ->orderBy('period_start')
+                ->lockForUpdate()
+                ->get();
+            $pendingAmounts = FinanceExpenseRequest::query()
+                ->whereIn('staff_payroll_period_id', $previousPeriods->modelKeys())
+                ->whereIn('status', ['awaiting_finance', 'awaiting_director', 'authorized_to_pay', 'partially_paid'])
+                ->select('staff_payroll_period_id', DB::raw('SUM(amount - paid_amount) as pending_amount'))
+                ->groupBy('staff_payroll_period_id')
+                ->pluck('pending_amount', 'staff_payroll_period_id');
+            $newlyCarriedForward = 0;
+
+            foreach ($previousPeriods as $previousPeriod) {
+                $salaryPaid = (int) $previousPeriod->payments->where('kind', 'salary')->sum('amount');
+                $salaryAdvances = $previousPeriod->staffAdvances->where('advance_type', 'salary_advance');
+                $linkedAdvancePaymentIds = $salaryAdvances->pluck('employee_payroll_payment_id')->filter()->map(fn ($id): int => (int) $id)->all();
+                $legacyAdvances = (int) $previousPeriod->payments->where('kind', 'advance')
+                    ->whereNotIn('id', $linkedAdvancePaymentIds)->sum('amount');
+                $paid = $salaryPaid + (int) $salaryAdvances->sum('amount') + $legacyAdvances;
+                $pending = (int) ($pendingAmounts[$previousPeriod->id] ?? 0);
+                $unspent = max(0, (int) $previousPeriod->salary_amount - $paid - $pending - (int) $previousPeriod->carried_forward_out);
+
+                if ($unspent > 0) {
+                    $previousPeriod->carried_forward_out = (int) $previousPeriod->carried_forward_out + $unspent;
+                    $previousPeriod->save();
+                    $newlyCarriedForward += $unspent;
+                }
+            }
+
+            if (! $carryForwardWasProcessed) {
+                $period->carry_forward_in = $newlyCarriedForward;
+            }
+            if ($newlyCarriedForward > 0) {
+                $period->salary_amount = (int) $period->salary_amount + $newlyCarriedForward;
+                $period->carry_forward_in = (int) $period->carry_forward_in + ($carryForwardWasProcessed ? $newlyCarriedForward : 0);
+            }
+
+            $wasMadeAvailable = ! $period->available_at;
+            $period->available_at ??= $periodStart;
+            $period->save();
+
+            if ($wasCreated || $wasMadeAvailable || ! $carryForwardWasProcessed || $newlyCarriedForward > 0) {
+                FinanceAuditEvent::query()->create([
+                    'subject_type' => 'EmployeePayrollPeriod',
+                    'subject_id' => $period->id,
+                    'action' => $period->carry_forward_in > 0 ? 'salary_period_opened_with_carry_forward' : ($wasCreated ? 'salary_period_created' : 'salary_made_available_to_employee'),
+                    'after_values' => [
+                        'reference' => $period->reference,
+                        'employee' => $employee->name,
+                        'period' => $periodStart->format('Y-m'),
+                        'salary_amount' => $period->salary_amount,
+                        'carry_forward_in' => $period->carry_forward_in,
+                        'available_at' => $period->available_at->toDateTimeString(),
+                    ],
+                    'reason' => 'Salaire rendu visible automatiquement au début du mois, avec report du solde salarial non retiré.',
+                    'user_id' => $employee->id,
+                    'created_at' => now(),
+                ]);
+            }
+
+            return $period->fresh();
+        });
+    }
+
     private function monthlyLoanDeductionDue(User $employee, EmployeePayrollPeriod $period): int
     {
         $monthStart = $period->period_start->copy()->startOfMonth();
@@ -484,7 +578,7 @@ class EmployeePayrollController extends Controller
                 continue;
             }
             $planned = $loan->repayment_method === 'salary_percent'
-                ? max(1, (int) round($period->salary_amount * ((float) $loan->repayment_value / 100)))
+                ? max(1, (int) round(max(0, (int) $period->salary_amount - (int) $period->carry_forward_in) * ((float) $loan->repayment_value / 100)))
                 : (int) $loan->repayment_value;
             $paidThisMonth = (int) $loan->repayments()->where('received_at', '>=', $monthStart)
                 ->where('received_at', '<', $monthEnd)->sum('amount');

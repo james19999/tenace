@@ -2,15 +2,14 @@
 
 namespace App\Models\Orders;
 
-use App\Models\User;
 use App\Models\Costumer;
-use App\Models\TransportCompany;
-use App\Models\OrderPayment;
 use App\Models\OrderCourierHandoff;
+use App\Models\OrderPayment;
 use App\Models\PublicOrderLink;
-use App\Models\Orders\OrderItem;
-use Illuminate\Database\Eloquent\Model;
+use App\Models\TransportCompany;
+use App\Models\User;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 
@@ -23,6 +22,14 @@ class Order extends Model
         static::saving(function (self $order): void {
             if ($order->status === 'delivered' && ($order->isDirty('status') || ! $order->delivered_at)) {
                 $order->delivered_at = now();
+            }
+
+            if ($order->status === 'canceled' && ($order->isDirty('status') || ! $order->canceled_at)) {
+                $order->canceled_at = now();
+                $order->canceled_at_is_estimated = false;
+            } elseif ($order->status !== 'canceled' && $order->isDirty('status')) {
+                $order->canceled_at = null;
+                $order->canceled_at_is_estimated = false;
             }
 
             if (in_array($order->status, ['delivered', 'canceled'], true)) {
@@ -59,11 +66,13 @@ class Order extends Model
     protected $casts = [
         'assigned_at' => 'datetime',
         'delivered_at' => 'datetime',
+        'canceled_at' => 'datetime',
+        'canceled_at_is_estimated' => 'boolean',
         'is_wholesale' => 'boolean',
         'delivery_waiting' => 'boolean',
     ];
 
-    protected $fillable=[
+    protected $fillable = [
         'user_id',
         'costumer_id',
         'subtotal',
@@ -88,6 +97,8 @@ class Order extends Model
         'order_by',
         'date_order',
         'delivered_at',
+        'canceled_at',
+        'canceled_at_is_estimated',
         'country_code',
         'partner_id',
         'public_order_link_id',
@@ -99,23 +110,26 @@ class Order extends Model
         'delivery_waiting',
     ];
 
+    public function costumer()
+    {
 
-    public function costumer(){
-
-        return $this->belongsTo(Costumer::class,'costumer_id');
+        return $this->belongsTo(Costumer::class, 'costumer_id');
     }
 
-    public function user () {
+    public function user()
+    {
 
-        return $this->belongsTo(User::class,'user_id');
-    }
-    public function createduser () {
-
-        return $this->belongsTo(User::class,'created_user');
+        return $this->belongsTo(User::class, 'user_id');
     }
 
+    public function createduser()
+    {
 
-    public function orderItems(){
+        return $this->belongsTo(User::class, 'created_user');
+    }
+
+    public function orderItems()
+    {
         return $this->hasMany(OrderItem::class);
     }
 

@@ -8,13 +8,32 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class EmployeePayrollPeriod extends Model
 {
-    protected $fillable = ['reference', 'user_id', 'period_start', 'salary_amount', 'note', 'created_by', 'available_at', 'available_by'];
+    protected $fillable = ['reference', 'user_id', 'period_start', 'salary_amount', 'carry_forward_in', 'carried_forward_out', 'note', 'created_by', 'available_at', 'available_by'];
 
-    protected $casts = ['period_start' => 'date', 'salary_amount' => 'integer', 'available_at' => 'datetime'];
+    protected $casts = ['period_start' => 'date', 'salary_amount' => 'integer', 'carry_forward_in' => 'integer', 'carried_forward_out' => 'integer', 'available_at' => 'datetime'];
 
-    public function employee(): BelongsTo { return $this->belongsTo(User::class, 'user_id'); }
-    public function creator(): BelongsTo { return $this->belongsTo(User::class, 'created_by'); }
-    public function availabilityConfirmer(): BelongsTo { return $this->belongsTo(User::class, 'available_by'); }
-    public function payments(): HasMany { return $this->hasMany(EmployeePayrollPayment::class, 'period_id')->orderBy('paid_at'); }
-    public function staffAdvances(): HasMany { return $this->hasMany(FinanceStaffAdvance::class, 'payroll_period_id')->orderBy('granted_on'); }
+    public function employee(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'user_id');
+    }
+
+    public function creator(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'created_by');
+    }
+
+    public function availabilityConfirmer(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'available_by');
+    }
+
+    public function payments(): HasMany
+    {
+        return $this->hasMany(EmployeePayrollPayment::class, 'period_id')->orderBy('paid_at');
+    }
+
+    public function staffAdvances(): HasMany
+    {
+        return $this->hasMany(FinanceStaffAdvance::class, 'payroll_period_id')->orderBy('granted_on');
+    }
 }
