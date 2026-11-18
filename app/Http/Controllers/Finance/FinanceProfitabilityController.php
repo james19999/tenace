@@ -33,6 +33,7 @@ class FinanceProfitabilityController extends Controller
         $computed = $monthlyPeriod?->status === 'closed' && $monthlyPeriod->snapshot
             ? $monthlyPeriod->snapshot
             : $this->calculate($filters['from'], $filters['to']);
+        $computed = $this->normalizeMetrics($computed);
         $comparison = $this->calculate($filters['compare_from'], $filters['compare_to']);
         $adjustments = FinanceProfitabilityAdjustment::query()
             ->with('creator:id,name', 'voider:id,name')
@@ -161,6 +162,7 @@ class FinanceProfitabilityController extends Controller
             ? FinanceProfitabilityPeriod::query()->whereDate('period_start', $filters['from'])->where('status', 'closed')->first()
             : null;
         $metrics = $closedPeriod?->snapshot ?: $this->calculate($filters['from'], $filters['to']);
+        $metrics = $this->normalizeMetrics($metrics);
         $filename = 'tenacos-rentabilite-'.$filters['from']->format('Y-m-d').'-'.$filters['to']->format('Y-m-d');
         $rows = $this->exportRows($metrics);
 
@@ -370,6 +372,9 @@ class FinanceProfitabilityController extends Controller
     private function warnings(array $metrics): array
     {
         $warnings = [];
+        if ($metrics['legacy_cost_snapshot']) {
+            $warnings[] = 'Cette période clôturée utilise un ancien instantané, antérieur au rapprochement du coût des ventes. Vérifie son coût, sa marge et son résultat avant de les utiliser.';
+        }
         if ($metrics['missing_sale_cost_lines'] > 0) {
             $warnings[] = $metrics['missing_sale_cost_lines'].' ligne(s) de sortie vendue(s) sans coût unitaire; vérifie le coût d’achat des produits.';
         }
@@ -402,6 +407,44 @@ class FinanceProfitabilityController extends Controller
         $warnings[] = 'Les impôts sur le bénéfice ne sont pas séparés automatiquement des autres taxes; saisis uniquement l’impôt sur le bénéfice dans les ajustements.';
 
         return $warnings;
+    }
+
+    /**
+     * Closed periods keep their original snapshot. Supply fields added later so
+     * old snapshots remain renderable without changing their stored history.
+     */
+    private function normalizeMetrics(array $metrics): array
+    {
+        $legacyCostSnapshot = ! array_key_exists('cost_source', $metrics)
+            || ! array_key_exists('cost_reliable', $metrics);
+        $metrics = array_merge([
+            'cost_source' => 'stock_rollforward',
+            'sale_cost_line_count' => 0,
+            'orders_without_sale_movement' => 0,
+            'cost_reliable' => false,
+            'missing_sale_cost_lines' => 0,
+            'missing_opening_unit_costs' => 0,
+            'missing_closing_unit_costs' => 0,
+            'negative_opening_stock_balances' => 0,
+            'negative_closing_stock_balances' => 0,
+            'negative_cost_rollforward' => false,
+            'estimated_cancellation_dates' => 0,
+            'legacy_cost_snapshot' => $legacyCostSnapshot,
+        ], $metrics, ['legacy_cost_snapshot' => $legacyCostSnapshot]);
+
+        if ($legacyCostSnapshot) {
+            // Old snapshots may have treated a missing cost as zero. Do not show
+            // the resulting margin and profit as confirmed financial results.
+            $metrics['cost_of_goods_sold'] = null;
+            $metrics['gross_margin'] = null;
+            $metrics['gross_margin_rate'] = null;
+            $metrics['pre_tax_result'] = null;
+            $metrics['net_result'] = null;
+            $metrics['net_margin_rate'] = null;
+            $metrics['cost_reliable'] = false;
+        }
+
+        return $metrics;
     }
 
     private function exportRows(array $metrics): array
