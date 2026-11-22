@@ -21,7 +21,7 @@
                     <tbody>
                     @foreach($orders as $order)
                         <tr>
-                            <td><strong>{{ $order->code ?: 'Commande #'.$order->id }}</strong><small>Créée le {{ $order->created_at?->format('d/m/Y H:i') ?? '—' }}</small><small>Annulée le {{ ($order->canceled_at ?? $order->updated_at)?->format('d/m/Y H:i') ?? '—' }}@if($order->canceled_at_is_estimated) · date estimée@endif</small></td>
+                            <td><strong>{{ $order->code ?: 'Commande #'.$order->id }}</strong><small>Créée le {{ $order->created_at?->format('d/m/Y H:i') ?? '—' }}</small><small>Annulée le {{ ($order->canceled_at ?? $order->updated_at)?->format('d/m/Y H:i') ?? '—' }}@if($order->canceled_at_is_estimated) · date estimée @endif</small></td>
                             <td><strong>{{ $order->costumer?->name ?? 'Client non renseigné' }}</strong><small>{{ $order->costumer?->phone ?? $order->delivery_phone ?? 'Téléphone non renseigné' }}</small>@if($order->partner)<small>Partenaire : {{ $order->partner->name }}</small>@endif</td>
                             <td><ul class="cancelled-order-items">@forelse($order->orderItems->take(4) as $item)<li>{{ $item->product?->name ?? 'Article supprimé' }} × {{ $item->quantity }}</li>@empty<li>Articles non renseignés</li>@endforelse</ul>@if($order->orderItems->count() > 4)<small>et {{ $order->orderItems->count() - 4 }} autre(s)</small>@endif</td>
                             <td><strong>{{ $order->user?->name ?? 'Aucun livreur' }}</strong><small>{{ $order->user?->phone ?? '—' }}</small><small>{{ $order->delivery_address ?: $order->shipping_city ?: 'Adresse non renseignée' }}</small></td>
