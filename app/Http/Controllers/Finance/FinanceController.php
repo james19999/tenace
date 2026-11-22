@@ -378,6 +378,15 @@ class FinanceController extends Controller
     public function expenses(Request $request): View
     {
         $user = $request->user();
+        $isManager = $user->isManager();
+        $expensePeriod = $request->query('period', $isManager ? 'week' : 'all');
+        if (! in_array($expensePeriod, ['week', 'month', 'all'], true)) {
+            $expensePeriod = $isManager ? 'week' : 'all';
+        }
+        $selectedExpenseMonth = trim((string) $request->query('month', ''));
+        if (! preg_match('/^\d{4}-(0[1-9]|1[0-2])$/', $selectedExpenseMonth)) {
+            $selectedExpenseMonth = '';
+        }
         $canSeeAll = $user->isAdmin() || $user->isAccountant();
         $cashSetting = FinanceGeneralCashSetting::query()->with('cashier')->find(1);
         $isAssignedCashier = $cashSetting
@@ -389,6 +398,12 @@ class FinanceController extends Controller
                     $query->orWhere(fn ($loans) => $loans->where('staff_advance_type', 'loan')->whereIn('status', ['authorized_to_pay', 'partially_paid', 'paid']));
                 }
             })->with(['location', 'requester', 'financeReviewer', 'director', 'receiptReceiver'])
+            ->when($isManager && $selectedExpenseMonth !== '', function ($query) use ($selectedExpenseMonth): void {
+                [$year, $month] = array_map('intval', explode('-', $selectedExpenseMonth));
+                $query->whereYear('created_at', $year)->whereMonth('created_at', $month);
+            })
+            ->when($isManager && $selectedExpenseMonth === '' && $expensePeriod === 'week', fn ($query) => $query->whereBetween('created_at', [now()->startOfWeek(), now()->endOfWeek()]))
+            ->when($isManager && $selectedExpenseMonth === '' && $expensePeriod === 'month', fn ($query) => $query->whereBetween('created_at', [now()->startOfMonth(), now()->endOfMonth()]))
             ->when(! $canSeeAll && ! $isAssignedCashier, fn ($query) => $query->where(fn ($scope) => $scope->where('requested_by', $user->id)->orWhereIn('stock_location_id', $locationIds)))
             ->when($isAssignedCashier && ! $canSeeAll, fn ($query) => $query->where(fn ($scope) => $scope
                 ->where('requested_by', $user->id)
@@ -445,6 +460,9 @@ class FinanceController extends Controller
             'cashSetting' => $cashSetting,
             'cashiers' => $cashiers,
             'isAssignedCashier' => $isAssignedCashier,
+            'isManagerExpenseView' => $isManager,
+            'expensePeriod' => $expensePeriod,
+            'selectedExpenseMonth' => $selectedExpenseMonth,
             'cashierPurchaseRequests' => $cashierPurchaseRequests,
             'cashierPurchaseReceiptRequests' => $cashierPurchaseReceiptRequests,
             'cashierPayableExpenses' => $cashierPayableExpenses,

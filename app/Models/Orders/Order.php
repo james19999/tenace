@@ -8,6 +8,7 @@ use App\Models\OrderPayment;
 use App\Models\PublicOrderLink;
 use App\Models\TransportCompany;
 use App\Models\User;
+use App\Notifications\CanceledOrderNotification;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Facades\Auth;
@@ -58,6 +59,22 @@ class Order extends Model
                     } catch (\Throwable $exception) {
                         report($exception);
                     }
+                });
+            }
+
+            if ($order->wasChanged(['status', 'partner_order_status'])
+                && ($order->status === 'canceled' || $order->partner_order_status === 'canceled')) {
+                $orderId = (int) $order->getKey();
+                DB::afterCommit(static function () use ($orderId): void {
+                    $canceledOrder = self::query()->find($orderId);
+                    if (! $canceledOrder) {
+                        return;
+                    }
+
+                    User::query()->where('active', true)
+                        ->whereIn('user_type', [User::ROLE_CALL_CENTER, User::ROLE_SECRETARY])
+                        ->get()
+                        ->each(fn (User $recipient) => $recipient->notify(new CanceledOrderNotification($canceledOrder)));
                 });
             }
         });

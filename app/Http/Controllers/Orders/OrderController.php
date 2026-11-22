@@ -489,14 +489,21 @@ class OrderController extends Controller
         }
     }
 
-    public function order_cancel_list()
+    public function order_cancel_list(Request $request)
     {
-        $orders = Order::where('status', 'canceled')
-            ->whereNotNull('user_id')
-            ->get();
-        $livreurs = User::where('user_type', 'LVS')->get();
+        $request->user()?->unreadNotifications()
+            ->where('type', \App\Notifications\CanceledOrderNotification::class)
+            ->update(['read_at' => now()]);
 
-        return view('orders.order_canceled', compact('orders', 'livreurs'));
+        $orders = Order::query()
+            ->with(['costumer', 'user', 'createduser', 'partner', 'orderItems.product', 'payments'])
+            ->where(fn ($query) => $query->where('status', 'canceled')->orWhere('partner_order_status', 'canceled'))
+            ->latest('canceled_at')
+            ->latest('updated_at')
+            ->paginate(25)
+            ->withQueryString();
+
+        return view('orders.order_canceled', compact('orders'));
     }
 
     public function order_report_list()

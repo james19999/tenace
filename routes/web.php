@@ -496,7 +496,7 @@ Route::middleware(['auth'])->group(function () {
         Route::put('order/show/{order}/delivery-address', [OrderController::class, 'updateDeliveryAddress'])->name('ordershow.delivery-address');
         Route::get('order/show/{order}/package-photos/{photo}/download', [LivreurController::class, 'downloadPackagePhoto'])->middleware('role:ADMINUSER,MNG')->name('ordershow.package-photo.download');
         Route::post('order/show/{id}/payment', [OrderController::class, 'updatePayment'])->middleware('role:ADMINUSER,MNG,RCM')->name('ordershow.payment');
-        Route::get('order/cancel/list', [OrderController::class, 'order_cancel_list'])->middleware('role:ADMINUSER,MNG,SCR,VDS,PT,CSA')->name('order-cancel-list');
+        Route::get('order/cancel/list', [OrderController::class, 'order_cancel_list'])->middleware('role:ADMINUSER,MNG,SCR,VDS,PT,CSA,CALLCENTER')->name('order-cancel-list');
         Route::get('order/report/list', [OrderController::class, 'order_report_list'])->middleware('role:ADMINUSER,MNG,SCR,VDS,PT,CSA')->name('order-report-list');
         Route::get('ordered/list/ordered', [OrderController::class, 'ordered_list'])->middleware('role:ADMINUSER,MNG,SCR,VDS,PT,CSA')->name('ordered-list-orderer');
         Route::put('reporte/order/{id}', [OrderController::class, 'reporte_order'])->middleware('role:ADMINUSER,MNG,SCR,VDS,PT,CSA')->name('reporte-order');

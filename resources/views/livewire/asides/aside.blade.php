@@ -15,6 +15,9 @@
     $storefrontOrderBadge = Auth::check()
         ? Auth::user()->unreadNotifications()->where('type', \App\Notifications\StorefrontOrderNotification::class)->count()
         : 0;
+    $canceledOrderBadge = Auth::check() && in_array(Auth::user()->user_type, ['SCR', 'CALLCENTER'], true)
+        ? Auth::user()->unreadNotifications()->where('type', \App\Notifications\CanceledOrderNotification::class)->count()
+        : 0;
     $dashboard = match (Auth::user()->user_type) {
         'PT' => ['route' => 'partner.dashboard', 'label' => 'Tableau de bord'],
         \App\Models\User::ROLE_WHOLESALER => ['route' => 'wholesaler.dashboard', 'label' => 'Tableau de bord'],
@@ -761,13 +764,14 @@
                         <span class="text">Commandes @if($storefrontOrderBadge > 0)<span class="badge badge-pill badge-danger">{{ $storefrontOrderBadge > 99 ? '99+' : $storefrontOrderBadge }}</span>@endif</span>
                     </a>
                 </li>
+                <li><a href="{{ route('order-cancel-list') }}" class="{{ $active('order-cancel-list') }}"><span class="icon material-icons">cancel</span><span class="text">Commandes annulées @if($canceledOrderBadge > 0)<span class="badge badge-pill badge-danger">{{ $canceledOrderBadge > 99 ? '99+' : $canceledOrderBadge }}</span>@endif</span></a></li>
                 <li>
-                    <a href="#scrHistoryCollapse" class="{{ $active('history', 'ordered-list-orderer', 'order-report-list', 'order-cancel-list', 'repport-order', 'achat') }}" data-toggle="collapse">
+                    <a href="#scrHistoryCollapse" class="{{ $active('history', 'ordered-list-orderer', 'order-report-list', 'repport-order', 'achat') }}" data-toggle="collapse">
                         <span class="caret material-icons">arrow_right</span>
                         <span class="icon material-icons">history</span>
                         <span class="text">Historiques</span>
                     </a>
-                    <ul class="collapse {{ $active('history', 'ordered-list-orderer', 'order-report-list', 'order-cancel-list', 'repport-order', 'achat') ? 'show' : '' }}" id="scrHistoryCollapse">
+                    <ul class="collapse {{ $active('history', 'ordered-list-orderer', 'order-report-list', 'repport-order', 'achat') ? 'show' : '' }}" id="scrHistoryCollapse">
                         <li>
                             <a href="{{ route('history') }}" class="{{ $active('history') }}">
                                 <span class="icon material-icons">remove</span>
@@ -784,12 +788,6 @@
                             <a href="{{ route('order-report-list') }}" class="{{ $active('order-report-list') }}">
                                 <span class="icon material-icons">remove</span>
                                 <span class="text">Commandes reprogrammées</span>
-                            </a>
-                        </li>
-                        <li>
-                            <a href="{{ route('order-cancel-list') }}" class="{{ $active('order-cancel-list') }}">
-                                <span class="icon material-icons">remove</span>
-                                <span class="text">Commandes annulées</span>
                             </a>
                         </li>
                         <li>
@@ -823,6 +821,7 @@
                 <li><a href="{{ route('product') }}" class="{{ $active('product') }}"><span class="icon material-icons">store</span><span class="text">Produits</span></a></li>
                 <li><a href="{{ route('productcart') }}" class="{{ $active('productcart') }}"><span class="icon material-icons">add_shopping_cart</span><span class="text">Panier <span class="badge badge-pill badge-danger js-cart-count">{{ $cartCount }}</span></span></a></li>
                 <li><a href="{{ route('order') }}" class="{{ $active('order', 'ordershow') }}"><span class="icon material-icons">shopping_cart</span><span class="text">Commandes @if($storefrontOrderBadge > 0)<span class="badge badge-pill badge-danger">{{ $storefrontOrderBadge > 99 ? '99+' : $storefrontOrderBadge }}</span>@endif</span></a></li>
+                <li><a href="{{ route('order-cancel-list') }}" class="{{ $active('order-cancel-list') }}"><span class="icon material-icons">cancel</span><span class="text">Commandes annulées @if($canceledOrderBadge > 0)<span class="badge badge-pill badge-danger">{{ $canceledOrderBadge > 99 ? '99+' : $canceledOrderBadge }}</span>@endif</span></a></li>
                 <li>
                     <a href="{{ route('costumer.follow-up') }}" class="{{ $active('costumer.follow-up') }}">
                         <span class="icon material-icons">support_agent</span>

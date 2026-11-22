@@ -5,6 +5,7 @@ namespace App\Http\Livewire;
 use App\Models\Orders\Order;
 use App\Models\User;
 use App\Notifications\CustomerServiceCaseNotification;
+use App\Notifications\CanceledOrderNotification;
 use App\Notifications\DgAppointmentNotification;
 use App\Notifications\FinanceCashCountAlertNotification;
 use App\Notifications\FinanceExpenseReportNotification;
@@ -198,6 +199,7 @@ class CustomerServiceNotifications extends Component
             FinanceWorkflowNotification::class,
             FinanceExternalLoanDueNotification::class,
             StorefrontOrderNotification::class,
+            CanceledOrderNotification::class,
         ];
     }
 
