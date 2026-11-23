@@ -12,6 +12,7 @@ use App\Models\FinanceStaffAdvance;
 use App\Models\StockLocation;
 use App\Models\User;
 use App\Notifications\FinanceWorkflowNotification;
+use App\Services\CourierWeeklyBonusCalculator;
 use App\Services\FinanceCashLedgerService;
 use App\Services\FinanceExpenseWorkflowService;
 use App\Services\StockModuleSettingsService;
@@ -22,6 +23,7 @@ use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
 use Illuminate\Validation\ValidationException;
 use Illuminate\View\View;
+use Carbon\Carbon;
 
 class EmployeePayrollController extends Controller
 {
@@ -77,7 +79,39 @@ class EmployeePayrollController extends Controller
         $canManagePurchases = $canCreatePurchases || $purchaseRequests->isNotEmpty();
         abort_unless($activePage !== 'purchases' || $canManagePurchases, 404);
 
-        return view('employees.self-service', compact('employee', 'employeeShopLocation', 'profile', 'currentPeriod', 'periods', 'advanceRequests', 'personalLoans', 'purchaseRequests', 'purchaseSetting', 'availableForAdvance', 'activePage', 'canManagePurchases', 'canCreatePurchases'));
+        $courierBonusWeek = null;
+        $courierBonusEstimate = 0;
+        $courierPayoutOptions = collect();
+        $courierPayoutHistory = collect();
+        if ($activePage === 'payroll' && $employee->user_type === User::ROLE_LIVREUR) {
+            $weekStart = now()->startOfWeek(Carbon::MONDAY)->toDateString();
+            $weekEnd = Carbon::parse($weekStart)->addDays(5)->toDateString();
+            $courierBonusWeek = DB::table('courier_bonus_weeks')->where('week_start', $weekStart)->first()
+                ?? (object) ['id' => 0, 'week_start' => $weekStart, 'week_end' => $weekEnd, 'budget' => 15000, 'status' => 'draft'];
+            $liveResult = app(CourierWeeklyBonusCalculator::class)->calculate($courierBonusWeek);
+            if ($courierBonusWeek->id && in_array($courierBonusWeek->status, ['manager_validated', 'approved'], true)) {
+                $courierBonusEstimate = (int) DB::table('courier_bonus_awards')->where('week_id', $courierBonusWeek->id)->where('courier_id', $employee->id)->value('total_amount');
+            } else {
+                $courierBonusEstimate = (int) array_sum($liveResult['awards'][$employee->id] ?? []);
+            }
+
+            $payoutWeeks = DB::table('courier_bonus_weeks as w')
+                ->join('courier_bonus_awards as a', 'a.week_id', '=', 'w.id')
+                ->leftJoin('courier_bonus_payout_requests as r', function ($join) use ($employee): void {
+                    $join->on('r.week_id', '=', 'w.id')->where('r.courier_id', '=', $employee->id);
+                })
+                ->where('w.status', 'approved')->whereDate('w.week_end', '<=', now()->toDateString())
+                ->where('a.courier_id', $employee->id)->where('a.total_amount', '>', 0)
+                ->orderByDesc('w.week_start')
+                ->get(['w.id', 'w.week_start', 'w.week_end', 'a.total_amount', 'r.id as payout_id', 'r.amount as payout_amount', 'r.status as payout_status', 'r.manager_note']);
+            $courierPayoutOptions = $payoutWeeks->filter(fn ($row) => in_array($row->payout_status, [null, 'rejected'], true))->values();
+            $courierPayoutHistory = DB::table('courier_bonus_payout_requests as r')
+                ->join('courier_bonus_weeks as w', 'w.id', '=', 'r.week_id')->where('r.courier_id', $employee->id)
+                ->orderByDesc('r.requested_at')->limit(8)
+                ->get(['r.amount', 'r.status', 'r.requested_at', 'r.handled_at', 'r.manager_note', 'w.week_start', 'w.week_end']);
+        }
+
+        return view('employees.self-service', compact('employee', 'employeeShopLocation', 'profile', 'currentPeriod', 'periods', 'advanceRequests', 'personalLoans', 'purchaseRequests', 'purchaseSetting', 'availableForAdvance', 'activePage', 'canManagePurchases', 'canCreatePurchases', 'courierBonusWeek', 'courierBonusEstimate', 'courierPayoutOptions', 'courierPayoutHistory'));
     }
 
     public function requestOwnAdvance(Request $request, FinanceExpenseWorkflowService $workflow): RedirectResponse

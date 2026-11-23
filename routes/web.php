@@ -48,6 +48,7 @@ use App\Http\Controllers\PartnerMonitoringController;
 use App\Http\Controllers\CourierPublicOrderController;
 use App\Http\Controllers\CourierPushSubscriptionController;
 use App\Http\Controllers\CourierWeeklyBonusController;
+use App\Http\Controllers\CourierBonusPayoutController;
 use App\Http\Controllers\DgAppointmentController;
 use App\Http\Controllers\FedaPayWebhookController;
 use App\Http\Controllers\ProductQuantityPriceController;
@@ -113,6 +114,8 @@ Route::middleware(['auth'])->group(function () {
 
     Route::middleware(['role:ADMINUSER,MNG'])->prefix('primes-livreurs')->name('courier-bonuses.')->group(function () {
         Route::get('/', [CourierWeeklyBonusController::class, 'index'])->name('index');
+        Route::get('/retraits', [CourierBonusPayoutController::class, 'index'])->middleware('role:MNG')->name('payouts');
+        Route::post('/retraits/{payout}/decision', [CourierBonusPayoutController::class, 'handle'])->whereNumber('payout')->middleware('role:MNG')->name('payouts.handle');
         Route::post('/semaines', [CourierWeeklyBonusController::class, 'storeWeek'])->name('weeks.store');
         Route::post('/{week}/saisies', [CourierWeeklyBonusController::class, 'saveInputs'])->whereNumber('week')->middleware('role:MNG')->name('inputs.save');
         Route::post('/{week}/retards/{order}', [CourierWeeklyBonusController::class, 'saveLateException'])->whereNumber('week')->middleware('role:MNG')->name('late-exceptions.store');
@@ -143,6 +146,7 @@ Route::middleware(['auth'])->group(function () {
 
     Route::middleware(['role:MNG,SCR,VDS,CSA,LVS,CALLCENTER,COMPTABLE,RCM,GRO,INFO,INFOGRAPHISTE,VIDEASTE'])->group(function () {
         Route::get('/mon-espace', [\App\Http\Controllers\EmployeePayrollController::class, 'selfService'])->name('employees.self-service');
+        Route::post('/mon-espace/primes/{week}/retrait', [CourierBonusPayoutController::class, 'request'])->whereNumber('week')->middleware('role:LVS')->name('employees.self-service.bonus-payouts.store');
         Route::get('/mon-espace/materiel', [\App\Http\Controllers\EmployeePayrollController::class, 'selfServicePurchases'])->name('employees.self-service.purchases.index');
         Route::post('/mon-espace/avances', [\App\Http\Controllers\EmployeePayrollController::class, 'requestOwnAdvance'])->name('employees.self-service.advances.store');
         Route::post('/mon-espace/materiel', [\App\Http\Controllers\Finance\FinanceEquipmentPurchaseController::class, 'requestPurchase'])->name('employees.self-service.purchases.store');
@@ -501,7 +505,7 @@ Route::middleware(['auth'])->group(function () {
         Route::post('costumer/anonymize-all', [CostumerController::class, 'anonymizeAllFromCart'])->middleware('role:ADMINUSER,MNG,SCR,VDS,PT,CSA')->name('costumer.anonymize-all');
         Route::post('palce/order', [CheckController::class, 'palce_order'])->name('palceorder');
         Route::get('order/liste', OrderList::class)->middleware('role:ADMINUSER,MNG,SCR,VDS,PT,CSA')->name('order-liste-order');
-        Route::get('edit/order/{order}', EditOrder::class)->middleware('role:ADMINUSER,MNG,SCR,VDS,PT,CSA')->name('edit-order');
+        Route::get('edit/order/{order}', EditOrder::class)->middleware('role:ADMINUSER,MNG,SCR,VDS,PT,CSA,CALLCENTER')->name('edit-order');
         Route::get('order/list', [OrderController::class, 'index'])->name('order');
         Route::get('order/show/{id}', [OrderController::class, 'show'])->name('ordershow');
         Route::put('order/show/{order}/delivery-address', [OrderController::class, 'updateDeliveryAddress'])->name('ordershow.delivery-address');

@@ -8,7 +8,7 @@ use Illuminate\Support\Collection;
 
 class CourierWeeklyBonusCalculator
 {
-    private const ENVELOPES = ['productivity' => 6000, 'speed' => 4500, 'presence' => 3000, 'professionalism' => 1500];
+    private const ENVELOPES = ['productivity' => 4500, 'speed' => 6000, 'presence' => 1500, 'professionalism' => 3000];
     private const RATING_FIELDS = ['politeness', 'presentation', 'instructions', 'money_handling', 'discipline'];
 
     public function eligibleOrders(object $week): Collection
@@ -34,7 +34,6 @@ class CourierWeeklyBonusCalculator
         $couriers = User::query()->where('user_type', User::ROLE_LIVREUR)->where('active', true)->orderBy('id')->get();
         $orders = $this->eligibleOrders($week);
         $deliveredForPresence = $this->deliveredOrders($week);
-        $attendance = \DB::table('courier_bonus_attendances')->where('week_id', $week->id)->get()->groupBy('courier_id');
         $ratings = \DB::table('courier_bonus_ratings')->where('week_id', $week->id)->get()->keyBy('courier_id');
         $exceptions = \DB::table('courier_bonus_late_exceptions')->where('week_id', $week->id)->whereNotNull('validated_at')->pluck('order_id')->flip();
         $points = [];
@@ -48,9 +47,8 @@ class CourierWeeklyBonusCalculator
                 return $start && $order->delivered_at && ! $start->greaterThan($order->delivered_at)
                     && $start->diffInSeconds($order->delivered_at) <= 45 * 60;
             });
-            $recordedPresentDates = collect($attendance->get($courier->id, []))->where('status', 'present')->pluck('attendance_date');
             $deliveredDates = $deliveryPresence->keys()->filter(fn ($key) => str_starts_with($key, $courier->id.'|'))->map(fn ($key) => substr($key, strpos($key, '|') + 1));
-            $daysPresent = $recordedPresentDates->merge($deliveredDates)->unique()->count();
+            $daysPresent = $deliveredDates->unique()->count();
             $rating = $ratings->get($courier->id);
             $professionalism = $rating ? collect(self::RATING_FIELDS)->sum(fn ($field) => (int) $rating->{$field}) : 0;
             $points[$courier->id] = [

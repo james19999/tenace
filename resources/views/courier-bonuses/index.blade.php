@@ -10,7 +10,7 @@
 
     <section class="bonus-toolbar">
         <form method="get" action="{{ route('courier-bonuses.index') }}" class="bonus-week-select"><label for="bonus-week">Semaine consultée</label><select id="bonus-week" name="week" onchange="this.form.submit()"><option value="">Sélectionner une semaine</option>@foreach($weeks as $item)<option value="{{ $item->week_start }}" @selected($week?->week_start === $item->week_start)>Du {{ \Carbon\Carbon::parse($item->week_start)->format('d/m/Y') }} au {{ \Carbon\Carbon::parse($item->week_end)->format('d/m/Y') }} · {{ number_format($item->budget,0,',',' ') }} F</option>@endforeach</select></form>
-        @if($week)<a class="bonus-button secondary" href="{{ route('courier-bonuses.export', $week->id) }}">Télécharger le relevé CSV</a>@endif
+        <div class="bonus-toolbar-actions">@if(auth()->user()->user_type === 'MNG')<a class="bonus-button secondary" href="{{ route('courier-bonuses.payouts') }}">Demandes de retrait @if($pendingPayoutCount > 0)<span class="bonus-payout-badge">{{ $pendingPayoutCount }}</span>@endif</a>@endif @if($week)<a class="bonus-button secondary" href="{{ route('courier-bonuses.export', $week->id) }}">Télécharger le relevé CSV</a>@endif</div>
     </section>
 
     @if(!$week)
@@ -27,7 +27,7 @@
         @if($ineligibleOrders->isNotEmpty())<section class="bonus-panel"><div class="bonus-panel-head"><div><h2>Livraisons exclues du calcul</h2><p>Elles sont livrées, mais ne comptent pas dans les primes tant que la preuve ou l’encaissement requis manque.</p></div></div><div class="bonus-late-list">@foreach($ineligibleOrders as $excluded)<article><div><b>{{ $excluded['code'] }}</b><span>{{ $excluded['courier'] }}</span></div><span>{{ $excluded['reason'] }}</span></article>@endforeach</div></section>@endif
 
         <section class="bonus-panel"><div class="bonus-panel-head"><div><h2>Critères et enveloppes</h2><p>Les enveloppes sans bénéficiaire sont redistribuées au prorata des enveloppes restantes.</p></div></div><div class="bonus-criteria">
-            <div><b>Livraisons validées et encaissées</b><strong>6 000 F <small>40 %</small></strong><span>Partagée selon le nombre de livraisons éligibles.</span></div><div><b>Rapidité</b><strong>4 500 F <small>30 %</small></strong><span>≤ 45 minutes entre départ et confirmation client.</span></div><div><b>Présence</b><strong>3 000 F <small>20 %</small></strong><span>Au prorata des jours présents, lundi à samedi.</span></div><div><b>Professionnalisme</b><strong>1 500 F <small>10 %</small></strong><span>Note entière de 0 à 10 répartie par points.</span></div>
+            <div><b>Livraisons validées et encaissées</b><strong>{{ number_format(round($week->budget * .30),0,',',' ') }} F <small>30 %</small></strong><span>Partagée selon le nombre de livraisons éligibles.</span></div><div><b>Rapidité</b><strong>{{ number_format(round($week->budget * .40),0,',',' ') }} F <small>40 %</small></strong><span>≤ 45 minutes entre départ et confirmation client.</span></div><div><b>Présence</b><strong>{{ number_format(round($week->budget * .10),0,',',' ') }} F <small>10 %</small></strong><span>Au prorata des jours présents, lundi à samedi.</span></div><div><b>Professionnalisme</b><strong>{{ number_format(round($week->budget * .20),0,',',' ') }} F <small>20 %</small></strong><span>Note entière de 0 à 10 répartie par points.</span></div>
         </div></section>
 
         <form method="get" action="{{ route('courier-bonuses.index') }}" class="bonus-courier-filter">
@@ -40,35 +40,27 @@
         </form>
 
         @if(in_array(auth()->user()->user_type, ['MNG'], true) && in_array($week->status, ['draft', 'rejected'], true))
-            <section class="bonus-panel"><div class="bonus-panel-head"><div><h2>Présences et évaluations</h2><p>Une livraison validée marque automatiquement le jour comme présent. Pour les autres jours, renseigne la présence ou l’absence ; un motif est requis pour une absence ou un congé.</p></div></div>
+            <section class="bonus-panel"><div class="bonus-panel-head"><div><h2>Présences automatiques et évaluations</h2><p>Un livreur est présent le jour où il a au moins une livraison validée. Sans livraison, il est absent. Tu n’as rien à saisir pour les présences ; renseigne seulement son évaluation de professionnalisme.</p></div></div>
                 @forelse($couriers as $courier)
-                    @php($dayRecords = $attendance->get($courier->id, collect())->keyBy('attendance_date'))
                     @php($rating = $ratings->get($courier->id))
                     <form method="post" action="{{ route('courier-bonuses.inputs.save', $week->id) }}" class="bonus-courier-card">@csrf
-                        <label class="bonus-correction-reason">Motif de saisie ou de correction<input name="correction_reason" minlength="3" maxlength="500" placeholder="Ex. Pointage confirmé par le responsable" required></label>
+                        <label class="bonus-correction-reason">Motif de saisie ou de correction de la note<input name="correction_reason" minlength="3" maxlength="500" placeholder="Ex. Évaluation hebdomadaire du responsable" required></label>
                         <div class="bonus-courier-title"><h3>{{ $courier->name }}</h3><span>{{ $courier->phone }}</span></div>
                         <div class="bonus-days">
                             @for($i=0;$i<6;$i++)
                                 @php($date = \Carbon\Carbon::parse($week->week_start)->addDays($i))
                                 @php($dateKey = $date->toDateString())
-                                @php($record = $dayRecords->get($dateKey))
                                 @php($autoCodes = $autoPresence[$courier->id.'|'.$dateKey] ?? [])
-                                <label class="{{ count($autoCodes) ? 'is-auto-present' : '' }}">
+                                <div class="bonus-day-card {{ count($autoCodes) ? 'is-auto-present' : 'is-auto-absent' }}">
                                     <span>{{ ucfirst($date->locale('fr')->isoFormat('dddd')) }} <small>{{ $date->format('d/m') }}</small></span>
                                     @if(count($autoCodes))
-                                        <span class="bonus-auto-presence"><span class="material-icons" aria-hidden="true">task_alt</span>Présent automatiquement</span>
+                                        <span class="bonus-auto-presence"><span class="material-icons" aria-hidden="true">task_alt</span>Présent</span>
                                         <small class="bonus-auto-order">Livraison : {{ implode(', ', $autoCodes) }}</small>
-                                        <input type="hidden" name="attendance[{{ $courier->id }}][{{ $dateKey }}][status]" value="present">
                                     @else
-                                        <select name="attendance[{{ $courier->id }}][{{ $dateKey }}][status]" required>
-                                            <option value="" disabled @selected(!$record)>Choisir</option>
-                                            <option value="present" @selected($record?->status === 'present')>Présent</option>
-                                            <option value="absent" @selected($record?->status === 'absent')>Absent</option>
-                                            <option value="authorized_leave" @selected($record?->status === 'authorized_leave')>Congé autorisé</option>
-                                        </select>
-                                        <input name="attendance[{{ $courier->id }}][{{ $dateKey }}][reason]" value="{{ $record?->reason }}" placeholder="Motif si absent / congé" aria-label="Motif {{ $date->format('d/m') }}">
+                                        <span class="bonus-auto-absence"><span class="material-icons" aria-hidden="true">event_busy</span>Absent</span>
+                                        <small class="bonus-auto-order">Aucune livraison validée</small>
                                     @endif
-                                </label>
+                                </div>
                             @endfor
                         </div>
                         <div class="bonus-rating"><div><b>Professionnalisme · 0 à 10</b><small>Attribue de 0 à 2 points à chaque critère.</small></div>@foreach(['politeness'=>'Politesse','presentation'=>'Présentation','instructions'=>'Consignes','money_handling'=>'Gestion commandes et argent','discipline'=>'Discipline'] as $key=>$label)<label>{{ $label }}<select name="ratings[{{ $courier->id }}][{{ $key }}]" required><option value="" disabled @selected(!$rating)>—</option>@for($score=0;$score<=2;$score++)<option value="{{ $score }}" @selected((int)($rating?->{$key} ?? -1) === $score)>{{ $score }}</option>@endfor</select></label>@endforeach</div>
@@ -76,12 +68,12 @@
                     </form>
                 @empty<div class="bonus-empty">Aucun livreur ne correspond au filtre.</div>@endforelse
                 @if($couriers->hasPages())<nav class="bonus-pagination" aria-label="Pages de livreurs">{{ $couriers->links() }}</nav>@endif
-                <p class="bonus-pagination-hint">Enregistre chaque fiche indépendamment ; les autres livreurs ne sont pas requis.</p>
+                <p class="bonus-pagination-hint">Enregistre l’évaluation de chaque livreur séparément. Les présences viennent automatiquement des livraisons validées.</p>
             </section>
 
             @if($lateOrders->isNotEmpty())<section class="bonus-panel"><div class="bonus-panel-head"><div><h2>Retards et départs manquants</h2><p>Un retard exceptionnel ne devient éligible à la rapidité qu’après justification et validation du responsable. Sans heure de départ, aucun point de rapidité n’est attribué.</p></div></div><div class="bonus-late-list">@foreach($lateOrders as $order)@php($exception = $exceptions->get($order->id))<article><div><b>{{ $order->code }}</b><span>{{ $order->user?->name ?? 'Livreur inconnu' }} · {{ $order->courier_departed_at?->format('d/m H:i') ?? 'Départ non horodaté' }} → {{ $order->delivered_at?->format('d/m H:i') }}</span></div>@if(!$order->courier_departed_at)<span>Départ manquant · non éligible</span>@elseif($exception?->validated_at)<span class="bonus-approved">Exception validée</span>@else<form method="post" action="{{ route('courier-bonuses.late-exceptions.store', [$week->id,$order->id]) }}">@csrf<input name="reason" minlength="8" maxlength="1000" placeholder="Motif du retard exceptionnel" required><button class="bonus-button small">Valider l’exception</button></form>@endif</article>@endforeach</div></section>@endif
 
-        <form method="post" action="{{ route('courier-bonuses.validate', $week->id) }}" class="bonus-validate-form">@csrf<button class="bonus-button dark">Vérifier les données et soumettre à la DG</button><small>La semaine doit être terminée et les six présences ainsi que la note de chaque livreur doivent être renseignées.</small></form>
+        <form method="post" action="{{ route('courier-bonuses.validate', $week->id) }}" class="bonus-validate-form">@csrf<button class="bonus-button dark">Vérifier les données et soumettre à la DG</button><small>La semaine doit être terminée et l’évaluation de chaque livreur renseignée. Les présences sont calculées depuis les livraisons.</small></form>
         @endif
 
         @if(auth()->user()->user_type === 'ADMINUSER' && in_array($week->status, ['draft', 'rejected'], true))<div class="bonus-alert">En attente de la validation du responsable. La décision DG sera disponible après la soumission des données.</div>@endif
@@ -91,7 +83,7 @@
         @if($week->status === 'manager_validated')<section class="bonus-panel dg-panel"><h2>Décision finale · Direction Générale</h2><p>Après approbation, les montants sont verrouillés pour cette semaine.</p><div class="dg-actions"><form method="post" action="{{ route('courier-bonuses.decide',$week->id) }}">@csrf<input type="hidden" name="decision" value="approved"><button class="bonus-button">Approuver les primes</button></form><form method="post" action="{{ route('courier-bonuses.decide',$week->id) }}">@csrf<input type="hidden" name="decision" value="rejected"><input name="decision_note" placeholder="Motif du rejet, obligatoire" required><button class="bonus-button danger">Rejeter et demander correction</button></form></div></section>@endif
 
         @if($audits->isNotEmpty())
-            @php($auditLabels = ['week_created' => 'Semaine de primes créée', 'attendance_corrected' => 'Présence corrigée', 'rating_corrected' => 'Évaluation professionnelle corrigée', 'late_exception_validated' => 'Retard exceptionnel validé', 'manager_validated' => 'Semaine vérifiée par le responsable', 'calculation_revalidated' => 'Calcul corrigé et soumis à nouveau', 'approved' => 'Primes approuvées par la Direction Générale', 'rejected' => 'Primes rejetées par la Direction Générale'])
+            @php($auditLabels = ['week_created' => 'Semaine de primes créée', 'attendance_corrected' => 'Présence corrigée', 'rating_corrected' => 'Évaluation professionnelle corrigée', 'late_exception_validated' => 'Retard exceptionnel validé', 'manager_validated' => 'Semaine vérifiée par le responsable', 'calculation_revalidated' => 'Calcul corrigé et soumis à nouveau', 'approved' => 'Primes approuvées par la Direction Générale', 'rejected' => 'Primes rejetées par la Direction Générale', 'payout_requested' => 'Demande de retrait envoyée par le livreur', 'payout_handed_over' => 'Prime remise au livreur', 'payout_rejected' => 'Demande de retrait refusée'])
             <section class="bonus-panel"><div class="bonus-panel-head"><div><h2>Historique des corrections et validations</h2></div></div><ul class="bonus-audit">@foreach($audits as $audit)<li><b>{{ $auditLabels[$audit->event] ?? 'Mise à jour de la semaine' }}</b><span>{{ $audit->actor_name ?? 'Compte supprimé' }} · {{ \Carbon\Carbon::parse($audit->created_at)->format('d/m/Y H:i') }}</span>@if($audit->reason)<small>{{ $audit->reason }}</small>@endif</li>@endforeach</ul></section>
         @endif
     @endif
@@ -137,10 +129,16 @@
 .bonus-days label{min-width:0;overflow:hidden}
 .bonus-days input,.bonus-days select{width:100%;min-width:0}
 .bonus-days label>span{min-width:0;align-items:baseline;flex-wrap:wrap}
-.bonus-days label.is-auto-present{border-color:#ead1d0;background:#fff7f6}
-.bonus-days label>span.bonus-auto-presence{display:flex;align-items:center;justify-content:flex-start;gap:5px!important;color:#851b1b;font-size:11px;font-weight:800}
+.bonus-day-card{display:grid;align-content:start;gap:7px;min-width:0;min-height:86px;padding:10px;border:1px solid #e6eaee;background:#fafbfc}
+.bonus-day-card>span:first-child{display:flex;justify-content:space-between;gap:5px;color:#566273;font-size:11px;font-weight:750}
+.bonus-day-card.is-auto-present{border-color:#ead1d0;background:#fff7f6}
+.bonus-day-card>span.bonus-auto-presence,.bonus-day-card>span.bonus-auto-absence{display:flex;align-items:center;gap:5px;color:#851b1b;font-size:11px;font-weight:800}
+.bonus-day-card>span.bonus-auto-absence{color:#7b8796}
 .bonus-auto-presence .material-icons{font-size:16px}
+.bonus-auto-absence .material-icons{font-size:16px}
 .bonus-days .bonus-auto-order{display:block;color:#7b8796;font-size:10px;overflow-wrap:anywhere}
+.bonus-toolbar-actions{display:flex;align-items:center;gap:8px}.bonus-payout-badge{display:inline-grid;place-items:center;min-width:20px;height:20px;margin-left:6px;padding:0 5px;border-radius:99px;background:#a33a34;color:#fff;font-size:11px}
+@media(max-width:650px){.bonus-toolbar-actions{display:grid;grid-template-columns:1fr;width:100%}.bonus-toolbar-actions .bonus-button{width:100%}}
 @media(min-width:1450px){.bonus-days{grid-template-columns:repeat(6,minmax(0,1fr))}}
 @media(max-width:650px){.bonus-correction-reason{grid-template-columns:1fr;gap:6px;margin-bottom:12px}.bonus-days{grid-template-columns:repeat(2,minmax(0,1fr))}}
 @media(max-width:390px){.bonus-days{grid-template-columns:1fr}}

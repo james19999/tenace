@@ -24,7 +24,6 @@ class CourierWeeklyBonusController extends Controller
         $couriers = User::query()->where('user_type', User::ROLE_LIVREUR)->where('active', true)
             ->when($courierSearch !== '', fn ($query) => $query->where(fn ($search) => $search->where('name', 'like', '%'.$courierSearch.'%')->orWhere('phone', 'like', '%'.$courierSearch.'%')))
             ->orderBy('name')->paginate(12, ['*'], 'courier_page')->withQueryString();
-        $attendance = $week ? DB::table('courier_bonus_attendances')->where('week_id', $week->id)->get()->groupBy('courier_id') : collect();
         $ratings = $week ? DB::table('courier_bonus_ratings')->where('week_id', $week->id)->get()->keyBy('courier_id') : collect();
         $exceptions = $week ? DB::table('courier_bonus_late_exceptions')->where('week_id', $week->id)->get()->keyBy('order_id') : collect();
         $result = $week ? $calculator->calculate($week) : null;
@@ -69,8 +68,14 @@ class CourierWeeklyBonusController extends Controller
         $deliveredCount = $isLocked ? (int) ($periodSnapshot['delivered_count'] ?? $lockedDeliveryIds->count()) : $deliveredOrders->count();
         $lateOrders = $result ? $result['orders']->filter(fn (Order $order) => ! $order->courier_departed_at || $order->courier_departed_at->diffInSeconds($order->delivered_at) > 45 * 60) : collect();
         $audits = $week ? DB::table('courier_bonus_audits')->leftJoin('users', 'users.id', '=', 'courier_bonus_audits.actor_id')->where('week_id', $week->id)->orderByDesc('courier_bonus_audits.id')->limit(30)->get(['courier_bonus_audits.*', 'users.name as actor_name']) : collect();
+        $pendingPayoutCount = auth()->user()?->user_type === User::ROLE_MANAGER
+            ? DB::table('courier_bonus_payout_requests')->where('status', 'requested')->whereIn(
+                'stock_location_id',
+                DB::table('stock_locations')->where('type', 'shop')->where('is_active', true)->where('responsible_user_id', auth()->id())->pluck('id')
+            )->count()
+            : 0;
 
-        return view('courier-bonuses.index', compact('week', 'weeks', 'couriers', 'courierTotal', 'courierSearch', 'attendance', 'ratings', 'exceptions', 'result', 'lateOrders', 'audits', 'savedAwards', 'isLocked', 'lockedTotal', 'lockedDeliveryIds', 'resultPage', 'ineligibleOrders', 'ontimeCount', 'deliveredCount', 'periodSnapshot', 'autoPresence'));
+        return view('courier-bonuses.index', compact('week', 'weeks', 'couriers', 'courierTotal', 'courierSearch', 'ratings', 'exceptions', 'result', 'lateOrders', 'audits', 'savedAwards', 'isLocked', 'lockedTotal', 'lockedDeliveryIds', 'resultPage', 'ineligibleOrders', 'ontimeCount', 'deliveredCount', 'periodSnapshot', 'autoPresence', 'pendingPayoutCount'));
     }
 
     public function storeWeek(Request $request)
@@ -91,39 +96,12 @@ class CourierWeeklyBonusController extends Controller
         $period = $this->editableWeek($week);
         $data = $request->validate([
             'correction_reason' => ['required', 'string', 'min:3', 'max:500'],
-            'attendance' => ['required', 'array', 'min:1', 'max:1'], 'attendance.*' => ['required', 'array', 'min:6', 'max:6'],
-            'attendance.*.*.status' => ['required', 'in:present,absent,authorized_leave'],
-            'attendance.*.*.reason' => ['nullable', 'string', 'max:500'],
             'ratings' => ['required', 'array', 'min:1', 'max:1'], 'ratings.*' => ['required', 'array'],
             'ratings.*.politeness' => ['required', 'integer', 'between:0,2'], 'ratings.*.presentation' => ['required', 'integer', 'between:0,2'],
             'ratings.*.instructions' => ['required', 'integer', 'between:0,2'], 'ratings.*.money_handling' => ['required', 'integer', 'between:0,2'],
             'ratings.*.discipline' => ['required', 'integer', 'between:0,2'],
         ]);
-        $attendanceCourierIds = array_keys($data['attendance']);
-        $ratingCourierIds = array_keys($data['ratings']);
-        abort_unless($attendanceCourierIds === $ratingCourierIds, 422, 'Enregistre les présences et l’évaluation du même livreur dans cette fiche.');
         DB::transaction(function () use ($request, $period, $data): void {
-            foreach (($data['attendance'] ?? []) as $courierId => $days) {
-                abort_unless(User::query()->whereKey($courierId)->where('user_type', User::ROLE_LIVREUR)->where('active', true)->exists(), 422);
-                foreach ($days as $date => $record) {
-                    abort_unless($date >= $period->week_start && $date <= $period->week_end, 422);
-                    if ($record['status'] !== 'present' && blank($record['reason'] ?? null)) {
-                        $courierName = User::query()->whereKey($courierId)->value('name') ?: 'ce livreur';
-                        $dayLabel = Carbon::parse($date)->locale('fr')->isoFormat('dddd D MMMM');
-                        throw ValidationException::withMessages([
-                            'attendance' => 'Indique le motif de '.($record['status'] === 'absent' ? 'l’absence' : 'du congé autorisé').' de '.$courierName.' pour le '.$dayLabel.'.',
-                        ]);
-                    }
-                    $old = DB::table('courier_bonus_attendances')->where('week_id', $period->id)->where('courier_id', $courierId)->where('attendance_date', $date)->first();
-                    DB::table('courier_bonus_attendances')->updateOrInsert(
-                        ['week_id' => $period->id, 'courier_id' => $courierId, 'attendance_date' => $date],
-                        ['status' => $record['status'], 'reason' => $record['reason'] ?? null, 'recorded_by' => $request->user()->id, 'updated_at' => now(), 'created_at' => $old->created_at ?? now()]
-                    );
-                    if (! $old || $old->status !== $record['status'] || $old->reason !== ($record['reason'] ?? null)) {
-                        $this->audit($period->id, 'attendance_corrected', 'Correction de présence pour le livreur #'.$courierId.' le '.$date.'. Motif : '.$data['correction_reason'], (array) $old, $record);
-                    }
-                }
-            }
             foreach (($data['ratings'] ?? []) as $courierId => $rating) {
                 abort_unless(User::query()->whereKey($courierId)->where('user_type', User::ROLE_LIVREUR)->where('active', true)->exists(), 422);
                 $old = DB::table('courier_bonus_ratings')->where('week_id', $period->id)->where('courier_id', $courierId)->first();
@@ -131,7 +109,7 @@ class CourierWeeklyBonusController extends Controller
                 if (! $old || collect($rating)->diffAssoc((array) $old)->isNotEmpty()) $this->audit($period->id, 'rating_corrected', 'Note professionnelle corrigée pour le livreur #'.$courierId.'. Motif : '.$data['correction_reason'], (array) $old, $rating);
             }
         });
-        return back()->with('success', 'Présences et évaluations enregistrées.');
+        return back()->with('success', 'Évaluation professionnelle enregistrée. Les présences sont calculées automatiquement depuis les livraisons.');
     }
 
     public function saveLateException(Request $request, int $week, Order $order, CourierWeeklyBonusCalculator $calculator)
@@ -158,8 +136,6 @@ class CourierWeeklyBonusController extends Controller
         abort_if(Carbon::parse($period->week_end)->endOfDay()->isFuture(), 422, 'La semaine doit être terminée avant sa validation.');
         $couriers = User::query()->where('user_type', User::ROLE_LIVREUR)->where('active', true)->get();
         foreach ($couriers as $courier) {
-            $days = DB::table('courier_bonus_attendances')->where('week_id', $period->id)->where('courier_id', $courier->id)->whereBetween('attendance_date', [$period->week_start, $period->week_end])->count();
-            abort_unless($days === 6, 422, 'Il manque une ou plusieurs présences du lundi au samedi pour '.$courier->name.'.');
             abort_unless(DB::table('courier_bonus_ratings')->where('week_id', $period->id)->where('courier_id', $courier->id)->exists(), 422, 'Il manque l’évaluation de professionnalisme de '.$courier->name.'.');
         }
         $result = $calculator->calculate($period);

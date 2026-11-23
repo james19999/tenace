@@ -484,7 +484,7 @@ class EditOrder extends Component
 
     private function authorizeOrder(Order $order): void
     {
-        abort_unless(auth()->check() && in_array(auth()->user()->user_type, ['ADMINUSER', 'MNG', 'SCR', 'VDS', 'PT', 'CSA'], true), 403);
+        abort_unless(auth()->check() && in_array(auth()->user()->user_type, ['ADMINUSER', 'MNG', 'SCR', 'VDS', 'PT', 'CSA', 'CALLCENTER'], true), 403);
         if ($this->relaunch) {
             abort_unless($order->status === 'canceled' || $order->partner_order_status === 'canceled', 409,
                 'Seules les commandes annulées peuvent être relancées.');
