@@ -822,6 +822,7 @@ class LivreurController extends Controller
 
           $order->user_id = $user->id;
           $order->assigned_at = now();
+          $order->courier_departed_at = now();
           $order->status_order = true;
           $order->take = true;
           $order->save();

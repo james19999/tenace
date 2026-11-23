@@ -371,6 +371,7 @@
                         <span class="text">Paramètre</span>
                     </a>
                 </li>
+                <li><a href="{{ route('courier-bonuses.index') }}" class="{{ $active('courier-bonuses.*') }}"><span class="icon material-icons">paid</span><span class="text">Primes des livreurs</span></a></li>
             @elseif (Auth::user()->user_type == 'PT')
                 @if (Auth::user()->country_code)
                     <li>
@@ -515,8 +516,6 @@
                                 <span class="text">Commandes annulées</span>
                             </a>
                         </li>
-
-
                     </ul>
                 </li>
                 <li>
@@ -570,6 +569,7 @@
                     </ul>
                 </li>
                 <li><a href="{{ route('dg-appointments.index') }}" class="{{ $active('dg-appointments.*') }}"><span class="icon material-icons">event</span><span class="text">Rendez-vous DG</span></a></li>
+                <li><a href="{{ route('courier-bonuses.index') }}" class="{{ $active('courier-bonuses.*') }}"><span class="icon material-icons">paid</span><span class="text">Primes des livreurs</span></a></li>
                 <li>
                     <a href="{{ route('partner-ordering.links') }}" class="{{ $active('partner-ordering.*') }}">
                         <span class="icon material-icons">public</span>

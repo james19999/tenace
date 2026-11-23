@@ -89,7 +89,7 @@
 
     <header class="oe-hero">
         <div>
-            <p class="oe-eyebrow">Gestion des commandes · Modification</p>
+            <p class="oe-eyebrow">Gestion des commandes · {{ $relaunch ? 'Relance' : 'Modification' }}</p>
             <h1>Commande {{ $order->code }}</h1>
             <p class="oe-client-line"><span>Cliente</span><strong>{{ $order->costumer->name }}</strong></p>
         </div>
@@ -105,6 +105,11 @@
         </div>
 
         <div class="oe-fields">
+            @if($relaunch)
+                <div class="oe-field"><label for="relaunch-date">Date de remise en circulation</label><input id="relaunch-date" type="date" class="form-control" wire:model="relaunchDate"></div>
+                <div class="oe-field"><label for="relaunch-time">Heure souhaitée</label><input id="relaunch-time" type="time" class="form-control" wire:model="relaunchTime"></div>
+                <div class="oe-field oe-field-wide"><small class="oe-help">Après enregistrement, la commande redevient disponible dans la liste des courses des livreurs. Les paiements remboursés lors de l’annulation restent annulés.</small></div>
+            @endif
             <div class="oe-field oe-field-wide">
                 <label for="edit-delivery-address">Adresse de livraison</label>
                 <textarea id="edit-delivery-address" class="form-control @error('deliveryAddress') is-invalid @enderror" rows="2" wire:model.live="deliveryAddress" maxlength="1000" required></textarea>
@@ -227,7 +232,7 @@
 
         <div class="oe-footer">
             <button type="button" class="oe-save" wire:click="save" wire:loading.attr="disabled">
-                <span wire:loading.remove wire:target="save">Enregistrer les modifications</span>
+                <span wire:loading.remove wire:target="save">{{ $relaunch ? 'Enregistrer et republier aux livreurs' : 'Enregistrer les modifications' }}</span>
                 <span wire:loading wire:target="save">Enregistrement en cours…</span>
             </button>
         </div>

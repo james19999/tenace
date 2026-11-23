@@ -48,7 +48,7 @@ class Order extends Model
             }
 
             if ($order->wasRecentlyCreated || $order->wasChanged([
-                'status', 'status_order', 'take', 'user_id', 'date_order', 'time', 'brouillon', 'type', 'country_code', 'shipping_country',
+                'status', 'status_order', 'take', 'user_id', 'date_order', 'time', 'brouillon', 'type', 'country_code', 'shipping_country', 'partner_order_status',
             ])) {
                 $orderId = (int) $order->getKey();
                 $actorId = Auth::id() ? (int) Auth::id() : null;
@@ -82,6 +82,7 @@ class Order extends Model
 
     protected $casts = [
         'assigned_at' => 'datetime',
+        'courier_departed_at' => 'datetime',
         'delivered_at' => 'datetime',
         'canceled_at' => 'datetime',
         'canceled_at_is_estimated' => 'boolean',
@@ -91,6 +92,10 @@ class Order extends Model
 
     protected $fillable = [
         'user_id',
+        'status',
+        'status_order',
+        'take',
+        'motif',
         'costumer_id',
         'subtotal',
         'tax',
@@ -114,6 +119,8 @@ class Order extends Model
         'order_by',
         'date_order',
         'delivered_at',
+        'assigned_at',
+        'courier_departed_at',
         'canceled_at',
         'canceled_at_is_estimated',
         'country_code',

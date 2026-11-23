@@ -30,12 +30,18 @@ class EditOrder extends Component
     public $deliveryPhone = '';
 
     public $products = [];
+    public bool $relaunch = false;
+    public $relaunchDate = '';
+    public $relaunchTime = '';
 
 
     public function mount(Order $order)
     {
+        $this->relaunch = request()->boolean('relaunch');
         $this->authorizeOrder($order);
         $this->order = $order;
+        $this->relaunchDate = (string) ($order->date_order ?: now()->toDateString());
+        $this->relaunchTime = (string) ($order->time ?: now()->format('H:i'));
         $this->deliveryAddress = (string) ($order->delivery_address ?: $order->costumer?->adresse ?: '');
         $this->deliveryPhone = (string) ($order->delivery_phone ?? '');
 
@@ -340,6 +346,8 @@ class EditOrder extends Component
             'items' => 'required|array|min:1',
             'deliveryAddress' => 'required|string|max:1000',
             'deliveryPhone' => 'nullable|string|max:50',
+            'relaunchDate' => $this->relaunch ? 'required|date' : 'nullable|date',
+            'relaunchTime' => $this->relaunch ? 'required|date_format:H:i' : 'nullable|date_format:H:i',
 
         ]);
 
@@ -358,6 +366,12 @@ class EditOrder extends Component
 
 
         DB::transaction(function(){
+
+            $this->order = Order::query()->lockForUpdate()->findOrFail($this->order->id);
+            if ($this->relaunch) {
+                abort_unless($this->order->status === 'canceled' || $this->order->partner_order_status === 'canceled', 409,
+                    'Cette commande n’est plus annulée. Actualise la page avant de la relancer.');
+            }
 
 
 
@@ -378,6 +392,27 @@ class EditOrder extends Component
 
 
             ]);
+
+            if ($this->relaunch) {
+                abort_unless($this->order->status === 'canceled' || $this->order->partner_order_status === 'canceled', 409,
+                    'Cette commande n’est plus annulée. Actualise la page avant de la relancer.');
+                $refundedAmount = (int) $this->order->payments()->where('status', 'refunded')->sum('amount');
+                $this->order->status = 'ordered';
+                $this->order->partner_order_status = $this->order->partner_id ? 'ready_for_courier' : $this->order->partner_order_status;
+                $this->order->user_id = null;
+                $this->order->status_order = false;
+                $this->order->take = false;
+                $this->order->brouillon = false;
+                $this->order->delivery_waiting = false;
+                $this->order->assigned_at = null;
+                $this->order->courier_departed_at = null;
+                $this->order->delivered_at = null;
+                $this->order->paid_amount = max(0, (int) $this->order->paid_amount - $refundedAmount);
+                $this->order->motif = null;
+                $this->order->date_order = $this->relaunchDate;
+                $this->order->time = $this->relaunchTime;
+                $this->order->save();
+            }
 
 
 
@@ -418,10 +453,11 @@ class EditOrder extends Component
 
 
 
-        session()->flash(
-            'success',
-            'Commande modifiée avec succès'
-        );
+        if ($this->relaunch) {
+            return redirect()->route('order')->with('success', 'Commande modifiée et publiée à nouveau pour les livreurs.');
+        }
+
+        session()->flash('success', 'Commande modifiée avec succès');
 
 
     }
@@ -448,7 +484,11 @@ class EditOrder extends Component
 
     private function authorizeOrder(Order $order): void
     {
-        // Wholesale orders are handled by the same staff roles as other orders.
+        abort_unless(auth()->check() && in_array(auth()->user()->user_type, ['ADMINUSER', 'MNG', 'SCR', 'VDS', 'PT', 'CSA'], true), 403);
+        if ($this->relaunch) {
+            abort_unless($order->status === 'canceled' || $order->partner_order_status === 'canceled', 409,
+                'Seules les commandes annulées peuvent être relancées.');
+        }
     }
 
 

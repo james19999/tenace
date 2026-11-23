@@ -47,6 +47,7 @@ use App\Http\Controllers\PartnerOrderController;
 use App\Http\Controllers\PartnerMonitoringController;
 use App\Http\Controllers\CourierPublicOrderController;
 use App\Http\Controllers\CourierPushSubscriptionController;
+use App\Http\Controllers\CourierWeeklyBonusController;
 use App\Http\Controllers\DgAppointmentController;
 use App\Http\Controllers\FedaPayWebhookController;
 use App\Http\Controllers\ProductQuantityPriceController;
@@ -109,6 +110,16 @@ Route::post('/store/pathner',[DashboarController::class,'store_pathner'])->name(
 
 
 Route::middleware(['auth'])->group(function () {
+
+    Route::middleware(['role:ADMINUSER,MNG'])->prefix('primes-livreurs')->name('courier-bonuses.')->group(function () {
+        Route::get('/', [CourierWeeklyBonusController::class, 'index'])->name('index');
+        Route::post('/semaines', [CourierWeeklyBonusController::class, 'storeWeek'])->name('weeks.store');
+        Route::post('/{week}/saisies', [CourierWeeklyBonusController::class, 'saveInputs'])->whereNumber('week')->middleware('role:MNG')->name('inputs.save');
+        Route::post('/{week}/retards/{order}', [CourierWeeklyBonusController::class, 'saveLateException'])->whereNumber('week')->middleware('role:MNG')->name('late-exceptions.store');
+        Route::post('/{week}/valider', [CourierWeeklyBonusController::class, 'validateWeek'])->whereNumber('week')->middleware('role:MNG')->name('validate');
+        Route::post('/{week}/decision', [CourierWeeklyBonusController::class, 'decide'])->whereNumber('week')->middleware('role:ADMINUSER')->name('decide');
+        Route::get('/{week}/export', [CourierWeeklyBonusController::class, 'export'])->whereNumber('week')->name('export');
+    });
 
     Route::middleware(['role:LVS'])->prefix('courier/push')->name('courier.push.')->group(function () {
         Route::get('/public-key', [CourierPushSubscriptionController::class, 'publicKey'])->name('public-key');

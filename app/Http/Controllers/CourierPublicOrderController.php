@@ -59,6 +59,7 @@ class CourierPublicOrderController extends Controller
 
             $locked->user_id = (string) $courier->id;
             $locked->assigned_at = now();
+            $locked->courier_departed_at = now();
             $locked->take = true;
             $locked->status_order = true;
             $locked->partner_order_status = 'out_for_delivery';
