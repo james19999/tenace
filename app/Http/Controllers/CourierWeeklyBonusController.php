@@ -133,7 +133,11 @@ class CourierWeeklyBonusController extends Controller
     public function validateWeek(Request $request, int $week, CourierWeeklyBonusCalculator $calculator)
     {
         $period = $this->editableWeek($week);
-        abort_if(Carbon::parse($period->week_end)->endOfDay()->isFuture(), 422, 'La semaine doit être terminée avant sa validation.');
+        if (Carbon::parse($period->week_end)->endOfDay()->isFuture()) {
+            throw ValidationException::withMessages([
+                'week' => 'La semaine de primes est encore en cours. Tu pourras la soumettre à la Direction Générale après le samedi, lorsque les évaluations des livreurs seront renseignées.',
+            ]);
+        }
         $couriers = User::query()->where('user_type', User::ROLE_LIVREUR)->where('active', true)->get();
         foreach ($couriers as $courier) {
             abort_unless(DB::table('courier_bonus_ratings')->where('week_id', $period->id)->where('courier_id', $courier->id)->exists(), 422, 'Il manque l’évaluation de professionnalisme de '.$courier->name.'.');
