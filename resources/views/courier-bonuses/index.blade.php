@@ -71,8 +71,6 @@
                 <p class="bonus-pagination-hint">Enregistre l’évaluation de chaque livreur séparément. Les présences viennent automatiquement des livraisons validées.</p>
             </section>
 
-            @if($lateOrders->isNotEmpty())<section class="bonus-panel"><div class="bonus-panel-head"><div><h2>Retards et départs manquants</h2><p>Un retard exceptionnel ne devient éligible à la rapidité qu’après justification et validation du responsable. Sans heure de départ, aucun point de rapidité n’est attribué.</p></div></div><div class="bonus-late-list">@foreach($lateOrders as $order)@php($exception = $exceptions->get($order->id))<article><div><b>{{ $order->code }}</b><span>{{ $order->user?->name ?? 'Livreur inconnu' }} · {{ $order->courier_departed_at?->format('d/m H:i') ?? 'Départ non horodaté' }} → {{ $order->delivered_at?->format('d/m H:i') }}</span></div>@if(!$order->courier_departed_at)<span>Départ manquant · non éligible</span>@elseif($exception?->validated_at)<span class="bonus-approved">Exception validée</span>@else<form method="post" action="{{ route('courier-bonuses.late-exceptions.store', [$week->id,$order->id]) }}">@csrf<input name="reason" minlength="8" maxlength="1000" placeholder="Motif du retard exceptionnel" required><button class="bonus-button small">Valider l’exception</button></form>@endif</article>@endforeach</div></section>@endif
-
         <form method="post" action="{{ route('courier-bonuses.validate', $week->id) }}" class="bonus-validate-form">@csrf<button class="bonus-button dark">Vérifier les données et soumettre à la DG</button><small>La semaine doit être terminée et l’évaluation de chaque livreur renseignée. Les présences sont calculées depuis les livraisons.</small></form>
         @endif
 

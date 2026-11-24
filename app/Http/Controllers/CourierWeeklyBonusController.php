@@ -25,7 +25,6 @@ class CourierWeeklyBonusController extends Controller
             ->when($courierSearch !== '', fn ($query) => $query->where(fn ($search) => $search->where('name', 'like', '%'.$courierSearch.'%')->orWhere('phone', 'like', '%'.$courierSearch.'%')))
             ->orderBy('name')->paginate(12, ['*'], 'courier_page')->withQueryString();
         $ratings = $week ? DB::table('courier_bonus_ratings')->where('week_id', $week->id)->get()->keyBy('courier_id') : collect();
-        $exceptions = $week ? DB::table('courier_bonus_late_exceptions')->where('week_id', $week->id)->get()->keyBy('order_id') : collect();
         $result = $week ? $calculator->calculate($week) : null;
         $deliveredOrders = $week ? $calculator->deliveredOrders($week) : collect();
         $autoPresence = $deliveredOrders->filter(fn (Order $order) => $order->delivered_at)
@@ -66,7 +65,6 @@ class CourierWeeklyBonusController extends Controller
         if ($isLocked && isset($periodSnapshot['ineligible_orders'])) $ineligibleOrders = collect($periodSnapshot['ineligible_orders']);
         else $ineligibleOrders = $ineligibleOrders->map(fn (Order $order) => ['code' => $order->code, 'courier' => $order->user?->name ?? 'Livreur inconnu', 'reason' => $order->bonus_exclusion_reason]);
         $deliveredCount = $isLocked ? (int) ($periodSnapshot['delivered_count'] ?? $lockedDeliveryIds->count()) : $deliveredOrders->count();
-        $lateOrders = $result ? $result['orders']->filter(fn (Order $order) => ! $order->courier_departed_at || $order->courier_departed_at->diffInSeconds($order->delivered_at) > 45 * 60) : collect();
         $audits = $week ? DB::table('courier_bonus_audits')->leftJoin('users', 'users.id', '=', 'courier_bonus_audits.actor_id')->where('week_id', $week->id)->orderByDesc('courier_bonus_audits.id')->limit(30)->get(['courier_bonus_audits.*', 'users.name as actor_name']) : collect();
         $pendingPayoutCount = auth()->user()?->user_type === User::ROLE_MANAGER
             ? DB::table('courier_bonus_payout_requests')->where('status', 'requested')->whereIn(
@@ -75,7 +73,7 @@ class CourierWeeklyBonusController extends Controller
             )->count()
             : 0;
 
-        return view('courier-bonuses.index', compact('week', 'weeks', 'couriers', 'courierTotal', 'courierSearch', 'ratings', 'exceptions', 'result', 'lateOrders', 'audits', 'savedAwards', 'isLocked', 'lockedTotal', 'lockedDeliveryIds', 'resultPage', 'ineligibleOrders', 'ontimeCount', 'deliveredCount', 'periodSnapshot', 'autoPresence', 'pendingPayoutCount'));
+        return view('courier-bonuses.index', compact('week', 'weeks', 'couriers', 'courierTotal', 'courierSearch', 'ratings', 'result', 'audits', 'savedAwards', 'isLocked', 'lockedTotal', 'lockedDeliveryIds', 'resultPage', 'ineligibleOrders', 'ontimeCount', 'deliveredCount', 'periodSnapshot', 'autoPresence', 'pendingPayoutCount'));
     }
 
     public function storeWeek(Request $request)

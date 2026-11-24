@@ -7,6 +7,7 @@ use App\Models\FinanceCashMovement;
 use App\Models\FinanceCashClosure;
 use App\Models\FinanceCashRemittance;
 use App\Models\FinanceExpenseRequest;
+use App\Models\FinanceExpensePayment;
 use App\Models\FinanceExternalLoan;
 use App\Models\FinanceEquipmentPurchaseRequest;
 use App\Models\FinanceGeneralCashSetting;
@@ -392,6 +393,40 @@ class FinanceController extends Controller
         $isAssignedCashier = $cashSetting
             && (int) $cashSetting->cashier_user_id === (int) $user->id;
         $locationIds = $this->shopLocationIdsFor($user);
+        $spentPeriodStart = null;
+        $spentPeriodEnd = null;
+        if ($isManager && $selectedExpenseMonth !== '') {
+            [$year, $month] = array_map('intval', explode('-', $selectedExpenseMonth));
+            $spentPeriodStart = now()->setDate($year, $month, 1)->startOfMonth();
+            $spentPeriodEnd = $spentPeriodStart->copy()->endOfMonth();
+        } elseif ($isManager && $expensePeriod === 'week') {
+            $spentPeriodStart = now()->startOfWeek();
+            $spentPeriodEnd = now()->endOfWeek();
+        } elseif ($isManager && $expensePeriod === 'month') {
+            $spentPeriodStart = now()->startOfMonth();
+            $spentPeriodEnd = now()->endOfMonth();
+        }
+        $spentExpenseAmount = $isManager
+            ? (int) FinanceExpensePayment::query()
+                ->whereHas('expense', function ($query) use ($locationIds, $isAssignedCashier): void {
+                    $query->whereIn('stock_location_id', $locationIds)
+                        ->where(function ($scope) use ($isAssignedCashier): void {
+                            $scope->whereNull('staff_advance_type')->orWhere('staff_advance_type', '<>', 'loan');
+                            if ($isAssignedCashier) {
+                                $scope->orWhere(fn ($loans) => $loans->where('staff_advance_type', 'loan')->whereIn('status', ['authorized_to_pay', 'partially_paid', 'paid']));
+                            }
+                        });
+                })
+                ->when($spentPeriodStart && $spentPeriodEnd, fn ($query) => $query->whereBetween('paid_at', [$spentPeriodStart, $spentPeriodEnd]))
+                ->sum('amount')
+            : 0;
+        $spentExpensePeriodLabel = $selectedExpenseMonth !== ''
+            ? \Carbon\Carbon::createFromFormat('!Y-m', $selectedExpenseMonth)->translatedFormat('F Y')
+            : match ($expensePeriod) {
+                'week' => 'Cette semaine',
+                'month' => 'Ce mois',
+                default => 'Toute la période',
+            };
         $rows = FinanceExpenseRequest::query()->where(function ($query) use ($isAssignedCashier): void {
                 $query->whereNull('staff_advance_type')->orWhere('staff_advance_type', '<>', 'loan');
                 if ($isAssignedCashier) {
@@ -463,6 +498,8 @@ class FinanceController extends Controller
             'isManagerExpenseView' => $isManager,
             'expensePeriod' => $expensePeriod,
             'selectedExpenseMonth' => $selectedExpenseMonth,
+            'spentExpenseAmount' => $spentExpenseAmount,
+            'spentExpensePeriodLabel' => $spentExpensePeriodLabel,
             'cashierPurchaseRequests' => $cashierPurchaseRequests,
             'cashierPurchaseReceiptRequests' => $cashierPurchaseReceiptRequests,
             'cashierPayableExpenses' => $cashierPayableExpenses,
