@@ -316,8 +316,17 @@ class LivreurController extends Controller
                 && ! $Orders->status_order
                 && $Orders->status === 'ordered'
                 && ($canHandleCountry || $canHandleWholesale);
+            $isCourierCancellationRecord = $Orders->status === 'canceled'
+                && CourierOrderCancellationRequest::query()
+                    ->where('order_id', $Orders->id)
+                    ->where('courier_id', $courier->id)
+                    ->where('request_type', 'cancellation')
+                    ->where('status', 'approved')
+                    ->exists();
             abort_unless(($canHandleCountry || $canHandleWholesale)
-                && ($isAssignedToCourier || $isAvailableInCourierCountry), 403);
+                && ($isAssignedToCourier || $isAvailableInCourierCountry || $isCourierCancellationRecord), 403);
+        } else {
+            $isCourierCancellationRecord = false;
         }
         $isPartnerPublicOrder = $Orders->partner_id && $Orders->public_tracking_token;
         $handoffConfirmed = ! ($isCourier && $isPartnerPublicOrder)
@@ -329,7 +338,7 @@ class LivreurController extends Controller
         $cancellationRequest = CourierOrderCancellationRequest::query()->where('order_id', $Orders->id)
             ->where('status', 'pending')->latest('id')->first();
 
-        return view('livreurs.livrablde_show', compact('Orders', 'handoffConfirmed', 'isPartnerPublicOrder', 'deliveryPayment', 'cancellationRequest'));
+        return view('livreurs.livrablde_show', compact('Orders', 'handoffConfirmed', 'isPartnerPublicOrder', 'deliveryPayment', 'cancellationRequest', 'isCourierCancellationRecord'));
     }
 
     public function updateOrderPayment(Request $request, string $id)
@@ -610,7 +619,7 @@ class LivreurController extends Controller
                    });
 
                    Notification::send(
-                       User::query()->where('active', true)->whereIn('user_type', User::ORDER_CANCELLATION_REVIEW_ROLES)->get(),
+                       User::query()->whereIn('user_type', User::ORDER_CANCELLATION_REVIEW_ROLES)->get(),
                        new CourierCancellationRequestNotification($waitingRequest->load(['order', 'courier']))
                    );
 
@@ -649,7 +658,7 @@ class LivreurController extends Controller
                    });
 
                    Notification::send(
-                       User::query()->where('active', true)->whereIn('user_type', User::ORDER_CANCELLATION_REVIEW_ROLES)->get(),
+                       User::query()->whereIn('user_type', User::ORDER_CANCELLATION_REVIEW_ROLES)->get(),
                        new CourierCancellationRequestNotification($cancellationRequest->load(['order', 'courier']))
                    );
 
@@ -888,7 +897,7 @@ class LivreurController extends Controller
       $isWaitingRequest = ($cancellationRequest->request_type ?: 'cancellation') === 'waiting';
       $successMessage = $isWaitingRequest
           ? ($data['decision'] === 'approved'
-              ? 'La commande est mise en attente. Elle reste attribuée au livreur et il ne peut pas prendre une autre course avant de l’avoir terminée.'
+              ? 'La commande est mise en attente. Le livreur peut maintenant prendre une autre commande.'
               : 'La demande de mise en attente est refusée. La commande reste à la charge du livreur.')
           : ($data['decision'] === 'approved'
               ? 'La commande est annulée. Le livreur peut reprendre une autre course.'
@@ -977,6 +986,9 @@ class LivreurController extends Controller
           $hasDeliveryInProgress = Order::query()
               ->where('user_id', (string) $user->id)
               ->where('status', 'ordered')
+              ->where(function ($activeDelivery) {
+                  $activeDelivery->where('delivery_waiting', false)->orWhereNull('delivery_waiting');
+              })
               ->exists();
 
           if ($hasDeliveryInProgress) {

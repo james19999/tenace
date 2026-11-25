@@ -20,9 +20,11 @@
         $paidAmount = $Orders->paid_amount;
         $remainingAmount = $paidAmount === null ? null : max(0, $amountDue - (float) $paidAmount);
         $isAssignedCourier = auth()->user()?->user_type === 'LVS' && (string) $Orders->user_id === (string) auth()->id();
-        $backUrl = $isAssignedCourier
-            ? route('authlivrable', auth()->id())
-            : (auth()->user()?->user_type === 'LVS' ? route('livrable') : (url()->previous() ?: route('livrable')));
+        $backUrl = !empty($isCourierCancellationRecord)
+            ? route('courier.orders.cancelled')
+            : ($isAssignedCourier
+                ? route('authlivrable', auth()->id())
+                : (auth()->user()?->user_type === 'LVS' ? route('livrable') : (url()->previous() ?: route('livrable'))));
         $deliveryCountry = strtoupper(trim((string) ($Orders->country_code ?: ($Orders->shipping_country ?: (auth()->user()?->country_code ?: config('services.fedapay.country_code', 'TG'))))));
         $fedapayService = app(\App\Services\Payments\FedaPayService::class);
         $mobilePaymentAvailable = $isAssignedCourier && $deliveryCountry === 'TG' && $Orders->status === 'ordered'
@@ -279,7 +281,7 @@
                 </div>
             </section>
 
-            @if ($Orders->delivery_mode === 'expedition' && $Orders->status !== 'delivered')
+            @if ($Orders->delivery_mode === 'expedition' && $Orders->status === 'ordered')
                 <section class="dd-package-photo-panel no-print">
                     <h2>Photos obligatoires des colis</h2>
                     <p>Prends une ou plusieurs photos avant de confirmer l’expédition. Chaque cliché est envoyé dès la capture.</p>
@@ -415,7 +417,7 @@
                     <button type="submit" class="dd-btn dd-btn-primary">Synchroniser la commission</button>
                 </form>
             </section>
-        @elseif ($Orders->status !== 'delivered' && $handoffConfirmed)
+        @elseif ($Orders->status === 'ordered' && $handoffConfirmed)
             <section class="dd-actions no-print">
                 @if ($cancellationRequest)
                     <div class="dd-panel" role="status">

@@ -23,12 +23,12 @@
                     <div class="form-group col-12 col-md-6"><label for="appointment-date">Date</label><input class="form-control" type="date" id="appointment-date" name="appointment_date" value="{{ old('appointment_date') }}" min="{{ now()->toDateString() }}" required></div>
                     <div class="form-group col-12"><label for="available-range">Période encore libre</label><select class="form-control" id="available-range" disabled required><option value="">Choisis d’abord une date</option></select><small class="form-text text-muted" id="slot-message">Les plages libres du DG s’afficheront après le choix de la date.</small></div>
                     <div class="form-group col-6"><label for="appointment-start">Début du rendez-vous</label><input class="form-control" type="time" id="appointment-start" name="starts_at" value="{{ old('starts_at') }}" disabled required></div>
-                    <divsys class="form-group col-6"><label for="appointment-end">Fin du rendez-vous</label><input class="form-control" type="time" id="appointment-end" name="ends_at" value="{{ old('ends_at') }}" disabled required></divsys>
+                    <div class="form-group col-6"><label for="appointment-end">Fin du rendez-vous</label><input class="form-control" type="time" id="appointment-end" name="ends_at" value="{{ old('ends_at') }}" disabled required></div>
                 </div>
                 <button type="submit" class="btn btn-primary" id="appointment-submit" disabled>Planifier le rendez-vous</button>
             </form>
         </div></div>
-    @endif4/0AUn6Hd-frhGO7szGeNxNOZuMi7mRTMdbCP6ldqRBN0OxHWEZQUTnhM-K1QYNCfq_-D7K0Q
+    @endif
     </section>
     <section data-appointment-panel="upcoming" hidden>
     <nav class="nav nav-pills mb-3 dg-appointment-state-tabs" aria-label="État des rendez-vous">

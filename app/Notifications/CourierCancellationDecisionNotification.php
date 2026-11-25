@@ -27,7 +27,7 @@ class CourierCancellationDecisionNotification extends Notification
         $message = ($order?->code ?: 'La commande #'.$this->cancellationRequest->order_id)
             .($isWaitingRequest
                 ? ($approved
-                    ? ' est mise en attente par le responsable. Elle reste sous ta responsabilité; termine-la avant d’en prendre une autre.'
+                    ? ' est mise en attente par le responsable. Tu peux maintenant prendre une autre commande.'
                     : ' reste en cours. La demande de mise en attente a été refusée; termine-la avant d’en prendre une autre.')
                 : ($approved
                     ? ' a été annulée. Tu peux prendre une autre commande.'

@@ -55,7 +55,10 @@ class CourierPublicOrderController extends Controller
                 && $locked->partner_order_status === 'ready_for_courier' && $locked->user_id === null, 409,
                 'Un autre livreur a déjà pris cette commande.');
             abort_unless(! Order::query()->where('user_id', (string) $courier->id)
-                ->where('status', 'ordered')->exists(), 409,
+                ->where('status', 'ordered')
+                ->where(function ($activeDelivery) {
+                    $activeDelivery->where('delivery_waiting', false)->orWhereNull('delivery_waiting');
+                })->exists(), 409,
                 'Tu as déjà une commande en cours ou en attente. Termine-la ou attends la décision du responsable avant d’en prendre une autre.');
             $locked->load('orderItems');
             abort_unless($stockService->hasForOrder($courier, $locked), 409,
