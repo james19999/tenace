@@ -491,20 +491,24 @@ class OrderController extends Controller
 
     public function order_cancel_list(Request $request)
     {
+        $isCourier = $request->user()?->user_type === User::ROLE_LIVREUR;
         $request->user()?->unreadNotifications()
-            ->whereIn('type', [
-                \App\Notifications\CanceledOrderNotification::class,
-                \App\Notifications\CourierCancellationRequestNotification::class,
-            ])
+            ->whereIn('type', $isCourier
+                ? [\App\Notifications\CourierCancellationDecisionNotification::class]
+                : [\App\Notifications\CanceledOrderNotification::class, \App\Notifications\CourierCancellationRequestNotification::class])
             ->update(['read_at' => now()]);
 
         $pendingCancellationRequests = \App\Models\CourierOrderCancellationRequest::query()
             ->with(['order.costumer', 'order.orderItems.product', 'courier'])
-            ->where('status', 'pending')->latest()->paginate(15, ['*'], 'requests_page')->withQueryString();
+            ->where('status', 'pending')
+            ->when($isCourier, fn ($query) => $query->where('courier_id', $request->user()->id))
+            ->latest()->paginate(15, ['*'], 'requests_page')->withQueryString();
 
         $orders = Order::query()
             ->with(['costumer', 'user', 'createduser', 'partner', 'orderItems.product', 'payments'])
             ->where(fn ($query) => $query->where('status', 'canceled')->orWhere('partner_order_status', 'canceled'))
+            ->when($isCourier, fn ($query) => $query->whereIn('id', \App\Models\CourierOrderCancellationRequest::query()
+                ->select('order_id')->where('courier_id', $request->user()->id)->where('request_type', 'cancellation')->where('status', 'approved')))
             ->latest('canceled_at')
             ->latest('updated_at')
             ->paginate(25)

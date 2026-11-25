@@ -15,11 +15,17 @@
     $storefrontOrderBadge = Auth::check()
         ? Auth::user()->unreadNotifications()->where('type', \App\Notifications\StorefrontOrderNotification::class)->count()
         : 0;
-    $canceledOrderBadge = Auth::check() && in_array(Auth::user()->user_type, ['SCR', 'CALLCENTER'], true)
-        ? Auth::user()->unreadNotifications()->where('type', \App\Notifications\CanceledOrderNotification::class)->count()
+    $canceledOrderBadge = Auth::check() && in_array(Auth::user()->user_type, \App\Models\User::ORDER_CANCELLATION_REVIEW_ROLES, true)
+        ? Auth::user()->unreadNotifications()->whereIn('type', [\App\Notifications\CanceledOrderNotification::class, \App\Notifications\CourierCancellationRequestNotification::class])->count()
         : 0;
-    $courierCancellationBadge = Auth::check() && in_array(Auth::user()->user_type, ['ADMINUSER', 'MNG'], true)
+    $courierCancellationBadge = Auth::check() && in_array(Auth::user()->user_type, \App\Models\User::ORDER_CANCELLATION_REVIEW_ROLES, true)
         ? Auth::user()->unreadNotifications()->where('type', \App\Notifications\CourierCancellationRequestNotification::class)->count()
+        : 0;
+    $courierDecisionBadge = Auth::check() && Auth::user()->user_type === \App\Models\User::ROLE_LIVREUR
+        ? Auth::user()->unreadNotifications()->where('type', \App\Notifications\CourierCancellationDecisionNotification::class)->count()
+        : 0;
+    $courierWaitingBadge = Auth::check() && Auth::user()->user_type === \App\Models\User::ROLE_LIVREUR
+        ? \App\Models\CourierOrderCancellationRequest::query()->where('courier_id', Auth::id())->where('request_type', 'waiting')->where('status', 'pending')->count()
         : 0;
     $dashboard = match (Auth::user()->user_type) {
         'PT' => ['route' => 'partner.dashboard', 'label' => 'Tableau de bord'],
@@ -67,6 +73,12 @@
 
             @if(Auth::user()->user_type === 'LVS')
                 <li><a href="{{ route('courier-consignments.index') }}" class="{{ $active('courier-consignments.*') }}"><span class="icon material-icons">inventory_2</span><span class="text">Ma tournée</span></a></li>
+                <li><a href="{{ route('authlivrable', ['id' => Auth::id(), 'filter' => 'waiting']) }}" class="{{ request()->routeIs('authlivrable') && request('filter') === 'waiting' ? 'active' : '' }}"><span class="icon material-icons">pending_actions</span><span class="text">Commandes en attente @if($courierWaitingBadge > 0)<span class="badge badge-pill badge-danger">{{ $courierWaitingBadge > 99 ? '99+' : $courierWaitingBadge }}</span>@endif</span></a></li>
+                <li><a href="{{ route('courier.orders.cancelled') }}" class="{{ $active('courier.orders.cancelled') }}"><span class="icon material-icons">cancel</span><span class="text">Commandes annulées @if($courierDecisionBadge > 0)<span class="badge badge-pill badge-danger">{{ $courierDecisionBadge > 99 ? '99+' : $courierDecisionBadge }}</span>@endif</span></a></li>
+            @endif
+
+            @if(Auth::check() && in_array(Auth::user()->user_type, ['CSA', 'PT', 'RCM', 'GRO', 'COMPTABLE'], true))
+                <li><a href="{{ route('order-cancel-list') }}" class="{{ $active('order-cancel-list') }}"><span class="icon material-icons">cancel</span><span class="text">Commandes annulées @if($courierCancellationBadge > 0)<span class="badge badge-pill badge-danger">{{ $courierCancellationBadge > 99 ? '99+' : $courierCancellationBadge }}</span>@endif</span></a></li>
             @endif
 
             @if(Auth::user()->isWholesaleShopResponsible() && !Auth::user()->isWholesaleSalesRole())

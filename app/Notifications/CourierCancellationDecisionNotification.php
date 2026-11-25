@@ -38,11 +38,14 @@ class CourierCancellationDecisionNotification extends Notification
 
         return [
             'module' => 'courier_cancellation',
+            'request_type' => $isWaitingRequest ? 'waiting' : 'cancellation',
             'title' => $isWaitingRequest
                 ? ($approved ? 'Mise en attente acceptée' : 'Mise en attente refusée')
                 : ($approved ? 'Annulation acceptée' : 'Annulation refusée'),
             'message' => $message,
-            'url' => route('livrable'),
+            'url' => $isWaitingRequest
+                ? route('authlivrable', ['id' => $this->cancellationRequest->courier_id, 'filter' => 'waiting'])
+                : route('courier.orders.cancelled'),
             'icon' => $approved ? 'cancel' : 'delivery_dining',
         ];
     }

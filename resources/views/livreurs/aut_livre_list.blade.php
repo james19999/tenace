@@ -7,7 +7,7 @@
     @endif
 
     <header class="courier-page-heading">
-        <div><span class="courier-kicker">Espace livreur</span><h1>Mes livraisons</h1><p>Retrouve tes commandes attribuées et ouvre un dossier pour confirmer le résultat.</p></div>
+        <div><span class="courier-kicker">Espace livreur</span><h1>{{ !empty($waitingFilter) ? 'Mes commandes en attente' : 'Mes livraisons' }}</h1><p>{{ !empty($waitingFilter) ? 'Retrouve les demandes de mise en attente en cours de validation et les livraisons suspendues.' : 'Retrouve tes commandes attribuées et ouvre un dossier pour confirmer le résultat.' }}</p></div>
     </header>
 
     @if (Session::has('messages'))
@@ -16,7 +16,8 @@
 
     @php
         $toDeliverOrders = $orders->filter(fn ($order) => $order->status === 'ordered' && ! $order->delivery_waiting)->values();
-        $waitingOrders = $orders->filter(fn ($order) => $order->status === 'ordered' && $order->delivery_waiting)->values();
+        $pendingWaitingOrderIds = $pendingWaitingOrderIds ?? collect();
+        $waitingOrders = $orders->filter(fn ($order) => $order->status === 'ordered' && ($order->delivery_waiting || $pendingWaitingOrderIds->contains($order->id)))->values();
         $closedOrders = $orders->filter(fn ($order) => in_array($order->status, ['delivered', 'canceled'], true))->values();
         $activeTab = $toDeliverOrders->isNotEmpty() ? 'to-deliver' : ($waitingOrders->isNotEmpty() ? 'waiting' : 'closed');
         $deliveryTabs = [
@@ -54,8 +55,10 @@
                         $phone = $order->delivery_phone ?: ($order->costumer->phone ?? '');
                         $phoneLink = preg_replace('/[^0-9+]/', '', $phone);
                         $address = $order->delivery_address ?: ($order->costumer->adresse ?? '');
-                        $statusClass = $order->status === 'ordered' && $order->delivery_waiting ? 'is-waiting' : ($order->status === 'delivered' ? 'is-delivered' : ($order->status === 'canceled' ? 'is-canceled' : ''));
-                        $statusText = $order->status === 'ordered' && $order->delivery_waiting ? 'En attente' : ($order->status === 'ordered' ? 'À livrer' : ($order->status === 'delivered' ? 'Livrée' : ($order->status === 'canceled' ? 'Annulée' : $order->status)));
+                        $hasPendingWaitRequest = $pendingWaitingOrderIds->contains($order->id) && ! $order->delivery_waiting;
+                        $isWaiting = $order->status === 'ordered' && ($order->delivery_waiting || $hasPendingWaitRequest);
+                        $statusClass = $isWaiting ? 'is-waiting' : ($order->status === 'delivered' ? 'is-delivered' : ($order->status === 'canceled' ? 'is-canceled' : ''));
+                        $statusText = $hasPendingWaitRequest ? 'Demande en attente de validation' : ($isWaiting ? 'En attente' : ($order->status === 'ordered' ? 'À livrer' : ($order->status === 'delivered' ? 'Livrée' : ($order->status === 'canceled' ? 'Annulée' : $order->status))));
                     @endphp
                     <article class="courier-order-card">
                         <div class="courier-order-top"><div class="courier-order-code"><small>Commande</small><strong>{{ $order->code ?: 'N° '.$order->id }}</strong></div><span class="courier-status {{ $statusClass }}">{{ $statusText }}</span></div>

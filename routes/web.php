@@ -511,7 +511,7 @@ Route::middleware(['auth'])->group(function () {
         Route::put('order/show/{order}/delivery-address', [OrderController::class, 'updateDeliveryAddress'])->name('ordershow.delivery-address');
         Route::get('order/show/{order}/package-photos/{photo}/download', [LivreurController::class, 'downloadPackagePhoto'])->middleware('role:ADMINUSER,MNG')->name('ordershow.package-photo.download');
         Route::post('order/show/{id}/payment', [OrderController::class, 'updatePayment'])->middleware('role:ADMINUSER,MNG,RCM')->name('ordershow.payment');
-        Route::get('order/cancel/list', [OrderController::class, 'order_cancel_list'])->middleware('role:ADMINUSER,MNG,SCR,VDS,PT,CSA,CALLCENTER')->name('order-cancel-list');
+        Route::get('order/cancel/list', [OrderController::class, 'order_cancel_list'])->middleware('role:ADMINUSER,MNG,SCR,VDS,PT,CSA,CALLCENTER,RCM,GRO')->name('order-cancel-list');
         Route::get('order/report/list', [OrderController::class, 'order_report_list'])->middleware('role:ADMINUSER,MNG,SCR,VDS,PT,CSA')->name('order-report-list');
         Route::get('ordered/list/ordered', [OrderController::class, 'ordered_list'])->middleware('role:ADMINUSER,MNG,SCR,VDS,PT,CSA')->name('ordered-list-orderer');
         Route::put('reporte/order/{id}', [OrderController::class, 'reporte_order'])->middleware('role:ADMINUSER,MNG,SCR,VDS,PT,CSA')->name('reporte-order');
@@ -550,6 +550,7 @@ Route::middleware(['auth'])->group(function () {
         Route::post('livrable/show/{id}/package-photos', [LivreurController::class, 'uploadPackagePhotos'])->name('livrableshow.package-photos');
         Route::get('livrable/show/{id}/package-photos/{photo}', [LivreurController::class, 'showPackagePhoto'])->name('livrableshow.package-photo');
         Route::get('auth/livrable/{id}', [LivreurController::class, 'auth_user_livrable'])->name('authlivrable');
+        Route::get('courier/order-cancel-list', [OrderController::class, 'order_cancel_list'])->middleware('role:LVS')->name('courier.orders.cancelled');
         Route::get('unlock/{id}', [LivreurController::class, 'unlock'])->name('unlock');
         Route::post('check/livraison/{id}', [LivreurController::class, 'check_livraison'])->name('checklivraison');
         Route::put('change/order/status/user/{id}', [LivreurController::class, 'change_order_status_user'])->name('changestatususer');

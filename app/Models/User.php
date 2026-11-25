@@ -72,6 +72,18 @@ class User extends Authenticatable
     const ROLE_GRAPHIC_DESIGNER = 'INFOGRAPHISTE';
     const ROLE_VIDEOGRAPHER = 'VIDEASTE';
 
+    const ORDER_CANCELLATION_REVIEW_ROLES = [
+        self::ROLE_ADMIN,
+        self::ROLE_MANAGER,
+        self::ROLE_SECRETARY,
+        self::ROLE_SALES,
+        self::ROLE_PARTNER,
+        self::ROLE_CASHIER,
+        self::ROLE_CALL_CENTER,
+        self::ROLE_COMMERCIAL_MANAGER,
+        self::ROLE_WHOLESALER,
+    ];
+
     const GENERAL_CASHIER_ELIGIBLE_ROLES = [
         self::ROLE_MANAGER,
         self::ROLE_SECRETARY,

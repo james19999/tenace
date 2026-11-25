@@ -610,7 +610,7 @@ class LivreurController extends Controller
                    });
 
                    Notification::send(
-                       User::query()->where('active', true)->whereIn('user_type', [User::ROLE_ADMIN, User::ROLE_MANAGER])->get(),
+                       User::query()->where('active', true)->whereIn('user_type', User::ORDER_CANCELLATION_REVIEW_ROLES)->get(),
                        new CourierCancellationRequestNotification($waitingRequest->load(['order', 'courier']))
                    );
 
@@ -649,7 +649,7 @@ class LivreurController extends Controller
                    });
 
                    Notification::send(
-                       User::query()->where('active', true)->whereIn('user_type', [User::ROLE_ADMIN, User::ROLE_MANAGER])->get(),
+                       User::query()->where('active', true)->whereIn('user_type', User::ORDER_CANCELLATION_REVIEW_ROLES)->get(),
                        new CourierCancellationRequestNotification($cancellationRequest->load(['order', 'courier']))
                    );
 
@@ -909,7 +909,14 @@ class LivreurController extends Controller
     }
 
 
-  public function auth_user_livrable($id = null){
+  public function auth_user_livrable(Request $request, $id = null){
+
+    $waitingFilter = $request->query('filter') === 'waiting';
+    $pendingWaitingOrderIds = CourierOrderCancellationRequest::query()
+        ->where('courier_id', Auth::id())
+        ->where('request_type', 'waiting')
+        ->where('status', 'pending')
+        ->pluck('order_id');
 
     // orders.user_id is stored as VARCHAR. Compare it to a string and include
     // assigned, still-ordered work even if an older assignment missed the flag.
@@ -921,11 +928,14 @@ class LivreurController extends Controller
                      ->whereDate('updated_at', Carbon::today());
               });
         })
+        ->when($waitingFilter, fn ($query) => $query->where('status', 'ordered')->where(function ($waiting) use ($pendingWaitingOrderIds) {
+            $waiting->where('delivery_waiting', true)->orWhereIn('id', $pendingWaitingOrderIds);
+        }))
         ->with('costumer')
         ->latest('updated_at')
         ->get();
 
-     return view('livreurs.aut_livre_list', compact('orders'));
+     return view('livreurs.aut_livre_list', compact('orders', 'waitingFilter', 'pendingWaitingOrderIds'));
   }
 
 

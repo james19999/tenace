@@ -246,7 +246,7 @@ class ApiController extends Controller
                         ]);
                     });
                     Notification::send(
-                        User::query()->where('active', true)->whereIn('user_type', [User::ROLE_ADMIN, User::ROLE_MANAGER])->get(),
+                        User::query()->where('active', true)->whereIn('user_type', User::ORDER_CANCELLATION_REVIEW_ROLES)->get(),
                         new CourierCancellationRequestNotification($waitingRequest->load(['order', 'courier']))
                     );
                     return Response::json(['status' => true, 'messages' => 'Ta demande de mise en attente a été envoyée au responsable. La commande reste bloquée jusqu’à sa décision.']);
@@ -279,7 +279,7 @@ class ApiController extends Controller
                             ]);
                         });
                         Notification::send(
-                            User::query()->where('active', true)->whereIn('user_type', [User::ROLE_ADMIN, User::ROLE_MANAGER])->get(),
+                            User::query()->where('active', true)->whereIn('user_type', User::ORDER_CANCELLATION_REVIEW_ROLES)->get(),
                             new CourierCancellationRequestNotification($cancellationRequest->load(['order', 'courier']))
                         );
                         return Response::json(['status' => true, 'messages' => 'Ta demande attend la validation du responsable. La commande reste sous ta responsabilité.']);
