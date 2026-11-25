@@ -872,7 +872,18 @@ class LivreurController extends Controller
           return $lockedRequest->fresh(['order', 'courier']);
       });
 
-      $cancellationRequest->courier?->notify(new CourierCancellationDecisionNotification($cancellationRequest));
+      try {
+          $cancellationRequest->courier?->notify(new CourierCancellationDecisionNotification($cancellationRequest));
+      } catch (\Throwable $exception) {
+          // The decision is committed already. A notification serialization or
+          // delivery failure must not turn a successful refusal into a broken
+          // response that invites the manager to submit the decision again.
+          Log::warning('Courier cancellation decision saved, but its notification could not be delivered.', [
+              'cancellation_request_id' => $cancellationRequest->id,
+              'courier_id' => $cancellationRequest->courier_id,
+              'exception' => $exception->getMessage(),
+          ]);
+      }
 
       $isWaitingRequest = ($cancellationRequest->request_type ?: 'cancellation') === 'waiting';
       $successMessage = $isWaitingRequest
