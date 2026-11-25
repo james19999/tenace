@@ -417,6 +417,13 @@
             </section>
         @elseif ($Orders->status !== 'delivered' && $handoffConfirmed)
             <section class="dd-actions no-print">
+                @if ($cancellationRequest)
+                    <div class="dd-panel" role="status">
+                        <h2>{{ $cancellationRequest->request_type === 'waiting' ? 'Demande de mise en attente envoyée' : 'Demande d’annulation envoyée' }}</h2>
+                        <p>Le responsable boutique doit encore décider. Tu ne peux pas prendre une autre commande avant cette décision.</p>
+                        <p><strong>Motif :</strong> {{ $cancellationRequest->reason }}</p>
+                    </div>
+                @else
                 @if ($mobilePaymentAvailable)
                     <div id="delivery-mobile-payment-panel" class="dd-panel dd-mobile-pay" @if(old('payment_method', 'cash') !== 'mobile_money') hidden @endif>
                         <h2>Encaisser par paiement mobile</h2>
@@ -470,13 +477,14 @@
                             </div>
                         @endif
                         <div class="dd-field">
-                            <label for="delivery-motif">Précision ou motif d’annulation</label>
+                            <label for="delivery-motif">Motif de la demande</label>
                             <input id="delivery-motif" type="text" class="form-control @error('motif') is-invalid @enderror" name="motif" value="{{ old('motif', $Orders->motif) }}" placeholder="Ex. la cliente demande d’attendre quelques minutes">
                             @error('motif') <div class="invalid-feedback">{{ $message }}</div> @enderror
                         </div>
                         <button type="submit" class="dd-btn dd-btn-primary">Enregistrer</button>
                     </div>
                 </form>
+                @endif
             </section>
         @elseif ($Orders->status !== 'delivered' && $isPartnerPublicOrder)
             <section class="dd-actions no-print">
@@ -508,10 +516,11 @@
                     deliveryMethodSelect.required = statusSelect.value === 'delivered';
                 }
                 if (motifField && statusSelect) {
-                    motifField.required = statusSelect.value === 'canceled';
+                    motifField.required = statusSelect.value === 'canceled' || statusSelect.value === 'waiting';
+                    motifField.minLength = motifField.required ? 3 : 0;
                     motifField.placeholder = statusSelect.value === 'canceled'
                         ? 'Préciser le motif d’annulation'
-                        : 'Ex. la cliente demande d’attendre quelques minutes';
+                        : (statusSelect.value === 'waiting' ? 'Pourquoi la commande doit-elle être mise en attente ?' : 'Ex. la cliente demande d’attendre quelques minutes');
                 }
             }
             if (methodSelect) methodSelect.addEventListener('change', function () {

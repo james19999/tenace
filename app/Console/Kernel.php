@@ -16,6 +16,7 @@ class Kernel extends ConsoleKernel
         $schedule->command('customer-loyalty:recalculate')->dailyAt('02:15')->withoutOverlapping();
         $schedule->command('finance:backup')->dailyAt('01:45')->withoutOverlapping();
         $schedule->command('finance:notify-loan-due')->dailyAt('08:00')->withoutOverlapping();
+        $schedule->command('couriers:deactivate-for-night')->dailyAt('00:00')->timezone('Africa/Lome')->withoutOverlapping();
     }
 
     /**

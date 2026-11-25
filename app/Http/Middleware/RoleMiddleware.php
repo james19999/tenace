@@ -26,6 +26,14 @@ class RoleMiddleware
 
         $user = Auth::user();
 
+        if ($user->isLivreur() && ! $user->active) {
+            Auth::logout();
+            $request->session()->invalidate();
+            $request->session()->regenerateToken();
+
+            return redirect()->route('login')->with('error', 'Ton compte livreur est désactivé. Le responsable boutique doit te remettre des produits pour réactiver ton accès.');
+        }
+
         // Vérification que l'utilisateur a l'un des rôles autorisés
         $hasWholesaleRouteAccess = $user->isWholesaleShopResponsible()
             && array_intersect($roles, [User::ROLE_COMMERCIAL_MANAGER, User::ROLE_WHOLESALER]) !== [];

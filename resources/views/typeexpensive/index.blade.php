@@ -83,7 +83,7 @@
 
 
                                      <form   method="POST" action="{{ route('destroy-expensives',$type) }}"
-                                     onclick="return confirm('supprimer') "
+                                     data-app-confirm-title="Supprimer ce type de dépense ?" data-app-confirm-message="Cette suppression est définitive." data-app-confirm-label="Supprimer" data-app-confirm-variant="danger"
                                     >
                                          @csrf
                                           @method("DELETE")

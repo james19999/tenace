@@ -2,7 +2,7 @@
     @if (Auth::user()->user_type === 'ADMINUSER')
         <a href="{{ route('ordershow', $order) }}" class="btn btn-sm btn-success"><i class="material-icons f-16">visibility</i> Détails</a>
         <a href="{{ route('check-type', $order) }}" class="btn btn-sm {{ $order->type === 'PR' ? 'btn-dark' : 'btn-warning' }}"><i class="material-icons f-16">edit</i> {{ $order->type === 'PR' ? 'Privée' : 'Publique' }}</a>
-        <form method="POST" action="{{ route('deleteorder', $order) }}" onsubmit="return confirm('Supprimer cette commande ?')">
+        <form method="POST" action="{{ route('deleteorder', $order) }}" data-app-confirm-title="Supprimer cette commande ?" data-app-confirm-message="Cette commande sera supprimée définitivement." data-app-confirm-label="Supprimer" data-app-confirm-variant="danger">
             @csrf
             @method('DELETE')
             <button type="submit" class="btn btn-sm btn-danger"><i class="material-icons">delete</i> Supprimer</button>

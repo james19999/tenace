@@ -61,7 +61,7 @@ class CostumerController extends Controller
             $deleteUrl = route('costumer.destroy', $customer->id);
             $actions = '<div class="btn-group btn-group-sm">'
                 .'<a href="'.$editUrl.'" class="btn btn-warning text-white"><i class="material-icons">edit</i> Modifier</a>'
-                .'<form method="POST" action="'.$deleteUrl.'" onsubmit="return confirm(\'Supprimer ce client ?\')">'
+                .'<form method="POST" action="'.$deleteUrl.'" data-app-confirm-title="Supprimer ce client ?" data-app-confirm-message="Ce client sera supprimé définitivement." data-app-confirm-label="Supprimer" data-app-confirm-variant="danger">'
                 .'<input type="hidden" name="_token" value="'.e(csrf_token()).'">'
                 .'<input type="hidden" name="_method" value="DELETE">'
                 .'<button type="submit" class="btn btn-danger"><i class="material-icons">delete</i> Supprimer</button>'

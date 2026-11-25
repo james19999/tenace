@@ -86,6 +86,16 @@
         </form>
     </section>
 </main>
+<dialog class="checkout-message-dialog" id="checkoutMessageDialog" aria-labelledby="checkoutMessageTitle" aria-describedby="checkoutMessageText">
+    <div class="checkout-message-icon" aria-hidden="true">!</div>
+    <h2 id="checkoutMessageTitle">Commande incomplète</h2>
+    <p id="checkoutMessageText"></p>
+    <button type="button" id="checkoutMessageClose">Compris</button>
+</dialog>
+<style>
+    .checkout-message-dialog{position:fixed;inset:0;width:min(420px,calc(100% - 28px));margin:auto;padding:28px;border:1px solid var(--line);border-radius:10px;background:#fff;color:var(--ink);box-shadow:0 24px 80px #17203338}
+    .checkout-message-dialog::backdrop{background:#17203399;backdrop-filter:blur(3px)}.checkout-message-icon{display:grid;place-items:center;width:42px;height:42px;margin-bottom:14px;border-radius:50%;background:#fff3e8;color:#b45b21;font-size:24px;font-weight:800}.checkout-message-dialog h2{margin:0 0 7px;font-size:20px}.checkout-message-dialog p{margin:0;color:var(--muted);line-height:1.55}.checkout-message-dialog button{display:block;min-height:44px;margin:22px 0 0 auto;padding:10px 18px;border:0;border-radius:0;background:var(--red);color:#fff;font:inherit;font-weight:750;cursor:pointer}
+</style>
 <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
 <script>
@@ -104,6 +114,13 @@ if (window.jQuery && jQuery.fn.select2 && document.getElementById('country')?.cl
     const cartEmpty = document.getElementById('cart-empty');
     const subtotalNode = document.getElementById('cart-subtotal');
     const basket = new Map();
+    const messageDialog = document.getElementById('checkoutMessageDialog');
+    const showCheckoutMessage = (message) => {
+        document.getElementById('checkoutMessageText').textContent = message;
+        messageDialog.showModal();
+    };
+    document.getElementById('checkoutMessageClose').addEventListener('click', () => messageDialog.close());
+    messageDialog.addEventListener('click', (event) => { if (event.target === messageDialog) messageDialog.close(); });
     let catalog = [];
     const money = (amount) => new Intl.NumberFormat('fr-FR').format(amount) + ' F';
     const priceForQuantity = (product, quantity) => {
@@ -224,7 +241,7 @@ if (window.jQuery && jQuery.fn.select2 && document.getElementById('country')?.cl
     }
 
     document.getElementById('order-form').addEventListener('submit', (event) => {
-        if (!country.value || basket.size === 0) { event.preventDefault(); alert('Choisis un pays et ajoute au moins un produit.'); return; }
+        if (!country.value || basket.size === 0) { event.preventDefault(); showCheckoutMessage('Choisis un pays et ajoute au moins un produit avant d’envoyer ta commande.'); return; }
         document.getElementById('order-country').value = country.value;
         const inputs = document.getElementById('order-items'); inputs.replaceChildren();
         let index = 0;

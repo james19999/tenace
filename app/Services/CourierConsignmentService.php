@@ -60,6 +60,7 @@ class CourierConsignmentService
             }
             $this->event($run, 'assignment', $actor, $movement, 0, $eventLines);
             $this->audit($run, $actor, 'courier.consigned', $eventLines);
+            $courier->forceFill(['active' => true])->save();
             return $run->fresh(['lines.product', 'courier', 'shop']);
         });
     }

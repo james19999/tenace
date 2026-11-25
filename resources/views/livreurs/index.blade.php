@@ -54,7 +54,7 @@
                                        <i class="material-icons">edit</i>
                                        Modifier</a>
                                        <form   method="POST" action="{{ route('livreurs.destroy',$user) }}"
-                                       onclick="return confirm('supprimer') "
+                                       data-app-confirm-title="Supprimer ce livreur ?" data-app-confirm-message="Cette suppression est définitive." data-app-confirm-label="Supprimer" data-app-confirm-variant="danger"
                                       >
                                            @csrf
                                             @method("DELETE")

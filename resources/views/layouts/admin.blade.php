@@ -629,6 +629,77 @@
     </script>
 
     @include('partials.pwa-scripts')
+    <dialog class="app-confirm-dialog" id="appConfirmDialog" aria-labelledby="appConfirmTitle" aria-describedby="appConfirmMessage">
+        <div class="app-confirm-icon" aria-hidden="true"><span class="material-icons">help_outline</span></div>
+        <button class="app-confirm-close" type="button" data-app-confirm-cancel aria-label="Fermer">×</button>
+        <h2 id="appConfirmTitle">Confirmer l’action</h2>
+        <p id="appConfirmMessage"></p>
+        <div class="app-confirm-actions">
+            <button type="button" class="app-confirm-cancel" data-app-confirm-cancel>Annuler</button>
+            <button type="button" class="app-confirm-accept" id="appConfirmAccept">Confirmer</button>
+        </div>
+    </dialog>
+    <style>
+        .app-confirm-dialog{position:fixed;inset:0;width:min(440px,calc(100% - 28px));max-width:none;margin:auto;padding:30px;border:1px solid var(--app-border,#e4e7ec);border-radius:14px;background:var(--app-surface,#fff);color:var(--app-text,#252a34);box-shadow:0 24px 80px #11182738;overflow:visible}
+        .app-confirm-dialog::backdrop{background:rgba(15,20,28,.58);backdrop-filter:blur(3px)}
+        .app-confirm-icon{display:grid;place-items:center;width:48px;height:48px;margin-bottom:17px;border-radius:50%;background:var(--app-primary-soft,#f8eeee);color:var(--app-primary,#7e1615)}
+        .app-confirm-icon .material-icons{font-size:25px}
+        .app-confirm-dialog h2{margin:0 34px 8px 0;color:var(--app-text,#252a34);font-size:21px;font-weight:800;line-height:1.25}
+        .app-confirm-dialog p{margin:0;color:var(--app-muted,#687386);font-size:14px;line-height:1.55;overflow-wrap:anywhere}
+        .app-confirm-close{position:absolute;top:14px;right:15px;width:34px;height:34px;border:0;border-radius:50%;background:transparent;color:var(--app-muted,#687386);font-size:25px;line-height:1;cursor:pointer}
+        .app-confirm-actions{display:flex;justify-content:flex-end;gap:10px;margin-top:25px}
+        .app-confirm-actions button{min-height:42px;padding:9px 16px;border:1px solid var(--app-border,#e4e7ec);border-radius:var(--app-radius,8px);font:inherit;font-size:13px;font-weight:750;cursor:pointer}
+        .app-confirm-cancel{background:var(--app-surface,#fff);color:var(--app-text,#252a34)}
+        .app-confirm-accept{border-color:var(--app-primary,#7e1615)!important;background:var(--app-primary,#7e1615);color:var(--app-primary-contrast,#fff)}
+        .app-confirm-dialog.is-danger .app-confirm-icon{background:#fff0ef;color:#a32927}
+        .app-confirm-dialog.is-danger .app-confirm-accept{border-color:#a32927!important;background:#a32927}
+        @media(max-width:480px){.app-confirm-dialog{padding:24px 20px}.app-confirm-actions{flex-direction:column-reverse}.app-confirm-actions button{width:100%;min-height:46px}}
+        html[data-app-theme="dark"] .app-confirm-dialog{border-color:var(--app-border);background:var(--app-surface);color:var(--app-text)}
+        html[data-app-theme="dark"] .app-confirm-dialog h2{color:var(--app-text)}
+        html[data-app-theme="dark"] .app-confirm-dialog p{color:var(--app-muted)}
+        html[data-app-theme="dark"] .app-confirm-cancel{border-color:var(--app-border);background:#252b34;color:var(--app-text)}
+    </style>
+    <script>
+        (() => {
+            const dialog = document.getElementById('appConfirmDialog');
+            const accept = document.getElementById('appConfirmAccept');
+            if (!dialog || !accept) return;
+            let pendingForm = null;
+            let pendingSubmitter = null;
+
+            document.addEventListener('submit', (event) => {
+                const form = event.target;
+                if (!(form instanceof HTMLFormElement) || !form.hasAttribute('data-app-confirm-title')) return;
+                if (form.dataset.appConfirmPassed === 'true') {
+                    delete form.dataset.appConfirmPassed;
+                    return;
+                }
+                event.preventDefault();
+                pendingForm = form;
+                pendingSubmitter = event.submitter instanceof HTMLElement ? event.submitter : null;
+                document.getElementById('appConfirmTitle').textContent = form.dataset.appConfirmTitle || 'Confirmer l’action';
+                document.getElementById('appConfirmMessage').textContent = form.dataset.appConfirmMessage || 'Veux-tu continuer ?';
+                accept.textContent = form.dataset.appConfirmLabel || 'Confirmer';
+                dialog.classList.toggle('is-danger', form.dataset.appConfirmVariant === 'danger');
+                dialog.showModal();
+            });
+
+            dialog.querySelectorAll('[data-app-confirm-cancel]').forEach((button) => button.addEventListener('click', () => dialog.close()));
+            dialog.addEventListener('click', (event) => { if (event.target === dialog) dialog.close(); });
+            dialog.addEventListener('close', () => { pendingForm = null; pendingSubmitter = null; });
+            accept.addEventListener('click', () => {
+                if (!pendingForm) return;
+                const form = pendingForm;
+                const submitter = pendingSubmitter;
+                pendingForm = null;
+                pendingSubmitter = null;
+                form.dataset.appConfirmPassed = 'true';
+                dialog.close();
+                if (submitter && submitter.form === form && !submitter.disabled) form.requestSubmit(submitter);
+                else form.requestSubmit();
+            });
+        })();
+    </script>
     @if (request()->routeIs('stock-control.*'))
         <dialog class="stock-confirm-dialog" id="stockConfirmDialog" aria-labelledby="stockConfirmTitle" aria-describedby="stockConfirmMessage">
             <div class="stock-confirm-dialog-head"><span class="material-icons" aria-hidden="true">fact_check</span><button type="button" data-stock-confirm-cancel aria-label="Fermer">×</button></div>

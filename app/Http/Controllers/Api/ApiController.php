@@ -7,6 +7,8 @@ use Carbon\Carbon;
 use App\Models\User;
 use App\Models\Product;
 use App\Models\Orders\Order;
+use App\Models\CourierOrderCancellationRequest;
+use App\Notifications\CourierCancellationRequestNotification;
 use App\Services\StockDeliveryService;
 use Illuminate\Http\Request;
 use App\Http\Controllers\Controller;
@@ -14,6 +16,8 @@ use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Response;
 use Illuminate\Support\Facades\Validator;
+use Illuminate\Support\Facades\Notification;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
 
 class ApiController extends Controller
@@ -134,30 +138,37 @@ class ApiController extends Controller
 
 
      public function check_livraison_take($id){
-        $orders=Order::findOrfail($id);
+        abort_unless(Auth::user()?->user_type === User::ROLE_LIVREUR, 403);
+        $result = DB::transaction(function () use ($id): string {
+            User::query()->whereKey(Auth::id())->lockForUpdate()->firstOrFail();
+            $order = Order::query()->lockForUpdate()->findOrFail($id);
+            if ($order->take || $order->status_order || filled($order->user_id) || $order->status !== 'ordered') {
+                return 'taken';
+            }
 
-          if($orders->take==false){
-              $hasDeliveryInProgress = Order::query()
-                  ->where('user_id', Auth::id())
-                  ->where('status_order', true)
-                  ->where('status', 'ordered')
-                  ->where('delivery_waiting', false)
-                  ->exists();
+            $hasDeliveryInProgress = Order::query()->where('user_id', (string) Auth::id())
+                ->where('status', 'ordered')->exists();
+            if ($hasDeliveryInProgress) {
+                return 'busy';
+            }
 
-                  if (! $hasDeliveryInProgress) {
-                      $orders->user_id=Auth::user()->id;
-                      $orders->assigned_at=now();
-                      $orders->status_order=true;
-                      $orders->take=true;
-                      $orders->save();
-                      return Response::json(['status'=>true ,'messages'=>"Commande ajouter"]);
-                  }else{
-                      return  Response::json(['status'=>false,'messages'=>"Termine ou mets en attente ta livraison en cours avant d’en prendre une autre."]);
-                  }
-          }else{
-            return  Response::json(['status'=>400,'messages'=>"Commande déjà prise"]);
+            $order->user_id = (string) Auth::id();
+            $order->assigned_at = now();
+            $order->status_order = true;
+            $order->take = true;
+            $order->save();
 
-          }
+            return 'assigned';
+        });
+
+        if ($result === 'busy') {
+            return Response::json(['status' => false, 'messages' => 'Tu as déjà une commande en cours ou en attente. Termine-la ou attends la décision du responsable avant d’en prendre une autre.'], 409);
+        }
+        if ($result === 'taken') {
+            return Response::json(['status' => false, 'messages' => 'Cette commande a déjà été prise.'], 409);
+        }
+
+        return Response::json(['status' => true, 'messages' => 'Commande ajoutée.']);
 
       }
 
@@ -206,11 +217,72 @@ class ApiController extends Controller
             $orders=Order::findOrfail($id);
 
              if($orders){
+                 if ($request->status === 'waiting' && $request->user()?->user_type === User::ROLE_LIVREUR) {
+                    $validator = Validator::make($request->all(), ['motif' => ['required', 'string', 'min:3', 'max:500']], [
+                        'motif.required' => 'Indique pourquoi tu demandes la mise en attente de cette commande.',
+                        'motif.min' => 'Le motif doit contenir au moins 3 caractères.',
+                    ]);
+                    if ($validator->fails()) {
+                        return Response::json(['status' => false, 'messages' => $validator->errors()->first()], 422);
+                    }
+                    if ((string) $orders->user_id !== (string) $request->user()->id || $orders->status !== 'ordered') {
+                        return Response::json(['status' => false, 'messages' => 'Cette commande n’est plus sous ta responsabilité.'], 409);
+                    }
+                    $waitingRequest = DB::transaction(function () use ($orders, $request): CourierOrderCancellationRequest {
+                        $lockedOrder = Order::query()->whereKey($orders->id)->lockForUpdate()->firstOrFail();
+                        if ((string) $lockedOrder->user_id !== (string) $request->user()->id || $lockedOrder->status !== 'ordered') {
+                            abort(409, 'Cette commande n’est plus sous ta responsabilité.');
+                        }
+                        if (CourierOrderCancellationRequest::query()->where('order_id', $lockedOrder->id)->where('status', 'pending')->exists()) {
+                            throw ValidationException::withMessages(['motif' => 'Une demande est déjà en attente de la décision du responsable.']);
+                        }
+                        return CourierOrderCancellationRequest::query()->create([
+                            'order_id' => $lockedOrder->id,
+                            'courier_id' => $request->user()->id,
+                            'request_type' => 'waiting',
+                            'reason' => trim((string) $request->input('motif')),
+                            'was_delivery_waiting' => (bool) $lockedOrder->delivery_waiting,
+                            'status' => 'pending',
+                        ]);
+                    });
+                    Notification::send(
+                        User::query()->where('active', true)->whereIn('user_type', [User::ROLE_ADMIN, User::ROLE_MANAGER])->get(),
+                        new CourierCancellationRequestNotification($waitingRequest->load(['order', 'courier']))
+                    );
+                    return Response::json(['status' => true, 'messages' => 'Ta demande de mise en attente a été envoyée au responsable. La commande reste bloquée jusqu’à sa décision.']);
+                 }
                  if($request->status=="canceled"){
                     $validator=Validator::make($request->all(),['motif'=>'required'],
                     ['motif.required' => 'Entrer le motif d\'annulation.']);
                     if ($validator->fails()) {
                         return Response::json(['status' => false, 'messages' => $validator->errors()->first()], 422);
+                    }
+
+                    if ($request->user()?->user_type === User::ROLE_LIVREUR) {
+                        if ((string) $orders->user_id !== (string) $request->user()->id || $orders->status !== 'ordered') {
+                            return Response::json(['status' => false, 'messages' => 'Cette commande n’est plus sous ta responsabilité.'], 409);
+                        }
+                        $cancellationRequest = DB::transaction(function () use ($orders, $request): CourierOrderCancellationRequest {
+                            $lockedOrder = Order::query()->whereKey($orders->id)->lockForUpdate()->firstOrFail();
+                            if ((string) $lockedOrder->user_id !== (string) $request->user()->id || $lockedOrder->status !== 'ordered') {
+                                abort(409, 'Cette commande n’est plus sous ta responsabilité.');
+                            }
+                            if (CourierOrderCancellationRequest::query()->where('order_id', $lockedOrder->id)->where('status', 'pending')->exists()) {
+                                abort(409, 'Une demande d’annulation attend déjà la décision du responsable.');
+                            }
+                            return CourierOrderCancellationRequest::query()->create([
+                                'order_id' => $lockedOrder->id,
+                                'courier_id' => $request->user()->id,
+                                'reason' => trim((string) $request->input('motif')),
+                                'was_delivery_waiting' => (bool) $lockedOrder->delivery_waiting,
+                                'status' => 'pending',
+                            ]);
+                        });
+                        Notification::send(
+                            User::query()->where('active', true)->whereIn('user_type', [User::ROLE_ADMIN, User::ROLE_MANAGER])->get(),
+                            new CourierCancellationRequestNotification($cancellationRequest->load(['order', 'courier']))
+                        );
+                        return Response::json(['status' => true, 'messages' => 'Ta demande attend la validation du responsable. La commande reste sous ta responsabilité.']);
                     }
 
                     app(\App\Services\FinanceOrderCashIntegrationService::class)

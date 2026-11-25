@@ -41,7 +41,7 @@ Route::prefix('gest-plus')->group(function () {
     Route::put('upload/update/{id}', [SlideController::class, 'uploadupdate']);
     Route::get('all/slider', [SlideController::class, 'getAllSlides']);
 
-    Route::middleware('auth:sanctum')->group(function () {
+    Route::middleware(['auth:sanctum', 'courier.active'])->group(function () {
         Route::put('set/costomer/info/{id}', [EcomController::class, 'setcostomerinfo']);
         Route::post('place/order', [EcomController::class, 'place_order']);
         Route::get('auth/costumer/list', [EcomController::class, 'auth_costumer_list']);

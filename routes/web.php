@@ -475,7 +475,7 @@ Route::middleware(['auth'])->group(function () {
         Route::post('/orders/{order}/remittances/{payment}/confirm', [PartnerOrderController::class, 'confirmCashRemittance'])->name('orders.remittance.confirm');
     });
 
-    Route::middleware(['role:LVS'])->prefix('courier/public-orders')->name('courier.public-orders.')->group(function () {
+    Route::middleware(['role:LVS', 'courier.active'])->prefix('courier/public-orders')->name('courier.public-orders.')->group(function () {
         Route::get('/', [CourierPublicOrderController::class, 'index'])->name('index');
         Route::post('/{order}/claim', [CourierPublicOrderController::class, 'claim'])->name('claim');
         Route::post('/{order}/receive', [CourierPublicOrderController::class, 'receive'])->name('receive');
@@ -540,6 +540,8 @@ Route::middleware(['auth'])->group(function () {
     // 6. LIVRAISONS (ADMINUSER, MNG, LVS)
     // -------------------------------------------------------------------------
     Route::middleware(['role:ADMINUSER,MNG,LVS'])->group(function () {
+        Route::post('courier-cancellation-requests/{cancellationRequest}/decision', [LivreurController::class, 'reviewCourierCancellation'])
+            ->whereNumber('cancellationRequest')->middleware('role:ADMINUSER,MNG')->name('courier-cancellations.decision');
         Route::get('livrable/list', [LivreurController::class, 'livrable'])->name('livrable');
         Route::get('livrable/show/{id}', [LivreurController::class, 'livrable_show'])->name('livrableshow');
         Route::post('livrable/show/{id}/payment', [LivreurController::class, 'updateOrderPayment'])->middleware('role:ADMINUSER,MNG')->name('livrableshow.payment');

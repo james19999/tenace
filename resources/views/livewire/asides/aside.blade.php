@@ -18,6 +18,9 @@
     $canceledOrderBadge = Auth::check() && in_array(Auth::user()->user_type, ['SCR', 'CALLCENTER'], true)
         ? Auth::user()->unreadNotifications()->where('type', \App\Notifications\CanceledOrderNotification::class)->count()
         : 0;
+    $courierCancellationBadge = Auth::check() && in_array(Auth::user()->user_type, ['ADMINUSER', 'MNG'], true)
+        ? Auth::user()->unreadNotifications()->where('type', \App\Notifications\CourierCancellationRequestNotification::class)->count()
+        : 0;
     $dashboard = match (Auth::user()->user_type) {
         'PT' => ['route' => 'partner.dashboard', 'label' => 'Tableau de bord'],
         \App\Models\User::ROLE_WHOLESALER => ['route' => 'wholesaler.dashboard', 'label' => 'Tableau de bord'],
@@ -253,7 +256,7 @@
                         <li>
                             <a href="{{ route('order-cancel-list') }}" class="{{ $active('order-cancel-list') }}">
                                 <span class="icon material-icons">remove</span>
-                                <span class="text">Commandes annulées</span>
+                                <span class="text">Commandes annulées @if($courierCancellationBadge > 0)<span class="badge badge-pill badge-danger">{{ $courierCancellationBadge > 99 ? '99+' : $courierCancellationBadge }}</span>@endif</span>
                             </a>
                         </li>
 
@@ -513,7 +516,7 @@
                         <li>
                             <a href="{{ route('order-cancel-list') }}" class="{{ $active('order-cancel-list') }}">
                                 <span class="icon material-icons">remove</span>
-                                <span class="text">Commandes annulées</span>
+                                <span class="text">Commandes annulées @if($courierCancellationBadge > 0)<span class="badge badge-pill badge-danger">{{ $courierCancellationBadge > 99 ? '99+' : $courierCancellationBadge }}</span>@endif</span>
                             </a>
                         </li>
                     </ul>
@@ -654,7 +657,7 @@
                         <li>
                             <a href="{{ route('order-cancel-list') }}" class="{{ $active('order-cancel-list') }}">
                                 <span class="icon material-icons">remove</span>
-                                <span class="text">Commandes annulées</span>
+                                <span class="text">Commandes annulées @if($courierCancellationBadge > 0)<span class="badge badge-pill badge-danger">{{ $courierCancellationBadge > 99 ? '99+' : $courierCancellationBadge }}</span>@endif</span>
                             </a>
                         </li>
                         <li>

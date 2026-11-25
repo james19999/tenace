@@ -76,7 +76,7 @@
                                  <i class="material-icons f-16">visibility</i>Details</a>
 
                                  <form   method="POST" action="{{ route('deleteorder',$order) }}"
-                                 onclick="return confirm('supprimer') "
+                                 data-app-confirm-title="Supprimer ce brouillon ?" data-app-confirm-message="Ce brouillon sera supprimé définitivement." data-app-confirm-label="Supprimer" data-app-confirm-variant="danger"
                                 >
                                      @csrf
                                       @method("DELETE")

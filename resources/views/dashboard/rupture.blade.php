@@ -84,7 +84,7 @@
                                         Modifier</a>
 
                                         <form   method="POST" action="{{ route('delteproduct',$product) }}"
-                                        onclick="return confirm('supprimer') "
+                                        data-app-confirm-title="Supprimer cette alerte ?" data-app-confirm-message="Cette alerte sera supprimée définitivement." data-app-confirm-label="Supprimer" data-app-confirm-variant="danger"
                                     >
                                             @csrf
                                             @method("DELETE")

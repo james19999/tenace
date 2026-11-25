@@ -43,7 +43,7 @@ class CourierConsignmentController extends Controller
         $couriers = collect();
         $products = collect();
         if (! $isCourier && $shop) {
-            $couriers = User::query()->where('active', true)->where('user_type', User::ROLE_LIVREUR)->orderBy('name')->get(['id', 'name', 'phone']);
+            $couriers = User::query()->where('user_type', User::ROLE_LIVREUR)->orderBy('name')->get(['id', 'name', 'phone', 'active']);
             $shopBalances = $service->balances($shop->id);
             $products = Product::query()->orderBy('name')->get(['id', 'name', 'price', 'price_market'])
                 ->map(function (Product $product) use ($shopBalances) {
@@ -62,7 +62,7 @@ class CourierConsignmentController extends Controller
         $shop = $this->shopFor($actor, $settings);
         abort_unless($shop, 403, 'Aucune boutique n’est affectée à ce responsable.');
         $data = $request->validate([
-            'courier_id' => ['required', 'integer', Rule::exists('users', 'id')->where(fn ($query) => $query->where('active', true)->where('user_type', User::ROLE_LIVREUR))],
+            'courier_id' => ['required', 'integer', Rule::exists('users', 'id')->where(fn ($query) => $query->where('user_type', User::ROLE_LIVREUR))],
             'lines' => ['required', 'array', 'min:1'],
             'lines.*.product_id' => ['required', 'integer', 'distinct', 'exists:products,id'],
             'lines.*.quantity' => ['required', 'integer', 'min:0', 'max:1000000'],

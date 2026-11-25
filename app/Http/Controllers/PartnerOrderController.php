@@ -591,7 +591,9 @@ class PartnerOrderController extends Controller
             $courier = User::query()->whereKey($validated['courier_id'])
                 ->where('user_type', User::ROLE_LIVREUR)
                 ->where('country_code', $partner->country_code)
-                ->where('active', 1)->firstOrFail();
+                ->where('active', 1)->lockForUpdate()->firstOrFail();
+            abort_if(Order::query()->where('user_id', (string) $courier->id)->where('status', 'ordered')->exists(), 409,
+                'Ce livreur a déjà une commande en cours ou en attente. Il doit la terminer ou attendre la décision du responsable.');
             $locked = Order::query()->whereKey($order->id)->lockForUpdate()->firstOrFail();
             abort_unless((int) $locked->partner_id === (int) $partner->id && $locked->partner_order_status === 'ready_for_courier' && ! $locked->user_id, 409);
             $locked->load('orderItems');

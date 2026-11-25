@@ -492,8 +492,15 @@ class OrderController extends Controller
     public function order_cancel_list(Request $request)
     {
         $request->user()?->unreadNotifications()
-            ->where('type', \App\Notifications\CanceledOrderNotification::class)
+            ->whereIn('type', [
+                \App\Notifications\CanceledOrderNotification::class,
+                \App\Notifications\CourierCancellationRequestNotification::class,
+            ])
             ->update(['read_at' => now()]);
+
+        $pendingCancellationRequests = \App\Models\CourierOrderCancellationRequest::query()
+            ->with(['order.costumer', 'order.orderItems.product', 'courier'])
+            ->where('status', 'pending')->latest()->paginate(15, ['*'], 'requests_page')->withQueryString();
 
         $orders = Order::query()
             ->with(['costumer', 'user', 'createduser', 'partner', 'orderItems.product', 'payments'])
@@ -503,7 +510,7 @@ class OrderController extends Controller
             ->paginate(25)
             ->withQueryString();
 
-        return view('orders.order_canceled', compact('orders'));
+        return view('orders.order_canceled', compact('orders', 'pendingCancellationRequests'));
     }
 
     public function order_report_list()

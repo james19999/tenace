@@ -227,6 +227,8 @@ class PartnerCourierStockService
                 ]);
             }
 
+            $courier->forceFill(['active' => true])->save();
+
             StockAuditLog::query()->create([
                 'user_id' => $actor->id,
                 'actor_role' => $actor->user_type,

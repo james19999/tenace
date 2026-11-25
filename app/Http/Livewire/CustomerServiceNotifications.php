@@ -6,6 +6,8 @@ use App\Models\Orders\Order;
 use App\Models\User;
 use App\Notifications\CustomerServiceCaseNotification;
 use App\Notifications\CanceledOrderNotification;
+use App\Notifications\CourierCancellationDecisionNotification;
+use App\Notifications\CourierCancellationRequestNotification;
 use App\Notifications\DgAppointmentNotification;
 use App\Notifications\FinanceCashCountAlertNotification;
 use App\Notifications\FinanceExpenseReportNotification;
@@ -187,7 +189,7 @@ class CustomerServiceNotifications extends Component
     protected function notificationTypes(): array
     {
         if (Auth::user()?->user_type === User::ROLE_LIVREUR) {
-            return [];
+            return [CourierCancellationDecisionNotification::class];
         }
 
         return [
@@ -200,6 +202,7 @@ class CustomerServiceNotifications extends Component
             FinanceExternalLoanDueNotification::class,
             StorefrontOrderNotification::class,
             CanceledOrderNotification::class,
+            CourierCancellationRequestNotification::class,
         ];
     }
 

@@ -30,6 +30,24 @@ class LoginController extends Controller
      */
     protected $redirectTo = RouteServiceProvider::HOME;
 
+    protected function credentials(Request $request): array
+    {
+        $credentials = $request->only($this->username(), 'password');
+        $user = User::query()->where($this->username(), $request->input($this->username()))->first();
+
+        if ($user) {
+            // Évite qu’une adresse e-mail partagée fasse authentifier un autre
+            // compte actif à la place du livreur désactivé saisi ici.
+            $credentials['id'] = $user->id;
+        }
+
+        if ($user?->isLivreur()) {
+            $credentials['active'] = true;
+        }
+
+        return $credentials;
+    }
+
     /**
      * Create a new controller instance.
      *
@@ -40,11 +58,41 @@ class LoginController extends Controller
         $this->middleware('guest')->except('logout');
     }
 
+    protected function sendFailedLoginResponse(Request $request)
+    {
+        $user = User::query()
+            ->where($this->username(), $request->input($this->username()))
+            ->first();
+
+        if ($user?->isLivreur() && ! $user->active) {
+            return redirect()->back()
+                ->withInput($request->only($this->username(), 'remember'))
+                ->withErrors([
+                    $this->username() => 'Ton compte livreur est désactivé. Demande au responsable boutique de te remettre des produits pour réactiver ton accès.',
+                ]);
+        }
+
+        return parent::sendFailedLoginResponse($request);
+    }
+
     /**
      * Redirige l'utilisateur selon son rôle après connexion.
      */
     protected function authenticated(Request $request, $user)
     {
+        // Garde de sécurité après authentification : même si un autre mécanisme
+        // fournit les identifiants, un livreur désactivé ne doit jamais garder
+        // une session ouverte.
+        if ($user instanceof User && $user->isLivreur() && ! $user->active) {
+            $this->guard()->logout();
+            $request->session()->invalidate();
+            $request->session()->regenerateToken();
+
+            return redirect()->route('login')->withErrors([
+                'email' => 'Ton compte livreur est désactivé. Le responsable boutique doit te remettre des produits pour réactiver ton accès.',
+            ]);
+        }
+
         $homeUrl = $user instanceof User ? $user->homeUrl() : RouteServiceProvider::HOME;
 
         // Les comptes de vente grossiste doivent toujours retrouver leur espace,

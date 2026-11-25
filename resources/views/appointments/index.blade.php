@@ -28,7 +28,7 @@
                 <button type="submit" class="btn btn-primary" id="appointment-submit" disabled>Planifier le rendez-vous</button>
             </form>
         </div></div>
-    @endif
+    @endif4/0AUn6Hd-frhGO7szGeNxNOZuMi7mRTMdbCP6ldqRBN0OxHWEZQUTnhM-K1QYNCfq_-D7K0Q
     </section>
     <section data-appointment-panel="upcoming" hidden>
     <nav class="nav nav-pills mb-3 dg-appointment-state-tabs" aria-label="État des rendez-vous">

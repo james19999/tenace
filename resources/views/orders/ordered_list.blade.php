@@ -98,7 +98,7 @@
 
 
                                  <form   method="POST" action="{{ route('deleteorder',$order) }}"
-                                 onclick="return confirm('supprimer') "
+                                 data-app-confirm-title="Supprimer cette commande ?" data-app-confirm-message="Cette commande sera supprimée définitivement." data-app-confirm-label="Supprimer" data-app-confirm-variant="danger"
                                 >
                                      @csrf
                                       @method("DELETE")

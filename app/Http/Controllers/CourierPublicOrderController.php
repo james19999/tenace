@@ -49,10 +49,14 @@ class CourierPublicOrderController extends Controller
         $courier = $this->courier($request);
         $stockService = app(PartnerCourierStockService::class);
         DB::transaction(function () use ($order, $courier, $stockService): void {
+            User::query()->whereKey($courier->id)->lockForUpdate()->firstOrFail();
             $locked = Order::query()->whereKey($order->id)->lockForUpdate()->firstOrFail();
             abort_unless($locked->country_code === $courier->country_code
                 && $locked->partner_order_status === 'ready_for_courier' && $locked->user_id === null, 409,
                 'Un autre livreur a déjà pris cette commande.');
+            abort_unless(! Order::query()->where('user_id', (string) $courier->id)
+                ->where('status', 'ordered')->exists(), 409,
+                'Tu as déjà une commande en cours ou en attente. Termine-la ou attends la décision du responsable avant d’en prendre une autre.');
             $locked->load('orderItems');
             abort_unless($stockService->hasForOrder($courier, $locked), 409,
                 'Ton stock remis par le partenaire ne suffit pas pour cette commande.');
