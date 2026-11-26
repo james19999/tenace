@@ -27,6 +27,7 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
 use App\Models\PourcentageCommission;
 use App\Services\StockDeliveryService;
+use App\Services\CourierWaitingRequestService;
 use Illuminate\Support\Facades\Redirect;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Validation\Rule;
@@ -597,33 +598,20 @@ class LivreurController extends Controller
                    'motif.min' => 'Le motif doit contenir au moins 3 caractères.',
                ]);
                if ($isCourier) {
-                   $waitingRequest = DB::transaction(function () use ($orders, $request, $data): CourierOrderCancellationRequest {
-                       $lockedOrder = Order::query()->whereKey($orders->id)->lockForUpdate()->firstOrFail();
-                       abort_unless((string) $lockedOrder->user_id === (string) $request->user()->id
-                           && $lockedOrder->status === 'ordered', 409, 'Cette livraison n’est plus sous ta responsabilité.');
-                       if (CourierOrderCancellationRequest::query()->where('order_id', $lockedOrder->id)
-                           ->where('status', 'pending')->exists()) {
-                           throw ValidationException::withMessages([
-                               'motif' => 'Une demande est déjà en attente de la décision du responsable.',
-                           ]);
-                       }
+                   $result = app(CourierWaitingRequestService::class)->submit($orders, $request->user(), $data['motif']);
+                   $waitingRequest = $result['request'];
 
-                       return CourierOrderCancellationRequest::query()->create([
-                           'order_id' => $lockedOrder->id,
-                           'courier_id' => $request->user()->id,
-                           'request_type' => 'waiting',
-                           'reason' => trim($data['motif']),
-                           'was_delivery_waiting' => (bool) $lockedOrder->delivery_waiting,
-                           'status' => 'pending',
-                       ]);
-                   });
+                   if ($result['requires_review']) {
+                       Notification::send(
+                           User::query()->whereIn('user_type', User::ORDER_CANCELLATION_REVIEW_ROLES)->get(),
+                           new CourierCancellationRequestNotification($waitingRequest)
+                       );
 
-                   Notification::send(
-                       User::query()->whereIn('user_type', User::ORDER_CANCELLATION_REVIEW_ROLES)->get(),
-                       new CourierCancellationRequestNotification($waitingRequest->load(['order', 'courier']))
-                   );
+                       return redirect()->back()->with('success', 'Tu as déjà deux commandes en attente. Cette troisième demande a été envoyée au responsable; garde cette commande jusqu’à sa décision.');
+                   }
 
-                   return redirect()->back()->with('success', 'Ta demande de mise en attente a été envoyée au responsable. La commande reste bloquée jusqu’à sa décision.');
+                   $request->user()->notify(new CourierCancellationDecisionNotification($waitingRequest));
+                   return redirect()->back()->with('success', 'Commande mise en attente automatiquement ('.$result['waiting_count'].'/2 en attente). Tu peux prendre une autre commande.');
                }
                $orders->delivery_waiting = true;
                $orders->motif = filled($data['motif'] ?? null) ? trim($data['motif']) : null;

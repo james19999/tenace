@@ -9,7 +9,9 @@ use App\Models\Product;
 use App\Models\Orders\Order;
 use App\Models\CourierOrderCancellationRequest;
 use App\Notifications\CourierCancellationRequestNotification;
+use App\Notifications\CourierCancellationDecisionNotification;
 use App\Services\StockDeliveryService;
+use App\Services\CourierWaitingRequestService;
 use Illuminate\Http\Request;
 use App\Http\Controllers\Controller;
 use Illuminate\Support\Facades\Auth;
@@ -228,28 +230,21 @@ class ApiController extends Controller
                     if ((string) $orders->user_id !== (string) $request->user()->id || $orders->status !== 'ordered') {
                         return Response::json(['status' => false, 'messages' => 'Cette commande n’est plus sous ta responsabilité.'], 409);
                     }
-                    $waitingRequest = DB::transaction(function () use ($orders, $request): CourierOrderCancellationRequest {
-                        $lockedOrder = Order::query()->whereKey($orders->id)->lockForUpdate()->firstOrFail();
-                        if ((string) $lockedOrder->user_id !== (string) $request->user()->id || $lockedOrder->status !== 'ordered') {
-                            abort(409, 'Cette commande n’est plus sous ta responsabilité.');
-                        }
-                        if (CourierOrderCancellationRequest::query()->where('order_id', $lockedOrder->id)->where('status', 'pending')->exists()) {
-                            throw ValidationException::withMessages(['motif' => 'Une demande est déjà en attente de la décision du responsable.']);
-                        }
-                        return CourierOrderCancellationRequest::query()->create([
-                            'order_id' => $lockedOrder->id,
-                            'courier_id' => $request->user()->id,
-                            'request_type' => 'waiting',
-                            'reason' => trim((string) $request->input('motif')),
-                            'was_delivery_waiting' => (bool) $lockedOrder->delivery_waiting,
-                            'status' => 'pending',
-                        ]);
-                    });
-                    Notification::send(
-                        User::query()->whereIn('user_type', User::ORDER_CANCELLATION_REVIEW_ROLES)->get(),
-                        new CourierCancellationRequestNotification($waitingRequest->load(['order', 'courier']))
-                    );
-                    return Response::json(['status' => true, 'messages' => 'Ta demande de mise en attente a été envoyée au responsable. La commande reste bloquée jusqu’à sa décision.']);
+                    try {
+                        $result = app(CourierWaitingRequestService::class)->submit($orders, $request->user(), (string) $request->input('motif'));
+                    } catch (ValidationException $exception) {
+                        return Response::json(['status' => false, 'messages' => $exception->errors()['motif'][0] ?? 'La demande ne peut pas être enregistrée.'], 409);
+                    }
+                    $waitingRequest = $result['request'];
+                    if ($result['requires_review']) {
+                        Notification::send(
+                            User::query()->whereIn('user_type', User::ORDER_CANCELLATION_REVIEW_ROLES)->get(),
+                            new CourierCancellationRequestNotification($waitingRequest)
+                        );
+                        return Response::json(['status' => true, 'messages' => 'Tu as déjà deux commandes en attente. Cette troisième demande a été envoyée au responsable; garde cette commande jusqu’à sa décision.']);
+                    }
+                    $request->user()->notify(new CourierCancellationDecisionNotification($waitingRequest));
+                    return Response::json(['status' => true, 'messages' => 'Commande mise en attente automatiquement ('.$result['waiting_count'].'/2 en attente). Tu peux prendre une autre commande.']);
                  }
                  if($request->status=="canceled"){
                     $validator=Validator::make($request->all(),['motif'=>'required'],

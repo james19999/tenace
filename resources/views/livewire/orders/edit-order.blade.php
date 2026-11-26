@@ -24,6 +24,11 @@
         .oe-field textarea.form-control { min-height:82px; resize:vertical; }
         .oe-field .form-control:focus { border-color:#a94c4c; box-shadow:0 0 0 3px rgba(133,27,27,.09); }
         .oe-help { display:block; margin-top:5px; color:var(--oe-muted); font-size:11px; line-height:1.45; }
+        .oe-courier-suggestion { display:flex; align-items:flex-start; gap:11px; padding:12px 14px; border:1px solid #ead8be; border-radius:9px; background:#fffaf2; color:#59472f; }
+        .oe-courier-suggestion>.material-icons { color:#9a6922; font-size:21px; }
+        .oe-courier-suggestion strong,.oe-courier-suggestion small { display:block; }
+        .oe-courier-suggestion strong { font-size:12px; }
+        .oe-courier-suggestion small { margin-top:3px; color:#756b5d; font-size:11px; line-height:1.5; }
         .oe-validation { display:block; margin-top:5px; color:#b42318; font-size:12px; }
         .oe-search { position:relative; }
         .oe-search input { padding-left:40px; }
@@ -108,7 +113,12 @@
             @if($relaunch)
                 <div class="oe-field"><label for="relaunch-date">Date de remise en circulation</label><input id="relaunch-date" type="date" class="form-control" wire:model="relaunchDate"></div>
                 <div class="oe-field"><label for="relaunch-time">Heure souhaitée</label><input id="relaunch-time" type="time" class="form-control" wire:model="relaunchTime"></div>
-                <div class="oe-field oe-field-wide"><small class="oe-help">Après enregistrement, la commande redevient disponible dans la liste des courses des livreurs. Les paiements remboursés lors de l’annulation restent annulés.</small></div>
+                <div class="oe-field oe-field-wide"><small class="oe-help">Après enregistrement, la commande sera publiée pour tous les livreurs; aucun ne sera affecté automatiquement. Les paiements remboursés lors de l’annulation restent annulés.</small></div>
+                @if($suggestedCourierName)
+                    <div class="oe-field oe-field-wide"><div class="oe-courier-suggestion"><span class="material-icons" aria-hidden="true">person_search</span><div><strong>Livreur à considérer</strong><small>{{ $suggestedCourierName }}@if($suggestedCourierPhone) · {{ $suggestedCourierPhone }}@endif a demandé l’annulation de cette commande. Tu peux le recontacter ou choisir un autre livreur; la commande restera publique après relance.</small></div></div></div>
+                @else
+                    <div class="oe-field oe-field-wide"><small class="oe-help">Aucun livreur précédent n’a pu être retrouvé. La commande sera publiée à tous les livreurs après relance.</small></div>
+                @endif
             @endif
             <div class="oe-field oe-field-wide">
                 <label for="edit-delivery-address">Adresse de livraison</label>

@@ -505,7 +505,7 @@ class OrderController extends Controller
             ->latest()->paginate(15, ['*'], 'requests_page')->withQueryString();
 
         $orders = Order::query()
-            ->with(['costumer', 'user', 'createduser', 'partner', 'orderItems.product', 'payments'])
+            ->with(['costumer', 'user', 'latestCancellationRequest.courier', 'createduser', 'partner', 'orderItems.product', 'payments'])
             ->where(fn ($query) => $query->where('status', 'canceled')->orWhere('partner_order_status', 'canceled'))
             ->when($isCourier, fn ($query) => $query->whereIn('id', \App\Models\CourierOrderCancellationRequest::query()
                 ->select('order_id')->where('courier_id', $request->user()->id)->where('request_type', 'cancellation')->where('status', 'approved')))

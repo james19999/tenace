@@ -33,6 +33,8 @@ class EditOrder extends Component
     public bool $relaunch = false;
     public $relaunchDate = '';
     public $relaunchTime = '';
+    public $suggestedCourierName = null;
+    public $suggestedCourierPhone = null;
 
 
     public function mount(Order $order)
@@ -40,6 +42,11 @@ class EditOrder extends Component
         $this->relaunch = request()->boolean('relaunch');
         $this->authorizeOrder($order);
         $this->order = $order;
+        if ($this->relaunch) {
+            $previousCourier = $order->latestCancellationRequest()->with('courier')->first()?->courier ?? $order->user;
+            $this->suggestedCourierName = $previousCourier?->name;
+            $this->suggestedCourierPhone = $previousCourier?->phone;
+        }
         $this->relaunchDate = (string) ($order->date_order ?: now()->toDateString());
         $this->relaunchTime = (string) ($order->time ?: now()->format('H:i'));
         $this->deliveryAddress = (string) ($order->delivery_address ?: $order->costumer?->adresse ?: '');

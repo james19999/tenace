@@ -23,11 +23,14 @@ class CourierCancellationDecisionNotification extends Notification
     {
         $approved = $this->cancellationRequest->status === 'approved';
         $isWaitingRequest = $this->cancellationRequest->request_type === 'waiting';
+        $automaticallyApproved = $isWaitingRequest && $this->cancellationRequest->reviewed_by === null;
         $order = $this->cancellationRequest->order;
         $message = ($order?->code ?: 'La commande #'.$this->cancellationRequest->order_id)
             .($isWaitingRequest
                 ? ($approved
-                    ? ' est mise en attente par le responsable. Tu peux maintenant prendre une autre commande.'
+                    ? ($automaticallyApproved
+                        ? ' a été mise en attente automatiquement. Tu peux maintenant prendre une autre commande.'
+                        : ' est mise en attente par le responsable. Tu peux maintenant prendre une autre commande.')
                     : ' reste en cours. La demande de mise en attente a été refusée; termine-la avant d’en prendre une autre.')
                 : ($approved
                     ? ' a été annulée. Tu peux prendre une autre commande.'

@@ -5,12 +5,14 @@ namespace App\Models\Orders;
 use App\Models\Costumer;
 use App\Models\OrderCourierHandoff;
 use App\Models\OrderPayment;
+use App\Models\CourierOrderCancellationRequest;
 use App\Models\PublicOrderLink;
 use App\Models\TransportCompany;
 use App\Models\User;
 use App\Notifications\CanceledOrderNotification;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 
@@ -144,6 +146,14 @@ class Order extends Model
     {
 
         return $this->belongsTo(User::class, 'user_id');
+    }
+
+    public function latestCancellationRequest(): HasOne
+    {
+        return $this->hasOne(CourierOrderCancellationRequest::class)
+            ->where('request_type', 'cancellation')
+            ->where('status', 'approved')
+            ->latestOfMany();
     }
 
     public function createduser()
